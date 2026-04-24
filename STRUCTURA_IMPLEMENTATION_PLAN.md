@@ -83,6 +83,33 @@ Target runtime from the artifact pack:
 
 Implementation should still run in a local development profile on this workstation before final host deployment. Any divergence from the target runtime should be recorded as an ADR update.
 
+## GPU Node Development Sync Policy
+
+The application will live on the GPU node at `10.25.0.50`.
+
+Required access and paths:
+
+```text
+SSH user: bgconley
+SSH key: /Users/brennanconley/vibecode/infx/ubuntu24_ed25519
+Repo checkout: /tank/repos/structura
+Virtualenv root: /tank/venvs
+Remote git URL: https://github.com/bgconley/structura.git
+```
+
+Operational rule:
+
+- After every local commit and push to GitHub, immediately SSH to the GPU node and pull the updated repository.
+- If `/tank/repos/structura` does not exist, create `/tank/repos` as needed and clone `https://github.com/bgconley/structura.git` into `/tank/repos/structura`.
+- Do not create application virtual environments inside the repo checkout. Put them under `/tank/venvs`.
+- For database, object storage, derived artifacts, exports, staging, cache, models, logs, backups, and observability data, follow the artifact ZFS plan rather than inventing new locations.
+
+Required sync command shape:
+
+```bash
+ssh -i /Users/brennanconley/vibecode/infx/ubuntu24_ed25519 bgconley@10.25.0.50 '<clone-or-pull commands>'
+```
+
 ## Artifact Alignment Matrix
 
 This plan intentionally covers the artifact surfaces as follows:

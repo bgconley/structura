@@ -107,6 +107,30 @@ Important frames found under those pages:
 
 First working screen: Inbox.
 
+## GPU Node Sync Policy
+
+Deployment target:
+
+```text
+Host: 10.25.0.50
+SSH user: bgconley
+SSH key: /Users/brennanconley/vibecode/infx/ubuntu24_ed25519
+Repo path on GPU node: /tank/repos/structura
+Virtualenv root on GPU node: /tank/venvs
+Remote git URL: https://github.com/bgconley/structura.git
+```
+
+After every local commit and push to GitHub, immediately SSH to the GPU node and pull the updated repository into `/tank/repos/structura`. If the checkout does not exist yet, create `/tank/repos` as needed and clone the repository into `/tank/repos/structura`.
+
+Application virtual environments must be created under `/tank/venvs`, not inside the repository and not under `/tank/repos`.
+
+For other persistent runtime data, follow the ZFS plan in:
+
+```text
+pro-merged-master-v1.2/docs/08_ZFS_Datasets_and_Storage_Plan.md
+pro-merged-master-v1.2/infrastructure/zfs/dataset_matrix.csv
+```
+
 ## Stop Rule
 
 If implementation reaches an ambiguous UI/UX decision not settled by the Figma mockups, dev redlines, interaction specs, or this planning layer, stop and ask the user before proceeding.
