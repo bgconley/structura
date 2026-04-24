@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/events/extract_document_job.v1.schema.json",
+  "title": "Extract Document Job v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "job_id",
+    "created_at",
+    "attempt",
+    "priority",
+    "document_id",
+    "target_schema_name",
+    "target_schema_version"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "extract_document_job"
+    },
+    "schema_version": {
+      "const": "v1"
+    },
+    "job_id": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/uuid"
+    },
+    "correlation_id": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/uuid"
+    },
+    "created_at": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/timestamp"
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "priority": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10
+    },
+    "requested_by": {
+      "type": "string",
+      "enum": [
+        "system",
+        "user",
+        "agent",
+        "scheduler"
+      ]
+    },
+    "metadata": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/metadataObject"
+    },
+    "document_id": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/uuid"
+    },
+    "target_schema_name": {
+      "type": "string",
+      "enum": [
+        "document_classification",
+        "receipt",
+        "invoice",
+        "medical_eob"
+      ]
+    },
+    "target_schema_version": {
+      "type": "string"
+    },
+    "route_profile": {
+      "type": "string"
+    },
+    "target_pages": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 1
+      }
+    },
+    "force_reextract": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

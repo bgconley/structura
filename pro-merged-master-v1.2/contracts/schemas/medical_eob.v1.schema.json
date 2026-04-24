@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/schemas/medical_eob.v1.schema.json",
+  "title": "Medical EOB Extraction v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "document_id",
+    "payer",
+    "patient",
+    "claim",
+    "service_lines",
+    "financial_summary",
+    "validation",
+    "created_at"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "medical_eob"
+    },
+    "schema_version": {
+      "const": "v1"
+    },
+    "document_id": {
+      "$ref": "common_defs.schema.json#/$defs/uuid"
+    },
+    "payer": {
+      "$ref": "common_defs.schema.json#/$defs/partyCore"
+    },
+    "patient": {
+      "$ref": "common_defs.schema.json#/$defs/partyCore"
+    },
+    "provider": {
+      "$ref": "common_defs.schema.json#/$defs/partyCore"
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "claim_number": {
+          "type": "string"
+        },
+        "received_on": {
+          "$ref": "common_defs.schema.json#/$defs/localDate"
+        },
+        "processed_on": {
+          "$ref": "common_defs.schema.json#/$defs/localDate"
+        },
+        "group_number": {
+          "type": "string"
+        },
+        "member_id": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "common_defs.schema.json#/$defs/evidenceRef"
+          }
+        }
+      }
+    },
+    "service_lines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ordinal",
+          "service_description"
+        ],
+        "properties": {
+          "ordinal": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "service_date": {
+            "$ref": "common_defs.schema.json#/$defs/localDate"
+          },
+          "service_end_date": {
+            "$ref": "common_defs.schema.json#/$defs/localDate"
+          },
+          "service_description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "procedure_code": {
+            "type": "string"
+          },
+          "diagnosis_code": {
+            "type": "string"
+          },
+          "revenue_code": {
+            "type": "string"
+          },
+          "place_of_service": {
+            "type": "string"
+          },
+          "units": {
+            "type": "number"
+          },
+          "billed_amount": {
+            "$ref": "common_defs.schema.json#/$defs/money"
+          },
+          "allowed_amount": {
+            "$ref": "common_defs.schema.json#/$defs/money"
+          },
+          "plan_paid": {
+            "$ref": "common_defs.schema.json#/$defs/money"
+          },
+          "patient_responsibility": {
+            "$ref": "common_defs.schema.json#/$defs/money"
+          },
+          "deductible": {
+            "$ref": "common_defs.schema.json#/$defs/money"
+          },
+          "copay": {
+            "$ref": "common_defs.schema.json#/$defs/money"
+          },
+          "coinsurance": {
+            "$ref": "common_defs.schema.json#/$defs/money"
+          },
+          "adjustment_reason": {
+            "type": "string"
+          },
+          "remark_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "$ref": "common_defs.schema.json#/$defs/evidenceRef"
+            }
+          }
+        }
+      }
+    },
+    "financial_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "total_billed": {
+          "$ref": "common_defs.schema.json#/$defs/money"
+        },
+        "total_allowed": {
+          "$ref": "common_defs.schema.json#/$defs/money"
+        },
+        "total_plan_paid": {
+          "$ref": "common_defs.schema.json#/$defs/money"
+        },
+        "total_patient_responsibility": {
+          "$ref": "common_defs.schema.json#/$defs/money"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "common_defs.schema.json#/$defs/evidenceRef"
+          }
+        }
+      }
+    },
+    "confidence": {
+      "$ref": "common_defs.schema.json#/$defs/confidenceSummary"
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "needs_review",
+        "checks"
+      ],
+      "properties": {
+        "needs_review": {
+          "type": "boolean"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "common_defs.schema.json#/$defs/validationCheck"
+          }
+        }
+      }
+    },
+    "created_at": {
+      "$ref": "common_defs.schema.json#/$defs/timestamp"
+    },
+    "metadata": {
+      "$ref": "common_defs.schema.json#/$defs/metadataObject"
+    }
+  }
+}

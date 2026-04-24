@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/events/ingest_document_job.v1.schema.json",
+  "title": "Ingest Document Job v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "job_id",
+    "created_at",
+    "attempt",
+    "priority",
+    "source",
+    "input_object"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "ingest_document_job"
+    },
+    "schema_version": {
+      "const": "v1"
+    },
+    "job_id": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/uuid"
+    },
+    "correlation_id": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/uuid"
+    },
+    "created_at": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/timestamp"
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "priority": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10
+    },
+    "requested_by": {
+      "type": "string",
+      "enum": [
+        "system",
+        "user",
+        "agent",
+        "scheduler"
+      ]
+    },
+    "metadata": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/metadataObject"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "web_upload",
+        "watched_folder",
+        "mobile_scan",
+        "email_import",
+        "api_upload",
+        "bulk_import"
+      ]
+    },
+    "input_object": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "sha256",
+        "mime_type",
+        "filename"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[A-Fa-f0-9]{64}$"
+        },
+        "mime_type": {
+          "type": "string"
+        },
+        "filename": {
+          "type": "string"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "ingest_batch_id": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/uuid"
+    },
+    "user_supplied_hints": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/metadataObject"
+    }
+  }
+}

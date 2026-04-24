@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/schemas/canonical_field.v1.schema.json",
+  "title": "Canonical Field v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "document_id",
+    "field_path",
+    "value_type",
+    "value",
+    "source_kind",
+    "review_status",
+    "evidence"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "canonical_field"
+    },
+    "schema_version": {
+      "const": "canonical_field.v1"
+    },
+    "document_id": {
+      "$ref": "common_defs.schema.json#/$defs/uuid"
+    },
+    "selected_candidate_id": {
+      "$ref": "common_defs.schema.json#/$defs/uuid"
+    },
+    "field_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ordinal": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1
+    },
+    "value_type": {
+      "type": "string",
+      "enum": [
+        "string",
+        "integer",
+        "number",
+        "boolean",
+        "date",
+        "datetime",
+        "json",
+        "money"
+      ]
+    },
+    "value": {},
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "source_kind": {
+      "type": "string",
+      "enum": [
+        "candidate",
+        "validator",
+        "human",
+        "system"
+      ]
+    },
+    "review_status": {
+      "type": "string",
+      "enum": [
+        "unreviewed",
+        "auto_accepted",
+        "needs_review",
+        "user_confirmed",
+        "user_corrected",
+        "rejected"
+      ]
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "common_defs.schema.json#/$defs/evidenceRef"
+      },
+      "minItems": 1
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "accepted_by_user_id": {
+      "$ref": "common_defs.schema.json#/$defs/uuid"
+    },
+    "accepted_at": {
+      "$ref": "common_defs.schema.json#/$defs/timestamp"
+    }
+  }
+}

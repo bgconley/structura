@@ -1,0 +1,18 @@
+service,role,container_or_runtime,ports,gpu_affinity,persistent_mounts,depends_on,notes
+reverse-proxy,edge ingress and local TLS,caddy or traefik,"80,443",none,/srv/structura/config/proxy,web|api,Local-only default exposure; place behind Tailscale or LAN-only policy.
+web,web UI,vite static build served by web container,3000,none,/srv/structura/config/web,api,Responsible for inbox/search/view/review flows.
+api,primary HTTP API,fastapi uvicorn,8000,none,/srv/structura/config/api;/srv/structura/objects/canonical;/srv/structura/objects/derived;/srv/structura/objects/exports;/srv/structura/logs/api,postgres,"Owns authn/authz metadata, session endpoints, authorized asset serving, and orchestration endpoints. Queue transport defaults to PGMQ via Postgres."
+worker-ingest,file hashing normalization and routing,python worker,none,none,/srv/structura/staging;/srv/structura/objects/canonical;/srv/structura/logs/workers,postgres,Creates initial records and immutable object entries.
+worker-previews,preview and thumbnail generation,python worker,none,none,/srv/structura/staging;/srv/structura/objects/derived;/srv/structura/logs/workers,postgres,Generates page images and thumbnails for inbox and viewer use.
+worker-docling,document conversion and OCR/layout,python worker,none,optional,/srv/structura/staging;/srv/structura/objects/derived;/srv/structura/logs/workers,postgres,May use GPU for OCR-heavy or image-heavy tasks if configured.
+worker-extraction,Granite and Qwen extraction/validation,python worker or vllm client,none,GPU0,/srv/structura/objects/derived;/srv/structura/logs/workers,postgres|model-qwen|model-granite,Hard pages and schema extraction.
+worker-embeddings,text and visual embeddings plus reranking,python worker or model server client,none,GPU1,/srv/structura/objects/derived;/srv/structura/logs/workers,postgres|model-embed,Should support re-embedding jobs.
+worker-analysis,user-invoked analysis runs,python worker or model client,none,optional,/srv/structura/objects/derived;/srv/structura/logs/workers,postgres|model-qwen,Optional analysis layer that must not overwrite canonical extraction state.
+postgres,system of record and search substrate,postgres 17 + pg_search + pgvector,5432,none,/srv/structura/postgres,none,Backups and snapshots are mandatory.
+redis,queue broker and ephemeral cache,redis,6379,none,/srv/structura/redis,none,Optional fallback queue profile only; not part of the normative baseline.
+model-qwen,Qwen3-VL extraction and optional analysis endpoint,vllm or transformers service,8100,GPU0,/srv/structura/models;/srv/structura/logs/models,none,Supports structured outputs where practical.
+model-granite,Granite 4.0 3B Vision extraction service,python transformers service,8101,GPU0,/srv/structura/models;/srv/structura/logs/models,none,Specialized extraction model for hard pages and structured tables.
+model-embed,Qwen3-Embedding or Qwen3-VL-Embedding endpoint,vllm or transformers service,8102,GPU1,/srv/structura/models;/srv/structura/logs/models,none,Supports document, chunk, and page embedding jobs.
+observability-prometheus,metrics collection,prometheus,9090,none,/srv/structura/observability/prometheus,api|postgres,Optional in earliest slice but recommended quickly.
+observability-grafana,dashboards,grafana,3001,none,/srv/structura/observability/grafana,observability-prometheus,Optional in earliest slice but recommended quickly.
+nvidia-dcgm-exporter,GPU metrics exporter,dcgm-exporter,9400,none,/srv/structura/logs/observability,none,Useful for GPU saturation and failure visibility.

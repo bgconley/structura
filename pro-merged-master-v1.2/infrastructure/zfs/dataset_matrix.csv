@@ -1,0 +1,17 @@
+dataset,mountpoint,recordsize,compression,atime,sync,primary_use,backup_class,notes
+POOL/structura,/srv/structura,128K,lz4,off,standard,top-level container,no,Parent dataset only.
+POOL/structura/postgres,/srv/structura/postgres,8K,lz4,off,standard,Postgres data directory,yes,Primary transactional database dataset.
+POOL/structura/redis,/srv/structura/redis,16K,lz4,off,standard,Redis appendonly and working data (fallback queue profile only),yes,Not part of normative baseline; provision only if the Redis fallback profile is enabled.
+POOL/structura/objects-canonical,/srv/structura/objects/canonical,1M,zstd-3,off,standard,Immutable original document bytes,yes,Source of truth for uploaded and scanned documents.
+POOL/structura/objects-derived,/srv/structura/objects/derived,1M,zstd-3,off,standard,Docling JSON markdown html page renders and other derivatives,yes,Can be regenerated in principle but should still be backed up.
+POOL/structura/objects-exports,/srv/structura/objects/exports,1M,zstd-6,off,standard,User export bundles and ad hoc packages,optional,Can be lifecycle-managed separately.
+POOL/structura/models,/srv/structura/models,1M,zstd-1,off,standard,Downloaded model weights and tokenizer assets,no,Rebuildable from upstream sources.
+POOL/structura/staging,/srv/structura/staging,1M,lz4,off,standard,Temporary ingest working area,no,Should be cleaned automatically.
+POOL/structura/cache,/srv/structura/cache,128K,lz4,off,standard,Thumbnail cache search cache transient render cache,no,No backup value.
+POOL/structura/repo,/srv/structura/repo,128K,zstd-1,off,standard,Application source checkout and build context,yes,Useful for disaster recovery and reproducibility.
+POOL/structura/venv,/srv/structura/venv,128K,zstd-1,off,standard,Optional local python virtual environment,no,Only needed outside fully containerized operation.
+POOL/structura/config,/srv/structura/config,128K,zstd-1,off,standard,Compose files secrets templates app config,yes,Protect carefully.
+POOL/structura/logs,/srv/structura/logs,128K,lz4,off,standard,Structured application and worker logs,optional,Retention should be policy-driven.
+POOL/structura/backups,/srv/structura/backups,1M,zstd-6,off,standard,Local snapshot send targets and dumps,yes,Prefer replication off-host as well.
+POOL/structura/observability,/srv/structura/observability,128K,lz4,off,standard,Prometheus Grafana and metrics data,optional,Adjust retention to avoid growth surprises.
+POOL/structura/tmp,/srv/structura/tmp,128K,lz4,off,standard,Disposable scratch space for utilities,no,Do not back up.

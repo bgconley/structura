@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/schemas/review_action.v1.schema.json",
+  "title": "Review Action v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "document_id",
+    "action_type",
+    "actor_type",
+    "created_at"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "review_action"
+    },
+    "schema_version": {
+      "const": "v1"
+    },
+    "document_id": {
+      "$ref": "common_defs.schema.json#/$defs/uuid"
+    },
+    "review_task_id": {
+      "$ref": "common_defs.schema.json#/$defs/uuid"
+    },
+    "action_type": {
+      "type": "string",
+      "enum": [
+        "confirm_field",
+        "correct_field",
+        "reject_field",
+        "reclassify_document",
+        "accept_relationship",
+        "reject_relationship",
+        "move_to_folder",
+        "remove_from_folder",
+        "add_tag",
+        "remove_tag",
+        "mark_duplicate",
+        "clear_duplicate",
+        "mark_done"
+      ]
+    },
+    "actor_type": {
+      "type": "string",
+      "enum": [
+        "human",
+        "system",
+        "agent"
+      ]
+    },
+    "field_path": {
+      "type": "string"
+    },
+    "old_value": {},
+    "new_value": {},
+    "comment": {
+      "type": "string"
+    },
+    "evidence_context": {
+      "type": "array",
+      "items": {
+        "$ref": "common_defs.schema.json#/$defs/evidenceRef"
+      }
+    },
+    "created_at": {
+      "$ref": "common_defs.schema.json#/$defs/timestamp"
+    },
+    "metadata": {
+      "$ref": "common_defs.schema.json#/$defs/metadataObject"
+    }
+  }
+}
