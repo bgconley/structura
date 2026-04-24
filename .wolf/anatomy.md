@@ -7,6 +7,9 @@
 
 - `.DS_Store` (~3824 tok)
 - `CLAUDE.md` — OpenWolf (~57 tok)
+- `STRUCTURA_PLAN_INDEX.md` — Canonical planning index; source alignment policy, UI source of truth, GPU node sync policy, stop rule (~1000 tok)
+- `STRUCTURA_IMPLEMENTATION_PLAN.md` — Canonical end-to-end implementation plan; phase gates, mandatory per-phase artifact lists, API/database/event coverage, GPU sync policy (~15500 tok)
+- `STRUCTURA_UI_FIGMA_QA_PLAN.md` — Canonical Figma and Playwright UI QA plan; frame ids, pixel-match rules, workflow QA, UI stop rule (~3000 tok)
 
 ## .claude/
 

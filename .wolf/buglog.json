@@ -1,4 +1,17 @@
 {
   "version": 1,
-  "bugs": []
+  "bugs": [
+    {
+      "id": "bug-001",
+      "timestamp": "2026-04-24T00:13:00-04:00",
+      "error_message": "Figma get_design_context reported: You currently have nothing selected. You need to select a layer first before using this tool.",
+      "file": "STRUCTURA_UI_FIGMA_QA_PLAN.md",
+      "root_cause": "The user-provided Figma node ids 14:2 and 35:2 are page nodes, not concrete screen frames for design context extraction.",
+      "fix": "Inspected the Figma file structure with use_figma and documented that implementation should target concrete child frames such as 17:2, 14:434, 14:611, 14:797, and 14:990.",
+      "tags": ["figma", "design-context", "page-node", "ui-qa"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-24T00:13:00-04:00"
+    }
+  ]
 }
