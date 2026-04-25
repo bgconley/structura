@@ -1,0 +1,1 @@
+"""Manual organization domain services."""

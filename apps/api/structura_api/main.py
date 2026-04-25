@@ -10,9 +10,12 @@ from starlette.responses import Response
 from apps.api.structura_api import __version__
 from apps.api.structura_api.dependencies import current_principal
 from apps.api.structura_api.routes_admin import router as admin_router
+from apps.api.structura_api.routes_assets import router as assets_router
 from apps.api.structura_api.routes_auth import router as auth_router
 from apps.api.structura_api.routes_documents import router as documents_router
 from apps.api.structura_api.routes_jobs import router as jobs_router
+from apps.api.structura_api.routes_organization import router as organization_router
+from apps.api.structura_api.routes_placeholders import router as placeholders_router
 from lib.config import get_settings
 from lib.contracts import ContractRegistry
 from lib.db.migrations import baseline_migration_plan
@@ -76,8 +79,11 @@ def create_app() -> FastAPI:
 
     app.include_router(auth_router)
     app.include_router(documents_router)
+    app.include_router(assets_router)
+    app.include_router(organization_router)
     app.include_router(jobs_router)
     app.include_router(admin_router)
+    app.include_router(placeholders_router)
 
     return app
 

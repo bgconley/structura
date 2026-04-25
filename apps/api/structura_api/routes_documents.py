@@ -10,13 +10,17 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from psycopg.types.json import Jsonb
-from starlette.responses import FileResponse
 
 from apps.api.structura_api.dependencies import current_principal, require_csrf
 from lib.auth import AuthPrincipal
 from lib.config import get_settings
-from lib.contracts import AcceptedJob, DocumentAsset, DocumentDetail, DocumentPage, DocumentSummary
+from lib.contracts import AcceptedJob
 from lib.db.connection import db_connection
+from lib.documents.read_model import (
+    DocumentListFilters,
+    get_document_detail,
+    list_document_summaries,
+)
 from lib.jobs import JobService, create_job_with_cursor
 from lib.storage import (
     InvalidObjectUri,
@@ -55,83 +59,6 @@ UPLOAD_SOURCES = {
     "bulk_import",
 }
 
-DOCUMENT_LIST_COUNT_SQL = """
-SELECT count(*) AS total
-FROM documents d
-LEFT JOIN document_primary_amounts_v a ON a.document_id = d.id
-WHERE d.deleted_at IS NULL
-  AND d.household_id = %s
-  AND (
-    %s::text IS NULL
-    OR d.title ILIKE %s
-    OR d.original_filename ILIKE %s
-    OR d.counterparty_display ILIKE %s
-  )
-  AND (%s::text IS NULL OR d.document_family::text = %s)
-  AND (%s::text IS NULL OR d.review_status::text = %s)
-  AND (
-    %s::uuid IS NULL
-    OR EXISTS (
-      SELECT 1 FROM document_folder_memberships dfm
-      WHERE dfm.document_id = d.id
-        AND dfm.folder_id = %s
-    )
-  )
-"""
-
-DOCUMENT_LIST_SELECT_SQL = """
-SELECT
-  d.id,
-  d.title,
-  d.document_family::text AS family,
-  d.lifecycle_state::text AS lifecycle_state,
-  d.review_status::text AS review_status,
-  d.created_at,
-  d.document_date,
-  d.counterparty_display,
-  a.total_amount AS amount_total,
-  (
-    SELECT ta.id
-    FROM document_assets ta
-    WHERE ta.document_id = d.id
-      AND ta.asset_role = 'thumbnail'
-      AND ta.is_current
-    ORDER BY ta.page_number NULLS LAST, ta.created_at DESC
-    LIMIT 1
-  ) AS thumbnail_asset_id,
-  COALESCE(
-    (
-      SELECT array_agg(COALESCE(f.path_cache, '/' || f.name) ORDER BY f.name)
-      FROM document_folder_memberships dfm
-      JOIN folders f ON f.id = dfm.folder_id
-      WHERE dfm.document_id = d.id
-    ),
-    ARRAY[]::text[]
-  ) AS folder_paths
-FROM documents d
-LEFT JOIN document_primary_amounts_v a ON a.document_id = d.id
-WHERE d.deleted_at IS NULL
-  AND d.household_id = %s
-  AND (
-    %s::text IS NULL
-    OR d.title ILIKE %s
-    OR d.original_filename ILIKE %s
-    OR d.counterparty_display ILIKE %s
-  )
-  AND (%s::text IS NULL OR d.document_family::text = %s)
-  AND (%s::text IS NULL OR d.review_status::text = %s)
-  AND (
-    %s::uuid IS NULL
-    OR EXISTS (
-      SELECT 1 FROM document_folder_memberships dfm
-      WHERE dfm.document_id = d.id
-        AND dfm.folder_id = %s
-    )
-  )
-ORDER BY d.created_at DESC, d.id DESC
-LIMIT %s OFFSET %s
-"""
-
 
 @router.get("/documents")
 def list_documents(
@@ -146,41 +73,20 @@ def list_documents(
     if not principal.household_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Household required")
 
-    query_text = q.strip() if q and q.strip() else None
-    query_like = f"%{query_text}%" if query_text else None
-    family_filter = family.strip() if family and family.strip() else None
-    review_filter = reviewStatus.strip() if reviewStatus and reviewStatus.strip() else None
-    folder_filter = folderId if folderId else None
-    filter_params: list[object] = [
-        principal.household_id,
-        query_text,
-        query_like,
-        query_like,
-        query_like,
-        family_filter,
-        family_filter,
-        review_filter,
-        review_filter,
-        folder_filter,
-        folder_filter,
-    ]
-
-    with db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                DOCUMENT_LIST_COUNT_SQL,
-                filter_params,
-            )
-            total_row = cur.fetchone()
-            cur.execute(
-                DOCUMENT_LIST_SELECT_SQL,
-                [*filter_params, limit, offset],
-            )
-            rows = cur.fetchall()
-
+    summaries, total = list_document_summaries(
+        DocumentListFilters(
+            household_id=principal.household_id,
+            query_text=q.strip() if q and q.strip() else None,
+            family=family.strip() if family and family.strip() else None,
+            review_status=reviewStatus.strip() if reviewStatus and reviewStatus.strip() else None,
+            folder_id=folderId,
+            limit=limit,
+            offset=offset,
+        )
+    )
     return {
-        "items": [_document_summary_from_row(row).model_dump(by_alias=True) for row in rows],
-        "total": int(total_row["total"] if total_row else 0),
+        "items": [summary.model_dump(by_alias=True) for summary in summaries],
+        "total": total,
     }
 
 
@@ -462,292 +368,12 @@ def get_document(
     documentId: UUID,
     principal: Annotated[AuthPrincipal, Depends(current_principal)],
 ) -> dict[str, object]:
-    document = _get_document_detail(documentId, principal)
+    if not principal.household_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    document = get_document_detail(documentId, principal.household_id)
     if not document:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
     return document.model_dump(by_alias=True)
-
-
-@router.get("/assets/{assetId}", tags=["Assets"])
-def get_asset(
-    assetId: UUID,
-    principal: Annotated[AuthPrincipal, Depends(current_principal)],
-) -> FileResponse:
-    if not principal.household_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
-    with db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT
-                  a.id,
-                  a.asset_role::text AS asset_role,
-                  a.uri,
-                  a.mime_type,
-                  a.byte_size,
-                  a.sha256,
-                  d.original_filename,
-                  d.title
-                FROM document_assets a
-                JOIN documents d ON d.id = a.document_id
-                WHERE a.id = %s
-                  AND d.household_id = %s
-                  AND d.deleted_at IS NULL
-                """,
-                (assetId, principal.household_id),
-            )
-            row = cur.fetchone()
-    if not row:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
-
-    storage = ObjectStorage()
-    try:
-        consistency = storage.verify(
-            uri=row["uri"],
-            expected_sha256=row["sha256"],
-            expected_size=row["byte_size"],
-        )
-        path = storage.path_for_uri(row["uri"])
-    except (InvalidObjectUri, StorageError):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Asset not found",
-        ) from None
-
-    if not consistency.ok:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
-
-    filename = _download_filename(
-        role=row["asset_role"],
-        original_filename=row["original_filename"],
-        title=row["title"],
-        mime_type=row["mime_type"],
-    )
-    headers = {
-        "Cache-Control": "private, no-store",
-        "X-Content-Type-Options": "nosniff",
-    }
-    return FileResponse(
-        path,
-        media_type=row["mime_type"] or "application/octet-stream",
-        filename=filename,
-        content_disposition_type="inline",
-        headers=headers,
-    )
-
-
-@router.get("/folders", tags=["Organization"])
-def list_folders(_principal: Annotated[object, Depends(current_principal)]) -> dict[str, object]:
-    return {"items": []}
-
-
-@router.post("/folders", tags=["Organization"], status_code=status.HTTP_501_NOT_IMPLEMENTED)
-def create_folder(_principal: Annotated[object, Depends(require_csrf)]) -> None:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Folder management is implemented in Phase 2.",
-    )
-
-
-@router.get("/tags", tags=["Organization"])
-def list_tags(_principal: Annotated[object, Depends(current_principal)]) -> dict[str, object]:
-    return {"items": []}
-
-
-@router.post("/tags", tags=["Organization"], status_code=status.HTTP_501_NOT_IMPLEMENTED)
-def create_tag(_principal: Annotated[object, Depends(require_csrf)]) -> None:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Tag management is implemented in Phase 2.",
-    )
-
-
-@router.post(
-    "/documents/{documentId}/organization",
-    tags=["Organization"],
-    status_code=status.HTTP_501_NOT_IMPLEMENTED,
-)
-def update_document_organization(
-    documentId: UUID,
-    _principal: Annotated[object, Depends(require_csrf)],
-) -> None:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Document organization is implemented in Phase 2.",
-    )
-
-
-@router.get("/relationships", tags=["Relationships"])
-def list_relationships(
-    _principal: Annotated[object, Depends(current_principal)],
-    documentId: UUID | None = None,
-) -> dict[str, object]:
-    return {"items": []}
-
-
-@router.post(
-    "/relationships",
-    tags=["Relationships"],
-    status_code=status.HTTP_501_NOT_IMPLEMENTED,
-)
-def create_relationship(_principal: Annotated[object, Depends(require_csrf)]) -> None:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Document relationships are implemented in Phase 7.",
-    )
-
-
-@router.get("/contacts", tags=["Organization"])
-def list_contacts(
-    _principal: Annotated[object, Depends(current_principal)],
-    q: str | None = None,
-) -> dict[str, object]:
-    return {"items": []}
-
-
-@router.post("/contacts", tags=["Organization"], status_code=status.HTTP_501_NOT_IMPLEMENTED)
-def create_contact(_principal: Annotated[object, Depends(require_csrf)]) -> None:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Contact management is implemented in Phase 6.",
-    )
-
-
-@router.get("/filing-rules", tags=["Automation"])
-def list_filing_rules(
-    _principal: Annotated[object, Depends(current_principal)],
-) -> dict[str, object]:
-    return {"items": []}
-
-
-@router.post(
-    "/filing-rules",
-    tags=["Automation"],
-    status_code=status.HTTP_501_NOT_IMPLEMENTED,
-)
-def create_filing_rule(_principal: Annotated[object, Depends(require_csrf)]) -> None:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Filing rules are implemented in Phase 6.",
-    )
-
-
-@router.get("/watched-folders", tags=["Automation"])
-def list_watched_folders(
-    _principal: Annotated[object, Depends(current_principal)],
-) -> dict[str, object]:
-    return {"items": []}
-
-
-@router.post(
-    "/watched-folders",
-    tags=["Automation"],
-    status_code=status.HTTP_501_NOT_IMPLEMENTED,
-)
-def create_watched_folder(_principal: Annotated[object, Depends(require_csrf)]) -> None:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Watched folders are implemented in Phase 6.",
-    )
-
-
-@router.post("/search", tags=["Search"], status_code=status.HTTP_501_NOT_IMPLEMENTED)
-def search_documents(_principal: Annotated[object, Depends(current_principal)]) -> None:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Search is implemented in Phase 5.",
-    )
-
-
-@router.get("/review-tasks", tags=["Review"])
-def list_review_tasks(
-    _principal: Annotated[object, Depends(current_principal)],
-    status: str | None = None,
-    limit: Annotated[int, Query(ge=1, le=200)] = 50,
-) -> dict[str, object]:
-    return {"items": []}
-
-
-@router.post(
-    "/documents/{documentId}/review-actions",
-    tags=["Review"],
-    status_code=status.HTTP_501_NOT_IMPLEMENTED,
-)
-def create_review_action(
-    documentId: UUID,
-    _principal: Annotated[object, Depends(require_csrf)],
-) -> None:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Review actions are implemented in Phase 4.",
-    )
-
-
-@router.get("/documents/{documentId}/field-candidates", tags=["Review"])
-def list_field_candidates(
-    documentId: UUID,
-    _principal: Annotated[object, Depends(current_principal)],
-    fieldPath: str | None = None,
-) -> dict[str, object]:
-    return {"items": []}
-
-
-@router.get("/documents/{documentId}/canonical-fields", tags=["Review"])
-def list_canonical_fields(
-    documentId: UUID,
-    _principal: Annotated[object, Depends(current_principal)],
-) -> dict[str, object]:
-    return {"items": []}
-
-
-@router.post(
-    "/documents/{documentId}/canonical-fields",
-    tags=["Review"],
-    status_code=status.HTTP_501_NOT_IMPLEMENTED,
-)
-def create_canonical_field(
-    documentId: UUID,
-    _principal: Annotated[object, Depends(require_csrf)],
-) -> None:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Canonical fields are implemented in Phase 4.",
-    )
-
-
-@router.post("/analysis-notes", tags=["Analysis"], status_code=status.HTTP_501_NOT_IMPLEMENTED)
-def create_analysis_note(_principal: Annotated[object, Depends(require_csrf)]) -> None:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Analysis notes are implemented in Phase 9.",
-    )
-
-
-@router.post("/exports", tags=["Exports"], status_code=status.HTTP_501_NOT_IMPLEMENTED)
-def create_export(_principal: Annotated[object, Depends(require_csrf)]) -> None:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Exports are implemented in Phase 10.",
-    )
-
-
-def _document_summary_from_row(row: dict[str, object]) -> DocumentSummary:
-    thumbnail_asset_id = row.get("thumbnail_asset_id")
-    return DocumentSummary.model_validate(
-        {
-            "id": row["id"],
-            "title": row["title"],
-            "family": row["family"],
-            "lifecycleState": row["lifecycle_state"],
-            "reviewStatus": row["review_status"],
-            "createdAt": row["created_at"],
-            "documentDate": row.get("document_date"),
-            "amountTotal": row.get("amount_total"),
-            "counterpartyDisplay": row.get("counterparty_display"),
-            "thumbnailUrl": f"/api/v1/assets/{thumbnail_asset_id}" if thumbnail_asset_id else None,
-            "folderPaths": _string_list(row.get("folder_paths")),
-        }
-    )
 
 
 def _cleanup_unreferenced_stored_object(stored: StoredObject | None) -> None:
@@ -762,148 +388,6 @@ def _remove_empty_storage_dirs(path: Path) -> None:
     for candidate in (path.parent, path.parent.parent, path.parent.parent.parent):
         with suppress(OSError):
             candidate.rmdir()
-
-
-def _get_document_detail(document_id: UUID, principal: AuthPrincipal) -> DocumentDetail | None:
-    if not principal.household_id:
-        return None
-    with db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT
-                  d.id,
-                  d.title,
-                  d.description,
-                  d.document_family::text AS family,
-                  d.lifecycle_state::text AS lifecycle_state,
-                  d.review_status::text AS review_status,
-                  d.created_at,
-                  d.document_date,
-                  d.counterparty_display,
-                  a.total_amount AS amount_total,
-                  (
-                    SELECT ta.id
-                    FROM document_assets ta
-                    WHERE ta.document_id = d.id
-                      AND ta.asset_role = 'thumbnail'
-                      AND ta.is_current
-                    ORDER BY ta.page_number NULLS LAST, ta.created_at DESC
-                    LIMIT 1
-                  ) AS thumbnail_asset_id,
-                  COALESCE(
-                    (
-                      SELECT array_agg(COALESCE(f.path_cache, '/' || f.name) ORDER BY f.name)
-                      FROM document_folder_memberships dfm
-                      JOIN folders f ON f.id = dfm.folder_id
-                      WHERE dfm.document_id = d.id
-                    ),
-                    ARRAY[]::text[]
-                  ) AS folder_paths,
-                  COALESCE(
-                    (
-                      SELECT array_agg(t.name::text ORDER BY t.name::text)
-                      FROM document_tags dt
-                      JOIN tags t ON t.id = dt.tag_id
-                      WHERE dt.document_id = d.id
-                    ),
-                    ARRAY[]::text[]
-                  ) AS tags
-                FROM documents d
-                LEFT JOIN document_primary_amounts_v a ON a.document_id = d.id
-                WHERE d.id = %s
-                  AND d.household_id = %s
-                  AND d.deleted_at IS NULL
-                """,
-                (document_id, principal.household_id),
-            )
-            row = cur.fetchone()
-            if not row:
-                return None
-            cur.execute(
-                """
-                SELECT id, asset_role::text AS asset_role, page_number, mime_type, sha256
-                FROM document_assets
-                WHERE document_id = %s
-                  AND is_current
-                ORDER BY
-                  CASE asset_role
-                    WHEN 'original' THEN 0
-                    WHEN 'thumbnail' THEN 1
-                    WHEN 'page_image' THEN 2
-                    ELSE 3
-                  END,
-                  page_number NULLS LAST,
-                  created_at DESC
-                """,
-                (document_id,),
-            )
-            asset_rows = cur.fetchall()
-            cur.execute(
-                """
-                SELECT
-                  p.page_number,
-                  p.width_points,
-                  p.height_points,
-                  p.rotation_degrees,
-                  p.text_content,
-                  p.image_asset_id
-                FROM document_pages p
-                WHERE p.document_id = %s
-                ORDER BY p.page_number
-                """,
-                (document_id,),
-            )
-            page_rows = cur.fetchall()
-
-    summary = _document_summary_from_row(row)
-    pages = [
-        DocumentPage.model_validate(
-            {
-                "pageNumber": page["page_number"],
-                "width": page["width_points"],
-                "height": page["height_points"],
-                "rotationDegrees": page["rotation_degrees"],
-                "textContent": page["text_content"],
-                "imageUrl": (
-                    f"/api/v1/assets/{page['image_asset_id']}" if page["image_asset_id"] else None
-                ),
-            }
-        )
-        for page in page_rows
-    ]
-    assets = [
-        DocumentAsset.model_validate(
-            {
-                "id": asset["id"],
-                "assetRole": asset["asset_role"],
-                "pageNumber": asset["page_number"],
-                "mimeType": asset["mime_type"] or "application/octet-stream",
-                "assetUrl": f"/api/v1/assets/{asset['id']}",
-                "sha256": asset["sha256"],
-            }
-        )
-        for asset in asset_rows
-    ]
-    return DocumentDetail.model_validate(
-        {
-            **summary.model_dump(by_alias=True),
-            "description": row.get("description"),
-            "pages": [page.model_dump(by_alias=True) for page in pages],
-            "assets": [asset.model_dump(by_alias=True) for asset in assets],
-            "extractions": [],
-            "relationships": [],
-            "fields": [],
-            "lineItems": [],
-            "tags": _string_list(row.get("tags")),
-        }
-    )
-
-
-def _string_list(value: object) -> list[str]:
-    if not isinstance(value, (list, tuple)):
-        return []
-    return [str(item) for item in value]
 
 
 def _parse_hints_json(hints_json: str | None) -> dict[str, object]:
@@ -974,17 +458,3 @@ def _safe_original_filename(filename: str | None) -> str:
 def _title_from_filename(filename: str) -> str:
     stem = Path(filename).stem.strip()
     return stem.replace("_", " ").replace("-", " ").strip().title() or "Untitled document"
-
-
-def _download_filename(
-    *,
-    role: str,
-    original_filename: str | None,
-    title: str,
-    mime_type: str | None,
-) -> str:
-    if role == "original" and original_filename:
-        return _safe_original_filename(original_filename)
-    suffix = mimetypes.guess_extension(mime_type or "") or ".bin"
-    safe_title = "".join(ch if ch.isalnum() else "-" for ch in title.lower()).strip("-")
-    return f"{safe_title or 'structura-document'}-{role}{suffix}"

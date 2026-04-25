@@ -14,6 +14,50 @@ When an artifact exists in both Markdown and DOCX form, read the Markdown file b
 
 For large files, avoid broad combined `cat` reads that may be truncated by terminal-output limits. Verify file length with `wc -l`, then read the file in bounded, non-overlapping chunks such as `sed -n '1,250p'` so full coverage is explicit.
 
+## Architecture Stewardship
+
+Treat maintainability as part of the requested work. Working code is not sufficient if it leaves the codebase more coupled, ambiguous, or difficult to test.
+
+Before editing code, inspect the target files and decide whether the change belongs there. If a file is accumulating unrelated responsibilities, pause and refactor or propose a refactor before adding more logic.
+
+Prefer these boundaries:
+
+1. API routes/controllers stay thin: request parsing, auth/dependency wiring, and response construction.
+2. Schemas/DTOs own input/output shapes and validation.
+3. Services own business rules, orchestration, workflow behavior, and application-level decisions.
+4. Repositories/DAOs own persistence, database queries, transactions, and storage details.
+5. Domain modules own core business concepts and infrastructure-independent rules.
+6. Adapters isolate external APIs, SDKs, filesystems, queues, model providers, and vendor behavior.
+7. Utilities stay small, generic, and genuinely reusable; do not dump domain logic into vague utility modules.
+8. Tests should mirror the structure of the code they validate.
+
+Actively avoid god files, god classes, kitchen-sink utilities, circular imports, business logic hidden in route handlers or UI components, random database queries spread through the codebase, broad catch-all exception handling, vague `manager`/`processor`/`helper` modules, and boolean-flag explosions.
+
+Use these size heuristics as warning signals, not hard limits:
+
+1. If a file is approaching 300-500 lines and is still growing, inspect its responsibilities.
+2. If a file exceeds 500 lines, treat it as a refactor candidate unless it is generated code, declarative schema, migration SQL, fixture data, or intentionally large.
+3. If a file exceeds 800 lines, do not add more logic without refactoring or explicitly justifying why the file should remain large.
+4. If a function exceeds roughly 50-75 lines, inspect whether it contains phases that should be extracted.
+5. If a class exceeds roughly 200-300 lines, inspect whether it owns too many responsibilities.
+
+When refactoring, preserve behavior first. Prefer small, incremental extractions with clear names and clean dependency direction. Create a new module only when the extracted code has a clear responsibility, can be understood independently, reduces future change risk, and makes tests easier to write. Do not create abstractions only to satisfy file-count or line-count aesthetics.
+
+Naming should describe ownership. Avoid names like `misc.py`, `helpers.py`, `common.py`, `stuff.py`, `manager.py`, `processor.py`, or `logic.py` unless the surrounding package makes the responsibility precise. Prefer domain names such as `document_ingestion.py`, `organization_repository.py`, `folder_policy.py`, `auth_policy.py`, `import_manifest.py`, or `export_bundle.py`.
+
+Layering direction matters: outer layers may depend on inner layers, but domain/business logic should not depend on web frameworks, CLI frameworks, database clients, HTTP clients, cloud SDKs, or UI frameworks. Route/UI code may call services; services may call repositories and adapters; repositories may know about the database.
+
+Before declaring work complete, inspect every touched file and answer:
+
+1. Does this file still have one clear responsibility?
+2. Did the change land in the correct architectural layer?
+3. Did the change introduce dependency direction problems or circular imports?
+4. Did the change make future testing easier rather than harder?
+5. Did the change avoid creating or worsening a god module?
+6. Was behavior preserved, and were relevant checks run?
+
+If any answer is concerning, fix it before calling the work complete.
+
 ## Conflict Resolution
 
 When artifacts differ:

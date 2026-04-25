@@ -212,6 +212,56 @@ class DocumentDetail(DocumentSummary):
     line_items: list[dict[str, Any]] = Field(alias="lineItems")
     tags: list[str]
     description: str | None = None
+    folder_ids: list[UUID] = Field(default_factory=list, alias="folderIds")
+    primary_folder_id: UUID | None = Field(default=None, alias="primaryFolderId")
+    filing_notes: str | None = Field(default=None, alias="filingNotes")
+
+
+class Folder(ContractModel):
+    id: UUID
+    name: str
+    folder_kind: Literal["manual", "smart"] = Field(alias="folderKind")
+    parent_id: UUID | None = Field(default=None, alias="parentId")
+    path: str | None = None
+    saved_query: dict[str, Any] | None = Field(default=None, alias="savedQuery")
+    acl_mode: Literal["private", "household", "custom"] | None = Field(
+        default=None,
+        alias="aclMode",
+    )
+
+
+class FolderWrite(ContractModel):
+    name: str = Field(min_length=1, max_length=120)
+    folder_kind: Literal["manual", "smart"] = Field(alias="folderKind")
+    parent_id: UUID | None = Field(default=None, alias="parentId")
+    description: str | None = Field(default=None, max_length=500)
+    saved_query: dict[str, Any] | None = Field(default=None, alias="savedQuery")
+    acl_mode: Literal["private", "household", "custom"] | None = Field(
+        default=None,
+        alias="aclMode",
+    )
+
+
+class Tag(ContractModel):
+    id: UUID
+    name: str
+    color_hex: str | None = Field(default=None, alias="colorHex")
+    description: str | None = None
+
+
+class TagWrite(ContractModel):
+    name: str = Field(min_length=1, max_length=80)
+    color_hex: str | None = Field(default=None, alias="colorHex")
+    description: str | None = Field(default=None, max_length=500)
+
+
+class DocumentOrganizationWrite(ContractModel):
+    title: str | None = Field(default=None, min_length=1, max_length=240)
+    document_date: date | None = Field(default=None, alias="documentDate")
+    folder_ids: list[UUID] | None = Field(default=None, alias="folderIds", max_length=50)
+    primary_folder_id: UUID | None = Field(default=None, alias="primaryFolderId")
+    tags: list[str] | None = Field(default=None, max_length=50)
+    filing_notes: str | None = Field(default=None, alias="filingNotes", max_length=4000)
 
 
 class JobState(ContractModel):

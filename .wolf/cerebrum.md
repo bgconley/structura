@@ -2,7 +2,7 @@
 
 > OpenWolf's learning memory. Updated automatically as the AI learns from interactions.
 > Do not edit manually unless correcting an error.
-> Last updated: 2026-04-24
+> Last updated: 2026-04-25
 
 ## User Preferences
 
@@ -16,6 +16,12 @@
 - Do not call Structura phase or major-milestone completion from Mac-only tests. Mac validation is preflight only; live/integration/runtime/Docker/model milestone evidence must be run on the GPU node after commit, push, SSH, and pull.
 - Before creating any GPU-node directory or ZFS dataset, inspect the current node state first. Do not assume `/tank/repos`, `/tank/repos/structura`, `/tank/venvs`, `/srv/structura`, or any `tank/structura/*` dataset is missing or present without checking.
 - Do not install or depend on host `node`/`npm` on the GPU node for Structura gates. Use pinned container/app images for web lint/build and Playwright so Node/npm versions are reproducible.
+- Act as an architecture steward, not only a feature implementer. Preserve separation of concerns, SRP, high cohesion, low coupling, explicit layer boundaries, small understandable units, behavior-preserving refactors, meaningful abstractions, clear interfaces, and tests/type checks as guardrails.
+- Before editing code, inspect target files for overloaded responsibilities. If a file is already accumulating unrelated routing, validation, persistence, orchestration, formatting, or UI logic, pause and extract or propose a focused refactor before adding more logic.
+- Keep route/controller/UI code thin. Put business rules and orchestration in service/domain modules, database access in repositories/DAOs, external integrations in adapters, and reusable pure rules in precisely named modules rather than vague utilities.
+- Treat file size as an architecture warning signal: review files approaching 300-500 lines; treat files over 500 lines as refactor candidates unless intentionally large; do not add logic to files over 800 lines without refactoring or explicitly justifying the exception.
+- Avoid god files/classes, kitchen-sink `utils` modules, vague `manager`/`processor`/`helper` modules, business logic hidden in route handlers or UI components, random SQL spread through the codebase, circular imports, broad catch-all exception hiding, and boolean-flag explosions.
+- When modifying oversized modules, prefer small behavior-preserving extraction before or alongside the requested change. Name new modules by responsibility, keep dependency direction clean, preserve public APIs where practical, and add or retain tests around moved behavior.
 - Use `STRUCTURA_IMPLEMENTATION_PLAN.md` as the phase map and sequencing source of truth, but always pull in associated non-archive artifacts for implementation detail because the root plan is intentionally not comprehensive.
 - When Structura artifacts exist in both Markdown and DOCX form, read the Markdown artifact by default; only inspect DOCX when the user explicitly asks for layout/fidelity review or when Markdown is missing/incomplete.
 - For large artifact reviews, terminal output can truncate even when the read command succeeds. Verify length with `wc -l` and read bounded non-overlapping chunks with tools like `sed -n`, rather than broad combined `cat` calls.
@@ -69,6 +75,7 @@
 - [2026-04-25] Do not run live/integration/runtime milestone gates only on the Mac and report them as complete. Commit, push, pull to `bgconley@10.25.0.50:/tank/repos/structura`, then build and test on the GPU node for completion evidence.
 - [2026-04-25] Do not say or imply `/tank/repos` needs to be created without inspecting the GPU node first. It already exists as `tank/repos`; future creation decisions must follow current `zfs list`/`findmnt` evidence.
 - [2026-04-25] Do not install host Node/npm on the GPU node as a workaround for web gates. Containerize Node-dependent verification with pinned images instead.
+- [2026-04-25] Do not keep appending feature logic to oversized Structura modules. `apps/api/structura_api/routes_documents.py` grew past 800 lines during Phase 2 kickoff and must be decomposed before more organization behavior is added there.
 
 ## Decision Log
 
@@ -81,6 +88,7 @@
 - [2026-04-25] Runtime placement is split by concern: source checkout is `/tank/repos/structura`, virtualenvs are `/tank/venvs`, durable app data is under `/srv/structura`, and model weights are under `/srv/structura/models`. Docker bind mounts come from `${STRUCTURA_RUNTIME_ROOT:-/srv/structura}`. Docker daemon image storage is unspecified in current artifacts and requires an explicit decision before changing.
 - [2026-04-25] GPU-node ZFS preflight found existing pool `tank` online with `tank/repos` mounted at `/tank/repos`, but no `tank/structura` runtime dataset tree. Before production-equivalent Structura validation, create or map the missing `/srv/structura` runtime datasets intentionally; do not use Mac or root ext4 runtime state as completion evidence.
 - [2026-04-25] Structura web verification should not depend on host Node/npm. Runtime and test Node versions are controlled by pinned container images: app web image `node:20-alpine`, browser E2E image `mcr.microsoft.com/playwright:v1.59.1-noble`.
+- [2026-04-25] Architecture stewardship is a standing implementation requirement. New work should leave the codebase more modular, cohesive, testable, and less likely to collapse into god files. Complete features should be delivered through thin outer layers, cohesive services/repositories/adapters, and targeted tests rather than convenience-driven accumulation.
 - [2026-04-24] Phase 0 auth baseline uses Argon2id password credentials, durable `sessions`, non-HttpOnly CSRF cookie paired with HttpOnly session cookie, API-token principal resolution, and route dependencies that protect document, asset, job, and admin health surfaces.
 - [2026-04-24] Phase 0 job baseline uses the `pipeline_jobs` table as the concrete queue state because the pinned ParadeDB PostgreSQL 17 image does not package PGMQ. Default workers expose internal health endpoints and record `service_health_snapshots`.
 - [2026-04-24] Baseline migrations are tracked in `structura.schema_migrations`; legacy Phase 0 databases without that table are adopted by detecting representative schema objects, then future migration runs are no-ops.

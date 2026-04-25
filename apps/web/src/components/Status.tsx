@@ -1,0 +1,37 @@
+export function StatusChip({tone, label}: {tone: "green" | "blue" | "neutral"; label: string}) {
+  return (
+    <span className={`status-chip ${tone}`}>
+      <i />
+      {label}
+    </span>
+  );
+}
+
+export function ReviewChip({status}: {status: string}) {
+  const needsReview = status === "needs_review";
+  return (
+    <span className={`review-chip ${needsReview ? "amber" : "green"}`}>
+      <i />
+      {needsReview ? "Needs Review" : status.replace("_", " ")}
+    </span>
+  );
+}
+
+export function TrustLine({ok, label}: {ok: boolean; label: string}) {
+  return (
+    <div className="trust-line">
+      <span className={ok ? "ok" : "warn"} />
+      {label}
+    </div>
+  );
+}
+
+export function FactRow({label, value}: {label: string; value: string}) {
+  return (
+    <div className="fact-row">
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <button type="button">go</button>
+    </div>
+  );
+}

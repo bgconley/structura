@@ -1042,6 +1042,16 @@ components:
         properties:
           description:
             type: string
+          folderIds:
+            type: array
+            items:
+              type: string
+              format: uuid
+          primaryFolderId:
+            type: string
+            format: uuid
+          filingNotes:
+            type: string
           pages:
             type: array
             items:
@@ -1440,6 +1450,10 @@ components:
           additionalProperties: true
         aclMode:
           type: string
+          enum:
+          - private
+          - household
+          - custom
     Tag:
       type: object
       additionalProperties: false
@@ -1475,22 +1489,32 @@ components:
         title:
           type: string
         documentDate:
-          type: string
-          format: date
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
         folderIds:
-          type: array
-          items:
-            type: string
-            format: uuid
+          anyOf:
+          - type: array
+            items:
+              type: string
+              format: uuid
+          - type: 'null'
         primaryFolderId:
-          type: string
-          format: uuid
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
         tags:
-          type: array
-          items:
-            type: string
+          anyOf:
+          - type: array
+            items:
+              type: string
+          - type: 'null'
         filingNotes:
-          type: string
+          anyOf:
+          - type: string
+          - type: 'null'
     Contact:
       type: object
       additionalProperties: false
