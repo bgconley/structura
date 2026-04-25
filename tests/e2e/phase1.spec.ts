@@ -1,6 +1,5 @@
 import {expect, Page, test} from "@playwright/test";
-import {mkdir, writeFile} from "node:fs/promises";
-import {dirname} from "node:path";
+import {writeFile} from "node:fs/promises";
 
 type DocumentSummary = {
   id: string;
@@ -69,7 +68,7 @@ test("Phase 1 Inbox to Viewer workflow uses protected asset URLs", async ({page,
   await page.getByRole("row", {name: /phase1-browser-fixture/}).click();
   await expect(page.locator(".inspector")).toContainText("phase1-browser-fixture");
   await expect(page.locator(".inspector")).toContainText("SHA-256");
-  await saveScreenshot(page, "docs/ui-reference/figma/inbox/playwright-screenshot.png");
+  await page.screenshot({path: testInfo.outputPath("inbox-playwright-screenshot.png"), fullPage: true});
 
   await page.locator(".page-heading").getByRole("button", {name: "Open Viewer"}).click();
   await expect(page.getByRole("heading", {name: "Document Viewer"})).toBeVisible();
@@ -81,7 +80,7 @@ test("Phase 1 Inbox to Viewer workflow uses protected asset URLs", async ({page,
     "href",
     `${apiOrigin}/api/v1/assets/44444444-4444-4444-8444-444444444444`,
   );
-  await saveScreenshot(page, "docs/ui-reference/figma/viewer/playwright-screenshot.png");
+  await page.screenshot({path: testInfo.outputPath("viewer-playwright-screenshot.png"), fullPage: true});
 
   await page.getByRole("button", {name: "Back to Inbox"}).click();
   await expect(page.getByRole("heading", {name: "Document Operations"})).toBeVisible();
@@ -219,9 +218,4 @@ function previewSvg(label: string): string {
     <rect x="120" y="90" width="720" height="1060" rx="8" fill="#fff" stroke="#cbd5e1"/>
     <text x="180" y="220" font-family="Arial" font-size="38" fill="#182235">${label}</text>
   </svg>`;
-}
-
-async function saveScreenshot(page: Page, path: string) {
-  await mkdir(dirname(path), {recursive: true});
-  await page.screenshot({path, fullPage: true});
 }

@@ -288,6 +288,18 @@
       "related_bugs": ["bug-023"],
       "occurrences": 1,
       "last_seen": "2026-04-25T03:46:00-04:00"
+    },
+    {
+      "id": "bug-025",
+      "timestamp": "2026-04-25T03:52:00-04:00",
+      "error_message": "GPU-node Playwright test dirtied tracked screenshot evidence files under docs/ui-reference.",
+      "file": "tests/e2e/phase1.spec.ts",
+      "root_cause": "The E2E test wrote screenshots directly to committed reference paths instead of Playwright's per-run test output directory.",
+      "fix": "Changed screenshots to use testInfo.outputPath so runtime screenshots are captured as ignored test artifacts and committed reference screenshots remain stable.",
+      "tags": ["playwright", "e2e", "screenshots", "git", "gpu-node"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T03:52:00-04:00"
     }
   ]
 }
