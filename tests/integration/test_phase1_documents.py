@@ -73,10 +73,13 @@ def test_phase1_upload_list_detail_asset_and_duplicate(
     assert accepted.json()["status"] == "queued"
     item = _document_by_title(client, "Phase 1 Fixture")
     document_id = uuid.UUID(str(item["id"]))
-    assert preview_worker.process_next_preview_job(
-        worker_name="phase1-test",
-        document_id=document_id,
-    ) is True
+    assert (
+        preview_worker.process_next_preview_job(
+            worker_name="phase1-test",
+            document_id=document_id,
+        )
+        is True
+    )
 
     listed = client.get("/api/v1/documents")
     assert listed.status_code == 200
