@@ -39,7 +39,18 @@ pro-merged-master-v1.2/contracts/
 pro-merged-master-v1.2/infrastructure/
 ```
 
-The `.md` and `.docx` files must be treated as co-equal source artifacts. Do not rely on the stale note that the DOCX files are only convenience exports.
+Markdown files are the default working source for duplicate artifact pairs in this repo. The DOCX files are still part of the source pack and must not be dismissed as convenience exports, but they do not need to be re-read by default when the corresponding Markdown file exists and there is no reason to suspect material drift.
+
+Current parity note:
+
+- `docs/01_App_Specification.md` and `docs/01_App_Specification.docx` were spot-checked on 2026-04-24 and no material content differences were found.
+- `docs/02_Phased_Implementation_Plan.md` and `docs/02_Phased_Implementation_Plan.docx` were spot-checked on 2026-04-24 and no material content differences were found.
+
+Use the DOCX file only when:
+
+- the user explicitly asks for layout/fidelity review;
+- the Markdown file is missing or appears incomplete;
+- a material Markdown/DOCX mismatch is suspected and needs verification.
 
 ## Source Alignment Policy
 
@@ -48,7 +59,7 @@ Use the root-level planning docs as the working implementation layer, but keep t
 When non-UI artifacts disagree, use this order unless the user has explicitly overridden it:
 
 1. User clarification in the active implementation thread.
-2. Co-equal DOCX and Markdown artifact content.
+2. Materially aligned Markdown and DOCX artifact content, with Markdown as the default working read.
 3. `docs/10_Architectural_Decision_Record_Summary.md`.
 4. `docs/21_v1.3_Normalization_and_Design_Language.md`.
 5. `database/*.sql` in documented apply order.

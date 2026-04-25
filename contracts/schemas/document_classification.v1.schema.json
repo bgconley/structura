@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/schemas/document_classification.v1.schema.json",
+  "title": "Document Classification v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "document_id",
+    "family",
+    "route_profile",
+    "confidence",
+    "created_at"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "document_classification"
+    },
+    "schema_version": {
+      "const": "v1"
+    },
+    "document_id": {
+      "$ref": "common_defs.schema.json#/$defs/uuid"
+    },
+    "family": {
+      "type": "string",
+      "enum": [
+        "receipt",
+        "invoice",
+        "medical_eob",
+        "medical_bill",
+        "insurance_document",
+        "legal_contract",
+        "legal_notice",
+        "tax_document",
+        "bank_statement",
+        "financial_statement",
+        "identity_document",
+        "warranty",
+        "handwritten_note",
+        "typed_note",
+        "whitepaper",
+        "reference_document",
+        "generic"
+      ]
+    },
+    "subtype": {
+      "type": "string"
+    },
+    "route_profile": {
+      "type": "string",
+      "enum": [
+        "docling_only",
+        "docling_plus_structured_extraction",
+        "docling_plus_granite",
+        "docling_plus_qwen",
+        "qwen_primary_review_required"
+      ]
+    },
+    "reasons": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "confidence": {
+      "$ref": "common_defs.schema.json#/$defs/confidenceSummary"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "common_defs.schema.json#/$defs/evidenceRef"
+      }
+    },
+    "created_at": {
+      "$ref": "common_defs.schema.json#/$defs/timestamp"
+    },
+    "model_trace": {
+      "$ref": "common_defs.schema.json#/$defs/metadataObject"
+    }
+  }
+}

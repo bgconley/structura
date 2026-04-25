@@ -1,0 +1,257 @@
+services:
+  postgres:
+    image: ${STRUCTURA_POSTGRES_IMAGE:-paradedb/paradedb:0.21.5-pg17}
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-structura}
+      POSTGRES_USER: ${POSTGRES_USER:-structura}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-structura}
+    ports:
+      - "${STRUCTURA_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      STRUCTURA_ENV: ${STRUCTURA_ENV:-development}
+      STRUCTURA_DATABASE_URL: postgresql://${POSTGRES_USER:-structura}:${POSTGRES_PASSWORD:-structura}@postgres:5432/${POSTGRES_DB:-structura}
+      STRUCTURA_RUNTIME_ROOT: /srv/structura
+      STRUCTURA_CONTRACTS_DIR: /app/contracts
+      STRUCTURA_DATABASE_DIR: /app/database
+    ports:
+      - "${STRUCTURA_API_PORT:-8000}:8000"
+    volumes:
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/config/api:/srv/structura/config/api
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/canonical:/srv/structura/objects/canonical
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/derived:/srv/structura/objects/derived
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/exports:/srv/structura/objects/exports
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/cache:/srv/structura/cache
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/api:/srv/structura/logs/api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: apps/web
+      dockerfile: Dockerfile
+    environment:
+      VITE_STRUCTURA_API_BASE_URL: ${VITE_STRUCTURA_API_BASE_URL:-http://localhost:8000}
+    ports:
+      - "${STRUCTURA_WEB_PORT:-3000}:3000"
+    volumes:
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/config/web:/srv/structura/config/web
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/cache:/srv/structura/cache
+    depends_on:
+      api:
+        condition: service_healthy
+
+  worker-ingest:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["python", "-m", "workers.placeholder", "--worker", "worker-ingest", "--health-port", "8201"]
+    environment:
+      STRUCTURA_DATABASE_URL: postgresql://${POSTGRES_USER:-structura}:${POSTGRES_PASSWORD:-structura}@postgres:5432/${POSTGRES_DB:-structura}
+      STRUCTURA_RUNTIME_ROOT: /srv/structura
+    volumes:
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/staging:/srv/structura/staging
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/canonical:/srv/structura/objects/canonical
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/workers:/srv/structura/logs/workers
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8201/healthz')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  worker-previews:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["python", "-m", "workers.placeholder", "--worker", "worker-previews", "--health-port", "8202"]
+    environment:
+      STRUCTURA_DATABASE_URL: postgresql://${POSTGRES_USER:-structura}:${POSTGRES_PASSWORD:-structura}@postgres:5432/${POSTGRES_DB:-structura}
+      STRUCTURA_RUNTIME_ROOT: /srv/structura
+    volumes:
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/staging:/srv/structura/staging
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/derived:/srv/structura/objects/derived
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/cache:/srv/structura/cache
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/workers:/srv/structura/logs/workers
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8202/healthz')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  worker-docling:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["python", "-m", "workers.placeholder", "--worker", "worker-docling", "--health-port", "8203"]
+    environment:
+      STRUCTURA_DATABASE_URL: postgresql://${POSTGRES_USER:-structura}:${POSTGRES_PASSWORD:-structura}@postgres:5432/${POSTGRES_DB:-structura}
+      STRUCTURA_RUNTIME_ROOT: /srv/structura
+    volumes:
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/staging:/srv/structura/staging
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/derived:/srv/structura/objects/derived
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/workers:/srv/structura/logs/workers
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8203/healthz')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  worker-extraction:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["python", "-m", "workers.placeholder", "--worker", "worker-extraction", "--health-port", "8204"]
+    environment:
+      STRUCTURA_DATABASE_URL: postgresql://${POSTGRES_USER:-structura}:${POSTGRES_PASSWORD:-structura}@postgres:5432/${POSTGRES_DB:-structura}
+      STRUCTURA_RUNTIME_ROOT: /srv/structura
+    volumes:
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/derived:/srv/structura/objects/derived
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/workers:/srv/structura/logs/workers
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["extraction"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8204/healthz')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  worker-embeddings:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["python", "-m", "workers.placeholder", "--worker", "worker-embeddings", "--health-port", "8205"]
+    environment:
+      STRUCTURA_DATABASE_URL: postgresql://${POSTGRES_USER:-structura}:${POSTGRES_PASSWORD:-structura}@postgres:5432/${POSTGRES_DB:-structura}
+      STRUCTURA_RUNTIME_ROOT: /srv/structura
+    volumes:
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/derived:/srv/structura/objects/derived
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/workers:/srv/structura/logs/workers
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["search"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8205/healthz')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  worker-relationships:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["python", "-m", "workers.placeholder", "--worker", "worker-relationships", "--health-port", "8206"]
+    environment:
+      STRUCTURA_DATABASE_URL: postgresql://${POSTGRES_USER:-structura}:${POSTGRES_PASSWORD:-structura}@postgres:5432/${POSTGRES_DB:-structura}
+      STRUCTURA_RUNTIME_ROOT: /srv/structura
+    volumes:
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/derived:/srv/structura/objects/derived
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/workers:/srv/structura/logs/workers
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["relationships"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8206/healthz')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  worker-analysis:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["python", "-m", "workers.placeholder", "--worker", "worker-analysis", "--health-port", "8207"]
+    environment:
+      STRUCTURA_DATABASE_URL: postgresql://${POSTGRES_USER:-structura}:${POSTGRES_PASSWORD:-structura}@postgres:5432/${POSTGRES_DB:-structura}
+      STRUCTURA_RUNTIME_ROOT: /srv/structura
+    volumes:
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/derived:/srv/structura/objects/derived
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/workers:/srv/structura/logs/workers
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["analysis"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8207/healthz')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  model-qwen:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["python", "-m", "workers.model_placeholder", "--name", "model-qwen", "--host", "0.0.0.0", "--port", "8100"]
+    ports:
+      - "8100:8100"
+    volumes:
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/models:/srv/structura/models
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/models:/srv/structura/logs/models
+    environment:
+      NVIDIA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_QWEN_GPU:-0}
+    profiles: ["models"]
+
+  model-granite:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["python", "-m", "workers.model_placeholder", "--name", "model-granite", "--host", "0.0.0.0", "--port", "8101"]
+    ports:
+      - "8101:8101"
+    volumes:
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/models:/srv/structura/models
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/models:/srv/structura/logs/models
+    environment:
+      NVIDIA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_GRANITE_GPU:-0}
+    profiles: ["models"]
+
+  model-embed:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["python", "-m", "workers.model_placeholder", "--name", "model-embed", "--host", "0.0.0.0", "--port", "8102"]
+    ports:
+      - "8102:8102"
+    volumes:
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/models:/srv/structura/models
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/models:/srv/structura/logs/models
+    environment:
+      NVIDIA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_EMBED_GPU:-1}
+    profiles: ["models"]
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/redis:/data
+    profiles: ["redis-fallback"]

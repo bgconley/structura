@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/schemas/filing_rule.v1.schema.json",
+  "title": "Filing Rule v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "name",
+    "enabled",
+    "conditions",
+    "actions"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "filing_rule"
+    },
+    "schema_version": {
+      "const": "filing_rule.v1"
+    },
+    "id": {
+      "$ref": "common_defs.schema.json#/$defs/uuid"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "priority": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 50
+    },
+    "review_required": {
+      "type": "boolean",
+      "default": true
+    },
+    "conditions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "field",
+          "op",
+          "value"
+        ],
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "op": {
+            "type": "string",
+            "enum": [
+              "eq",
+              "neq",
+              "contains",
+              "in",
+              "gte",
+              "lte",
+              "exists",
+              "regex"
+            ]
+          },
+          "value": {}
+        }
+      }
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "add_folder",
+              "set_primary_folder",
+              "add_tag",
+              "set_sensitivity",
+              "create_review_task",
+              "set_document_type"
+            ]
+          },
+          "folder_id": {
+            "$ref": "common_defs.schema.json#/$defs/uuid"
+          },
+          "folder_path": {
+            "type": "string"
+          },
+          "tag": {
+            "type": "string"
+          },
+          "value": {}
+        }
+      }
+    },
+    "dry_run_explanation": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

@@ -1,0 +1,17 @@
+.git
+.runtime
+.venv
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.DS_Store
+**/.DS_Store
+node_modules
+apps/web/node_modules
+apps/web/dist
+dist
+archive
+pro-merged-master-v1.2
+.wolf
+.claude
+

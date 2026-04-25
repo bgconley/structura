@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/schemas/analysis_note.v1.schema.json",
+  "title": "Analysis Note v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "analysis_note_type",
+    "title",
+    "document_ids",
+    "markdown_body",
+    "citations",
+    "created_at"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "analysis_note"
+    },
+    "schema_version": {
+      "const": "v1"
+    },
+    "analysis_note_type": {
+      "type": "string",
+      "enum": [
+        "summary",
+        "explanation",
+        "comparison",
+        "timeline",
+        "obligation_scan",
+        "tax_scan",
+        "medical_explanation"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "document_ids": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "common_defs.schema.json#/$defs/uuid"
+      }
+    },
+    "question": {
+      "type": "string"
+    },
+    "markdown_body": {
+      "type": "string",
+      "minLength": 1
+    },
+    "citations": {
+      "type": "array",
+      "items": {
+        "$ref": "common_defs.schema.json#/$defs/citation"
+      }
+    },
+    "recommended_actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action_type",
+          "title"
+        ],
+        "properties": {
+          "action_type": {
+            "type": "string",
+            "enum": [
+              "review_field",
+              "review_relationship",
+              "add_deadline",
+              "reclassify_document",
+              "move_folder",
+              "add_tag",
+              "none"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "details": {
+            "type": "string"
+          },
+          "document_id": {
+            "$ref": "common_defs.schema.json#/$defs/uuid"
+          }
+        }
+      }
+    },
+    "created_at": {
+      "$ref": "common_defs.schema.json#/$defs/timestamp"
+    },
+    "model_trace": {
+      "$ref": "common_defs.schema.json#/$defs/metadataObject"
+    }
+  }
+}

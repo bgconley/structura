@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/schemas/field_candidate.v1.schema.json",
+  "title": "Field Candidate v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "document_id",
+    "field_path",
+    "value_type",
+    "source",
+    "evidence"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "field_candidate"
+    },
+    "schema_version": {
+      "const": "field_candidate.v1"
+    },
+    "document_id": {
+      "$ref": "common_defs.schema.json#/$defs/uuid"
+    },
+    "extraction_id": {
+      "$ref": "common_defs.schema.json#/$defs/uuid"
+    },
+    "field_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ordinal": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1
+    },
+    "value_type": {
+      "type": "string",
+      "enum": [
+        "string",
+        "integer",
+        "number",
+        "boolean",
+        "date",
+        "datetime",
+        "json",
+        "money"
+      ]
+    },
+    "value": {},
+    "normalized_value": {},
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "authority_weight": {
+      "type": "number",
+      "minimum": 0
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "engine"
+      ],
+      "properties": {
+        "engine": {
+          "type": "string",
+          "enum": [
+            "docling",
+            "qwen3_vl_4b",
+            "qwen3_vl_8b",
+            "granite_vision_3b",
+            "validator",
+            "human",
+            "system"
+          ]
+        },
+        "model_name": {
+          "type": "string"
+        },
+        "model_version": {
+          "type": "string"
+        },
+        "prompt_version": {
+          "type": "string"
+        },
+        "run_id": {
+          "$ref": "common_defs.schema.json#/$defs/uuid"
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "common_defs.schema.json#/$defs/evidenceRef"
+      },
+      "minItems": 1
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "proposed",
+        "promoted",
+        "rejected",
+        "superseded",
+        "needs_review"
+      ],
+      "default": "proposed"
+    }
+  }
+}

@@ -7,9 +7,54 @@
 
 - `.DS_Store` (~3824 tok)
 - `CLAUDE.md` — OpenWolf (~57 tok)
-- `STRUCTURA_PLAN_INDEX.md` — Canonical planning index; source alignment policy, UI source of truth, GPU node sync policy, stop rule (~1000 tok)
-- `STRUCTURA_IMPLEMENTATION_PLAN.md` — Canonical end-to-end implementation plan; phase gates, mandatory per-phase artifact lists, API/database/event coverage, GPU sync policy (~15500 tok)
+- `agents.md` — Agent operating guidance; root implementation plan as phase map, non-archive artifact references as required implementation depth, archive exclusion, Markdown-over-DOCX and chunked large-file review handling, conflict resolution (~400 tok)
+- `STRUCTURA_PLAN_INDEX.md` — Canonical planning index; source alignment policy, Markdown-first duplicate-artifact handling with DOCX parity note, UI source of truth, GPU node sync policy, stop rule (~1000 tok)
+- `STRUCTURA_IMPLEMENTATION_PLAN.md` — Canonical end-to-end implementation plan; phase gates, mandatory per-phase artifact lists, API/database/event coverage, Markdown-first duplicate-artifact handling with DOCX parity note, GPU sync policy (~15500 tok)
+- `STRUCTURA_PHASE_1_IMPLEMENTATION_PLAN.md` — Phase 1 execution plan; upload, object storage, Inbox, protected asset streaming, preview, Viewer, fresh-context rereads, Firecrawl evidence rules, validation gate (~5700 tok)
+- `STRUCTURA_PHASE_2_IMPLEMENTATION_PLAN.md` — Phase 2 execution plan; manual filing, folders, tags, document organization, ACL/audit, smart-folder records, UI filing workflow, fresh-context rereads, Firecrawl evidence rules, validation gate (~6100 tok)
+- `STRUCTURA_PHASE_3_IMPLEMENTATION_PLAN.md` — Phase 3 execution plan; preview/page-asset hardening, Docling worker, canonical artifacts, page/element/table/chunk relational rows, parse quality, debug surfaces, Gate B, fresh-context rereads, Firecrawl evidence rules (~6400 tok)
+- `STRUCTURA_PHASE_4_IMPLEMENTATION_PLAN.md` — Phase 4 execution plan; classification, extraction validators, evidence resolver, model gateway, extraction workers, candidate normalization, canonical promotion, review APIs/UI, golden fixtures, Gate C, fresh-context rereads, Firecrawl evidence rules (~7600 tok)
+- `STRUCTURA_PHASE_5_IMPLEMENTATION_PLAN.md` — Phase 5 execution plan; lexical BM25 search, embedding gateway/worker, semantic retrieval, filter-aware planner, hybrid RRF, facets/saved searches, search UI, golden benchmarks, Gate D, fresh-context rereads, Firecrawl evidence rules (~8200 tok)
+- `STRUCTURA_PHASE_6_IMPLEMENTATION_PLAN.md` — Phase 6 execution plan; contacts, document-contact links, folder ACL guardrails, watched-folder API/worker, filing rules, dry-run explanations, rule suggestions/application, contacts dedupe, UI, CLI import/maintenance, phase gate, fresh-context rereads, Firecrawl evidence rules (~8800 tok)
+- `STRUCTURA_PHASE_7_IMPLEMENTATION_PLAN.md` — Phase 7 execution plan; relationships, review actions, suggestion worker, related-document panel, entity/document timelines, deadlines, smart views, search/filing integration, quality fixtures, phase gate, fresh-context rereads, Firecrawl evidence rules (~8300 tok)
+- `STRUCTURA_PHASE_8_IMPLEMENTATION_PLAN.md` — Phase 8 execution plan; difficult-document detection, selective visual embeddings, Qwen handwriting route, review-required uncertainty, visual retrieval contract/policy, mixed hybrid retrieval, low-text fallbacks, benchmarks, runtime observability, phase gate, fresh-context rereads, Firecrawl evidence rules (~9400 tok)
+- `STRUCTURA_PHASE_9_IMPLEMENTATION_PLAN.md` — Phase 9 execution plan; optional analysis workspace, analysis contracts, ACL/sensitivity/citation policy, analysis request API, context builder, prompt/model validation, worker-analysis, note persistence, Figma frame 14:990, core analysis actions, disable mode, observability, Gate E, fresh-context rereads, Firecrawl evidence rules (~10300 tok)
+- `STRUCTURA_PHASE_10_IMPLEMENTATION_PLAN.md` — Phase 10 execution plan; exports, manifest/provenance, export authorization/audit, WebAuthn/passkeys, session hardening, API token lifecycle, folder ACL management, backup/restore, admin jobs, service/storage/model/extraction health, settings/admin UI, SAST, phase gate, fresh-context rereads, Firecrawl evidence rules (~11600 tok)
+- `STRUCTURA_PHASE_11_IMPLEMENTATION_PLAN.md` — Phase 11 execution plan; golden corpus governance, expected answers, deterministic evaluation harness, extraction/search scoring, E2E and Playwright smoke tests, migration/contract regression, restore rehearsal, SAST/data-flow gate, performance measurements, release-candidate evidence pack, fresh-context rereads, Firecrawl evidence rules (~13200 tok)
+- `STRUCTURA_PHASE_12_IMPLEMENTATION_PLAN.md` — Final derived Phase 12 execution plan; internal-GA/release handoff, Phase 11 evidence intake, blocker closure, contract/schema freeze, runtime config, operator runbooks, benchmark threshold approval, UI/security/restore/performance signoff, release notes/tagging, go/no-go, post-release cadence, fresh-context rereads, Firecrawl evidence rules (~13200 tok)
 - `STRUCTURA_UI_FIGMA_QA_PLAN.md` — Canonical Figma and Playwright UI QA plan; frame ids, pixel-match rules, workflow QA, UI stop rule (~3000 tok)
+- `README.md` — Phase 0A-0F implementation status, local commands, Compose runtime notes, migration baseline and tracking behavior
+- `Makefile` — bootstrap, test, lint, format, contracts, migrate, API/web dev, Compose, and worker-placeholder tasks
+- `compose.yaml` — Postgres, API, web, default workers, profile-gated model placeholders, and Redis fallback services
+- `.env.example` — Local Structura environment defaults
+
+## Phase 0 implementation scaffold
+
+- `apps/api/structura_api/main.py` — FastAPI app factory, router registration, request-id middleware, JSON request logging
+- `apps/api/structura_api/dependencies.py` — Current-principal resolution from API token or session cookie, CSRF dependency for cookie-auth state changes
+- `apps/api/structura_api/routes_auth.py` — Password and magic-link session creation, current session lookup, logout, session/CSRF cookies
+- `apps/api/structura_api/routes_documents.py` — Phase 0 protected document list and asset route placeholders
+- `apps/api/structura_api/routes_jobs.py` — Protected job lookup, admin job list, CSRF-protected retry endpoint
+- `apps/api/structura_api/routes_admin.py` — Protected service-health snapshot endpoint
+- `apps/web/` — Vite React placeholder shell pointed at the API base URL
+- `contracts/` — v1.2 OpenAPI, shared schemas, and pipeline event schemas copied into active repo surface
+- `database/` — Baseline SQL 001-060 plus excluded 070 query examples; BM25 compatibility edit for pinned ParadeDB PG17 image
+- `docs/adr/0000-phase-0-baseline.md` — Phase 0 architecture decision record covering scaffold, auth, migrations, ParadeDB pin, and job fallback
+- `infrastructure/zfs/` — Active ZFS runtime dataset plan copied from v1.2 artifacts
+- `lib/auth/service.py` — Bootstrap admin, Argon2id password verification, session/magic-link/API-token service layer
+- `lib/config/settings.py` — Runtime settings, contract/database paths, cookie names, session and magic-link TTLs
+- `lib/contracts/` — Contract registry and generated/handwritten Pydantic DTOs for Phase 0 API routes
+- `lib/db/connection.py` — psycopg connection helper with `structura, public` search path
+- `lib/db/migrations.py` — Baseline migration plan, checksum tracking, legacy schema adoption, idempotent reruns
+- `lib/jobs/service.py` — Safe job payload validation, create/list/get/claim/heartbeat/complete/fail/retry, service health snapshots
+- `lib/observability/logging.py` — Minimal JSON request/event logging
+- `scripts/bootstrap_admin.py` — Local admin bootstrap/rotation CLI
+- `scripts/migrate.py` — Baseline migration entrypoint
+- `scripts/validate_contracts.py` — OpenAPI/schema/event contract validation entrypoint
+- `tests/unit/` — Config, contract registry, migrations, auth hashing, and job payload safety tests
+- `tests/integration/` — Live Postgres baseline schema, migration idempotency, auth/session/job/service-health tests
+- `workers/placeholder.py` — Placeholder worker heartbeat loop, internal health HTTP endpoint, service-health DB snapshots
+- `workers/model_placeholder.py` — Profile-gated model service placeholder
 
 ## .claude/
 

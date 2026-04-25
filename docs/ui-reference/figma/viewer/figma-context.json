@@ -1,0 +1,13 @@
+{
+  "fileKey": "5GAPHbduQLu9INBOXUPxJN",
+  "frameId": "14:434",
+  "frameName": "02 Document Viewer v2",
+  "viewport": {"width": 1440, "height": 960},
+  "implementationRoute": "/",
+  "designNotes": [
+    "Viewer keeps the same left navigation and top command structure as Inbox.",
+    "Main layout uses page rail, document preview, and right facts panel.",
+    "Original downloads are routed through authorized /api/v1/assets/{assetId} URLs.",
+    "Extraction and review actions are visible but remain honest pending states in Phase 1."
+  ]
+}

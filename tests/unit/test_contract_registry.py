@@ -1,0 +1,271 @@
+import pytest
+from jsonschema import ValidationError
+from pydantic import TypeAdapter
+from pydantic import ValidationError as PydanticValidationError
+
+from lib.contracts import (
+    CanonicalField,
+    ContractRegistry,
+    CreateMagicLinkRequest,
+    CreateSessionRequest,
+    EvidenceRef,
+    FieldCandidate,
+    FilingRule,
+    PasswordSessionRequest,
+    UploadDocumentMultipartRequest,
+)
+
+UUID_1 = "11111111-1111-1111-1111-111111111111"
+UUID_2 = "22222222-2222-2222-2222-222222222222"
+TIMESTAMP = "2026-04-24T00:00:00Z"
+
+
+def test_contract_registry_loads_openapi_schemas_and_events() -> None:
+    registry = ContractRegistry.load("contracts")
+    summary = registry.summary()
+
+    assert summary["openapi_title"] == "Structura API"
+    assert summary["path_count"] >= 20
+    assert "common_defs.schema.json" in summary["schemas"]
+    assert "ingest_document_job.v1.schema.json" in summary["events"]
+
+
+def test_json_schemas_are_valid_draft_2020_12() -> None:
+    registry = ContractRegistry.load("contracts")
+
+    registry.check_json_schemas()
+
+
+def test_evidence_requires_page_number_and_concrete_locator() -> None:
+    registry = ContractRegistry.load("contracts")
+    evidence = registry.schemas["common_defs.schema.json"]["$defs"]["evidenceRef"]
+
+    assert "page_number" in evidence["required"]
+    assert "source_engine" in evidence["required"]
+    assert "anyOf" in evidence
+    assert len(evidence["anyOf"]) >= 5
+
+
+def test_openapi_component_validation_covers_upload_session_and_evidence() -> None:
+    registry = ContractRegistry.load("contracts")
+
+    registry.validate_openapi_component(
+        "UploadDocumentMultipartRequest",
+        {
+            "file": "document.pdf",
+            "source": "web_upload",
+            "suppliedFolderIds": [UUID_1],
+            "suppliedTags": ["tax"],
+        },
+    )
+    registry.validate_openapi_component(
+        "CreateSessionRequest",
+        {"method": "password", "email": "admin@example.com", "password": "minimum8"},
+    )
+    with pytest.raises(ValidationError):
+        registry.validate_openapi_component(
+            "PasswordSessionRequest",
+            {"method": "password", "email": "not-an-email", "password": "minimum8"},
+        )
+    registry.validate_openapi_component(
+        "EvidenceRef",
+        {"pageNumber": 1, "sourceEngine": "docling", "bbox": [0, 0, 1, 1]},
+    )
+
+    with pytest.raises(ValidationError):
+        registry.validate_openapi_component(
+            "EvidenceRef",
+            {"pageNumber": 1, "sourceEngine": "docling"},
+        )
+
+
+def test_json_schema_instances_cover_review_candidates_canonical_filing_and_events() -> None:
+    registry = ContractRegistry.load("contracts")
+
+    evidence = {"page_number": 1, "source_engine": "docling", "bbox": [0, 0, 1, 1]}
+    registry.validate_schema_instance(
+        "review_action.v1.schema.json",
+        {
+            "schema_name": "review_action",
+            "schema_version": "v1",
+            "document_id": UUID_1,
+            "action_type": "confirm_field",
+            "actor_type": "human",
+            "created_at": TIMESTAMP,
+            "evidence_context": [evidence],
+        },
+    )
+    registry.validate_schema_instance(
+        "field_candidate.v1.schema.json",
+        {
+            "schema_name": "field_candidate",
+            "schema_version": "field_candidate.v1",
+            "document_id": UUID_1,
+            "field_path": "invoice.total",
+            "value_type": "money",
+            "source": {"engine": "docling"},
+            "evidence": [evidence],
+        },
+    )
+    registry.validate_schema_instance(
+        "canonical_field.v1.schema.json",
+        {
+            "schema_name": "canonical_field",
+            "schema_version": "canonical_field.v1",
+            "document_id": UUID_1,
+            "field_path": "invoice.total",
+            "value_type": "money",
+            "value": {"amount": 12.5, "currency": "USD"},
+            "source_kind": "candidate",
+            "review_status": "user_confirmed",
+            "evidence": [evidence],
+        },
+    )
+    registry.validate_schema_instance(
+        "filing_rule.v1.schema.json",
+        {
+            "schema_name": "filing_rule",
+            "schema_version": "filing_rule.v1",
+            "name": "Paid invoices",
+            "enabled": True,
+            "conditions": [{"field": "document_type", "op": "eq", "value": "invoice"}],
+            "actions": [{"type": "add_tag", "tag": "invoice"}],
+        },
+    )
+    registry.validate_event_instance(
+        "ingest_document_job.v1.schema.json",
+        {
+            "schema_name": "ingest_document_job",
+            "schema_version": "v1",
+            "job_id": UUID_1,
+            "created_at": TIMESTAMP,
+            "attempt": 1,
+            "priority": 5,
+            "source": "web_upload",
+            "input_object": {
+                "uri": "file:///srv/structura/staging/document.pdf",
+                "sha256": "a" * 64,
+                "mime_type": "application/pdf",
+                "filename": "document.pdf",
+            },
+        },
+    )
+
+
+def test_all_job_event_schemas_validate_representative_payloads() -> None:
+    registry = ContractRegistry.load("contracts")
+
+    event_payloads = {
+        "ingest_document_job.v1.schema.json": {
+            "schema_name": "ingest_document_job",
+            "schema_version": "v1",
+            "job_id": UUID_1,
+            "created_at": TIMESTAMP,
+            "attempt": 1,
+            "priority": 5,
+            "source": "web_upload",
+            "input_object": {
+                "uri": "file:///srv/structura/staging/document.pdf",
+                "sha256": "a" * 64,
+                "mime_type": "application/pdf",
+                "filename": "document.pdf",
+            },
+        },
+        "classify_document_job.v1.schema.json": {
+            "schema_name": "classify_document_job",
+            "schema_version": "v1",
+            "job_id": UUID_1,
+            "created_at": TIMESTAMP,
+            "attempt": 1,
+            "priority": 5,
+            "document_id": UUID_2,
+        },
+        "extract_document_job.v1.schema.json": {
+            "schema_name": "extract_document_job",
+            "schema_version": "v1",
+            "job_id": UUID_1,
+            "created_at": TIMESTAMP,
+            "attempt": 1,
+            "priority": 5,
+            "document_id": UUID_2,
+            "target_schema_name": "invoice",
+            "target_schema_version": "invoice.v1",
+        },
+        "embed_document_job.v1.schema.json": {
+            "schema_name": "embed_document_job",
+            "schema_version": "v1",
+            "job_id": UUID_1,
+            "created_at": TIMESTAMP,
+            "attempt": 1,
+            "priority": 5,
+            "document_id": UUID_2,
+            "modalities": ["text"],
+        },
+        "analyze_documents_job.v1.schema.json": {
+            "schema_name": "analyze_documents_job",
+            "schema_version": "v1",
+            "job_id": UUID_1,
+            "created_at": TIMESTAMP,
+            "attempt": 1,
+            "priority": 5,
+            "document_ids": [UUID_2],
+            "analysis_note_type": "summary",
+            "question": "Summarize this document.",
+        },
+    }
+
+    for schema_name, payload in event_payloads.items():
+        registry.validate_event_instance(schema_name, payload)
+
+
+def test_phase_0_contract_models_accept_openapi_shapes_and_reject_loose_evidence() -> None:
+    evidence = {"pageNumber": 1, "sourceEngine": "docling", "bbox": [0, 0, 1, 1]}
+
+    UploadDocumentMultipartRequest.model_validate({"file": "document.pdf", "source": "web_upload"})
+    PasswordSessionRequest.model_validate(
+        {"method": "password", "email": "admin@example.com", "password": "minimum8"}
+    )
+    CreateMagicLinkRequest.model_validate({"email": "admin@example.com", "purpose": "bootstrap"})
+    TypeAdapter(CreateSessionRequest).validate_python(
+        {"method": "magic_link", "magicLinkToken": "token"}
+    )
+    FieldCandidate.model_validate(
+        {
+            "id": UUID_1,
+            "documentId": UUID_2,
+            "fieldPath": "invoice.total",
+            "valueType": "money",
+            "sourceEngine": "docling",
+            "evidence": [evidence],
+        }
+    )
+    CanonicalField.model_validate(
+        {
+            "id": UUID_1,
+            "documentId": UUID_2,
+            "fieldPath": "invoice.total",
+            "valueType": "money",
+            "value": {"amount": 12.5, "currency": "USD"},
+            "sourceKind": "candidate",
+            "reviewStatus": "user_confirmed",
+            "evidence": [evidence],
+        }
+    )
+    FilingRule.model_validate(
+        {
+            "id": UUID_1,
+            "name": "Paid invoices",
+            "enabled": True,
+            "conditions": [{"field": "document_type", "op": "eq", "value": "invoice"}],
+            "actions": [{"type": "add_tag", "tag": "invoice"}],
+        }
+    )
+
+    with pytest.raises(ValueError):
+        EvidenceRef.model_validate({"pageNumber": 1, "sourceEngine": "docling"})
+    with pytest.raises(PydanticValidationError):
+        PasswordSessionRequest.model_validate(
+            {"method": "password", "email": "not-an-email", "password": "minimum8"}
+        )
+    with pytest.raises(PydanticValidationError):
+        CreateMagicLinkRequest.model_validate({"email": "not-an-email", "purpose": "bootstrap"})

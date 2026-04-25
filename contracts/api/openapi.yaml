@@ -1,0 +1,1998 @@
+openapi: 3.1.0
+info:
+  title: Structura API
+  version: 0.1.3
+  summary: Local-first AI-augmented document filing cabinet API
+  description: 'This v1.3 API contract covers the core workbench surfaces needed
+    for implementation convergence: auth/session, document ingest and detail,
+    protected asset access, folders, tags, candidate/canonical review actions,
+    relationships, contacts, filing rules, watched folders, search, analysis,
+    exports, and job/admin inspection.
+
+    '
+servers:
+- url: http://localhost:8000
+  description: Local development
+tags:
+- name: Health
+  description: Runtime health and version surfaces
+- name: Auth
+  description: Session and login surfaces
+- name: Contracts
+  description: Contract registry diagnostics
+- name: Documents
+- name: Search
+- name: Review
+- name: Analysis
+- name: Organization
+- name: Relationships
+- name: Automation
+- name: Assets
+- name: Exports
+- name: Jobs
+- name: Admin
+security:
+- sessionCookie: []
+- apiToken: []
+paths:
+  /api/v1/health:
+    get:
+      tags:
+      - Health
+      summary: API health summary
+      security: []
+      responses:
+        '200':
+          description: API health
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - status
+                - environment
+                properties:
+                  status:
+                    type: string
+                  environment:
+                    type: string
+  /api/v1/version:
+    get:
+      tags:
+      - Health
+      summary: API version
+      security: []
+      responses:
+        '200':
+          description: Version metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - service
+                - version
+                - api_contract_version
+                properties:
+                  service:
+                    type: string
+                  version:
+                    type: string
+                  api_contract_version:
+                    type: string
+  /api/v1/contracts/summary:
+    get:
+      tags:
+      - Contracts
+      summary: Loaded contract registry summary
+      security: []
+      responses:
+        '200':
+          description: Contract registry summary
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+  /api/v1/migrations/baseline:
+    get:
+      tags:
+      - Admin
+      summary: Baseline migration manifest
+      security:
+      - sessionCookie: []
+      - apiToken: []
+      responses:
+        '200':
+          description: Baseline migration manifest
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - database_dir
+                - scripts
+                properties:
+                  database_dir:
+                    type: string
+                  scripts:
+                    type: array
+                    items:
+                      type: string
+        '401':
+          description: Not authenticated
+  /api/v1/auth/session:
+    get:
+      tags:
+      - Auth
+      summary: Get current session
+      security:
+      - sessionCookie: []
+      responses:
+        '200':
+          description: Current session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionInfo'
+        '401':
+          description: Not authenticated
+    post:
+      tags:
+      - Auth
+      summary: Create a login session
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+      responses:
+        '201':
+          description: Authenticated session created
+          headers:
+            Set-Cookie:
+              description: HttpOnly session cookie carrying the new session token.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionInfo'
+        '401':
+          description: Authentication failed
+    delete:
+      tags:
+      - Auth
+      summary: End current session
+      security:
+      - sessionCookie: []
+      responses:
+        '204':
+          description: Session ended
+          headers:
+            Set-Cookie:
+              description: Session cookie cleared by expiring the current cookie value.
+              schema:
+                type: string
+        '401':
+          description: Not authenticated
+  /api/v1/auth/magic-links:
+    post:
+      tags:
+      - Auth
+      summary: Request a magic link for bootstrap, invite, or recovery
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMagicLinkRequest'
+      responses:
+        '202':
+          description: Magic link requested
+  /api/v1/documents:
+    get:
+      tags:
+      - Documents
+      summary: List documents
+      parameters:
+      - in: query
+        name: q
+        schema:
+          type: string
+      - in: query
+        name: family
+        schema:
+          type: string
+      - in: query
+        name: reviewStatus
+        schema:
+          type: string
+      - in: query
+        name: folderId
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+      - in: query
+        name: offset
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+      responses:
+        '200':
+          description: Document list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - items
+                - total
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DocumentSummary'
+                  total:
+                    type: integer
+        '401':
+          description: Not authenticated
+    post:
+      tags:
+      - Documents
+      summary: Ingest a new document via multipart upload
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UploadDocumentMultipartRequest'
+      responses:
+        '202':
+          description: Accepted for ingestion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedJob'
+        '401':
+          description: Not authenticated
+  /api/v1/documents/{documentId}:
+    get:
+      tags:
+      - Documents
+      summary: Fetch a document detail view
+      parameters:
+      - in: path
+        name: documentId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Document detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentDetail'
+        '401':
+          description: Not authenticated
+        '404':
+          description: Document not found
+  /api/v1/documents/{documentId}/review-actions:
+    post:
+      tags:
+      - Review
+      summary: Submit a human or agent review action
+      parameters:
+      - in: path
+        name: documentId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/review_action.v1.schema.json
+      responses:
+        '200':
+          description: Review action applied
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - ok
+                properties:
+                  ok:
+                    type: boolean
+                  reviewEventId:
+                    type: string
+                    format: uuid
+        '401':
+          description: Not authenticated
+  /api/v1/documents/{documentId}/field-candidates:
+    get:
+      tags:
+      - Review
+      summary: List candidate values for a document
+      parameters:
+      - in: path
+        name: documentId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: fieldPath
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Field candidate list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FieldCandidate'
+        '401':
+          description: Not authenticated
+  /api/v1/documents/{documentId}/canonical-fields:
+    get:
+      tags:
+      - Review
+      summary: List canonical accepted fields for a document
+      parameters:
+      - in: path
+        name: documentId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Canonical field list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CanonicalField'
+        '401':
+          description: Not authenticated
+    post:
+      tags:
+      - Review
+      summary: Promote, edit, or replace a canonical field
+      parameters:
+      - in: path
+        name: documentId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CanonicalFieldWrite'
+      responses:
+        '200':
+          description: Canonical field updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CanonicalField'
+        '401':
+          description: Not authenticated
+  /api/v1/assets/{assetId}:
+    get:
+      tags:
+      - Assets
+      summary: Fetch a protected asset through API authorization
+      parameters:
+      - in: path
+        name: assetId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Asset bytes or a short-lived proxied response
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Not authenticated
+        '404':
+          description: Asset not found
+  /api/v1/folders:
+    get:
+      tags:
+      - Organization
+      summary: List folders and smart folders
+      responses:
+        '200':
+          description: Folder list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Folder'
+        '401':
+          description: Not authenticated
+    post:
+      tags:
+      - Organization
+      summary: Create a folder or smart folder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FolderWrite'
+      responses:
+        '201':
+          description: Folder created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Folder'
+        '401':
+          description: Not authenticated
+  /api/v1/tags:
+    get:
+      tags:
+      - Organization
+      summary: List tags
+      responses:
+        '200':
+          description: Tag list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Tag'
+        '401':
+          description: Not authenticated
+    post:
+      tags:
+      - Organization
+      summary: Create a tag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TagWrite'
+      responses:
+        '201':
+          description: Tag created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+        '401':
+          description: Not authenticated
+  /api/v1/documents/{documentId}/organization:
+    post:
+      tags:
+      - Organization
+      summary: Update document folders, primary folder, tags, title, or notes
+      parameters:
+      - in: path
+        name: documentId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentOrganizationWrite'
+      responses:
+        '200':
+          description: Document organization updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentDetail'
+        '401':
+          description: Not authenticated
+  /api/v1/relationships:
+    get:
+      tags:
+      - Relationships
+      summary: List document relationships
+      parameters:
+      - in: query
+        name: documentId
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Relationship list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DocumentRelationship'
+        '401':
+          description: Not authenticated
+    post:
+      tags:
+      - Relationships
+      summary: Create or confirm a document relationship
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RelationshipWrite'
+      responses:
+        '201':
+          description: Relationship created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentRelationship'
+        '401':
+          description: Not authenticated
+  /api/v1/contacts:
+    get:
+      tags:
+      - Organization
+      summary: List normalized contacts
+      parameters:
+      - in: query
+        name: q
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Contact list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Contact'
+        '401':
+          description: Not authenticated
+    post:
+      tags:
+      - Organization
+      summary: Create or update a normalized contact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContactWrite'
+      responses:
+        '201':
+          description: Contact created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+        '401':
+          description: Not authenticated
+  /api/v1/filing-rules:
+    get:
+      tags:
+      - Automation
+      summary: List filing rules
+      responses:
+        '200':
+          description: Filing rule list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FilingRule'
+        '401':
+          description: Not authenticated
+    post:
+      tags:
+      - Automation
+      summary: Create or update a filing rule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FilingRuleWrite'
+      responses:
+        '201':
+          description: Filing rule saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilingRule'
+        '401':
+          description: Not authenticated
+  /api/v1/watched-folders:
+    get:
+      tags:
+      - Automation
+      summary: List watched-folder intake rules
+      responses:
+        '200':
+          description: Watched folder list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WatchedFolder'
+        '401':
+          description: Not authenticated
+    post:
+      tags:
+      - Automation
+      summary: Create or update a watched-folder intake rule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WatchedFolderWrite'
+      responses:
+        '201':
+          description: Watched folder saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchedFolder'
+        '401':
+          description: Not authenticated
+  /api/v1/search:
+    post:
+      tags:
+      - Search
+      summary: Run lexical, semantic, or hybrid search
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '401':
+          description: Not authenticated
+  /api/v1/review-tasks:
+    get:
+      tags:
+      - Review
+      summary: List outstanding review tasks
+      parameters:
+      - in: query
+        name: status
+        schema:
+          type: string
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+      responses:
+        '200':
+          description: Review task list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ReviewTask'
+        '401':
+          description: Not authenticated
+  /api/v1/analysis-notes:
+    post:
+      tags:
+      - Analysis
+      summary: Start an analysis run over one or more documents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+              - analysisNoteType
+              - documentIds
+              - question
+              properties:
+                analysisNoteType:
+                  type: string
+                  enum:
+                  - summary
+                  - explanation
+                  - comparison
+                  - timeline
+                  - obligation_scan
+                  - tax_scan
+                  - medical_explanation
+                documentIds:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: string
+                    format: uuid
+                question:
+                  type: string
+                  minLength: 1
+                saveResult:
+                  type: boolean
+                  default: true
+      responses:
+        '202':
+          description: Analysis job accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedJob'
+        '401':
+          description: Not authenticated
+  /api/v1/exports:
+    post:
+      tags:
+      - Exports
+      summary: Create an export bundle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportRequest'
+      responses:
+        '202':
+          description: Export job accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedJob'
+        '401':
+          description: Not authenticated
+  /api/v1/jobs/{jobId}:
+    get:
+      tags:
+      - Jobs
+      summary: Fetch job status
+      parameters:
+      - in: path
+        name: jobId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Job state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobState'
+        '401':
+          description: Not authenticated
+  /api/v1/admin/jobs:
+    get:
+      tags:
+      - Admin
+      summary: List jobs for admin and dead-letter triage
+      parameters:
+      - in: query
+        name: status
+        schema:
+          type: string
+      - in: query
+        name: jobType
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Job list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/JobState'
+        '401':
+          description: Not authenticated
+  /api/v1/admin/jobs/{jobId}/retry:
+    post:
+      tags:
+      - Admin
+      summary: Retry a failed or dead-letter job
+      parameters:
+      - in: path
+        name: jobId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '202':
+          description: Retry accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedJob'
+        '401':
+          description: Not authenticated
+  /api/v1/admin/service-health:
+    get:
+      tags:
+      - Admin
+      summary: List latest worker and service health snapshots
+      security:
+      - sessionCookie: []
+      - apiToken: []
+      responses:
+        '200':
+          description: Service health snapshot list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required:
+                      - service_name
+                      - status
+                      - metrics_json
+                      - checked_at
+                      properties:
+                        service_name:
+                          type: string
+                        status:
+                          type: string
+                        metrics_json:
+                          type: object
+                          additionalProperties: true
+                        checked_at:
+                          type: string
+                          format: date-time
+        '401':
+          description: Not authenticated
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: structura_session
+      description: HttpOnly browser session cookie issued by `POST /api/v1/auth/session`.
+    apiToken:
+      type: apiKey
+      in: header
+      name: X-API-Token
+      description: Scoped automation token for CLI, watched-folder, and admin flows.
+  schemas:
+    AcceptedJob:
+      type: object
+      additionalProperties: false
+      required:
+      - jobId
+      - status
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - queued
+          - running
+    DocumentSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - title
+      - family
+      - lifecycleState
+      - reviewStatus
+      - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        family:
+          type: string
+        lifecycleState:
+          type: string
+        reviewStatus:
+          type: string
+        documentDate:
+          type: string
+          format: date
+        amountTotal:
+          type: number
+        counterpartyDisplay:
+          type: string
+        thumbnailUrl:
+          type: string
+        folderPaths:
+          type: array
+          items:
+            type: string
+    DocumentDetail:
+      allOf:
+      - $ref: '#/components/schemas/DocumentSummary'
+      - type: object
+        additionalProperties: false
+        required:
+        - pages
+        - assets
+        - extractions
+        - relationships
+        - fields
+        - lineItems
+        - tags
+        properties:
+          description:
+            type: string
+          pages:
+            type: array
+            items:
+              $ref: '#/components/schemas/DocumentPage'
+          assets:
+            type: array
+            items:
+              $ref: '#/components/schemas/DocumentAsset'
+          extractions:
+            type: array
+            items:
+              $ref: '#/components/schemas/ExtractionSummary'
+          fields:
+            type: array
+            items:
+              $ref: '#/components/schemas/ExtractedField'
+          lineItems:
+            type: array
+            items:
+              $ref: '#/components/schemas/LineItem'
+          relationships:
+            type: array
+            items:
+              $ref: '#/components/schemas/DocumentRelationship'
+          tags:
+            type: array
+            items:
+              type: string
+    DocumentAsset:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - assetRole
+      - mimeType
+      - assetUrl
+      properties:
+        id:
+          type: string
+          format: uuid
+        assetRole:
+          type: string
+        pageNumber:
+          type: integer
+        mimeType:
+          type: string
+        assetUrl:
+          type: string
+          description: API-authorized asset URL; object-store URIs must not be exposed directly.
+        sha256:
+          type: string
+    DocumentPage:
+      type: object
+      additionalProperties: false
+      required:
+      - pageNumber
+      properties:
+        pageNumber:
+          type: integer
+          minimum: 1
+        width:
+          type: number
+        height:
+          type: number
+        rotationDegrees:
+          type: integer
+        textContent:
+          type: string
+        imageUrl:
+          type: string
+    ExtractionSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - schemaName
+      - schemaVersion
+      - status
+      - isCurrent
+      properties:
+        schemaName:
+          type: string
+        schemaVersion:
+          type: string
+        status:
+          type: string
+        isCurrent:
+          type: boolean
+        sourceEngine:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        normalizedJson:
+          type: object
+          additionalProperties: true
+        validationJson:
+          type: object
+          additionalProperties: true
+    ExtractedField:
+      type: object
+      additionalProperties: false
+      required:
+      - fieldPath
+      - valueType
+      properties:
+        fieldPath:
+          type: string
+        valueType:
+          type: string
+        textValue:
+          type: string
+        numberValue:
+          type: number
+        dateValue:
+          type: string
+          format: date
+        booleanValue:
+          type: boolean
+        confidence:
+          type: number
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceRef'
+    LineItem:
+      type: object
+      additionalProperties: false
+      required:
+      - ordinal
+      - itemType
+      properties:
+        ordinal:
+          type: integer
+        itemType:
+          type: string
+        description:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+        unitPrice:
+          type: number
+        amount:
+          type: number
+        currency:
+          type: string
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceRef'
+    DocumentRelationship:
+      type: object
+      additionalProperties: false
+      required:
+      - relatedDocumentId
+      - relationshipType
+      properties:
+        relatedDocumentId:
+          type: string
+          format: uuid
+        relationshipType:
+          type: string
+        direction:
+          type: string
+          enum:
+          - from
+          - to
+        confidence:
+          type: number
+        comment:
+          type: string
+    RelationshipWrite:
+      type: object
+      additionalProperties: false
+      required:
+      - fromDocumentId
+      - toDocumentId
+      - relationshipType
+      properties:
+        fromDocumentId:
+          type: string
+          format: uuid
+        toDocumentId:
+          type: string
+          format: uuid
+        relationshipType:
+          type: string
+        confidence:
+          type: number
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceRef'
+        comment:
+          type: string
+    FieldCandidate:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - documentId
+      - fieldPath
+      - valueType
+      - sourceEngine
+      - evidence
+      properties:
+        id:
+          type: string
+          format: uuid
+        documentId:
+          type: string
+          format: uuid
+        extractionId:
+          type: string
+          format: uuid
+        fieldPath:
+          type: string
+        ordinal:
+          type: integer
+        valueType:
+          type: string
+        value:
+          nullable: true
+        normalizedValue:
+          nullable: true
+        currency:
+          type: string
+        confidence:
+          type: number
+        authorityWeight:
+          type: number
+        sourceEngine:
+          type: string
+          enum:
+          - docling
+          - qwen3_vl_4b
+          - qwen3_vl_8b
+          - granite_vision_3b
+          - validator
+          - human
+          - system
+        evidence:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/EvidenceRef'
+        validation:
+          type: object
+          additionalProperties: true
+        status:
+          type: string
+    CanonicalField:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - documentId
+      - fieldPath
+      - valueType
+      - value
+      - sourceKind
+      - reviewStatus
+      - evidence
+      properties:
+        id:
+          type: string
+          format: uuid
+        documentId:
+          type: string
+          format: uuid
+        selectedCandidateId:
+          type: string
+          format: uuid
+        fieldPath:
+          type: string
+        ordinal:
+          type: integer
+        valueType:
+          type: string
+        value:
+          nullable: true
+        currency:
+          type: string
+        sourceKind:
+          type: string
+          enum:
+          - candidate
+          - validator
+          - human
+          - system
+        reviewStatus:
+          type: string
+        evidence:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/EvidenceRef'
+        validation:
+          type: object
+          additionalProperties: true
+        acceptedAt:
+          type: string
+          format: date-time
+    CanonicalFieldWrite:
+      type: object
+      additionalProperties: false
+      required:
+      - fieldPath
+      - valueType
+      - value
+      - sourceKind
+      - evidence
+      properties:
+        selectedCandidateId:
+          type: string
+          format: uuid
+        fieldPath:
+          type: string
+        ordinal:
+          type: integer
+          default: 1
+        valueType:
+          type: string
+        value:
+          nullable: true
+        currency:
+          type: string
+        sourceKind:
+          type: string
+          enum:
+          - candidate
+          - validator
+          - human
+          - system
+        evidence:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/EvidenceRef'
+        reason:
+          type: string
+    Folder:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - name
+      - folderKind
+      properties:
+        id:
+          type: string
+          format: uuid
+        parentId:
+          type: string
+          format: uuid
+        folderKind:
+          type: string
+          enum:
+          - manual
+          - smart
+        name:
+          type: string
+        path:
+          type: string
+        savedQuery:
+          type: object
+          additionalProperties: true
+        aclMode:
+          type: string
+          enum:
+          - private
+          - household
+          - custom
+    FolderWrite:
+      type: object
+      additionalProperties: false
+      required:
+      - name
+      - folderKind
+      properties:
+        parentId:
+          type: string
+          format: uuid
+        folderKind:
+          type: string
+          enum:
+          - manual
+          - smart
+        name:
+          type: string
+        description:
+          type: string
+        savedQuery:
+          type: object
+          additionalProperties: true
+        aclMode:
+          type: string
+    Tag:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - name
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        colorHex:
+          type: string
+        description:
+          type: string
+    TagWrite:
+      type: object
+      additionalProperties: false
+      required:
+      - name
+      properties:
+        name:
+          type: string
+        colorHex:
+          type: string
+        description:
+          type: string
+    DocumentOrganizationWrite:
+      type: object
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+        documentDate:
+          type: string
+          format: date
+        folderIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        primaryFolderId:
+          type: string
+          format: uuid
+        tags:
+          type: array
+          items:
+            type: string
+        filingNotes:
+          type: string
+    Contact:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - displayName
+      properties:
+        id:
+          type: string
+          format: uuid
+        contactType:
+          type: string
+        displayName:
+          type: string
+        normalizedName:
+          type: string
+        aliases:
+          type: array
+          items:
+            type: string
+        identifiers:
+          type: object
+          additionalProperties: true
+    ContactWrite:
+      type: object
+      additionalProperties: false
+      required:
+      - displayName
+      properties:
+        contactType:
+          type: string
+        displayName:
+          type: string
+        aliases:
+          type: array
+          items:
+            type: string
+        identifiers:
+          type: object
+          additionalProperties: true
+    FilingRule:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - name
+      - enabled
+      - conditions
+      - actions
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        enabled:
+          type: boolean
+        priority:
+          type: integer
+        reviewRequired:
+          type: boolean
+        conditions:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        actions:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+    FilingRuleWrite:
+      type: object
+      additionalProperties: false
+      required:
+      - name
+      - conditions
+      - actions
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        enabled:
+          type: boolean
+          default: true
+        priority:
+          type: integer
+          default: 50
+        reviewRequired:
+          type: boolean
+          default: true
+        conditions:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        actions:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+    WatchedFolder:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - path
+      - enabled
+      properties:
+        id:
+          type: string
+          format: uuid
+        path:
+          type: string
+        enabled:
+          type: boolean
+        policy:
+          type: object
+          additionalProperties: true
+        lastScanAt:
+          type: string
+          format: date-time
+    WatchedFolderWrite:
+      type: object
+      additionalProperties: false
+      required:
+      - path
+      properties:
+        path:
+          type: string
+        enabled:
+          type: boolean
+          default: true
+        policy:
+          type: object
+          additionalProperties: true
+    ExportRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - documentIds
+      - exportType
+      properties:
+        documentIds:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: uuid
+        exportType:
+          type: string
+          enum:
+          - originals
+          - originals_plus_json
+          - originals_plus_csv
+          - review_report
+        includeManifest:
+          type: boolean
+          default: true
+    EvidenceRef:
+      type: object
+      additionalProperties: false
+      required:
+      - pageNumber
+      - sourceEngine
+      anyOf:
+      - required:
+        - bbox
+      - required:
+        - elementId
+      - required:
+        - tableId
+        - rowIndex
+      - required:
+        - textSpan
+      - required:
+        - sourceText
+      properties:
+        pageNumber:
+          type: integer
+          minimum: 1
+        bbox:
+          type: array
+          items:
+            type: number
+          minItems: 4
+          maxItems: 4
+        elementId:
+          type: string
+          format: uuid
+        tableId:
+          type: string
+          format: uuid
+        rowIndex:
+          type: integer
+        columnIndex:
+          type: integer
+        sourceText:
+          type: string
+        textSpan:
+          type: object
+          additionalProperties: false
+          required:
+          - start
+          - end
+          properties:
+            start:
+              type: integer
+              minimum: 0
+            end:
+              type: integer
+              minimum: 0
+            basis:
+              type: string
+              enum:
+              - page_text
+              - chunk_text
+              - element_text
+              - raw_model_output
+        sourceEngine:
+          type: string
+          enum:
+          - docling
+          - qwen3_vl_4b
+          - qwen3_vl_8b
+          - granite_vision_3b
+          - validator
+          - human
+          - system
+        confidence:
+          type: number
+    SearchRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - query
+      properties:
+        query:
+          type: string
+          minLength: 1
+        mode:
+          type: string
+          enum:
+          - lexical
+          - semantic
+          - hybrid
+          default: hybrid
+        families:
+          type: array
+          items:
+            type: string
+        folderIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        tags:
+          type: array
+          items:
+            type: string
+        reviewedOnly:
+          type: boolean
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 25
+    SearchResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchResult'
+        debug:
+          type: object
+          additionalProperties: true
+    SearchResult:
+      type: object
+      additionalProperties: false
+      required:
+      - documentId
+      - title
+      - rank
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        family:
+          type: string
+        rank:
+          type: integer
+        score:
+          type: number
+        snippet:
+          type: string
+        matchedChunkId:
+          type: string
+          format: uuid
+        pageNumber:
+          type: integer
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceRef'
+    ReviewTask:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - documentId
+      - taskType
+      - status
+      - priority
+      properties:
+        id:
+          type: string
+          format: uuid
+        documentId:
+          type: string
+          format: uuid
+        taskType:
+          type: string
+        status:
+          type: string
+        priority:
+          type: integer
+        pageNumber:
+          type: integer
+        fieldPath:
+          type: string
+        rationale:
+          type: string
+    JobState:
+      type: object
+      additionalProperties: false
+      required:
+      - jobId
+      - jobType
+      - status
+      - createdAt
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        jobType:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+        errorMessage:
+          type: string
+        result:
+          type: object
+          additionalProperties: true
+    UploadDocumentMultipartRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - file
+      - source
+      properties:
+        file:
+          type: string
+          format: binary
+        source:
+          type: string
+          enum:
+          - web_upload
+          - api_upload
+          - mobile_scan
+          - watched_folder
+          - email_import
+          - bulk_import
+        suppliedTitle:
+          type: string
+        suppliedFolderIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        suppliedTags:
+          type: array
+          items:
+            type: string
+        hintsJson:
+          type: string
+          description: Optional JSON-encoded ingestion hints when using multipart upload.
+    CreateSessionRequest:
+      oneOf:
+      - $ref: '#/components/schemas/PasswordSessionRequest'
+      - $ref: '#/components/schemas/MagicLinkSessionRequest'
+      discriminator:
+        propertyName: method
+        mapping:
+          password: '#/components/schemas/PasswordSessionRequest'
+          magic_link: '#/components/schemas/MagicLinkSessionRequest'
+    PasswordSessionRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - method
+      - email
+      - password
+      properties:
+        method:
+          type: string
+          const: password
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        householdId:
+          type: string
+          format: uuid
+    MagicLinkSessionRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - method
+      - magicLinkToken
+      properties:
+        method:
+          type: string
+          const: magic_link
+        magicLinkToken:
+          type: string
+          minLength: 1
+        householdId:
+          type: string
+          format: uuid
+    SessionInfo:
+      type: object
+      additionalProperties: false
+      required:
+      - sessionId
+      - userId
+      - isAuthenticated
+      - authMethod
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        householdId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        email:
+          type: string
+          format: email
+        authMethod:
+          type: string
+          enum:
+          - password
+          - magic_link
+          - webauthn
+          description: Authentication method persisted on the session record.
+        isAuthenticated:
+          type: boolean
+        expiresAt:
+          type: string
+          format: date-time
+        passwordRotationRequired:
+          type: boolean
+          description: Present when a bootstrap password remains active and should be rotated.
+    CreateMagicLinkRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - email
+      - purpose
+      properties:
+        email:
+          type: string
+          format: email
+        purpose:
+          type: string
+          enum:
+          - bootstrap
+          - invite
+          - recovery
+        householdId:
+          type: string
+          format: uuid

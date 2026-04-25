@@ -1,0 +1,169 @@
+from __future__ import annotations
+
+import os
+import uuid
+
+import pytest
+from fastapi.testclient import TestClient
+
+pytest.importorskip("psycopg")
+
+from apps.api.structura_api.main import create_app
+from lib.auth import AuthService
+from lib.config import get_settings
+from lib.jobs import JobService, record_service_health
+
+
+@pytest.mark.skipif(
+    not os.environ.get("STRUCTURA_TEST_DATABASE_URL"),
+    reason="Set STRUCTURA_TEST_DATABASE_URL to run live Phase 0 auth/job tests.",
+)
+def test_phase0_auth_session_protection_jobs_and_service_health(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database_url = os.environ["STRUCTURA_TEST_DATABASE_URL"]
+    monkeypatch.setenv("STRUCTURA_DATABASE_URL", database_url)
+    monkeypatch.setenv("STRUCTURA_ENV", "test")
+    get_settings.cache_clear()
+
+    unique = uuid.uuid4().hex[:12]
+    email = f"phase0-{unique}@example.com"
+    password = "minimum8"
+    AuthService().bootstrap_admin(
+        email=email,
+        password=password,
+        display_name="Phase 0 Admin",
+        household_name=f"Phase 0 {unique}",
+        must_rotate=True,
+    )
+
+    app = create_app()
+    client = TestClient(app)
+
+    assert client.get("/api/v1/documents").status_code == 401
+    assert client.get(f"/api/v1/assets/{uuid.uuid4()}").status_code == 401
+    assert client.get("/api/v1/migrations/baseline").status_code == 401
+
+    invalid_login = client.post(
+        "/api/v1/auth/session",
+        json={"method": "password", "email": "not-an-email", "password": password},
+    )
+    assert invalid_login.status_code == 422
+
+    login = client.post(
+        "/api/v1/auth/session",
+        json={"method": "password", "email": email, "password": password},
+    )
+    assert login.status_code == 201
+    assert login.json()["authMethod"] == "password"
+    assert login.json()["passwordRotationRequired"] is True
+    assert "structura_session" in client.cookies
+    assert "structura_csrf" in client.cookies
+
+    assert client.get("/api/v1/auth/session").status_code == 200
+    assert client.get("/api/v1/migrations/baseline").status_code == 200
+    assert client.get("/api/v1/documents").json() == {"items": [], "total": 0}
+    assert client.get(f"/api/v1/assets/{uuid.uuid4()}").status_code == 404
+
+    magic = client.post(
+        "/api/v1/auth/magic-links",
+        json={"email": email, "purpose": "bootstrap"},
+    )
+    assert magic.status_code == 202
+    assert magic.json()["accepted"] is True
+    assert "token" in magic.json()
+
+    queue_name = f"phase0-{unique}"
+    job_service = JobService()
+    retryable_job = job_service.create_job(
+        job_type="ingest",
+        payload={"document_id": "retryable-placeholder"},
+        queue_name=queue_name,
+    )
+    claimed = job_service.claim_next_job(worker_name="phase0-test", queue_name=queue_name)
+    assert claimed
+    assert claimed.job_id == retryable_job.job_id
+    failed_retryable = job_service.fail_job(
+        job_id=retryable_job.job_id,
+        error_class="Phase0Retryable",
+        message="exercise delayed retry",
+        retryable=True,
+    )
+    assert failed_retryable.status == "failed"
+    assert job_service.claim_next_job(worker_name="phase0-test", queue_name=queue_name) is None
+
+    job = job_service.create_job(job_type="ingest", payload={"document_id": "placeholder"})
+    failed = JobService().fail_job(
+        job_id=job.job_id,
+        error_class="Phase0Test",
+        message="exercise retry",
+        retryable=False,
+    )
+    assert failed.status == "dead_letter"
+    assert client.get(f"/api/v1/jobs/{job.job_id}").json()["status"] == "dead_letter"
+    assert client.get("/api/v1/admin/jobs", params={"status": "dead_letter"}).status_code == 200
+
+    retry_without_csrf = client.post(f"/api/v1/admin/jobs/{job.job_id}/retry")
+    assert retry_without_csrf.status_code == 403
+    retry = client.post(
+        f"/api/v1/admin/jobs/{job.job_id}/retry",
+        headers={"X-CSRF-Token": client.cookies["structura_csrf"]},
+    )
+    assert retry.status_code == 202
+    assert retry.json()["status"] == "queued"
+
+    record_service_health(service_name="worker-phase0-test", status="ok", metrics={"jobs": 1})
+    health = client.get("/api/v1/admin/service-health")
+    assert health.status_code == 200
+    assert any(item["service_name"] == "worker-phase0-test" for item in health.json()["items"])
+
+    logout = client.delete(
+        "/api/v1/auth/session",
+        headers={"X-CSRF-Token": client.cookies["structura_csrf"]},
+    )
+    assert logout.status_code == 204
+    assert client.get("/api/v1/auth/session").status_code == 401
+
+
+@pytest.mark.skipif(
+    not os.environ.get("STRUCTURA_TEST_DATABASE_URL"),
+    reason="Set STRUCTURA_TEST_DATABASE_URL to run live Phase 0 auth/job tests.",
+)
+def test_phase0_auth_respects_configured_cookie_names(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database_url = os.environ["STRUCTURA_TEST_DATABASE_URL"]
+    monkeypatch.setenv("STRUCTURA_DATABASE_URL", database_url)
+    monkeypatch.setenv("STRUCTURA_ENV", "test")
+    monkeypatch.setenv("STRUCTURA_SESSION_COOKIE_NAME", "custom_structura_session")
+    monkeypatch.setenv("STRUCTURA_CSRF_COOKIE_NAME", "custom_structura_csrf")
+    get_settings.cache_clear()
+
+    unique = uuid.uuid4().hex[:12]
+    email = f"phase0-cookie-{unique}@example.com"
+    password = "minimum8"
+    AuthService().bootstrap_admin(
+        email=email,
+        password=password,
+        display_name="Phase 0 Cookie Admin",
+        household_name=f"Phase 0 Cookie {unique}",
+        must_rotate=False,
+    )
+
+    client = TestClient(create_app())
+    login = client.post(
+        "/api/v1/auth/session",
+        json={"method": "password", "email": email, "password": password},
+    )
+
+    assert login.status_code == 201
+    assert "custom_structura_session" in client.cookies
+    assert "custom_structura_csrf" in client.cookies
+    assert client.get("/api/v1/auth/session").status_code == 200
+
+    logout = client.delete(
+        "/api/v1/auth/session",
+        headers={"X-CSRF-Token": client.cookies["custom_structura_csrf"]},
+    )
+    assert logout.status_code == 204
+    assert client.get("/api/v1/auth/session").status_code == 401

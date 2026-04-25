@@ -1,0 +1,1 @@
+"""Structura application packages."""

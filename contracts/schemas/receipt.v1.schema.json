@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/schemas/receipt.v1.schema.json",
+  "title": "Receipt Extraction v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "document_id",
+    "merchant",
+    "transaction",
+    "line_items",
+    "validation",
+    "created_at"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "receipt"
+    },
+    "schema_version": {
+      "const": "v1"
+    },
+    "document_id": {
+      "$ref": "common_defs.schema.json#/$defs/uuid"
+    },
+    "merchant": {
+      "$ref": "common_defs.schema.json#/$defs/partyCore"
+    },
+    "transaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "date_local"
+      ],
+      "properties": {
+        "date_local": {
+          "$ref": "common_defs.schema.json#/$defs/localDate"
+        },
+        "time_local": {
+          "type": "string"
+        },
+        "register_id": {
+          "type": "string"
+        },
+        "receipt_number": {
+          "type": "string"
+        },
+        "payment_method": {
+          "type": "string"
+        },
+        "payment_reference": {
+          "type": "string"
+        },
+        "subtotal": {
+          "$ref": "common_defs.schema.json#/$defs/money"
+        },
+        "tax": {
+          "$ref": "common_defs.schema.json#/$defs/money"
+        },
+        "tip": {
+          "$ref": "common_defs.schema.json#/$defs/money"
+        },
+        "discount_total": {
+          "$ref": "common_defs.schema.json#/$defs/money"
+        },
+        "total": {
+          "$ref": "common_defs.schema.json#/$defs/money"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "common_defs.schema.json#/$defs/evidenceRef"
+          }
+        }
+      }
+    },
+    "line_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ordinal",
+          "description",
+          "amount"
+        ],
+        "properties": {
+          "ordinal": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sku": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "unit_price": {
+            "$ref": "common_defs.schema.json#/$defs/money"
+          },
+          "amount": {
+            "$ref": "common_defs.schema.json#/$defs/money"
+          },
+          "discount": {
+            "$ref": "common_defs.schema.json#/$defs/money"
+          },
+          "tax_category_hint": {
+            "type": "string"
+          },
+          "category_hint": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "$ref": "common_defs.schema.json#/$defs/evidenceRef"
+            }
+          }
+        }
+      }
+    },
+    "confidence": {
+      "$ref": "common_defs.schema.json#/$defs/confidenceSummary"
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "needs_review",
+        "checks"
+      ],
+      "properties": {
+        "needs_review": {
+          "type": "boolean"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "common_defs.schema.json#/$defs/validationCheck"
+          }
+        }
+      }
+    },
+    "created_at": {
+      "$ref": "common_defs.schema.json#/$defs/timestamp"
+    },
+    "metadata": {
+      "$ref": "common_defs.schema.json#/$defs/metadataObject"
+    }
+  }
+}

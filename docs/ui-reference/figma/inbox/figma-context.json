@@ -1,0 +1,13 @@
+{
+  "fileKey": "5GAPHbduQLu9INBOXUPxJN",
+  "frameId": "17:2",
+  "frameName": "01 Home - Document Operations v3",
+  "viewport": {"width": 1440, "height": 960},
+  "implementationRoute": "/",
+  "designNotes": [
+    "Left navigation is fixed at 176px.",
+    "Top command bar is 56px tall.",
+    "Default workbench uses metrics, filter chips, document table, pipeline summary, and right inspector.",
+    "Browser-facing asset references must use /api/v1/assets/{assetId}."
+  ]
+}

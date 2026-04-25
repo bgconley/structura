@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/events/classify_document_job.v1.schema.json",
+  "title": "Classify Document Job v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "job_id",
+    "created_at",
+    "attempt",
+    "priority",
+    "document_id"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "classify_document_job"
+    },
+    "schema_version": {
+      "const": "v1"
+    },
+    "job_id": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/uuid"
+    },
+    "correlation_id": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/uuid"
+    },
+    "created_at": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/timestamp"
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "priority": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10
+    },
+    "requested_by": {
+      "type": "string",
+      "enum": [
+        "system",
+        "user",
+        "agent",
+        "scheduler"
+      ]
+    },
+    "metadata": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/metadataObject"
+    },
+    "document_id": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/uuid"
+    },
+    "preferred_profiles": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "force_reclassify": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

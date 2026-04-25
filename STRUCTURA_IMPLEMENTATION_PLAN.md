@@ -2,7 +2,7 @@
 
 Last updated: 2026-04-24
 
-This is the working canonical implementation plan for Structura. It is derived from `pro-merged-master-v1.2/`, with the user's clarification that Markdown and DOCX artifacts are co-equal source material.
+This is the working canonical implementation plan for Structura. It is derived from `pro-merged-master-v1.2/`, with the user's clarification that Markdown files are the default working source for duplicate artifact pairs so long as there is no material Markdown/DOCX drift.
 
 ## Non-Negotiable Product Rules
 
@@ -53,12 +53,23 @@ UI sources are defined in `STRUCTURA_UI_FIGMA_QA_PLAN.md`.
 
 ## Source Alignment And Conflict Rules
 
-Markdown and DOCX artifacts are co-equal source material. The stale artifact-pack note that DOCX files are convenience exports must not be used to ignore Word-document content.
+Markdown files are the default working source for duplicate artifact pairs in this repo. The stale artifact-pack note that DOCX files are convenience exports must not be used to ignore Word-document content, but the duplicate DOCX files do not need to be re-read by default when the corresponding Markdown file exists and no material drift is known.
+
+Current parity note:
+
+- `docs/01_App_Specification.md` and `docs/01_App_Specification.docx` were spot-checked on 2026-04-24 and no material content differences were found.
+- `docs/02_Phased_Implementation_Plan.md` and `docs/02_Phased_Implementation_Plan.docx` were spot-checked on 2026-04-24 and no material content differences were found.
+
+Use the DOCX file only when:
+
+- the user explicitly asks for layout/fidelity review;
+- the Markdown file is missing or appears incomplete;
+- a material Markdown/DOCX mismatch is suspected and needs verification.
 
 For non-UI conflicts, use this order:
 
 1. User clarifications made after the artifact pack.
-2. Co-equal DOCX and Markdown artifact content.
+2. Materially aligned Markdown and DOCX artifact content, with Markdown as the default working read.
 3. `docs/10_Architectural_Decision_Record_Summary.md`.
 4. `docs/21_v1.3_Normalization_and_Design_Language.md`.
 5. `database/*.sql` in documented apply order.
@@ -250,7 +261,9 @@ The first implementation run should proceed in this exact order unless blocked:
 
 ## Phase Artifact Review Rule
 
-Each phase below contains a required artifact list. Before implementing that phase, the agentic coder must read the phase section in this plan and review every listed artifact path for that phase. These artifacts are not optional references; they are required context for the implementation work and must be used alongside the phase instructions.
+Each phase below contains a required artifact list. Before implementing that phase, the agentic coder must read the phase section in this plan and review the required artifact set for that phase. These artifacts are not optional references; they are required context for the implementation work and must be used alongside the phase instructions.
+
+For duplicate Markdown/DOCX pairs in the required artifact lists, review the Markdown file by default when the pair is known to be materially aligned. Review the DOCX only if the user requests layout/fidelity review, the Markdown file appears incomplete, or a material mismatch is suspected.
 
 If the phase plan and a required artifact disagree, apply the source alignment rules above. If the disagreement is material and not resolved by those rules, stop and ask the user.
 

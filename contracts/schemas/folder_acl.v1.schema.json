@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/schemas/folder_acl.v1.schema.json",
+  "title": "Folder ACL v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "folder_id",
+    "principal_type",
+    "principal_id",
+    "permission"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "folder_acl"
+    },
+    "schema_version": {
+      "const": "folder_acl.v1"
+    },
+    "folder_id": {
+      "$ref": "common_defs.schema.json#/$defs/uuid"
+    },
+    "principal_type": {
+      "type": "string",
+      "enum": [
+        "user",
+        "household",
+        "role"
+      ]
+    },
+    "principal_id": {
+      "$ref": "common_defs.schema.json#/$defs/uuid"
+    },
+    "permission": {
+      "type": "string",
+      "enum": [
+        "read",
+        "write",
+        "admin"
+      ]
+    },
+    "created_at": {
+      "$ref": "common_defs.schema.json#/$defs/timestamp"
+    }
+  }
+}

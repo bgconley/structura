@@ -1,0 +1,321 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/schemas/common_defs.schema.json",
+  "title": "Structura Common Definitions",
+  "type": "object",
+  "additionalProperties": true,
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "localDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "bbox": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 4,
+      "maxItems": 4,
+      "description": "Normalized [x0, y0, x1, y1] bounding box in page-relative coordinates."
+    },
+    "money": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "amount",
+        "currency"
+      ],
+      "properties": {
+        "amount": {
+          "type": "number"
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$",
+          "description": "ISO 4217 currency code."
+        }
+      }
+    },
+    "confidenceSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "overall"
+      ],
+      "properties": {
+        "overall": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "ocr": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "layout": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "schema_fit": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "comments": {
+          "type": "string"
+        }
+      }
+    },
+    "textSpan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "start",
+        "end"
+      ],
+      "properties": {
+        "start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "basis": {
+          "type": "string",
+          "enum": [
+            "page_text",
+            "chunk_text",
+            "element_text",
+            "raw_model_output"
+          ]
+        }
+      }
+    },
+    "evidenceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "page_number",
+        "source_engine"
+      ],
+      "anyOf": [
+        {
+          "required": [
+            "bbox"
+          ]
+        },
+        {
+          "required": [
+            "element_id"
+          ]
+        },
+        {
+          "required": [
+            "table_id",
+            "row_index"
+          ]
+        },
+        {
+          "required": [
+            "text_span"
+          ]
+        },
+        {
+          "required": [
+            "source_text"
+          ]
+        }
+      ],
+      "properties": {
+        "page_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "bbox": {
+          "$ref": "#/$defs/bbox"
+        },
+        "element_id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "table_id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "row_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "column_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source_text": {
+          "type": "string"
+        },
+        "text_span": {
+          "$ref": "#/$defs/textSpan"
+        },
+        "source_engine": {
+          "type": "string",
+          "enum": [
+            "docling",
+            "qwen3_vl_4b",
+            "qwen3_vl_8b",
+            "granite_vision_3b",
+            "validator",
+            "human",
+            "system"
+          ]
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "partyCore": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "display_name"
+      ],
+      "properties": {
+        "display_name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "normalized_name": {
+          "type": "string"
+        },
+        "party_type": {
+          "type": "string",
+          "enum": [
+            "person",
+            "company",
+            "merchant",
+            "provider",
+            "payer",
+            "government",
+            "household_member",
+            "other"
+          ]
+        },
+        "identifiers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "address": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidenceRef"
+          }
+        }
+      }
+    },
+    "validationCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "status"
+      ],
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "passed",
+            "failed",
+            "warning",
+            "not_applicable"
+          ]
+        },
+        "message": {
+          "type": "string"
+        },
+        "measured_value": {},
+        "expected_value": {},
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidenceRef"
+          }
+        }
+      }
+    },
+    "citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document_id",
+        "page_number"
+      ],
+      "properties": {
+        "document_id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "page_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "element_id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "table_id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "excerpt": {
+          "type": "string"
+        }
+      }
+    },
+    "metadataObject": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "string",
+          "number",
+          "boolean",
+          "null",
+          "object",
+          "array"
+        ]
+      }
+    }
+  }
+}
