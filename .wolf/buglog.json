@@ -300,6 +300,18 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-25T03:52:00-04:00"
+    },
+    {
+      "id": "bug-026",
+      "timestamp": "2026-04-25T04:05:00-04:00",
+      "error_message": "Phase 1 had no browser smoke test against the live Compose API and database stack.",
+      "file": "tests/e2e/phase1-live.spec.ts",
+      "root_cause": "The existing Playwright workflow mocked API responses, while live API/storage/database behavior was verified separately by integration tests.",
+      "fix": "Added an opt-in STRUCTURA_E2E_LIVE=1 Playwright test that logs in, uploads a document, opens the viewer, and asserts protected asset URLs through the real web/API/Postgres stack.",
+      "tags": ["playwright", "e2e", "compose", "phase-1", "gpu-node"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T04:05:00-04:00"
     }
   ]
 }

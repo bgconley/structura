@@ -1,6 +1,6 @@
 import { FormEvent, startTransition, useDeferredValue, useEffect, useState } from "react";
 
-const apiBaseUrl = import.meta.env.VITE_STRUCTURA_API_BASE_URL ?? "http://localhost:8000";
+const apiBaseUrl = import.meta.env.VITE_STRUCTURA_API_BASE_URL ?? "";
 
 type SessionInfo = {
   displayName?: string;

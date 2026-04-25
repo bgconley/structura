@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-structura}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-structura}
     ports:
-      - "${STRUCTURA_POSTGRES_PORT:-5432}:5432"
+      - "${STRUCTURA_POSTGRES_BIND_HOST:-127.0.0.1}:${STRUCTURA_POSTGRES_PORT:-5432}:5432"
     volumes:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/postgres:/var/lib/postgresql/data
     healthcheck:
@@ -26,7 +26,7 @@ services:
       STRUCTURA_CONTRACTS_DIR: /app/contracts
       STRUCTURA_DATABASE_DIR: /app/database
     ports:
-      - "${STRUCTURA_API_PORT:-8000}:8000"
+      - "${STRUCTURA_API_BIND_HOST:-127.0.0.1}:${STRUCTURA_API_PORT:-8000}:8000"
     volumes:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/config/api:/srv/structura/config/api
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/canonical:/srv/structura/objects/canonical
@@ -45,18 +45,24 @@ services:
 
   web:
     build:
-      context: apps/web
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_STRUCTURA_API_BASE_URL: ${VITE_STRUCTURA_API_BASE_URL:-}
     environment:
-      VITE_STRUCTURA_API_BASE_URL: ${VITE_STRUCTURA_API_BASE_URL:-http://localhost:8000}
+      STRUCTURA_API_UPSTREAM: ${STRUCTURA_API_UPSTREAM:-http://api:8000}
     ports:
-      - "${STRUCTURA_WEB_PORT:-3000}:3000"
+      - "${STRUCTURA_WEB_BIND_HOST:-127.0.0.1}:${STRUCTURA_WEB_PORT:-3000}:3000"
     volumes:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/config/web:/srv/structura/config/web
-      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/cache:/srv/structura/cache
     depends_on:
       api:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   worker-ingest:
     build:
@@ -212,7 +218,7 @@ services:
       dockerfile: apps/api/Dockerfile
     command: ["python", "-m", "workers.model_placeholder", "--name", "model-qwen", "--host", "0.0.0.0", "--port", "8100"]
     ports:
-      - "8100:8100"
+      - "${STRUCTURA_MODEL_BIND_HOST:-127.0.0.1}:${STRUCTURA_MODEL_QWEN_PORT:-8100}:8100"
     volumes:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/models:/srv/structura/models
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/models:/srv/structura/logs/models
@@ -226,7 +232,7 @@ services:
       dockerfile: apps/api/Dockerfile
     command: ["python", "-m", "workers.model_placeholder", "--name", "model-granite", "--host", "0.0.0.0", "--port", "8101"]
     ports:
-      - "8101:8101"
+      - "${STRUCTURA_MODEL_BIND_HOST:-127.0.0.1}:${STRUCTURA_MODEL_GRANITE_PORT:-8101}:8101"
     volumes:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/models:/srv/structura/models
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/models:/srv/structura/logs/models
@@ -240,7 +246,7 @@ services:
       dockerfile: apps/api/Dockerfile
     command: ["python", "-m", "workers.model_placeholder", "--name", "model-embed", "--host", "0.0.0.0", "--port", "8102"]
     ports:
-      - "8102:8102"
+      - "${STRUCTURA_MODEL_BIND_HOST:-127.0.0.1}:${STRUCTURA_MODEL_EMBED_PORT:-8102}:8102"
     volumes:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/models:/srv/structura/models
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/models:/srv/structura/logs/models
@@ -251,7 +257,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "${STRUCTURA_REDIS_BIND_HOST:-127.0.0.1}:${STRUCTURA_REDIS_PORT:-6379}:6379"
     volumes:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/redis:/data
     profiles: ["redis-fallback"]
