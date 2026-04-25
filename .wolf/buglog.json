@@ -264,6 +264,18 @@
       "related_bugs": ["bug-021"],
       "occurrences": 1,
       "last_seen": "2026-04-25T03:34:56-04:00"
+    },
+    {
+      "id": "bug-023",
+      "timestamp": "2026-04-25T03:44:00-04:00",
+      "error_message": "GPU-node bootstrap failed: pip install -e .[dev] reported multiple top-level packages discovered in a flat-layout.",
+      "file": "pyproject.toml",
+      "root_cause": "The project used setuptools auto-discovery in a flat repository containing non-package top-level directories such as database, contracts, and infrastructure.",
+      "fix": "Configured setuptools package discovery to include only apps*, lib*, and workers* so editable installs can be used for GPU-node test environments.",
+      "tags": ["python", "packaging", "setuptools", "gpu-node", "bootstrap"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T03:44:00-04:00"
     }
   ]
 }

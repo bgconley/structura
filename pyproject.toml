@@ -27,6 +27,9 @@ dev = [
   "types-jsonschema>=4.0",
 ]
 
+[tool.setuptools.packages.find]
+include = ["apps*", "lib*", "workers*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
