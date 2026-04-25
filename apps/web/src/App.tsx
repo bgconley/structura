@@ -57,7 +57,23 @@ export default function App() {
       setDetail(null);
       return;
     }
-    void loadDetail(selectedId);
+    let cancelled = false;
+    setDetail(null);
+    void (async () => {
+      try {
+        const next = await fetchJson<DocumentDetail>(`/api/v1/documents/${selectedId}`);
+        if (!cancelled) {
+          setDetail(next);
+        }
+      } catch (exc) {
+        if (!cancelled) {
+          setError(exc instanceof Error ? exc.message : "Unable to load document detail");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [selectedId, session?.isAuthenticated]);
 
   async function bootstrap() {
@@ -94,14 +110,6 @@ export default function App() {
     const [folderItems, tagItems] = await Promise.all([listFolders(), listTags()]);
     setFolders(folderItems);
     setTags(tagItems);
-  }
-
-  async function loadDetail(documentId: string) {
-    try {
-      setDetail(await fetchJson<DocumentDetail>(`/api/v1/documents/${documentId}`));
-    } catch (exc) {
-      setError(exc instanceof Error ? exc.message : "Unable to load document detail");
-    }
   }
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {

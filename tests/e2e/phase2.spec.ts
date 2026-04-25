@@ -34,6 +34,7 @@ test("Phase 2 folder, tag, and manual filing workflow propagates to list and vie
 
   await page.getByRole("row", {name: /Existing Warranty/}).click();
   const inspector = page.locator(".inspector");
+  await expect(inspector.getByLabel("Title")).toHaveValue("Existing Warranty");
   await inspector.getByLabel("Title").fill("Filed Warranty Packet");
   await inspector.getByLabel("Document date").fill("2026-04-24");
   await inspector.getByLabel("Filing notes").fill("Phase 2 manual filing note.");

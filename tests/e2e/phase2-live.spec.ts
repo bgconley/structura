@@ -42,6 +42,7 @@ test.describe("Phase 2 live GPU stack", () => {
 
     await page.getByRole("row", {name: new RegExp(sourceTitle)}).click();
     const inspector = page.locator(".inspector");
+    await expect(inspector.getByLabel("Title")).toHaveValue(sourceTitle);
     await inspector.getByLabel("Title").fill(filedTitle);
     await inspector.getByLabel("Document date").fill("2026-04-24");
     await inspector.getByLabel("Filing notes").fill("Live GPU Phase 2 manual filing.");
