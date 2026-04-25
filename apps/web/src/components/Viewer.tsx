@@ -1,16 +1,23 @@
 import {assetUrl} from "../api";
 import {familyLabel, formatDate} from "../format";
-import type {DocumentDetail, DocumentSummary} from "../types";
+import type {DocumentDetail, DocumentOrganizationWrite, DocumentSummary, Folder, Tag} from "../types";
+import {FilingPanel} from "./FilingPanel";
 import {FactRow, ReviewChip, StatusChip, TrustLine} from "./Status";
 
 export function Viewer({
   document,
   summary,
   onBack,
+  folders,
+  tags,
+  onSaveOrganization,
 }: {
   document: DocumentDetail | null;
   summary?: DocumentSummary;
   onBack: () => void;
+  folders: Folder[];
+  tags: Tag[];
+  onSaveOrganization: (documentId: string, payload: DocumentOrganizationWrite) => Promise<void>;
 }) {
   const active = document ?? summary;
   const original = document?.assets.find((asset) => asset.assetRole === "original");
@@ -82,6 +89,12 @@ export function Viewer({
           <button type="button">File document</button>
           <button type="button">Link document</button>
         </div>
+        <FilingPanel
+          document={document}
+          folders={folders}
+          tags={tags}
+          onSave={onSaveOrganization}
+        />
       </aside>
     </section>
   );

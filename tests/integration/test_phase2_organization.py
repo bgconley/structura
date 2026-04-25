@@ -231,6 +231,8 @@ def test_phase2_document_organization_is_atomic_visible_and_audited(
     by_folder = client.get("/api/v1/documents", params={"folderId": child["id"]})
     assert by_folder.status_code == 200
     assert any(item["id"] == document_id for item in by_folder.json()["items"])
+    filed_summary = next(item for item in by_folder.json()["items"] if item["id"] == document_id)
+    assert {tag_name, "urgent"} <= set(filed_summary["tags"])
 
     detail = client.get(f"/api/v1/documents/{document_id}")
     assert detail.status_code == 200

@@ -6,12 +6,31 @@ import {LoginScreen} from "./components/LoginScreen";
 import {Sidebar} from "./components/Sidebar";
 import {TopCommand} from "./components/TopCommand";
 import {Viewer} from "./components/Viewer";
-import type {DocumentDetail, DocumentListResponse, DocumentSummary, SessionInfo, ViewMode} from "./types";
+import {
+  createFolder,
+  createTag,
+  listFolders,
+  listTags,
+  updateDocumentOrganization,
+} from "./organizationApi";
+import type {
+  DocumentDetail,
+  DocumentListResponse,
+  DocumentOrganizationWrite,
+  DocumentSummary,
+  Folder,
+  SessionInfo,
+  Tag,
+  ViewMode,
+} from "./types";
 
 export default function App() {
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
   const [total, setTotal] = useState(0);
+  const [folders, setFolders] = useState<Folder[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<DocumentDetail | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("inbox");
@@ -30,8 +49,8 @@ export default function App() {
     if (!session?.isAuthenticated) {
       return;
     }
-    void loadDocuments(deferredQuery);
-  }, [deferredQuery, session?.isAuthenticated]);
+    void loadDocuments(deferredQuery, activeFolderId);
+  }, [activeFolderId, deferredQuery, session?.isAuthenticated]);
 
   useEffect(() => {
     if (!selectedId || !session?.isAuthenticated) {
@@ -45,7 +64,7 @@ export default function App() {
     try {
       const current = await fetchJson<SessionInfo>("/api/v1/auth/session");
       setSession(current);
-      await loadDocuments("");
+      await Promise.all([loadDocuments("", activeFolderId), loadOrganization()]);
     } catch {
       setSession(null);
     } finally {
@@ -53,10 +72,13 @@ export default function App() {
     }
   }
 
-  async function loadDocuments(search: string) {
+  async function loadDocuments(search: string, folderId: string | null) {
     const params = new URLSearchParams();
     if (search.trim()) {
       params.set("q", search.trim());
+    }
+    if (folderId) {
+      params.set("folderId", folderId);
     }
     const payload = await fetchJson<DocumentListResponse>(
       `/api/v1/documents${params.size ? `?${params}` : ""}`,
@@ -66,6 +88,12 @@ export default function App() {
     startTransition(() => {
       setSelectedId((current) => current ?? payload.items[0]?.id ?? null);
     });
+  }
+
+  async function loadOrganization() {
+    const [folderItems, tagItems] = await Promise.all([listFolders(), listTags()]);
+    setFolders(folderItems);
+    setTags(tagItems);
   }
 
   async function loadDetail(documentId: string) {
@@ -112,12 +140,47 @@ export default function App() {
         headers: {"X-CSRF-Token": csrfToken()},
         body,
       });
-      await loadDocuments(deferredQuery);
+      await loadDocuments(deferredQuery, activeFolderId);
     } catch (exc) {
       setError(exc instanceof Error ? exc.message : "Upload failed");
     } finally {
       setIsUploading(false);
     }
+  }
+
+  async function handleSelectFolder(folderId: string | null) {
+    setActiveFolderId(folderId);
+  }
+
+  async function handleCreateFolder(name: string, folderKind: "manual" | "smart") {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      return;
+    }
+    await createFolder({
+      folderKind,
+      name: trimmed,
+      ...(folderKind === "smart" ? {savedQuery: {review_status: ["needs_review"]}} : {}),
+    });
+    await loadOrganization();
+  }
+
+  async function handleCreateTag(name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      return;
+    }
+    await createTag({name: trimmed});
+    await loadOrganization();
+  }
+
+  async function handleSaveOrganization(
+    documentId: string,
+    payload: DocumentOrganizationWrite,
+  ) {
+    const updated = await updateDocumentOrganization(documentId, payload);
+    setDetail(updated);
+    await loadDocuments(deferredQuery, activeFolderId);
   }
 
   const selectedSummary = documents.find((document) => document.id === selectedId) ?? documents[0];
@@ -146,6 +209,9 @@ export default function App() {
             document={detail}
             summary={selectedSummary}
             onBack={() => setViewMode("inbox")}
+            folders={folders}
+            tags={tags}
+            onSaveOrganization={handleSaveOrganization}
           />
         ) : (
           <Inbox
@@ -160,6 +226,13 @@ export default function App() {
             setSelectedId={setSelectedId}
             openViewer={() => setViewMode("viewer")}
             uploadFile={uploadFile}
+            folders={folders}
+            tags={tags}
+            activeFolderId={activeFolderId}
+            onSelectFolder={handleSelectFolder}
+            onCreateFolder={handleCreateFolder}
+            onCreateTag={handleCreateTag}
+            onSaveOrganization={handleSaveOrganization}
           />
         )}
       </main>

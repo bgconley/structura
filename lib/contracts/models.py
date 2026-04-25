@@ -183,6 +183,7 @@ class DocumentSummary(ContractModel):
     counterparty_display: str | None = Field(default=None, alias="counterpartyDisplay")
     thumbnail_url: str | None = Field(default=None, alias="thumbnailUrl")
     folder_paths: list[str] = Field(default_factory=list, alias="folderPaths")
+    tags: list[str] = Field(default_factory=list)
 
 
 class DocumentAsset(ContractModel):
@@ -210,7 +211,7 @@ class DocumentDetail(DocumentSummary):
     relationships: list[dict[str, Any]]
     fields: list[dict[str, Any]]
     line_items: list[dict[str, Any]] = Field(alias="lineItems")
-    tags: list[str]
+    tags: list[str] = Field(default_factory=list)
     description: str | None = None
     folder_ids: list[UUID] = Field(default_factory=list, alias="folderIds")
     primary_folder_id: UUID | None = Field(default=None, alias="primaryFolderId")

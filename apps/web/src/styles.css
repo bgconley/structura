@@ -35,7 +35,9 @@ body {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
 }
 
@@ -517,6 +519,212 @@ button:disabled {
   color: var(--blue);
 }
 
+.organization-rail {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 10px;
+  margin: 0 0 16px;
+}
+
+.org-column,
+.filing-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.panel-title.compact {
+  min-height: 36px;
+}
+
+.panel-title.compact span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.folder-tree {
+  display: grid;
+  gap: 6px;
+  max-height: 158px;
+  overflow: auto;
+  padding: 8px;
+}
+
+.folder-tree button {
+  min-height: 34px;
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 4px 8px;
+  align-items: center;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: var(--raised);
+  color: var(--text);
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.folder-tree button.selected {
+  border-color: #bfdbfe;
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.folder-tree button:disabled {
+  opacity: 1;
+}
+
+.folder-tree button span {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  background: #dbeafe;
+  color: var(--blue);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.folder-tree button strong,
+.folder-tree button small,
+.folder-tree button em {
+  grid-column: 2;
+}
+
+.folder-tree button strong {
+  font-size: 11px;
+}
+
+.folder-tree button small,
+.folder-tree button em,
+.empty-copy {
+  color: var(--muted);
+  font-size: 10px;
+  font-style: normal;
+}
+
+.empty-copy {
+  margin: 8px;
+}
+
+.quick-create {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 6px;
+  padding: 8px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.quick-create input,
+.quick-create select,
+.filing-panel input,
+.filing-panel textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--text);
+  padding: 7px 8px;
+  font-size: 11px;
+}
+
+.quick-create button {
+  border: 1px solid var(--blue);
+  background: var(--blue);
+  color: #ffffff;
+  border-radius: 6px;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tag-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 114px;
+  overflow: auto;
+  padding: 8px;
+}
+
+.tag-cloud span,
+.tag-choice span {
+  border: 1px solid color-mix(in srgb, var(--tag-color, var(--blue)) 38%, #ffffff);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tag-color, var(--blue)) 10%, #ffffff);
+  color: var(--text);
+  padding: 4px 8px;
+  font-size: 10px;
+}
+
+.filing-panel {
+  margin-top: 16px;
+  padding: 10px;
+}
+
+.filing-panel label,
+.filing-panel fieldset {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0;
+  color: var(--text-strong);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.filing-panel fieldset {
+  border: 1px solid var(--line-soft);
+  border-radius: 7px;
+  padding: 8px;
+}
+
+.filing-panel legend {
+  padding: 0 4px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.choice-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  font-weight: 500;
+}
+
+.filing-panel .choice-main,
+.filing-panel .primary-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-weight: 500;
+}
+
+.choice-row input,
+.tag-choice input {
+  width: auto;
+}
+
+.choice-row small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.tag-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .document-panel,
 .pipeline-panel,
 .viewer-card,
@@ -651,6 +859,17 @@ tbody tr.selected {
 .pipeline-state {
   color: var(--green);
   font-weight: 600;
+}
+
+.table-tags,
+.muted-cell {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.table-tags {
+  color: var(--blue);
+  font-weight: 700;
 }
 
 .empty-state {
@@ -994,7 +1213,8 @@ tbody tr.selected {
   }
 
   .home-grid,
-  .viewer-grid {
+  .viewer-grid,
+  .organization-rail {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -1039,7 +1259,8 @@ tbody tr.selected {
   }
 
   .metrics-row,
-  .stage-row {
+  .stage-row,
+  .quick-create {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

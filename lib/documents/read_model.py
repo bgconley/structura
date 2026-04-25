@@ -58,7 +58,16 @@ SELECT
       WHERE dfm.document_id = d.id
     ),
     ARRAY[]::text[]
-  ) AS folder_paths
+  ) AS folder_paths,
+  COALESCE(
+    (
+      SELECT array_agg(t.name::text ORDER BY lower(t.name::text), t.id)
+      FROM document_tags dt
+      JOIN tags t ON t.id = dt.tag_id
+      WHERE dt.document_id = d.id
+    ),
+    ARRAY[]::text[]
+  ) AS tags
 FROM documents d
 LEFT JOIN document_primary_amounts_v a ON a.document_id = d.id
 WHERE d.deleted_at IS NULL
@@ -284,6 +293,7 @@ def _document_summary_from_row(row: dict[str, object]) -> DocumentSummary:
             "counterpartyDisplay": row.get("counterparty_display"),
             "thumbnailUrl": f"/api/v1/assets/{thumbnail_asset_id}" if thumbnail_asset_id else None,
             "folderPaths": _string_list(row.get("folder_paths")),
+            "tags": _string_list(row.get("tags")),
         }
     )
 

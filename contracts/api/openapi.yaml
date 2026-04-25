@@ -1026,6 +1026,10 @@ components:
           type: array
           items:
             type: string
+        tags:
+          type: array
+          items:
+            type: string
     DocumentDetail:
       allOf:
       - $ref: '#/components/schemas/DocumentSummary'

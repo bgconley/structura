@@ -1,6 +1,7 @@
 import {defineConfig, devices} from "@playwright/test";
 
 const liveStack = process.env.STRUCTURA_E2E_LIVE === "1";
+const gpuWebUrl = process.env.STRUCTURA_E2E_WEB_URL ?? "http://10.25.0.50:13000";
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -9,7 +10,7 @@ export default defineConfig({
     timeout: 5_000,
   },
   use: {
-    baseURL: liveStack ? process.env.STRUCTURA_E2E_WEB_URL ?? "http://127.0.0.1:3000" : "http://localhost:4173",
+    baseURL: liveStack ? gpuWebUrl : "http://localhost:4173",
     viewport: {width: 1440, height: 960},
     trace: "retain-on-failure",
   },
