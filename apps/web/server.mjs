@@ -2,12 +2,18 @@ import {createReadStream} from "node:fs";
 import {readFile, stat} from "node:fs/promises";
 import {createServer} from "node:http";
 import {extname, join, normalize, relative} from "node:path";
+import {Readable} from "node:stream";
+import {pipeline} from "node:stream/promises";
 import {fileURLToPath} from "node:url";
 
 const distRoot = fileURLToPath(new URL("./dist", import.meta.url));
 const indexPath = join(distRoot, "index.html");
 const port = Number.parseInt(process.env.PORT ?? "3000", 10);
 const apiUpstream = new URL(process.env.STRUCTURA_API_UPSTREAM ?? "http://api:8000");
+const proxyMaxBodyBytes = Number.parseInt(
+  process.env.STRUCTURA_PROXY_MAX_BODY_BYTES ?? `${100 * 1024 * 1024}`,
+  10,
+);
 
 const mimeTypes = new Map([
   [".css", "text/css; charset=utf-8"],
@@ -42,6 +48,12 @@ createServer(async (request, response) => {
 
 async function proxyApi(request, response, url) {
   const upstreamUrl = new URL(url.pathname + url.search, apiUpstream);
+  if (requestExceedsProxyLimit(request)) {
+    response.writeHead(413, {"Content-Type": "text/plain; charset=utf-8"});
+    response.end("Request body exceeds proxy limit");
+    return;
+  }
+
   const headers = new Headers();
   for (const [name, value] of Object.entries(request.headers)) {
     if (value === undefined) {
@@ -53,15 +65,17 @@ async function proxyApi(request, response, url) {
     headers.set(name, Array.isArray(value) ? value.join(", ") : value);
   }
 
-  const body = ["GET", "HEAD"].includes(request.method ?? "GET")
-    ? undefined
-    : await readRequestBody(request);
-  const upstreamResponse = await fetch(upstreamUrl, {
+  const body = ["GET", "HEAD"].includes(request.method ?? "GET") ? undefined : request;
+  const requestInit = {
     method: request.method,
     headers,
     body,
     redirect: "manual",
-  });
+  };
+  if (body) {
+    requestInit.duplex = "half";
+  }
+  const upstreamResponse = await fetch(upstreamUrl, requestInit);
 
   for (const [name, value] of upstreamResponse.headers) {
     if (["connection", "content-encoding", "transfer-encoding"].includes(name.toLowerCase())) {
@@ -81,7 +95,21 @@ async function proxyApi(request, response, url) {
   }
 
   response.writeHead(upstreamResponse.status);
-  response.end(Buffer.from(await upstreamResponse.arrayBuffer()));
+  if (!upstreamResponse.body || request.method === "HEAD") {
+    response.end();
+    return;
+  }
+  await pipeline(Readable.fromWeb(upstreamResponse.body), response);
+}
+
+function requestExceedsProxyLimit(request) {
+  const rawLength = request.headers["content-length"];
+  const contentLength = Array.isArray(rawLength) ? rawLength[0] : rawLength;
+  if (!contentLength) {
+    return false;
+  }
+  const parsedLength = Number.parseInt(contentLength, 10);
+  return Number.isFinite(parsedLength) && parsedLength > proxyMaxBodyBytes;
 }
 
 async function serveStatic(response, pathname) {
@@ -111,12 +139,4 @@ async function resolveStaticPath(pathname) {
   } catch {
     return indexPath;
   }
-}
-
-async function readRequestBody(request) {
-  const chunks = [];
-  for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  }
-  return Buffer.concat(chunks);
 }

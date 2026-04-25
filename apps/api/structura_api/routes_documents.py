@@ -21,7 +21,7 @@ from lib.documents.read_model import (
     get_document_detail,
     list_document_summaries,
 )
-from lib.jobs import JobService, create_job_with_cursor
+from lib.jobs import create_job_with_cursor
 from lib.storage import (
     InvalidObjectUri,
     ObjectStorage,
@@ -30,7 +30,6 @@ from lib.storage import (
     StoredObject,
     UploadTooLarge,
 )
-from workers.previews import PreviewError, generate_phase1_preview
 
 router = APIRouter(prefix="/api/v1", tags=["Documents"])
 
@@ -292,6 +291,7 @@ def create_document(
                     cur,
                     job_id=ingest_job_id,
                     job_type="ingest",
+                    household_id=principal.household_id,
                     document_id=document_id,
                     batch_id=batch["id"],
                     payload=ingest_payload,
@@ -306,6 +306,7 @@ def create_document(
                     cur,
                     job_id=preview_job_id,
                     job_type="preview",
+                    household_id=principal.household_id,
                     document_id=document_id,
                     batch_id=batch["id"],
                     payload={
@@ -341,22 +342,6 @@ def create_document(
         raise
     finally:
         storage.cleanup_staged(staged)
-
-    if document_id and preview_job_id:
-        try:
-            generate_phase1_preview(document_id, storage=storage)
-            JobService().complete_job(
-                job_id=preview_job_id,
-                result={"preview_status": "fallback_generated"},
-            )
-        except (PreviewError, StorageError, OSError) as exc:
-            JobService().fail_job(
-                job_id=preview_job_id,
-                error_class=exc.__class__.__name__,
-                message="Phase 1 preview generation failed",
-                retryable=True,
-                suppress=True,
-            )
 
     if not accepted_job:
         raise HTTPException(status_code=500, detail="Upload job was not created")

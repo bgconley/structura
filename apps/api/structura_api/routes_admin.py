@@ -4,14 +4,14 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from apps.api.structura_api.dependencies import current_principal
+from apps.api.structura_api.dependencies import require_admin
 from lib.db.connection import db_connection
 
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin"])
 
 
 @router.get("/service-health")
-def service_health(_principal: Annotated[object, Depends(current_principal)]) -> dict[str, object]:
+def service_health(_principal: Annotated[object, Depends(require_admin)]) -> dict[str, object]:
     with db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(

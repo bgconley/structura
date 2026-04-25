@@ -24,7 +24,10 @@ test("Phase 1 Inbox to Viewer workflow uses protected asset URLs", async ({page,
   await page.getByRole("row", {name: /phase1-browser-fixture/}).click();
   await expect(page.locator(".inspector")).toContainText("phase1-browser-fixture");
   await expect(page.locator(".inspector")).toContainText("SHA-256");
-  await page.screenshot({path: testInfo.outputPath("inbox-playwright-screenshot.png"), fullPage: true});
+  await expect(page).toHaveScreenshot("phase1-inbox.png", {
+    fullPage: true,
+    maxDiffPixelRatio: 0.02,
+  });
 
   await page.locator(".page-heading").getByRole("button", {name: "Open Viewer"}).click();
   await expect(page.getByRole("heading", {name: "Document Viewer"})).toBeVisible();
@@ -36,7 +39,10 @@ test("Phase 1 Inbox to Viewer workflow uses protected asset URLs", async ({page,
     "href",
     `${apiOrigin}/api/v1/assets/44444444-4444-4444-8444-444444444444`,
   );
-  await page.screenshot({path: testInfo.outputPath("viewer-playwright-screenshot.png"), fullPage: true});
+  await expect(page).toHaveScreenshot("phase1-viewer.png", {
+    fullPage: true,
+    maxDiffPixelRatio: 0.02,
+  });
 
   await page.getByRole("button", {name: "Back to Inbox"}).click();
   await expect(page.getByRole("heading", {name: "Document Operations"})).toBeVisible();

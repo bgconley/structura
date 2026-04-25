@@ -1,4 +1,5 @@
 from lib.jobs.service import (
+    ClaimedJob,
     JobService,
     JobServiceError,
     PayloadSafetyError,
@@ -12,6 +13,7 @@ from lib.jobs.service import (
 
 __all__ = [
     "JobService",
+    "ClaimedJob",
     "JobServiceError",
     "PayloadSafetyError",
     "QueueTransportProfile",

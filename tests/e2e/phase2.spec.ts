@@ -14,7 +14,7 @@ test.beforeEach(async ({context, page}) => {
 
 test("Phase 2 folder, tag, and manual filing workflow propagates to list and viewer", async ({
   page,
-}, testInfo) => {
+}) => {
   await page.goto("/");
   await expect(page.getByRole("heading", {name: "Document Operations"})).toBeVisible();
   await expect(page.getByRole("treeitem", {name: /Home/})).toBeVisible();
@@ -57,7 +57,10 @@ test("Phase 2 folder, tag, and manual filing workflow propagates to list and vie
   await expect(page.getByRole("heading", {name: "Filed Warranty Packet"})).toBeVisible();
   await expect(page.locator(".facts-panel")).toContainText("/Claims");
   await expect(page.locator(".facts-panel")).toContainText("deductible");
-  await page.screenshot({path: testInfo.outputPath("phase2-filing-workflow.png"), fullPage: true});
+  await expect(page).toHaveScreenshot("phase2-filing-workflow.png", {
+    fullPage: true,
+    maxDiffPixelRatio: 0.02,
+  });
 });
 
 test("Phase 2 filing surfaces remain reachable on mobile width", async ({page}) => {

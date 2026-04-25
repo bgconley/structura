@@ -29,7 +29,7 @@ def test_phase0_auth_session_protection_jobs_and_service_health(
     unique = uuid.uuid4().hex[:12]
     email = f"phase0-{unique}@example.com"
     password = "minimum8"
-    AuthService().bootstrap_admin(
+    bootstrap = AuthService().bootstrap_admin(
         email=email,
         password=password,
         display_name="Phase 0 Admin",
@@ -77,6 +77,7 @@ def test_phase0_auth_session_protection_jobs_and_service_health(
     job_service = JobService()
     retryable_job = job_service.create_job(
         job_type="ingest",
+        household_id=bootstrap.household_id,
         payload={"document_id": "retryable-placeholder"},
         queue_name=queue_name,
     )
@@ -92,7 +93,11 @@ def test_phase0_auth_session_protection_jobs_and_service_health(
     assert failed_retryable.status == "failed"
     assert job_service.claim_next_job(worker_name="phase0-test", queue_name=queue_name) is None
 
-    job = job_service.create_job(job_type="ingest", payload={"document_id": "placeholder"})
+    job = job_service.create_job(
+        job_type="ingest",
+        household_id=bootstrap.household_id,
+        payload={"document_id": "placeholder"},
+    )
     failed = JobService().fail_job(
         job_id=job.job_id,
         error_class="Phase0Test",
@@ -111,6 +116,7 @@ def test_phase0_auth_session_protection_jobs_and_service_health(
     )
     assert retry.status_code == 202
     assert retry.json()["status"] == "queued"
+    assert job_service.claim_next_job(worker_name="phase0-test") is not None
 
     record_service_health(service_name="worker-phase0-test", status="ok", metrics={"jobs": 1})
     health = client.get("/api/v1/admin/service-health")
@@ -123,6 +129,52 @@ def test_phase0_auth_session_protection_jobs_and_service_health(
     )
     assert logout.status_code == 204
     assert client.get("/api/v1/auth/session").status_code == 401
+
+
+@pytest.mark.skipif(
+    not os.environ.get("STRUCTURA_TEST_DATABASE_URL"),
+    reason="Set STRUCTURA_TEST_DATABASE_URL to run live Phase 0 auth/job tests.",
+)
+def test_phase0_job_routes_are_household_scoped(monkeypatch: pytest.MonkeyPatch) -> None:
+    database_url = os.environ["STRUCTURA_TEST_DATABASE_URL"]
+    monkeypatch.setenv("STRUCTURA_DATABASE_URL", database_url)
+    monkeypatch.setenv("STRUCTURA_ENV", "test")
+    get_settings.cache_clear()
+
+    unique = uuid.uuid4().hex[:12]
+    password = "minimum8"
+    owner = AuthService().bootstrap_admin(
+        email=f"phase0-job-owner-{unique}@example.com",
+        password=password,
+        display_name="Phase 0 Job Owner",
+        household_name=f"Phase 0 Job Owner {unique}",
+        must_rotate=False,
+    )
+    other_email = f"phase0-job-other-{unique}@example.com"
+    AuthService().bootstrap_admin(
+        email=other_email,
+        password=password,
+        display_name="Phase 0 Job Other",
+        household_name=f"Phase 0 Job Other {unique}",
+        must_rotate=False,
+    )
+
+    job = JobService().create_job(
+        job_type="ingest",
+        household_id=owner.household_id,
+        payload={"document_id": "household-scope-placeholder"},
+    )
+
+    other = TestClient(create_app())
+    login = other.post(
+        "/api/v1/auth/session",
+        json={"method": "password", "email": other_email, "password": password},
+    )
+    assert login.status_code == 201
+    assert other.get(f"/api/v1/jobs/{job.job_id}").status_code == 404
+    listed = other.get("/api/v1/admin/jobs")
+    assert listed.status_code == 200
+    assert str(job.job_id) not in {item["jobId"] for item in listed.json()["items"]}
 
 
 @pytest.mark.skipif(

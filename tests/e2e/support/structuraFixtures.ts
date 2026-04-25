@@ -166,9 +166,13 @@ export function updateDocumentOrganization(
       ...document,
       title: payload.title ?? document.title,
       documentDate: payload.documentDate !== undefined ? payload.documentDate : document.documentDate,
-      folderIds: targetFolderIds,
+      folderIds: primaryFolderId
+        ? [primaryFolderId, ...targetFolderIds.filter((folderId) => folderId !== primaryFolderId)]
+        : targetFolderIds,
       primaryFolderId,
-      folderPaths: targetFolderIds
+      folderPaths: (primaryFolderId
+        ? [primaryFolderId, ...targetFolderIds.filter((folderId) => folderId !== primaryFolderId)]
+        : targetFolderIds)
         .map((folderId) => folders.find((folder) => folder.id === folderId)?.path)
         .filter((path): path is string => Boolean(path)),
       tags: payload.tags ?? document.tags,

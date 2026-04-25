@@ -14,6 +14,7 @@ BASELINE_SQL_FILES = (
     "040_indexes_bm25_pgvector.sql",
     "050_views_and_functions.sql",
     "060_seed_taxonomies.sql",
+    "065_pipeline_jobs_household_scope.sql",
 )
 
 

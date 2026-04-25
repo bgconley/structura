@@ -2,11 +2,11 @@
 
 Structura is a local-first document workbench for preserving original document bytes, deriving structural artifacts, extracting evidence-backed facts, and making a private corpus searchable and reviewable.
 
-This repository is now implemented through Phase 0A-0F:
+This repository is now implemented through Phase 2:
 
-- React + Vite web placeholder in `apps/web`
-- FastAPI API in `apps/api` with health, contract, auth/session, protected document/asset, job, and admin health routes
-- worker and model placeholder modules with HTTP health checks
+- React + Vite web app in `apps/web`
+- FastAPI API in `apps/api` with health, contract, auth/session, protected document/asset, job, admin health, and organization routes
+- preview worker, worker placeholders, and model placeholder modules with HTTP health checks
 - shared Python libraries under `lib`
 - baseline contracts copied to `contracts`
 - baseline SQL copied to `database`
@@ -14,9 +14,9 @@ This repository is now implemented through Phase 0A-0F:
 - Docker Compose runtime skeleton
 - idempotent migration and contract validation helpers
 - bootstrap admin CLI, Argon2id password credentials, durable DB-backed sessions, configurable session/CSRF cookies, magic-link scaffolding, and protected route dependencies
-- Postgres-backed `pipeline_jobs` service with bounded retry scheduling plus service-health snapshots for default workers
-
-The next implementation slice starts at Phase 1: upload, Inbox, and protected viewer.
+- Postgres-backed `pipeline_jobs` service with household-scoped job visibility, bounded retry scheduling, manual retry recovery, and service-health snapshots for default workers
+- Phase 1 upload, Inbox, protected asset viewer, content-addressed immutable storage, and preview fallback generation
+- Phase 2 manual folders, tags, document filing, primary folder selection, metadata edits, folder filtering, and audit events
 
 ## Local Commands
 
@@ -35,6 +35,12 @@ docker compose up postgres api web
 ```
 
 The default Postgres image is pinned to `paradedb/paradedb:0.21.5-pg17` to match the Phase 0 PostgreSQL 17 baseline. Do not use `latest` unless the mount strategy and extension compatibility have been reviewed.
+
+For phase gates, the GPU node is canonical. Push the repo, pull it at `/tank/repos/structura` on `bgconley@10.25.0.50`, use `/tank/venvs/structura` for Python validation, and use pinned container images for web lint/build rather than host Node/npm. Live Playwright tests should target the GPU-hosted web service with:
+
+```bash
+STRUCTURA_E2E_LIVE=1 npx playwright test tests/e2e/phase1-live.spec.ts tests/e2e/phase2-live.spec.ts --workers=1
+```
 
 Model placeholders are behind a profile:
 
@@ -70,6 +76,7 @@ The baseline migration runner applies:
 6. `database/040_indexes_bm25_pgvector.sql`
 7. `database/050_views_and_functions.sql`
 8. `database/060_seed_taxonomies.sql`
+9. `database/065_pipeline_jobs_household_scope.sql`
 
 `database/070_query_examples.sql` is intentionally excluded from default migration execution.
 

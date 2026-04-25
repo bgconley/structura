@@ -7,6 +7,9 @@ from fastapi import Depends, Header, HTTPException, Request, status
 from lib.auth import AuthPrincipal, AuthService
 from lib.config import get_settings
 
+ADMIN_HOUSEHOLD_ROLES = {"owner", "admin"}
+ADMIN_API_SCOPES = {"admin", "admin:*", "jobs:admin", "service:admin"}
+
 
 def auth_service() -> AuthService:
     return AuthService()
@@ -46,3 +49,31 @@ def require_csrf(
     if not csrf_cookie or not x_csrf_token or csrf_cookie != x_csrf_token:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="CSRF token required")
     return principal
+
+
+def require_admin(
+    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+) -> AuthPrincipal:
+    if principal.household_id and principal.household_role in ADMIN_HOUSEHOLD_ROLES:
+        return principal
+    if (
+        principal.household_id
+        and principal.api_token_id
+        and ADMIN_API_SCOPES.intersection(principal.scopes)
+    ):
+        return principal
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+
+def require_admin_csrf(
+    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
+) -> AuthPrincipal:
+    if principal.household_id and principal.household_role in ADMIN_HOUSEHOLD_ROLES:
+        return principal
+    if (
+        principal.household_id
+        and principal.api_token_id
+        and ADMIN_API_SCOPES.intersection(principal.scopes)
+    ):
+        return principal
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")

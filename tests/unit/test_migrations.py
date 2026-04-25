@@ -15,7 +15,7 @@ def test_baseline_migration_scripts_are_present_and_ordered() -> None:
     plan = baseline_migration_plan("database")
 
     assert plan.scripts[0].name == "001_extensions.sql"
-    assert plan.scripts[-1].name == "060_seed_taxonomies.sql"
+    assert plan.scripts[-1].name == "065_pipeline_jobs_household_scope.sql"
     assert all(script.exists() for script in plan.scripts)
 
 

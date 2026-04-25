@@ -89,7 +89,7 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    command: ["python", "-m", "workers.placeholder", "--worker", "worker-previews", "--health-port", "8202"]
+    command: ["python", "-m", "workers.previews.worker", "--worker", "worker-previews", "--health-port", "8202"]
     environment:
       STRUCTURA_DATABASE_URL: postgresql://${POSTGRES_USER:-structura}:${POSTGRES_PASSWORD:-structura}@postgres:5432/${POSTGRES_DB:-structura}
       STRUCTURA_RUNTIME_ROOT: /srv/structura

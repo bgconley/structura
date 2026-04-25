@@ -8,7 +8,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from apps.api.structura_api import __version__
-from apps.api.structura_api.dependencies import current_principal
+from apps.api.structura_api.dependencies import require_admin
 from apps.api.structura_api.routes_admin import router as admin_router
 from apps.api.structura_api.routes_assets import router as assets_router
 from apps.api.structura_api.routes_auth import router as auth_router
@@ -69,7 +69,7 @@ def create_app() -> FastAPI:
 
     @app.get("/api/v1/migrations/baseline", tags=["Admin"])
     def migration_summary(
-        _principal: Annotated[object, Depends(current_principal)],
+        _principal: Annotated[object, Depends(require_admin)],
     ) -> dict[str, object]:
         plan = baseline_migration_plan(settings.database_dir)
         return {

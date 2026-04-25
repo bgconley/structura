@@ -44,6 +44,7 @@ class AuthPrincipal:
     email: str
     display_name: str
     auth_method: str
+    household_role: str | None = None
     session_id: UUID | None = None
     api_token_id: UUID | None = None
     scopes: tuple[str, ...] = ()
@@ -167,11 +168,12 @@ class AuthService:
                       u.display_name,
                       c.password_hash,
                       c.must_rotate,
-                      hm.household_id
+                      hm.household_id,
+                      hm.role AS household_role
                     FROM users u
                     JOIN user_password_credentials c ON c.user_id = u.id
                     LEFT JOIN LATERAL (
-                      SELECT household_id
+                      SELECT household_id, role
                       FROM household_memberships
                       WHERE user_id = u.id
                         AND (%s::uuid IS NULL OR household_id = %s::uuid)
@@ -273,9 +275,13 @@ class AuthService:
                       u.email,
                       u.display_name,
                       ml.household_id,
+                      hm.role AS household_role,
                       false AS must_rotate
                     FROM magic_links ml
                     JOIN users u ON u.id = ml.user_id
+                    LEFT JOIN household_memberships hm
+                      ON hm.user_id = u.id
+                     AND hm.household_id = ml.household_id
                     WHERE ml.token_hash = %s
                       AND ml.used_at IS NULL
                       AND ml.expires_at > now()
@@ -312,9 +318,13 @@ class AuthService:
                       s.household_id,
                       s.auth_method::text AS auth_method,
                       u.email,
-                      u.display_name
+                      u.display_name,
+                      hm.role AS household_role
                     FROM sessions s
                     JOIN users u ON u.id = s.user_id
+                    LEFT JOIN household_memberships hm
+                      ON hm.user_id = s.user_id
+                     AND hm.household_id = s.household_id
                     WHERE s.token_hash = %s
                       AND s.revoked_at IS NULL
                       AND s.expires_at > now()
@@ -336,6 +346,7 @@ class AuthService:
             email=str(row["email"]),
             display_name=row["display_name"],
             auth_method=row["auth_method"],
+            household_role=row.get("household_role"),
             session_id=row["session_id"],
         )
 
@@ -350,9 +361,13 @@ class AuthService:
                       t.household_id,
                       t.scopes,
                       u.email,
-                      u.display_name
+                      u.display_name,
+                      hm.role AS household_role
                     FROM api_tokens t
                     JOIN users u ON u.id = t.user_id
+                    LEFT JOIN household_memberships hm
+                      ON hm.user_id = t.user_id
+                     AND hm.household_id = t.household_id
                     WHERE t.token_hash = %s
                       AND t.revoked_at IS NULL
                       AND (t.expires_at IS NULL OR t.expires_at > now())
@@ -374,6 +389,7 @@ class AuthService:
             email=str(row["email"]),
             display_name=row["display_name"],
             auth_method="api_token",
+            household_role=row.get("household_role"),
             api_token_id=row["api_token_id"],
             scopes=tuple(row["scopes"] or ()),
         )

@@ -14,6 +14,7 @@ from lib.auth import AuthService
 from lib.config import get_settings
 from lib.db.connection import db_connection
 from workers.previews import PreviewError, generate_phase1_preview
+from workers.previews import worker as preview_worker
 
 
 @pytest.mark.skipif(
@@ -64,6 +65,7 @@ def test_phase1_upload_list_detail_asset_and_duplicate(
     )
     assert accepted.status_code == 202
     assert accepted.json()["status"] == "queued"
+    assert preview_worker.process_next_preview_job(worker_name="phase1-test") is True
 
     listed = client.get("/api/v1/documents")
     assert listed.status_code == 200
@@ -243,6 +245,7 @@ def test_phase1_preview_generation_is_idempotent(
         files={"file": ("preview.pdf", b"%PDF-1.7\n%%EOF\n", "application/pdf")},
     )
     assert accepted.status_code == 202
+    assert preview_worker.process_next_preview_job(worker_name="phase1-preview-test") is True
 
     document = next(
         item for item in client.get("/api/v1/documents").json()["items"] if item["title"] == title
@@ -310,7 +313,7 @@ def test_phase1_preview_failure_marks_retryable_job(
     def fail_preview(*_args, **_kwargs) -> None:
         raise PreviewError("injected preview failure")
 
-    monkeypatch.setattr(routes_documents, "generate_phase1_preview", fail_preview)
+    monkeypatch.setattr(preview_worker, "generate_phase1_preview", fail_preview)
     client = TestClient(create_app())
     login = client.post(
         "/api/v1/auth/session",
@@ -325,6 +328,7 @@ def test_phase1_preview_failure_marks_retryable_job(
         files={"file": ("preview-failure.pdf", b"%PDF-1.7\n%%EOF\n", "application/pdf")},
     )
     assert accepted.status_code == 202
+    assert preview_worker.process_next_preview_job(worker_name="phase1-preview-fail-test") is True
 
     document = next(
         item for item in client.get("/api/v1/documents").json()["items"] if item["title"] == title

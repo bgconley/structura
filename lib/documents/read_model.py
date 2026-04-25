@@ -52,7 +52,10 @@ SELECT
   ) AS thumbnail_asset_id,
   COALESCE(
     (
-      SELECT array_agg(COALESCE(f.path_cache, '/' || f.name) ORDER BY f.name)
+      SELECT array_agg(
+        COALESCE(f.path_cache, '/' || f.name)
+        ORDER BY dfm.is_primary DESC, COALESCE(f.path_cache, '/' || f.name), f.name
+      )
       FROM document_folder_memberships dfm
       JOIN folders f ON f.id = dfm.folder_id
       WHERE dfm.document_id = d.id
@@ -160,7 +163,10 @@ def get_document_detail(document_id: UUID, household_id: UUID) -> DocumentDetail
                   ) AS thumbnail_asset_id,
                   COALESCE(
                     (
-                      SELECT array_agg(COALESCE(f.path_cache, '/' || f.name) ORDER BY f.name)
+                      SELECT array_agg(
+                        COALESCE(f.path_cache, '/' || f.name)
+                        ORDER BY dfm.is_primary DESC, COALESCE(f.path_cache, '/' || f.name), f.name
+                      )
                       FROM document_folder_memberships dfm
                       JOIN folders f ON f.id = dfm.folder_id
                       WHERE dfm.document_id = d.id

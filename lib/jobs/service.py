@@ -34,6 +34,13 @@ class QueueTransportProfile:
     reason: str | None = None
 
 
+@dataclass(frozen=True)
+class ClaimedJob:
+    state: JobState
+    payload: dict[str, Any]
+    document_id: UUID | None
+
+
 class JobServiceError(Exception):
     pass
 
@@ -113,11 +120,21 @@ def job_state_from_row(row: Mapping[str, Any]) -> JobState:
     )
 
 
+def claimed_job_from_row(row: Mapping[str, Any]) -> ClaimedJob:
+    payload = row.get("payload_json") or {}
+    return ClaimedJob(
+        state=job_state_from_row(row),
+        payload=dict(payload) if isinstance(payload, Mapping) else {},
+        document_id=cast(UUID | None, row.get("document_id")),
+    )
+
+
 def create_job_with_cursor(
     cur: Any,
     *,
     job_id: UUID,
     job_type: str,
+    household_id: UUID | None = None,
     document_id: UUID | None = None,
     batch_id: UUID | None = None,
     payload: Mapping[str, Any] | None = None,
@@ -131,6 +148,7 @@ def create_job_with_cursor(
         INSERT INTO pipeline_jobs
           (
             id,
+            household_id,
             job_type,
             document_id,
             batch_id,
@@ -139,11 +157,12 @@ def create_job_with_cursor(
             queue_name,
             max_attempts
           )
-        VALUES (%s, %s, %s, %s, %s::jsonb, %s, %s, %s)
+          VALUES (%s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s)
         RETURNING *
         """,
         (
             job_id,
+            household_id,
             job_type,
             document_id,
             batch_id,
@@ -167,6 +186,7 @@ class JobService:
         self,
         *,
         job_type: str,
+        household_id: UUID | None = None,
         document_id: UUID | None = None,
         batch_id: UUID | None = None,
         payload: Mapping[str, Any] | None = None,
@@ -180,6 +200,7 @@ class JobService:
                     cur,
                     job_id=uuid4(),
                     job_type=job_type,
+                    household_id=household_id,
                     document_id=document_id,
                     batch_id=batch_id,
                     payload=payload,
@@ -190,71 +211,43 @@ class JobService:
             conn.commit()
         return job
 
-    def get_job(self, job_id: UUID) -> JobState | None:
+    def get_job(self, job_id: UUID, *, household_id: UUID | None = None) -> JobState | None:
         with db_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT * FROM pipeline_jobs WHERE id = %s", (job_id,))
+                cur.execute(
+                    """
+                    SELECT *
+                    FROM pipeline_jobs
+                    WHERE id = %s
+                      AND (%s::uuid IS NULL OR household_id = %s)
+                    """,
+                    (job_id, household_id, household_id),
+                )
                 row = cur.fetchone()
         return job_state_from_row(row) if row else None
 
     def list_jobs(
         self,
         *,
+        household_id: UUID | None = None,
         status: str | None = None,
         job_type: str | None = None,
         limit: int = 100,
     ) -> list[JobState]:
-        params: list[Any] = []
-        if status:
-            params.append(status)
-        if job_type:
-            params.append(job_type)
-        params.append(limit)
         with db_connection() as conn:
             with conn.cursor() as cur:
-                if status and job_type:
-                    cur.execute(
-                        """
-                        SELECT *
-                        FROM pipeline_jobs
-                        WHERE status = %s AND job_type = %s
-                        ORDER BY created_at DESC
-                        LIMIT %s
-                        """,
-                        params,
-                    )
-                elif status:
-                    cur.execute(
-                        """
-                        SELECT *
-                        FROM pipeline_jobs
-                        WHERE status = %s
-                        ORDER BY created_at DESC
-                        LIMIT %s
-                        """,
-                        params,
-                    )
-                elif job_type:
-                    cur.execute(
-                        """
-                        SELECT *
-                        FROM pipeline_jobs
-                        WHERE job_type = %s
-                        ORDER BY created_at DESC
-                        LIMIT %s
-                        """,
-                        params,
-                    )
-                else:
-                    cur.execute(
-                        """
-                        SELECT *
-                        FROM pipeline_jobs
-                        ORDER BY created_at DESC
-                        LIMIT %s
-                        """,
-                        params,
-                    )
+                cur.execute(
+                    """
+                    SELECT *
+                    FROM pipeline_jobs
+                    WHERE (%s::uuid IS NULL OR household_id = %s)
+                      AND (%s::text IS NULL OR status = %s)
+                      AND (%s::text IS NULL OR job_type = %s)
+                    ORDER BY created_at DESC
+                    LIMIT %s
+                    """,
+                    (household_id, household_id, status, status, job_type, job_type, limit),
+                )
                 rows = cur.fetchall()
         return [job_state_from_row(row) for row in rows]
 
@@ -265,6 +258,20 @@ class JobService:
         queue_name: str = "default",
         lease_seconds: int = 300,
     ) -> JobState | None:
+        claimed = self.claim_next_job_record(
+            worker_name=worker_name,
+            queue_name=queue_name,
+            lease_seconds=lease_seconds,
+        )
+        return claimed.state if claimed else None
+
+    def claim_next_job_record(
+        self,
+        *,
+        worker_name: str,
+        queue_name: str = "default",
+        lease_seconds: int = 300,
+    ) -> ClaimedJob | None:
         lease_expires_at = datetime.now(UTC) + timedelta(seconds=lease_seconds)
         with db_connection() as conn:
             with conn.cursor() as cur:
@@ -295,7 +302,7 @@ class JobService:
                 )
                 row = cur.fetchone()
             conn.commit()
-        return job_state_from_row(row) if row else None
+        return claimed_job_from_row(row) if row else None
 
     def heartbeat_job(
         self,
@@ -395,22 +402,26 @@ class JobService:
             raise JobServiceError("Job update failed.")
         return job_state_from_row(row)
 
-    def retry_job(self, *, job_id: UUID) -> AcceptedJob:
+    def retry_job(self, *, job_id: UUID, household_id: UUID | None = None) -> AcceptedJob:
         with db_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
                     UPDATE pipeline_jobs
                     SET status = 'queued',
+                        attempt_count = 0,
                         worker_name = NULL,
+                        started_at = NULL,
                         lease_expires_at = NULL,
                         scheduled_at = now(),
-                        finished_at = NULL
+                        finished_at = NULL,
+                        error_json = '{}'::jsonb
                     WHERE id = %s
                       AND status IN ('failed', 'dead_letter', 'cancelled')
+                      AND (%s::uuid IS NULL OR household_id = %s)
                     RETURNING id, status::text
                     """,
-                    (job_id,),
+                    (job_id, household_id, household_id),
                 )
                 row = cur.fetchone()
             conn.commit()
