@@ -276,6 +276,18 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-25T03:44:00-04:00"
+    },
+    {
+      "id": "bug-024",
+      "timestamp": "2026-04-25T03:46:00-04:00",
+      "error_message": "GPU-node make sast failed because mypy reported missing library stubs for yaml.",
+      "file": "pyproject.toml",
+      "root_cause": "The dev extra included types-jsonschema but omitted types-PyYAML even though lib/contracts/registry.py imports yaml.",
+      "fix": "Added types-PyYAML to the dev optional dependencies so GPU-node venv bootstrap installs the stubs required by mypy.",
+      "tags": ["mypy", "typing", "pyyaml", "gpu-node", "sast"],
+      "related_bugs": ["bug-023"],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T03:46:00-04:00"
     }
   ]
 }
