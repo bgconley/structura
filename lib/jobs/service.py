@@ -256,11 +256,13 @@ class JobService:
         *,
         worker_name: str,
         queue_name: str = "default",
+        document_id: UUID | None = None,
         lease_seconds: int = 300,
     ) -> JobState | None:
         claimed = self.claim_next_job_record(
             worker_name=worker_name,
             queue_name=queue_name,
+            document_id=document_id,
             lease_seconds=lease_seconds,
         )
         return claimed.state if claimed else None
@@ -270,6 +272,7 @@ class JobService:
         *,
         worker_name: str,
         queue_name: str = "default",
+        document_id: UUID | None = None,
         lease_seconds: int = 300,
     ) -> ClaimedJob | None:
         lease_expires_at = datetime.now(UTC) + timedelta(seconds=lease_seconds)
@@ -282,6 +285,7 @@ class JobService:
                       FROM pipeline_jobs
                       WHERE status IN ('queued', 'failed')
                         AND queue_name = %s
+                        AND (%s::uuid IS NULL OR document_id = %s)
                         AND scheduled_at <= now()
                         AND attempt_count < max_attempts
                       ORDER BY priority DESC, scheduled_at ASC, created_at ASC
@@ -298,7 +302,7 @@ class JobService:
                     WHERE j.id = next_job.id
                     RETURNING j.*
                     """,
-                    (queue_name, worker_name, lease_expires_at),
+                    (queue_name, document_id, document_id, worker_name, lease_expires_at),
                 )
                 row = cur.fetchone()
             conn.commit()

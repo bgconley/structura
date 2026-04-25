@@ -17,6 +17,12 @@ from workers.previews import PreviewError, generate_phase1_preview
 from workers.previews import worker as preview_worker
 
 
+def _document_by_title(client: TestClient, title: str) -> dict[str, object]:
+    listed = client.get("/api/v1/documents", params={"q": title})
+    assert listed.status_code == 200
+    return next(item for item in listed.json()["items"] if item["title"] == title)
+
+
 @pytest.mark.skipif(
     not os.environ.get("STRUCTURA_TEST_DATABASE_URL"),
     reason="Set STRUCTURA_TEST_DATABASE_URL to run live Phase 1 document tests.",
@@ -65,7 +71,12 @@ def test_phase1_upload_list_detail_asset_and_duplicate(
     )
     assert accepted.status_code == 202
     assert accepted.json()["status"] == "queued"
-    assert preview_worker.process_next_preview_job(worker_name="phase1-test") is True
+    item = _document_by_title(client, "Phase 1 Fixture")
+    document_id = uuid.UUID(str(item["id"]))
+    assert preview_worker.process_next_preview_job(
+        worker_name="phase1-test",
+        document_id=document_id,
+    ) is True
 
     listed = client.get("/api/v1/documents")
     assert listed.status_code == 200
@@ -245,12 +256,12 @@ def test_phase1_preview_generation_is_idempotent(
         files={"file": ("preview.pdf", b"%PDF-1.7\n%%EOF\n", "application/pdf")},
     )
     assert accepted.status_code == 202
-    assert preview_worker.process_next_preview_job(worker_name="phase1-preview-test") is True
-
-    document = next(
-        item for item in client.get("/api/v1/documents").json()["items"] if item["title"] == title
+    document = _document_by_title(client, title)
+    document_id = uuid.UUID(str(document["id"]))
+    assert preview_worker.process_next_preview_job(
+        worker_name="phase1-preview-test",
+        document_id=document_id,
     )
-    document_id = uuid.UUID(document["id"])
     generate_phase1_preview(document_id)
 
     with db_connection() as conn:
@@ -328,10 +339,11 @@ def test_phase1_preview_failure_marks_retryable_job(
         files={"file": ("preview-failure.pdf", b"%PDF-1.7\n%%EOF\n", "application/pdf")},
     )
     assert accepted.status_code == 202
-    assert preview_worker.process_next_preview_job(worker_name="phase1-preview-fail-test") is True
-
-    document = next(
-        item for item in client.get("/api/v1/documents").json()["items"] if item["title"] == title
+    document = _document_by_title(client, title)
+    document_id = uuid.UUID(str(document["id"]))
+    assert preview_worker.process_next_preview_job(
+        worker_name="phase1-preview-fail-test",
+        document_id=document_id,
     )
     with db_connection() as conn:
         with conn.cursor() as cur:
@@ -344,7 +356,7 @@ def test_phase1_preview_failure_marks_retryable_job(
                 ORDER BY created_at DESC
                 LIMIT 1
                 """,
-                (uuid.UUID(document["id"]),),
+                (document_id,),
             )
             job = cur.fetchone()
 

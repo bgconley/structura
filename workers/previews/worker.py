@@ -27,9 +27,14 @@ def process_next_preview_job(
     *,
     worker_name: str = "worker-previews",
     queue_name: str = "previews",
+    document_id: UUID | None = None,
 ) -> bool:
     job_service = JobService()
-    claimed = job_service.claim_next_job_record(worker_name=worker_name, queue_name=queue_name)
+    claimed = job_service.claim_next_job_record(
+        worker_name=worker_name,
+        queue_name=queue_name,
+        document_id=document_id,
+    )
     if not claimed:
         return False
 
