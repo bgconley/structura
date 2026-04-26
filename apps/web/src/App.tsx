@@ -1,6 +1,7 @@
 import {FormEvent, startTransition, useDeferredValue, useEffect, useState} from "react";
 
 import {configureSecurityCookieNames, csrfToken, fetchJson} from "./api";
+import {AutomationWorkbench} from "./components/AutomationWorkbench";
 import {Inbox} from "./components/Inbox";
 import {LoginScreen} from "./components/LoginScreen";
 import {ReviewQueue} from "./components/ReviewQueue";
@@ -308,7 +309,9 @@ export default function App() {
           isUploading={isUploading}
           uploadFile={uploadFile}
         />
-        {viewMode === "review" ? (
+        {viewMode === "automation" ? (
+          <AutomationWorkbench />
+        ) : viewMode === "review" ? (
           <ReviewQueue
             onOpenDocument={(documentId, target) => {
               setEvidenceTarget(target ?? null);

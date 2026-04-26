@@ -1,3 +1,5 @@
+export type ViewMode = "inbox" | "review" | "search" | "viewer" | "automation";
+
 export type SessionInfo = {
   displayName?: string;
   email?: string;
@@ -130,6 +132,99 @@ export type SavedSearch = {
   filters: Record<string, unknown>;
   sort: Record<string, unknown>;
   createdAt: string;
+};
+
+export type Contact = {
+  id: string;
+  contactType: string;
+  displayName: string;
+  normalizedName?: string;
+  aliases: string[];
+  identifiers: Record<string, unknown>;
+  linkedDocumentCount: number;
+};
+
+export type ContactWrite = {
+  id?: string;
+  contactType?: string;
+  displayName: string;
+  aliases?: string[];
+  identifiers?: Record<string, unknown>;
+};
+
+export type FilingRule = {
+  id: string;
+  name: string;
+  description?: string;
+  enabled: boolean;
+  priority?: number;
+  reviewRequired?: boolean;
+  conditions: Array<Record<string, unknown>>;
+  actions: Array<Record<string, unknown>>;
+  lastRunAt?: string | null;
+};
+
+export type FilingRuleWrite = {
+  id?: string;
+  name: string;
+  description?: string;
+  enabled?: boolean;
+  priority?: number;
+  reviewRequired?: boolean;
+  conditions: Array<Record<string, unknown>>;
+  actions: Array<Record<string, unknown>>;
+};
+
+export type FilingRuleEvaluation = {
+  runId?: string;
+  ruleId?: string;
+  documentId: string;
+  matched: boolean;
+  conditions: Array<Record<string, unknown>>;
+  proposedActions: Array<Record<string, unknown>>;
+  blockedActions: Array<Record<string, unknown>>;
+  appliedActions?: Array<Record<string, unknown>>;
+  reviewRequired: boolean;
+  safetyReasons: string[];
+  explanation: Record<string, unknown>;
+  status?: string;
+};
+
+export type FilingSuggestion = {
+  runId: string;
+  ruleId: string;
+  ruleName: string;
+  documentId: string;
+  documentTitle: string;
+  proposedActions: Array<Record<string, unknown>>;
+  blockedActions: Array<Record<string, unknown>>;
+  explanation: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type WatchedFolder = {
+  id: string;
+  path: string;
+  enabled: boolean;
+  policy: Record<string, unknown>;
+  lastScanAt?: string | null;
+};
+
+export type WatchedFolderWrite = {
+  id?: string;
+  path: string;
+  enabled?: boolean;
+  policy?: Record<string, unknown>;
+};
+
+export type ImportStatus = {
+  watchedFolderId?: string;
+  path?: string;
+  enabled?: boolean;
+  lastScanAt?: string | null;
+  acceptedCount: number;
+  rejectedCount: number;
+  skippedCount: number;
 };
 
 export type FieldCandidate = {
@@ -271,5 +366,3 @@ export type ParseDebugView = {
   chunks: unknown[];
   jobs: ParseDebugJob[];
 };
-
-export type ViewMode = "inbox" | "viewer" | "review" | "search";

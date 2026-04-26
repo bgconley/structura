@@ -12,6 +12,8 @@ from apps.api.structura_api.dependencies import require_admin
 from apps.api.structura_api.routes_admin import router as admin_router
 from apps.api.structura_api.routes_assets import router as assets_router
 from apps.api.structura_api.routes_auth import router as auth_router
+from apps.api.structura_api.routes_automation import router as automation_router
+from apps.api.structura_api.routes_contacts import router as contacts_router
 from apps.api.structura_api.routes_documents import router as documents_router
 from apps.api.structura_api.routes_jobs import router as jobs_router
 from apps.api.structura_api.routes_organization import router as organization_router
@@ -84,6 +86,8 @@ def create_app() -> FastAPI:
     app.include_router(documents_router)
     app.include_router(assets_router)
     app.include_router(organization_router)
+    app.include_router(contacts_router)
+    app.include_router(automation_router)
     app.include_router(parse_debug_router)
     app.include_router(review_router)
     app.include_router(search_router)

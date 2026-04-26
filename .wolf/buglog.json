@@ -624,6 +624,42 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-26T17:05:00-04:00"
+    },
+    {
+      "id": "bug-053",
+      "timestamp": "2026-04-26T22:03:00-04:00",
+      "error_message": "make sast failed with Bandit B310 because the new operator CLI used urllib.request.urlopen.",
+      "file": "scripts/structura.py",
+      "root_cause": "The initial Phase 6 maintenance CLI used a placeholder admin HTTP check instead of the intended local durable-job enqueue path, and urlopen accepts more schemes than the CLI should trust.",
+      "fix": "Added lib/documents/maintenance.py and changed reprocess/rebuild CLI commands to enqueue normal preview/docling/embedding jobs through the database-backed job ledger, removing urlopen entirely.",
+      "tags": ["phase-6", "cli", "sast", "bandit", "jobs"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T22:03:00-04:00"
+    },
+    {
+      "id": "bug-054",
+      "timestamp": "2026-04-26T22:12:00-04:00",
+      "error_message": "Phase 6 UI initially exposed accept-only filing suggestions while the plan requires accept/reject/defer behavior.",
+      "file": "apps/web/src/components/AutomationWorkbench.tsx",
+      "root_cause": "The first Automation Workbench slice implemented the happy-path suggestion action before wiring the full reviewable decision matrix.",
+      "fix": "Added a defer endpoint, extended filing_rule_runs decision_status, exposed reject/defer in the web API client and UI, updated OpenAPI/contract parity coverage, and expanded the Phase 6 Playwright workflow.",
+      "tags": ["phase-6", "ui", "filing-suggestions", "openapi", "playwright"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T22:12:00-04:00"
+    },
+    {
+      "id": "bug-055",
+      "timestamp": "2026-04-26T22:00:00-04:00",
+      "error_message": "Linux Playwright snapshot generation failed when npm ci ran in a container mounted directly over the host repo.",
+      "file": "tests/e2e/phase6.spec.ts-snapshots/phase6-automation-workbench-chromium-linux.png",
+      "root_cause": "The pinned Linux Playwright container attempted to reuse/remove the Mac host node_modules and wrote npm cache under an unwritable container home.",
+      "fix": "Generated the Linux snapshot from a container-local copy of the repo and copied only the intended PNG artifact back to the working tree.",
+      "tags": ["phase-6", "playwright", "snapshots", "node", "docker"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T22:00:00-04:00"
     }
   ]
 }

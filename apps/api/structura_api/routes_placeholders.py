@@ -30,60 +30,6 @@ def create_relationship(_principal: Annotated[object, Depends(require_csrf)]) ->
     )
 
 
-@router.get("/contacts", tags=["Organization"])
-def list_contacts(
-    _principal: Annotated[object, Depends(current_principal)],
-    q: str | None = None,
-) -> dict[str, object]:
-    return {"items": []}
-
-
-@router.post("/contacts", tags=["Organization"], status_code=status.HTTP_501_NOT_IMPLEMENTED)
-def create_contact(_principal: Annotated[object, Depends(require_csrf)]) -> None:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Contact management is implemented in Phase 6.",
-    )
-
-
-@router.get("/filing-rules", tags=["Automation"])
-def list_filing_rules(
-    _principal: Annotated[object, Depends(current_principal)],
-) -> dict[str, object]:
-    return {"items": []}
-
-
-@router.post(
-    "/filing-rules",
-    tags=["Automation"],
-    status_code=status.HTTP_501_NOT_IMPLEMENTED,
-)
-def create_filing_rule(_principal: Annotated[object, Depends(require_csrf)]) -> None:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Filing rules are implemented in Phase 6.",
-    )
-
-
-@router.get("/watched-folders", tags=["Automation"])
-def list_watched_folders(
-    _principal: Annotated[object, Depends(current_principal)],
-) -> dict[str, object]:
-    return {"items": []}
-
-
-@router.post(
-    "/watched-folders",
-    tags=["Automation"],
-    status_code=status.HTTP_501_NOT_IMPLEMENTED,
-)
-def create_watched_folder(_principal: Annotated[object, Depends(require_csrf)]) -> None:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Watched folders are implemented in Phase 6.",
-    )
-
-
 @router.post("/analysis-notes", tags=["Analysis"], status_code=status.HTTP_501_NOT_IMPLEMENTED)
 def create_analysis_note(_principal: Annotated[object, Depends(require_csrf)]) -> None:
     raise HTTPException(

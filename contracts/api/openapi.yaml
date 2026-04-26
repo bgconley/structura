@@ -691,10 +691,136 @@ paths:
     post:
       tags:
       - Organization
-      summary: Placeholder for Phase 6 normalized contact creation
+      summary: Create or update a normalized contact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContactWrite'
       responses:
-        '501':
-          description: Contact management is implemented in Phase 6
+        '201':
+          description: Contact created or updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+        '403':
+          description: CSRF token required
+        '422':
+          description: Validation error
+  /api/v1/contact-merge-suggestions:
+    get:
+      tags:
+      - Organization
+      summary: List likely duplicate contact merge suggestions
+      responses:
+        '200':
+          description: Contact merge suggestions
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ContactMergeSuggestion'
+        '401':
+          description: Not authenticated
+  /api/v1/contacts/{contactId}/merge:
+    post:
+      tags:
+      - Organization
+      summary: Merge one contact into another contact
+      parameters:
+      - in: path
+        name: contactId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContactMergeWrite'
+      responses:
+        '200':
+          description: Merged target contact
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+        '403':
+          description: CSRF token required
+        '404':
+          description: Contact not found
+        '422':
+          description: Validation error
+  /api/v1/documents/{documentId}/contacts:
+    get:
+      tags:
+      - Organization
+      summary: List normalized contacts linked to a document
+      parameters:
+      - in: path
+        name: documentId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Document contact links
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DocumentContact'
+        '401':
+          description: Not authenticated
+        '404':
+          description: Document not found
+    post:
+      tags:
+      - Organization
+      summary: Link a document to a normalized contact
+      parameters:
+      - in: path
+        name: documentId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentContactWrite'
+      responses:
+        '201':
+          description: Document contact link
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentContact'
+        '403':
+          description: CSRF token required
+        '404':
+          description: Document or contact not found
         '422':
           description: Validation error
   /api/v1/filing-rules:
@@ -722,10 +848,173 @@ paths:
     post:
       tags:
       - Automation
-      summary: Placeholder for Phase 6 filing-rule creation
+      summary: Create or update a filing rule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FilingRuleWrite'
       responses:
-        '501':
-          description: Filing rules are implemented in Phase 6
+        '201':
+          description: Filing rule created or updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilingRule'
+        '403':
+          description: CSRF token required
+        '422':
+          description: Validation error
+  /api/v1/filing-rules/{ruleId}/dry-run:
+    post:
+      tags:
+      - Automation
+      summary: Dry-run a filing rule against visible documents
+      parameters:
+      - in: path
+        name: ruleId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FilingRuleDryRunRequest'
+      responses:
+        '200':
+          description: Filing rule dry-run results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilingRuleDryRunResponse'
+        '403':
+          description: CSRF token required
+        '404':
+          description: Filing rule not found
+        '422':
+          description: Validation error
+  /api/v1/filing-rules/{ruleId}/apply:
+    post:
+      tags:
+      - Automation
+      summary: Apply or suggest a filing rule for a document
+      parameters:
+      - in: path
+        name: ruleId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FilingRuleApplyRequest'
+      responses:
+        '202':
+          description: Rule applied or queued as a reviewable suggestion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilingRuleApplyResponse'
+        '403':
+          description: CSRF token required
+        '404':
+          description: Filing rule or document not found
+        '422':
+          description: Validation error
+  /api/v1/filing-suggestions:
+    get:
+      tags:
+      - Automation
+      summary: List pending filing-rule suggestions
+      responses:
+        '200':
+          description: Pending filing suggestions
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FilingSuggestion'
+        '401':
+          description: Not authenticated
+  /api/v1/filing-suggestions/{runId}/accept:
+    post:
+      tags:
+      - Automation
+      summary: Accept and apply a pending filing suggestion
+      parameters:
+      - in: path
+        name: runId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Accepted suggestion result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilingRuleApplyResponse'
+        '403':
+          description: CSRF token required
+        '404':
+          description: Filing suggestion not found
+        '422':
+          description: Validation error
+  /api/v1/filing-suggestions/{runId}/reject:
+    post:
+      tags:
+      - Automation
+      summary: Reject a pending filing suggestion
+      parameters:
+      - in: path
+        name: runId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Suggestion rejected
+        '403':
+          description: CSRF token required
+        '404':
+          description: Filing suggestion not found
+        '422':
+          description: Validation error
+  /api/v1/filing-suggestions/{runId}/defer:
+    post:
+      tags:
+      - Automation
+      summary: Defer a pending filing suggestion
+      parameters:
+      - in: path
+        name: runId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Suggestion deferred
+        '403':
+          description: CSRF token required
+        '404':
+          description: Filing suggestion not found
         '422':
           description: Validation error
   /api/v1/watched-folders:
@@ -753,12 +1042,46 @@ paths:
     post:
       tags:
       - Automation
-      summary: Placeholder for Phase 6 watched-folder creation
+      summary: Create or update a watched-folder intake configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WatchedFolderWrite'
       responses:
-        '501':
-          description: Watched folders are implemented in Phase 6
+        '201':
+          description: Watched folder created or updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchedFolder'
+        '403':
+          description: CSRF token required
         '422':
           description: Validation error
+  /api/v1/import-status:
+    get:
+      tags:
+      - Automation
+      summary: List watched-folder and bulk-import status
+      responses:
+        '200':
+          description: Import status list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ImportStatus'
+        '401':
+          description: Not authenticated
   /api/v1/search:
     post:
       tags:
@@ -1647,6 +1970,7 @@ components:
       additionalProperties: false
       required:
       - id
+      - contactType
       - displayName
       properties:
         id:
@@ -1665,12 +1989,18 @@ components:
         identifiers:
           type: object
           additionalProperties: true
+        linkedDocumentCount:
+          type: integer
+          default: 0
     ContactWrite:
       type: object
       additionalProperties: false
       required:
       - displayName
       properties:
+        id:
+          type: string
+          format: uuid
         contactType:
           type: string
         displayName:
@@ -1682,6 +2012,79 @@ components:
         identifiers:
           type: object
           additionalProperties: true
+    ContactMergeSuggestion:
+      type: object
+      additionalProperties: false
+      required:
+      - sourceContactId
+      - targetContactId
+      - reason
+      - confidence
+      properties:
+        sourceContactId:
+          type: string
+          format: uuid
+        targetContactId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+        confidence:
+          type: number
+    ContactMergeWrite:
+      type: object
+      additionalProperties: false
+      required:
+      - targetContactId
+      properties:
+        targetContactId:
+          type: string
+          format: uuid
+    DocumentContact:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - documentId
+      - contactId
+      - displayName
+      - roleName
+      properties:
+        id:
+          type: string
+          format: uuid
+        documentId:
+          type: string
+          format: uuid
+        contactId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        roleName:
+          type: string
+        evidence:
+          type: object
+          additionalProperties: true
+        confidence:
+          type: number
+    DocumentContactWrite:
+      type: object
+      additionalProperties: false
+      required:
+      - contactId
+      - roleName
+      properties:
+        contactId:
+          type: string
+          format: uuid
+        roleName:
+          type: string
+        evidence:
+          type: object
+          additionalProperties: true
+        confidence:
+          type: number
     FilingRule:
       type: object
       additionalProperties: false
@@ -1696,6 +2099,8 @@ components:
           type: string
           format: uuid
         name:
+          type: string
+        description:
           type: string
         enabled:
           type: boolean
@@ -1713,6 +2118,9 @@ components:
           items:
             type: object
             additionalProperties: true
+        lastRunAt:
+          type: string
+          format: date-time
     FilingRuleWrite:
       type: object
       additionalProperties: false
@@ -1725,6 +2133,8 @@ components:
           type: string
           format: uuid
         name:
+          type: string
+        description:
           type: string
         enabled:
           type: boolean
@@ -1745,6 +2155,138 @@ components:
           items:
             type: object
             additionalProperties: true
+    FilingRuleDryRunRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        documentIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    FilingRuleEvaluation:
+      type: object
+      additionalProperties: false
+      required:
+      - documentId
+      - matched
+      - conditions
+      - proposedActions
+      - blockedActions
+      - reviewRequired
+      - explanation
+      properties:
+        runId:
+          type: string
+          format: uuid
+        ruleId:
+          type: string
+          format: uuid
+        documentId:
+          type: string
+          format: uuid
+        matched:
+          type: boolean
+        conditions:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        proposedActions:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        blockedActions:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        appliedActions:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        reviewRequired:
+          type: boolean
+        safetyReasons:
+          type: array
+          items:
+            type: string
+        explanation:
+          type: object
+          additionalProperties: true
+    FilingRuleDryRunResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FilingRuleEvaluation'
+    FilingRuleApplyRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - documentId
+      properties:
+        documentId:
+          type: string
+          format: uuid
+    FilingRuleApplyResponse:
+      allOf:
+      - $ref: '#/components/schemas/FilingRuleEvaluation'
+      - type: object
+        required:
+        - status
+        properties:
+          status:
+            type: string
+    FilingSuggestion:
+      type: object
+      additionalProperties: false
+      required:
+      - runId
+      - ruleId
+      - ruleName
+      - documentId
+      - documentTitle
+      - proposedActions
+      - blockedActions
+      - explanation
+      - createdAt
+      properties:
+        runId:
+          type: string
+          format: uuid
+        ruleId:
+          type: string
+          format: uuid
+        ruleName:
+          type: string
+        documentId:
+          type: string
+          format: uuid
+        documentTitle:
+          type: string
+        proposedActions:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        blockedActions:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        explanation:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
     WatchedFolder:
       type: object
       additionalProperties: false
@@ -1780,6 +2322,26 @@ components:
         policy:
           type: object
           additionalProperties: true
+    ImportStatus:
+      type: object
+      additionalProperties: false
+      properties:
+        watchedFolderId:
+          type: string
+          format: uuid
+        path:
+          type: string
+        enabled:
+          type: boolean
+        lastScanAt:
+          type: string
+          format: date-time
+        acceptedCount:
+          type: integer
+        rejectedCount:
+          type: integer
+        skippedCount:
+          type: integer
     ExportRequest:
       type: object
       additionalProperties: false

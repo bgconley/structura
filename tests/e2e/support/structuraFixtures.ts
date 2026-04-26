@@ -100,6 +100,46 @@ export type SearchResponse = {
   debug: Record<string, unknown>;
 };
 
+export type Contact = {
+  id: string;
+  contactType: string;
+  displayName: string;
+  normalizedName?: string;
+  aliases: string[];
+  identifiers: Record<string, unknown>;
+  linkedDocumentCount: number;
+};
+
+export type FilingRule = {
+  id: string;
+  name: string;
+  enabled: boolean;
+  priority: number;
+  reviewRequired: boolean;
+  conditions: Array<Record<string, unknown>>;
+  actions: Array<Record<string, unknown>>;
+};
+
+export type FilingSuggestion = {
+  runId: string;
+  ruleId: string;
+  ruleName: string;
+  documentId: string;
+  documentTitle: string;
+  proposedActions: Array<Record<string, unknown>>;
+  blockedActions: Array<Record<string, unknown>>;
+  explanation: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type WatchedFolder = {
+  id: string;
+  path: string;
+  enabled: boolean;
+  policy: Record<string, unknown>;
+  lastScanAt?: string | null;
+};
+
 export type Folder = {
   id: string;
   parentId?: string | null;
@@ -161,6 +201,134 @@ export function seededTags(): Tag[] {
     {id: "40404040-4040-4040-8040-404040404040", name: "urgent", colorHex: "#F59E0B"},
     {id: "50505050-5050-4050-8050-505050505050", name: "tax-relevant", colorHex: "#0EA5E9"},
   ];
+}
+
+export function seededContacts(): Contact[] {
+  return [
+    {
+      id: "12121212-1212-4212-8212-121212121212",
+      contactType: "vendor",
+      displayName: "Acme Repairs",
+      normalizedName: "acme repairs",
+      aliases: ["Acme Repair"],
+      identifiers: {accountNumber: "ACME-100"},
+      linkedDocumentCount: 1,
+    },
+    {
+      id: "13131313-1313-4313-8313-131313131313",
+      contactType: "insurer",
+      displayName: "Aetna Health",
+      normalizedName: "aetna health",
+      aliases: ["Aetna"],
+      identifiers: {payerId: "AETNA-01"},
+      linkedDocumentCount: 2,
+    },
+  ];
+}
+
+export function seededFilingRules(): FilingRule[] {
+  return [
+    {
+      id: "14141414-1414-4414-8414-141414141414",
+      name: "File medical EOBs",
+      enabled: true,
+      priority: 80,
+      reviewRequired: true,
+      conditions: [{field: "document_family", op: "eq", value: "medical_eob"}],
+      actions: [{type: "add_tag", tag: "insurance"}],
+    },
+  ];
+}
+
+export function seededFilingSuggestions(): FilingSuggestion[] {
+  return [
+    {
+      runId: "15151515-1515-4515-8515-151515151515",
+      ruleId: "14141414-1414-4414-8414-141414141414",
+      ruleName: "File medical EOBs",
+      documentId: existingDocument.id,
+      documentTitle: "Anthem medical EOB",
+      proposedActions: [{type: "add_tag", tag: "insurance"}],
+      blockedActions: [],
+      explanation: {
+        conditions: [{field: "document_family", op: "eq", expected: "medical_eob", matched: true}],
+      },
+      createdAt: "2026-04-26T00:00:00Z",
+    },
+    {
+      runId: "15151515-1515-4515-8515-151515151516",
+      ruleId: "14141414-1414-4414-8414-141414141414",
+      ruleName: "File medical EOBs",
+      documentId: existingDocument.id,
+      documentTitle: "Aetna duplicate EOB",
+      proposedActions: [{type: "add_tag", tag: "insurance"}],
+      blockedActions: [],
+      explanation: {
+        conditions: [{field: "document_family", op: "eq", expected: "medical_eob", matched: true}],
+      },
+      createdAt: "2026-04-26T00:05:00Z",
+    },
+    {
+      runId: "15151515-1515-4515-8515-151515151517",
+      ruleId: "14141414-1414-4414-8414-141414141414",
+      ruleName: "File medical EOBs",
+      documentId: existingDocument.id,
+      documentTitle: "Deferred EOB follow-up",
+      proposedActions: [{type: "add_tag", tag: "insurance"}],
+      blockedActions: [],
+      explanation: {
+        conditions: [{field: "document_family", op: "eq", expected: "medical_eob", matched: true}],
+      },
+      createdAt: "2026-04-26T00:10:00Z",
+    },
+  ];
+}
+
+export function seededWatchedFolders(): WatchedFolder[] {
+  return [
+    {
+      id: "16161616-1616-4616-8616-161616161616",
+      path: "/srv/structura/imports/dropbox",
+      enabled: true,
+      policy: {allowedExtensions: [".pdf"], processedFilePolicy: "leave"},
+      lastScanAt: "2026-04-26T00:00:00Z",
+    },
+  ];
+}
+
+export function createContact(payload: Partial<Contact>, count: number): Contact {
+  const name = String(payload.displayName ?? "New Contact");
+  return {
+    id: `17171717-1717-4717-8717-${String(count + 1).padStart(12, "7")}`,
+    contactType: String(payload.contactType ?? "organization"),
+    displayName: name,
+    normalizedName: name.toLowerCase(),
+    aliases: payload.aliases ?? [],
+    identifiers: payload.identifiers ?? {},
+    linkedDocumentCount: 0,
+  };
+}
+
+export function createFilingRule(payload: Partial<FilingRule>, count: number): FilingRule {
+  return {
+    id: `18181818-1818-4818-8818-${String(count + 1).padStart(12, "8")}`,
+    name: String(payload.name ?? "New filing rule"),
+    enabled: payload.enabled ?? true,
+    priority: payload.priority ?? 70,
+    reviewRequired: payload.reviewRequired ?? true,
+    conditions: payload.conditions ?? [{field: "document_family", op: "eq", value: "generic"}],
+    actions: payload.actions ?? [{type: "add_tag", tag: "filed"}],
+  };
+}
+
+export function createWatchedFolder(payload: Partial<WatchedFolder>, count: number): WatchedFolder {
+  return {
+    id: `19191919-1919-4919-8919-${String(count + 1).padStart(12, "9")}`,
+    path: String(payload.path ?? "/srv/structura/imports/incoming"),
+    enabled: payload.enabled ?? true,
+    policy: payload.policy ?? {allowedExtensions: [".pdf"]},
+    lastScanAt: null,
+  };
 }
 
 export function seededReviewTasks(): ReviewTask[] {

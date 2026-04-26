@@ -188,11 +188,137 @@ class ReviewActionRequest(ContractModel):
 class FilingRule(ContractModel):
     id: UUID
     name: str
+    description: str | None = None
     enabled: bool
     conditions: list[dict[str, Any]]
     actions: list[dict[str, Any]]
     priority: int | None = None
     review_required: bool | None = Field(default=None, alias="reviewRequired")
+    last_run_at: datetime | None = Field(default=None, alias="lastRunAt")
+
+
+class FilingRuleWrite(ContractModel):
+    id: UUID | None = None
+    name: str = Field(min_length=1, max_length=160)
+    description: str | None = Field(default=None, max_length=1000)
+    enabled: bool = True
+    priority: int = Field(default=50, ge=0, le=100)
+    review_required: bool = Field(default=True, alias="reviewRequired")
+    conditions: list[dict[str, Any]]
+    actions: list[dict[str, Any]]
+
+
+class FilingRuleDryRunRequest(ContractModel):
+    document_ids: list[UUID] | None = Field(default=None, alias="documentIds", max_length=200)
+
+
+class FilingRuleApplyRequest(ContractModel):
+    document_id: UUID = Field(alias="documentId")
+
+
+class FilingRuleEvaluation(ContractModel):
+    run_id: UUID | None = Field(default=None, alias="runId")
+    rule_id: UUID | None = Field(default=None, alias="ruleId")
+    document_id: UUID = Field(alias="documentId")
+    matched: bool
+    conditions: list[dict[str, Any]]
+    proposed_actions: list[dict[str, Any]] = Field(alias="proposedActions")
+    blocked_actions: list[dict[str, Any]] = Field(alias="blockedActions")
+    applied_actions: list[dict[str, Any]] = Field(default_factory=list, alias="appliedActions")
+    review_required: bool = Field(alias="reviewRequired")
+    safety_reasons: list[str] = Field(default_factory=list, alias="safetyReasons")
+    explanation: dict[str, Any]
+
+
+class FilingRuleDryRunResponse(ContractModel):
+    items: list[FilingRuleEvaluation]
+
+
+class FilingRuleApplyResponse(FilingRuleEvaluation):
+    status: str
+
+
+class FilingSuggestion(ContractModel):
+    run_id: UUID = Field(alias="runId")
+    rule_id: UUID = Field(alias="ruleId")
+    rule_name: str = Field(alias="ruleName")
+    document_id: UUID = Field(alias="documentId")
+    document_title: str = Field(alias="documentTitle")
+    proposed_actions: list[dict[str, Any]] = Field(alias="proposedActions")
+    blocked_actions: list[dict[str, Any]] = Field(alias="blockedActions")
+    explanation: dict[str, Any]
+    created_at: datetime = Field(alias="createdAt")
+
+
+class Contact(ContractModel):
+    id: UUID
+    contact_type: str = Field(alias="contactType")
+    display_name: str = Field(alias="displayName")
+    normalized_name: str | None = Field(default=None, alias="normalizedName")
+    aliases: list[str] = Field(default_factory=list)
+    identifiers: dict[str, Any] = Field(default_factory=dict)
+    linked_document_count: int = Field(default=0, alias="linkedDocumentCount")
+
+
+class ContactWrite(ContractModel):
+    id: UUID | None = None
+    contact_type: str = Field(default="organization", alias="contactType")
+    display_name: str = Field(alias="displayName", min_length=1, max_length=240)
+    aliases: list[str] = Field(default_factory=list, max_length=50)
+    identifiers: dict[str, Any] = Field(default_factory=dict)
+
+
+class DocumentContact(ContractModel):
+    id: UUID
+    document_id: UUID = Field(alias="documentId")
+    contact_id: UUID = Field(alias="contactId")
+    display_name: str = Field(alias="displayName")
+    role_name: str = Field(alias="roleName")
+    evidence: dict[str, Any] = Field(default_factory=dict)
+    confidence: float | None = None
+
+
+class DocumentContactWrite(ContractModel):
+    contact_id: UUID = Field(alias="contactId")
+    role_name: str = Field(alias="roleName", min_length=1, max_length=80)
+    evidence: dict[str, Any] = Field(default_factory=dict)
+    confidence: float | None = Field(default=None, ge=0, le=1)
+
+
+class ContactMergeSuggestion(ContractModel):
+    source_contact_id: UUID = Field(alias="sourceContactId")
+    target_contact_id: UUID = Field(alias="targetContactId")
+    reason: str
+    confidence: float
+
+
+class ContactMergeWrite(ContractModel):
+    target_contact_id: UUID = Field(alias="targetContactId")
+
+
+class WatchedFolder(ContractModel):
+    id: UUID
+    path: str
+    enabled: bool
+    policy: dict[str, Any] = Field(default_factory=dict)
+    last_scan_at: datetime | None = Field(default=None, alias="lastScanAt")
+
+
+class WatchedFolderWrite(ContractModel):
+    id: UUID | None = None
+    path: str = Field(min_length=1)
+    enabled: bool = True
+    policy: dict[str, Any] = Field(default_factory=dict)
+
+
+class ImportStatus(ContractModel):
+    watched_folder_id: UUID | None = Field(default=None, alias="watchedFolderId")
+    path: str | None = None
+    enabled: bool | None = None
+    last_scan_at: datetime | None = Field(default=None, alias="lastScanAt")
+    accepted_count: int = Field(default=0, alias="acceptedCount")
+    rejected_count: int = Field(default=0, alias="rejectedCount")
+    skipped_count: int = Field(default=0, alias="skippedCount")
 
 
 class CreateMagicLinkRequest(ContractModel):

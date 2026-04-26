@@ -36,6 +36,34 @@
 - `tests/unit/test_phase5_search_units.py` — Unit coverage for parser, deterministic embeddings, and RRF (~550 tok)
 - `docs/ui-reference/figma/search/` — Phase 5 Figma context, source screenshot, comparison notes, and Playwright screenshot artifacts (~600 tok plus images)
 
+## Phase 6 automation additions
+
+- `apps/api/structura_api/routes_contacts.py` — Thin contact and document-contact API routes with CSRF-protected writes (~700 tok)
+- `apps/api/structura_api/routes_automation.py` — Thin filing-rule, suggestion, watched-folder, and import-status API routes (~900 tok)
+- `apps/web/src/components/AutomationWorkbench.tsx` — Phase 6 automation UI for contacts, rules, dry runs, suggestions, watched folders, and import status (~1900 tok)
+- `apps/web/src/automationApi.ts` — Browser API client for contacts, filing rules, suggestions, watched folders, and import status (~500 tok)
+- `database/072_phase6_automation.sql` — Phase 6 state migration for watched-folder owner, filing-rule run decision state, blocked action state, indexes, and update trigger (~600 tok)
+- `lib/automation/rule_policy.py` — Filing-rule validation for supported fields/operators/actions and regex safety (~700 tok)
+- `lib/automation/rule_engine.py` — Pure rule evaluation, condition explanations, high-stakes review guardrails, and writable-folder action blocking (~1300 tok)
+- `lib/automation/repository.py` — Filing-rule and suggestion persistence plus automation audit writes (~1900 tok)
+- `lib/automation/service.py` — Filing-rule orchestration, dry-run/apply/suggest/accept/reject/defer behavior, and manual filing integration (~2100 tok)
+- `lib/automation/watched_folder_policy.py` — Watch-path validation, managed-runtime path blocking, file stability, and PDF candidate filtering (~800 tok)
+- `lib/automation/watched_folder_repository.py` — Watched-folder persistence, enabled watcher listing, scan metrics, and import-status reads (~700 tok)
+- `lib/automation/watched_folders.py` — Watched-folder API service, target-folder ACL validation, and DTO mapping (~800 tok)
+- `lib/contacts/policy.py` — Contact/alias normalization and contact write validation (~450 tok)
+- `lib/contacts/repository.py` — Contact, alias, document-contact, merge suggestion, merge, and contact audit persistence (~1700 tok)
+- `lib/contacts/service.py` — Contact CRUD, document-contact linking, duplicate merge, and projection-refresh orchestration (~1100 tok)
+- `lib/documents/ingestion.py` — Shared document ingestion service extracted from document upload route for web/API/watched-folder reuse (~2300 tok)
+- `lib/documents/maintenance.py` — Operator maintenance enqueue helpers for document reprocess and search projection rebuild jobs (~650 tok)
+- `workers/watched_folders/worker.py` — Dedicated watched-folder scanner that imports stable PDFs through shared ingestion and records scan counts (~1300 tok)
+- `scripts/structura.py` — Operator CLI for dry-run/bulk import validation, reprocess enqueue, search rebuild enqueue, evaluation guidance, and backup/restore checks (~800 tok)
+- `tests/e2e/phase6.spec.ts` — Mocked Phase 6 automation UI workflow and Linux screenshot gate (~700 tok)
+- `tests/e2e/phase6-live.spec.ts` — GPU live Phase 6 automation UI smoke (~500 tok)
+- `tests/integration/test_phase6_automation.py` — Live DB coverage for contacts, document contacts, rules, suggestions, watched folders, and dedupe/merge (~1900 tok)
+- `tests/unit/test_phase6_automation_units.py` — Unit coverage for rule engine and watched-folder path policy (~700 tok)
+- `tests/unit/test_phase6_cli.py` — CLI dry-run import validation coverage (~250 tok)
+- `docs/ui-reference/figma/automation/` — Phase 6 automation UI context, comparison notes, Playwright reference screenshot, and deterministic Linux snapshot linkage (~500 tok plus image)
+
 ## ./
 
 - `.DS_Store` (~3824 tok)
@@ -56,7 +84,7 @@
 - `STRUCTURA_PHASE_11_IMPLEMENTATION_PLAN.md` — Phase 11 execution plan; golden corpus governance, expected answers, deterministic evaluation harness, extraction/search scoring, E2E and Playwright smoke tests, migration/contract regression, restore rehearsal, SAST/data-flow gate, performance measurements, release-candidate evidence pack, fresh-context rereads, Firecrawl evidence rules (~13200 tok)
 - `STRUCTURA_PHASE_12_IMPLEMENTATION_PLAN.md` — Final derived Phase 12 execution plan; internal-GA/release handoff, Phase 11 evidence intake, blocker closure, contract/schema freeze, runtime config, operator runbooks, benchmark threshold approval, UI/security/restore/performance signoff, release notes/tagging, go/no-go, post-release cadence, fresh-context rereads, Firecrawl evidence rules (~13200 tok)
 - `STRUCTURA_UI_FIGMA_QA_PLAN.md` — Canonical Figma and Playwright UI QA plan; frame ids, pixel-match rules, workflow QA, UI stop rule (~3000 tok)
-- `README.md` — Implementation status through Phase 5, canonical local/GPU verification commands including Phase 1-5 live Playwright specs, Compose/runtime notes, worker profile notes, migration baseline, and tracking behavior
+- `README.md` — Implementation status through Phase 6, canonical local/GPU verification commands including Phase 1-6 live Playwright specs, Compose/runtime notes, worker profile notes, migration baseline, and tracking behavior
 - `Makefile` — bootstrap, test, lint, format, contracts, migrate, API/web dev, Compose, and worker-placeholder tasks
 - `compose.yaml` — Postgres, API, web, default workers, profile-gated model placeholders, and Redis fallback services
 - `.env.example` — Local Structura environment defaults

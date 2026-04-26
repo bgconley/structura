@@ -2,20 +2,28 @@ import {expect, Page} from "@playwright/test";
 
 import {
   apiOrigin,
+  Contact,
+  createContact,
+  createFilingRule,
   createFolder,
   createTag,
+  createWatchedFolder,
   csrfToken,
   DocumentOrganizationWrite,
   ensureUploadedDocument,
   Folder,
   previewSvg,
-  seededDocuments,
   seededCanonicalFields,
+  seededContacts,
+  seededDocuments,
+  seededFilingRules,
+  seededFilingSuggestions,
   seededFieldCandidates,
   seededFolders,
   seededReviewTasks,
   seededSearchResponse,
   seededTags,
+  seededWatchedFolders,
   summaryFromDetail,
   Tag,
   updateDocumentOrganization,
@@ -34,6 +42,10 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
   const documents = seededDocuments();
   const folders = seededFolders();
   const tags = seededTags();
+  const contacts = seededContacts();
+  const filingRules = seededFilingRules();
+  let filingSuggestions = seededFilingSuggestions();
+  const watchedFolders = seededWatchedFolders();
   let reviewTasks = seededReviewTasks();
   let fieldCandidates = seededFieldCandidates();
   const canonicalFields = seededCanonicalFields();
@@ -171,6 +183,184 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
           filters: {},
           sort: {},
           createdAt: "2026-04-26T00:00:00Z",
+        },
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/v1/contacts" && request.method() === "GET") {
+      const query = url.searchParams.get("q")?.toLowerCase() ?? "";
+      await route.fulfill({
+        status: 200,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: {
+          items: contacts.filter((contact) => (
+            !query
+            || contact.displayName.toLowerCase().includes(query)
+            || contact.aliases.some((alias) => alias.toLowerCase().includes(query))
+          )),
+        },
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/v1/contacts" && request.method() === "POST") {
+      expect(request.headers()["x-csrf-token"]).toBe(expectedCsrfToken);
+      const contact = createContact(request.postDataJSON() as Partial<Contact>, contacts.length);
+      contacts.unshift(contact);
+      await route.fulfill({
+        status: 201,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: contact,
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/v1/contact-merge-suggestions" && request.method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: {items: []},
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/v1/filing-rules" && request.method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: {items: filingRules},
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/v1/filing-rules" && request.method() === "POST") {
+      expect(request.headers()["x-csrf-token"]).toBe(expectedCsrfToken);
+      const rule = createFilingRule(request.postDataJSON(), filingRules.length);
+      filingRules.unshift(rule);
+      await route.fulfill({
+        status: 201,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: rule,
+      });
+      return;
+    }
+
+    const dryRunMatch = url.pathname.match(/^\/api\/v1\/filing-rules\/([^/]+)\/dry-run$/);
+    if (dryRunMatch && request.method() === "POST") {
+      expect(request.headers()["x-csrf-token"]).toBe(expectedCsrfToken);
+      await route.fulfill({
+        status: 200,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: {
+          items: [{
+            runId: "20202020-2020-4620-8620-202020202020",
+            ruleId: dryRunMatch[1],
+            documentId: "11111111-1111-4111-8111-111111111111",
+            matched: true,
+            conditions: [
+              {
+                field: "document_family",
+                op: "eq",
+                expected: "medical_eob",
+                observed: "medical_eob",
+                matched: true,
+              },
+            ],
+            proposedActions: [{type: "add_tag", tag: "insurance"}],
+            blockedActions: [],
+            appliedActions: [],
+            reviewRequired: true,
+            safetyReasons: ["rule_requires_review", "medical_eob"],
+            explanation: {},
+          }],
+        },
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/v1/filing-suggestions" && request.method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: {items: filingSuggestions},
+      });
+      return;
+    }
+
+    const acceptSuggestionMatch = url.pathname.match(/^\/api\/v1\/filing-suggestions\/([^/]+)\/accept$/);
+    if (acceptSuggestionMatch && request.method() === "POST") {
+      expect(request.headers()["x-csrf-token"]).toBe(expectedCsrfToken);
+      filingSuggestions = filingSuggestions.filter((item) => item.runId !== acceptSuggestionMatch[1]);
+      await route.fulfill({
+        status: 200,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: {
+          runId: acceptSuggestionMatch[1],
+          documentId: "11111111-1111-4111-8111-111111111111",
+          matched: true,
+          conditions: [],
+          proposedActions: [],
+          blockedActions: [],
+          appliedActions: [],
+          reviewRequired: false,
+          safetyReasons: [],
+          explanation: {},
+          status: "accepted",
+        },
+      });
+      return;
+    }
+
+    const decisionSuggestionMatch = url.pathname.match(
+      /^\/api\/v1\/filing-suggestions\/([^/]+)\/(reject|defer)$/,
+    );
+    if (decisionSuggestionMatch && request.method() === "POST") {
+      expect(request.headers()["x-csrf-token"]).toBe(expectedCsrfToken);
+      filingSuggestions = filingSuggestions.filter((item) => item.runId !== decisionSuggestionMatch[1]);
+      await route.fulfill({
+        status: 200,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: {ok: true},
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/v1/watched-folders" && request.method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: {items: watchedFolders},
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/v1/watched-folders" && request.method() === "POST") {
+      expect(request.headers()["x-csrf-token"]).toBe(expectedCsrfToken);
+      const watched = createWatchedFolder(request.postDataJSON(), watchedFolders.length);
+      watchedFolders.unshift(watched);
+      await route.fulfill({
+        status: 201,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: watched,
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/v1/import-status" && request.method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: {
+          items: watchedFolders.map((folder) => ({
+            watchedFolderId: folder.id,
+            path: folder.path,
+            enabled: folder.enabled,
+            lastScanAt: folder.lastScanAt,
+            acceptedCount: 3,
+            rejectedCount: 1,
+            skippedCount: 2,
+          })),
         },
       });
       return;

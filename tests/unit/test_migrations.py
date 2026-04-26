@@ -15,7 +15,7 @@ def test_baseline_migration_scripts_are_present_and_ordered() -> None:
     plan = baseline_migration_plan("database")
 
     assert plan.scripts[0].name == "001_extensions.sql"
-    assert plan.scripts[-1].name == "071_phase5_search_guardrails.sql"
+    assert plan.scripts[-1].name == "072_phase6_automation.sql"
     assert all(script.exists() for script in plan.scripts)
 
 
@@ -67,3 +67,13 @@ def test_phase5_search_guardrails_migration_replaces_saved_query_function() -> N
     assert "CREATE OR REPLACE FUNCTION document_matches_saved_query" in sql
     assert "'tags'" in sql
     assert "bool_and(query_key IN" in sql
+
+
+def test_phase6_automation_migration_adds_rule_and_watcher_state() -> None:
+    sql = Path("database/072_phase6_automation.sql").read_text(encoding="utf-8")
+
+    assert "owner_user_id" in sql
+    assert "blocked_actions_json" in sql
+    assert "decision_status" in sql
+    assert "'deferred'" in sql
+    assert "filing_rule_runs_pending_suggestions_idx" in sql

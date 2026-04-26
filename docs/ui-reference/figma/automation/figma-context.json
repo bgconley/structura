@@ -1,0 +1,18 @@
+{
+  "screen": "Phase 6 Automation Workbench",
+  "phase": "6",
+  "source": "STRUCTURA_UI_FIGMA_QA_PLAN.md later UI surfaces plus Figma handoff pages",
+  "primaryFrames": [
+    "14:611",
+    "35:7",
+    "35:12",
+    "35:17"
+  ],
+  "notes": [
+    "The Figma QA plan does not identify a single final frame for rules and watched folders.",
+    "Phase 6 implementation follows the established Structura evidence-workbench visual language from the review workspace and handoff pages.",
+    "The committed Linux Playwright snapshot is the deterministic regression baseline for contacts, rules, suggestions, watched folders, and import status."
+  ],
+  "playwrightSnapshot": "tests/e2e/phase6.spec.ts-snapshots/phase6-automation-workbench-chromium-linux.png",
+  "playwrightReference": "docs/ui-reference/figma/automation/playwright-screenshot.png"
+}

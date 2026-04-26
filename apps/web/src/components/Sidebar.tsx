@@ -1,6 +1,7 @@
 const navItems = [
   ["I", "Inbox", "18"],
   ["S", "Search", ""],
+  ["A", "Automation", ""],
   ["F", "Folders", ""],
   ["S", "Smart Folders", ""],
   ["R", "Review Queue", "12"],
@@ -18,7 +19,7 @@ export function Sidebar({
 }: {
   total: number;
   active: string;
-  onNavigate: (view: "inbox" | "review" | "search") => void;
+  onNavigate: (view: "inbox" | "review" | "search" | "automation") => void;
 }) {
   return (
     <aside className="sidebar">
@@ -33,15 +34,18 @@ export function Sidebar({
             className={
               (label === "Inbox" && active === "inbox")
               || (label === "Search" && active === "search")
+              || (label === "Automation" && active === "automation")
               || (label === "Review Queue" && active === "review")
                 ? "active"
                 : undefined
             }
             type="button"
-            disabled={!["Inbox", "Search", "Review Queue"].includes(label)}
+            disabled={!["Inbox", "Search", "Automation", "Review Queue"].includes(label)}
             onClick={() => {
               if (label === "Review Queue") {
                 onNavigate("review");
+              } else if (label === "Automation") {
+                onNavigate("automation");
               } else if (label === "Search") {
                 onNavigate("search");
               } else {

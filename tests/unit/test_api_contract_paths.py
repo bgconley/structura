@@ -13,16 +13,22 @@ def test_runtime_openapi_paths_match_active_contract() -> None:
     assert sorted(app.openapi()["paths"]) == sorted(contract["paths"])
 
 
-def test_phase6_placeholder_response_statuses_match_active_contract() -> None:
+def test_phase6_runtime_response_statuses_match_active_contract() -> None:
     contract = yaml.safe_load(Path("contracts/api/openapi.yaml").read_text(encoding="utf-8"))
     runtime_paths = app.openapi()["paths"]
-    placeholders = [
+    phase6_mutations = [
         ("/api/v1/contacts", "post"),
         ("/api/v1/filing-rules", "post"),
+        ("/api/v1/filing-rules/{ruleId}/dry-run", "post"),
+        ("/api/v1/filing-rules/{ruleId}/apply", "post"),
+        ("/api/v1/filing-suggestions/{runId}/accept", "post"),
+        ("/api/v1/filing-suggestions/{runId}/reject", "post"),
+        ("/api/v1/filing-suggestions/{runId}/defer", "post"),
         ("/api/v1/watched-folders", "post"),
+        ("/api/v1/documents/{documentId}/contacts", "post"),
     ]
 
-    for path, method in placeholders:
+    for path, method in phase6_mutations:
         expected = sorted(contract["paths"][path][method].get("responses", {}))
         actual = sorted(runtime_paths[path][method].get("responses", {}))
         assert actual == expected, f"{method.upper()} {path} response status drift"
@@ -37,7 +43,10 @@ def test_phase0_contract_skeleton_routes_are_protected() -> None:
         "/api/v1/tags",
         "/api/v1/relationships",
         "/api/v1/contacts",
+        "/api/v1/contact-merge-suggestions",
         "/api/v1/filing-rules",
+        "/api/v1/filing-suggestions",
+        "/api/v1/import-status",
         "/api/v1/watched-folders",
         "/api/v1/review-tasks",
         "/api/v1/admin/jobs",
