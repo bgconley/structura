@@ -48,12 +48,9 @@ test.describe("Phase 5 live GPU stack", () => {
     await page.getByLabel("Search mode").selectOption("lexical");
     await page.getByRole("button", {name: "Search corpus"}).click();
 
-    await expect(page.getByRole("button", {name: new RegExp(title)})).toBeVisible();
-    await page
-      .locator(".search-result-card")
-      .filter({hasText: title})
-      .getByRole("button", {name: "Jump to evidence"})
-      .click();
+    const targetResult = page.locator(".search-result-card").filter({hasText: title});
+    await expect(targetResult.getByRole("button", {name: new RegExp(title)})).toBeVisible();
+    await targetResult.getByRole("button", {name: "Jump to evidence"}).click();
     await expect(page.getByRole("heading", {name: "Document Viewer"})).toBeVisible();
     await expect(page.getByRole("status")).toContainText(unique);
     await expect(page.getByRole("status")).toContainText("Claim ABC123");
