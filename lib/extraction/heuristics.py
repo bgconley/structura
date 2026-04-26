@@ -73,7 +73,7 @@ def invoice_payload(source: ExtractionSourceDocument) -> dict[str, Any]:
     paid = _money_after(text, ("amount paid", "paid"))
     balance = _money_after(text, ("balance due", "amount due"))
     total = _money_after(text, ("invoice total", "total", "amount due"))
-    line_items = _line_items(text, resolver, "invoice_item")
+    line_items = _line_items(text, resolver, None)
 
     payload: dict[str, Any] = {
         "schema_name": "invoice",
@@ -245,7 +245,7 @@ def _first_meaningful_line(text: str) -> str | None:
 def _line_items(
     text: str,
     resolver: EvidenceResolver,
-    item_type: str,
+    item_type: str | None,
 ) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     for line in text.splitlines():
@@ -257,15 +257,15 @@ def _line_items(
         amount = _decimal(match.group(2))
         if amount is None:
             continue
-        items.append(
-            {
-                "ordinal": len(items) + 1,
-                "description": match.group(1).strip()[:180],
-                "amount": _money(amount),
-                "evidence": resolver.for_value(line.strip()),
-                "category_hint": item_type,
-            }
-        )
+        item = {
+            "ordinal": len(items) + 1,
+            "description": match.group(1).strip()[:180],
+            "amount": _money(amount),
+            "evidence": resolver.for_value(line.strip()),
+        }
+        if item_type:
+            item["category_hint"] = item_type
+        items.append(item)
     return items
 
 

@@ -69,6 +69,7 @@ def test_phase4_invoice_heuristic_prefers_explicit_total_and_valid_party_type() 
         Subtotal: 1000.00
         Tax: 42.15
         Total: 1042.15
+        Item: Dishwasher service 1042.15
         """
     )
 
