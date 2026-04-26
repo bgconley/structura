@@ -12,7 +12,7 @@ test.beforeEach(async ({context, page}) => {
   await mockStructuraApi(page);
 });
 
-test("Phase 4 review queue shows candidates, evidence, and correction actions", async ({page}) => {
+test("Phase 4 review queue accepts a candidate", async ({page}) => {
   await page.goto("/");
   await page.getByRole("button", {name: /Review Queue/}).click();
 
@@ -27,4 +27,47 @@ test("Phase 4 review queue shows candidates, evidence, and correction actions", 
     fullPage: true,
     maxDiffPixelRatio: 0.02,
   });
+});
+
+test("Phase 4 review queue corrects a field", async ({page}) => {
+  await page.goto("/");
+  await page.getByRole("button", {name: /Review Queue/}).click();
+
+  await page.getByLabel("Corrected value").fill("1042.20");
+  await page.getByLabel("Correction note").fill("Corrected from statement total.");
+  await page.getByRole("button", {name: "Correct field"}).click();
+
+  await expect(page.locator(".review-status")).toContainText("Field corrected");
+});
+
+test("Phase 4 review queue rejects a field", async ({page}) => {
+  await page.goto("/");
+  await page.getByRole("button", {name: /Review Queue/}).click();
+
+  await page.getByLabel("Reject note").fill("Candidate does not match source.");
+  await page.getByRole("button", {name: "Reject field"}).click();
+
+  await expect(page.locator(".review-status")).toContainText("Field rejected");
+});
+
+test("Phase 4 review queue reclassifies a document", async ({page}) => {
+  await page.goto("/");
+  await page.getByRole("button", {name: /Review Queue/}).click();
+
+  await page.getByLabel("Document family").selectOption("receipt");
+  await page.getByLabel("Reclassification note").fill("Receipt layout and total line match.");
+  await page.getByRole("button", {name: "Reclassify"}).click();
+
+  await expect(page.locator(".review-status")).toContainText("Document classification updated");
+});
+
+test("Phase 4 review queue jumps to evidence in the viewer", async ({page}) => {
+  await page.goto("/");
+  await page.getByRole("button", {name: /Review Queue/}).click();
+
+  await page.getByRole("button", {name: "Jump to evidence"}).click();
+
+  await expect(page.getByRole("heading", {name: "Document Viewer"})).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("invoice.total_amount");
+  await expect(page.getByLabel("Evidence highlight")).toBeVisible();
 });

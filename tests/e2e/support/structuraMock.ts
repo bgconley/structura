@@ -177,13 +177,26 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
     const reviewActionMatch = url.pathname.match(/^\/api\/v1\/documents\/([^/]+)\/review-actions$/);
     if (reviewActionMatch && request.method() === "POST") {
       expect(request.headers()["x-csrf-token"]).toBe(expectedCsrfToken);
-      const payload = request.postDataJSON() as {actionType?: string; metadata?: {candidateId?: string}};
+      const payload = request.postDataJSON() as {
+        actionType?: string;
+        metadata?: {candidateId?: string};
+      };
       if (payload.actionType === "confirm_field" && payload.metadata?.candidateId) {
         fieldCandidates = fieldCandidates.map((candidate) => (
           candidate.id === payload.metadata?.candidateId
             ? {...candidate, status: "promoted"}
             : candidate
         ));
+        reviewTasks = reviewTasks.map((task) => ({...task, status: "resolved"}));
+      }
+      if (payload.actionType === "correct_field") {
+        reviewTasks = reviewTasks.map((task) => ({...task, status: "resolved"}));
+      }
+      if (payload.actionType === "reject_field") {
+        fieldCandidates = fieldCandidates.map((candidate) => ({...candidate, status: "rejected"}));
+        reviewTasks = reviewTasks.map((task) => ({...task, status: "resolved"}));
+      }
+      if (payload.actionType === "reclassify_document") {
         reviewTasks = reviewTasks.map((task) => ({...task, status: "resolved"}));
       }
       if (payload.actionType === "mark_done") {

@@ -20,6 +20,7 @@ import type {
   DocumentListResponse,
   DocumentOrganizationWrite,
   DocumentSummary,
+  EvidenceTarget,
   Folder,
   ParseDebugView,
   SessionInfo,
@@ -36,6 +37,7 @@ export default function App() {
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<DocumentDetail | null>(null);
+  const [evidenceTarget, setEvidenceTarget] = useState<EvidenceTarget | null>(null);
   const [parseDebug, setParseDebug] = useState<ParseDebugView | null>(null);
   const [parseDebugError, setParseDebugError] = useState<string | null>(null);
   const [isParseDebugLoading, setIsParseDebugLoading] = useState(false);
@@ -183,6 +185,7 @@ export default function App() {
 
   async function handleSelectFolder(folderId: string | null) {
     setActiveFolderId(folderId);
+    setEvidenceTarget(null);
   }
 
   async function handleCreateFolder(name: string, folderKind: "manual" | "smart") {
@@ -243,7 +246,8 @@ export default function App() {
         />
         {viewMode === "review" ? (
           <ReviewQueue
-            onOpenDocument={(documentId) => {
+            onOpenDocument={(documentId, target) => {
+              setEvidenceTarget(target ?? null);
               setSelectedId(documentId);
               setViewMode("viewer");
             }}
@@ -252,6 +256,7 @@ export default function App() {
           <Viewer
             document={detail}
             summary={selectedSummary}
+            evidenceTarget={evidenceTarget}
             onBack={() => setViewMode("inbox")}
             folders={folders}
             tags={tags}
@@ -271,7 +276,10 @@ export default function App() {
             error={error}
             activeFilter={activeFilter}
             setActiveFilter={setActiveFilter}
-            setSelectedId={setSelectedId}
+            setSelectedId={(documentId) => {
+              setEvidenceTarget(null);
+              setSelectedId(documentId);
+            }}
             openViewer={() => setViewMode("viewer")}
             uploadFile={uploadFile}
             folders={folders}

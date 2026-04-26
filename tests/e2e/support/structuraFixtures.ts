@@ -47,7 +47,12 @@ export type FieldCandidate = {
   valueType: string;
   value: unknown;
   sourceEngine: string;
-  evidence: Array<{pageNumber: number; sourceEngine: string; sourceText: string}>;
+  evidence: Array<{
+    pageNumber: number;
+    sourceEngine: string;
+    sourceText: string;
+    bbox?: [number, number, number, number];
+  }>;
   confidence?: number;
   status?: string;
 };
@@ -60,7 +65,12 @@ export type CanonicalField = {
   value: unknown;
   sourceKind: string;
   reviewStatus: string;
-  evidence: Array<{pageNumber: number; sourceEngine: string; sourceText: string}>;
+  evidence: Array<{
+    pageNumber: number;
+    sourceEngine: string;
+    sourceText: string;
+    bbox?: [number, number, number, number];
+  }>;
 };
 
 export type Folder = {
@@ -151,7 +161,12 @@ export function seededFieldCandidates(): FieldCandidate[] {
       sourceEngine: "docling",
       confidence: 0.86,
       status: "needs_review",
-      evidence: [{pageNumber: 1, sourceEngine: "docling", sourceText: "Total 1042.15"}],
+      evidence: [{
+        pageNumber: 1,
+        sourceEngine: "docling",
+        sourceText: "Total 1042.15",
+        bbox: [0.18, 0.22, 0.72, 0.29],
+      }],
     },
   ];
 }

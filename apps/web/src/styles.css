@@ -1163,6 +1163,7 @@ tbody tr.selected {
 }
 
 .rendered-page {
+  position: relative;
   height: 620px;
   width: min(480px, 70%);
   margin: 28px auto 0;
@@ -1172,6 +1173,32 @@ tbody tr.selected {
   overflow: hidden;
   display: grid;
   place-items: center;
+}
+
+.evidence-focus {
+  display: grid;
+  gap: 4px;
+  width: min(520px, 82%);
+  margin: 18px auto 0;
+  border: 1px solid #bae6fd;
+  border-radius: 6px;
+  background: #eff6ff;
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: 12px;
+}
+
+.evidence-focus span {
+  color: var(--muted);
+}
+
+.evidence-highlight {
+  position: absolute;
+  z-index: 2;
+  border: 2px solid #f59e0b;
+  background: rgba(245, 158, 11, 0.18);
+  box-shadow: 0 0 0 999px rgba(15, 23, 42, 0.08);
+  pointer-events: none;
 }
 
 .rendered-page img,

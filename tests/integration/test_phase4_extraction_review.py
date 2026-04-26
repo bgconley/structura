@@ -252,6 +252,158 @@ def test_phase4_medical_eob_generates_review_task_and_accept_action_is_audited(
             assert cur.fetchone()["total"] >= 1
 
 
+@pytest.mark.skipif(
+    not os.environ.get("STRUCTURA_TEST_DATABASE_URL"),
+    reason="Set STRUCTURA_TEST_DATABASE_URL to run live Phase 4 extraction tests.",
+)
+def test_phase4_receipt_review_actions_correct_reject_and_reclassify(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    client = _phase4_client(monkeypatch, tmp_path, "receipt")
+    document_id = _upload_fixture_document(
+        client,
+        f"Phase 4 Receipt {uuid.uuid4().hex[:8]}",
+    )
+    text = """
+    Merchant: Grocery Mart
+    Date: 2026-04-05
+    Subtotal: 20.00
+    Tax: 1.45
+    Total: 21.45
+    Item: Pantry supplies 21.45
+    """
+
+    assert docling_worker.process_next_docling_job(
+        worker_name="phase4-receipt-docling-test",
+        document_id=document_id,
+        converter=TextDoclingConverter(text),
+    )
+    assert extraction_worker.process_next_extraction_job(
+        worker_name="phase4-receipt-extraction-test",
+        document_id=document_id,
+    )
+    assert extraction_worker.process_next_extraction_job(
+        worker_name="phase4-receipt-extraction-test",
+        document_id=document_id,
+    )
+
+    detail = client.get(f"/api/v1/documents/{document_id}")
+    assert detail.status_code == 200
+    assert detail.json()["family"] == "receipt"
+    assert any(
+        field["fieldPath"] == "receipt.transaction.total" for field in detail.json()["fields"]
+    )
+
+    candidates = client.get(
+        f"/api/v1/documents/{document_id}/field-candidates",
+        params={"fieldPath": "receipt.transaction.total"},
+    )
+    assert candidates.status_code == 200
+    total_candidate = candidates.json()["items"][0]
+    corrected = client.post(
+        f"/api/v1/documents/{document_id}/review-actions",
+        headers={"X-CSRF-Token": client.cookies["structura_csrf"]},
+        json={
+            "schemaName": "review_action",
+            "schemaVersion": "v1",
+            "documentId": str(document_id),
+            "actionType": "correct_field",
+            "actorType": "human",
+            "fieldPath": "receipt.transaction.total",
+            "newValue": {"amount": 21.5, "currency": "USD"},
+            "evidenceContext": total_candidate["evidence"],
+            "metadata": {"valueType": "money", "currency": "USD"},
+            "comment": "Corrected receipt total.",
+            "createdAt": "2026-04-26T00:00:00Z",
+        },
+    )
+    assert corrected.status_code == 200
+
+    rejected = client.post(
+        f"/api/v1/documents/{document_id}/review-actions",
+        headers={"X-CSRF-Token": client.cookies["structura_csrf"]},
+        json={
+            "schemaName": "review_action",
+            "schemaVersion": "v1",
+            "documentId": str(document_id),
+            "actionType": "reject_field",
+            "actorType": "human",
+            "fieldPath": "receipt.transaction.tax",
+            "comment": "Tax candidate rejected for regression coverage.",
+            "createdAt": "2026-04-26T00:00:00Z",
+        },
+    )
+    assert rejected.status_code == 200
+
+    reclassified = client.post(
+        f"/api/v1/documents/{document_id}/review-actions",
+        headers={"X-CSRF-Token": client.cookies["structura_csrf"]},
+        json={
+            "schemaName": "review_action",
+            "schemaVersion": "v1",
+            "documentId": str(document_id),
+            "actionType": "reclassify_document",
+            "actorType": "human",
+            "fieldPath": "classification.document_family",
+            "newValue": {"family": "invoice", "subtype": "manual-review"},
+            "comment": "Manual reclassification regression.",
+            "createdAt": "2026-04-26T00:00:00Z",
+        },
+    )
+    assert reclassified.status_code == 200
+
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT numeric_value, json_value
+                FROM canonical_fields
+                WHERE document_id = %s
+                  AND field_path = 'receipt.transaction.total'
+                """,
+                (document_id,),
+            )
+            corrected_total = cur.fetchone()
+            assert float(corrected_total["numeric_value"]) == 21.5
+            assert corrected_total["json_value"] == {"amount": 21.5, "currency": "USD"}
+            cur.execute(
+                """
+                SELECT count(*) AS total
+                FROM field_candidates
+                WHERE document_id = %s
+                  AND field_path = 'receipt.transaction.tax'
+                  AND status = 'rejected'
+                """,
+                (document_id,),
+            )
+            assert cur.fetchone()["total"] >= 1
+            cur.execute(
+                """
+                SELECT document_family::text AS family, document_subtype
+                FROM documents
+                WHERE id = %s
+                """,
+                (document_id,),
+            )
+            document = cur.fetchone()
+            assert document == {"family": "invoice", "document_subtype": "manual-review"}
+            cur.execute(
+                """
+                SELECT action
+                FROM review_events
+                WHERE document_id = %s
+                  AND action IN ('correct_field', 'reject_field', 'reclassify_document')
+                """,
+                (document_id,),
+            )
+            assert {row["action"] for row in cur.fetchall()} == {
+                "correct_field",
+                "reject_field",
+                "reclassify_document",
+            }
+
+
 def _phase4_client(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path,

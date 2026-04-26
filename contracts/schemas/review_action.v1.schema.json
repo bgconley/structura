@@ -32,14 +32,6 @@
         "correct_field",
         "reject_field",
         "reclassify_document",
-        "accept_relationship",
-        "reject_relationship",
-        "move_to_folder",
-        "remove_from_folder",
-        "add_tag",
-        "remove_tag",
-        "mark_duplicate",
-        "clear_duplicate",
         "rerun_extraction",
         "mark_done"
       ]

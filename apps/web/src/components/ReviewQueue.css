@@ -106,10 +106,68 @@
   padding: 14px;
 }
 
-.candidate-card div {
+.candidate-card > div:first-child,
+.candidate-actions {
   display: flex;
   justify-content: space-between;
   gap: 12px;
+}
+
+.candidate-actions,
+.review-actions {
+  flex-wrap: wrap;
+}
+
+.review-decision-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.review-decision-form {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(160px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.review-decision-form.compact {
+  grid-template-columns: minmax(220px, 1fr) auto;
+}
+
+.review-decision-form label {
+  display: grid;
+  gap: 5px;
+  color: var(--text-strong);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.review-decision-form input,
+.review-decision-form select {
+  width: 100%;
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--text);
+  padding: 7px 8px;
+  font-size: 12px;
+  box-sizing: border-box;
+}
+
+.review-decision-form button,
+.candidate-actions button {
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--text);
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .review-actions {
@@ -135,5 +193,10 @@
   .review-heading,
   .candidate-panel-title {
     display: grid;
+  }
+
+  .review-decision-form,
+  .review-decision-form.compact {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

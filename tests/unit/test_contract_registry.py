@@ -12,6 +12,7 @@ from lib.contracts import (
     FieldCandidate,
     FilingRule,
     PasswordSessionRequest,
+    ReviewActionRequest,
     UploadDocumentMultipartRequest,
 )
 
@@ -150,6 +151,45 @@ def test_json_schema_instances_cover_review_candidates_canonical_filing_and_even
             },
         },
     )
+
+
+def test_review_action_schema_matches_runtime_phase4_actions() -> None:
+    registry = ContractRegistry.load("contracts")
+    schema_actions = set(
+        registry.schemas["review_action.v1.schema.json"]["properties"]["action_type"]["enum"]
+    )
+    runtime_actions = {
+        "confirm_field",
+        "correct_field",
+        "reject_field",
+        "reclassify_document",
+        "rerun_extraction",
+        "mark_done",
+    }
+
+    assert schema_actions == runtime_actions
+    for action_type in runtime_actions:
+        ReviewActionRequest.model_validate(
+            {
+                "schemaName": "review_action",
+                "schemaVersion": "v1",
+                "documentId": UUID_1,
+                "actionType": action_type,
+                "actorType": "human",
+                "createdAt": TIMESTAMP,
+            }
+        )
+    with pytest.raises(PydanticValidationError):
+        ReviewActionRequest.model_validate(
+            {
+                "schemaName": "review_action",
+                "schemaVersion": "v1",
+                "documentId": UUID_1,
+                "actionType": "add_tag",
+                "actorType": "human",
+                "createdAt": TIMESTAMP,
+            }
+        )
 
 
 def test_all_job_event_schemas_validate_representative_payloads() -> None:

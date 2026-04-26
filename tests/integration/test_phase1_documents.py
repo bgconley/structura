@@ -13,6 +13,7 @@ from apps.api.structura_api.main import create_app
 from lib.auth import AuthService
 from lib.config import get_settings
 from lib.db.connection import db_connection
+from lib.storage import ObjectStorage, StoredObject, cleanup_unreferenced_stored_object
 from workers.previews import PreviewError, generate_phase1_preview
 from workers.previews import worker as preview_worker
 
@@ -219,6 +220,81 @@ def test_phase1_upload_rolls_back_committed_object_on_job_failure(
         with conn.cursor() as cur:
             cur.execute("SELECT count(*) AS total FROM documents WHERE title = %s", (title,))
             assert cur.fetchone()["total"] == 0
+
+
+@pytest.mark.skipif(
+    not os.environ.get("STRUCTURA_TEST_DATABASE_URL"),
+    reason="Set STRUCTURA_TEST_DATABASE_URL to run live Phase 1 document tests.",
+)
+def test_phase1_rollback_cleanup_keeps_referenced_content_addressed_object(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    database_url = os.environ["STRUCTURA_TEST_DATABASE_URL"]
+    runtime_root = tmp_path / "runtime"
+    monkeypatch.setenv("STRUCTURA_DATABASE_URL", database_url)
+    monkeypatch.setenv("STRUCTURA_RUNTIME_ROOT", str(runtime_root))
+    monkeypatch.setenv("STRUCTURA_ENV", "test")
+    get_settings.cache_clear()
+
+    unique = uuid.uuid4().hex[:12]
+    email = f"phase1-cleanup-reference-{unique}@example.com"
+    password = "minimum8"
+    title = f"Phase 1 Referenced Cleanup {unique}"
+    AuthService().bootstrap_admin(
+        email=email,
+        password=password,
+        display_name="Phase 1 Cleanup Admin",
+        household_name=f"Phase 1 Cleanup {unique}",
+        must_rotate=False,
+    )
+    client = TestClient(create_app())
+    login = client.post(
+        "/api/v1/auth/session",
+        json={"method": "password", "email": email, "password": password},
+    )
+    assert login.status_code == 201
+
+    uploaded = client.post(
+        "/api/v1/documents",
+        headers={"X-CSRF-Token": client.cookies["structura_csrf"]},
+        data={"source": "web_upload", "suppliedTitle": title},
+        files={"file": ("referenced.pdf", b"%PDF-1.7\n%%EOF\n", "application/pdf")},
+    )
+    assert uploaded.status_code == 202
+    document_id = uuid.UUID(str(_document_by_title(client, title)["id"]))
+
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT uri, sha256, byte_size
+                FROM document_assets
+                WHERE document_id = %s
+                  AND asset_role = 'original'
+                """,
+                (document_id,),
+            )
+            asset = cur.fetchone()
+
+    storage = ObjectStorage(settings=get_settings())
+    path = storage.path_for_uri(asset["uri"])
+    assert path.exists()
+    cleanup_unreferenced_stored_object(
+        StoredObject(
+            uri=asset["uri"],
+            sha256=asset["sha256"],
+            byte_size=asset["byte_size"],
+            path=path,
+            created=True,
+        )
+    )
+
+    assert path.exists()
+    detail = client.get(f"/api/v1/documents/{document_id}")
+    assert detail.status_code == 200
+    original = next(asset for asset in detail.json()["assets"] if asset["assetRole"] == "original")
+    assert client.get(original["assetUrl"]).status_code == 200
 
 
 @pytest.mark.skipif(

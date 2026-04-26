@@ -57,10 +57,7 @@ def upsert_human_canonical_field(
     source_kind: str = "human",
     reason: str | None = None,
 ) -> tuple[CanonicalField, UUID]:
-    typed = typed_value_columns(
-        value_type,
-        {"amount": value, "currency": currency} if value_type == "money" else value,
-    )
+    typed = typed_value_columns(value_type, _typed_value_input(value_type, value, currency))
     if currency:
         typed["currency_code"] = currency
     with db_connection() as conn:
@@ -354,6 +351,17 @@ def _canonical_row(
         (document_id, field_path, ordinal),
     )
     return cast(dict[str, Any] | None, cur.fetchone())
+
+
+def _typed_value_input(value_type: str, value: object, currency: str | None) -> object:
+    if value_type != "money":
+        return value
+    if isinstance(value, Mapping):
+        money_value = dict(value)
+        if currency and not money_value.get("currency"):
+            money_value["currency"] = currency
+        return money_value
+    return {"amount": value, "currency": currency}
 
 
 def _upsert_canonical_row(

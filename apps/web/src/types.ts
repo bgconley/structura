@@ -60,6 +60,19 @@ export type EvidenceRef = {
   pageNumber: number;
   sourceEngine: string;
   sourceText?: string;
+  bbox?: [number, number, number, number];
+  elementId?: string;
+  tableId?: string;
+  rowIndex?: number;
+  textSpan?: {start: number; end: number; basis?: string};
+};
+
+export type EvidenceTarget = {
+  documentId: string;
+  fieldPath?: string;
+  pageNumber?: number;
+  sourceText?: string;
+  bbox?: [number, number, number, number];
   elementId?: string;
   tableId?: string;
   rowIndex?: number;

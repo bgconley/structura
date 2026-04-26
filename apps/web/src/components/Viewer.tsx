@@ -2,6 +2,7 @@ import {assetUrl} from "../api";
 import {familyLabel, formatDate} from "../format";
 import type {
   DocumentDetail,
+  EvidenceTarget,
   DocumentOrganizationWrite,
   DocumentSummary,
   Folder,
@@ -15,6 +16,7 @@ import {FactRow, ReviewChip, StatusChip, TrustLine} from "./Status";
 export function Viewer({
   document,
   summary,
+  evidenceTarget,
   onBack,
   folders,
   tags,
@@ -26,6 +28,7 @@ export function Viewer({
 }: {
   document: DocumentDetail | null;
   summary?: DocumentSummary;
+  evidenceTarget: EvidenceTarget | null;
   onBack: () => void;
   folders: Folder[];
   tags: Tag[];
@@ -66,9 +69,21 @@ export function Viewer({
           <StatusChip tone="green" label="Immutable original" />
           <StatusChip tone="neutral" label="Extraction pending" />
         </div>
+        {evidenceTarget ? (
+          <div className="evidence-focus" role="status">
+            <strong>{evidenceTarget.fieldPath ?? "Evidence"}</strong>
+            <span>
+              Page {evidenceTarget.pageNumber ?? document?.pages[0]?.pageNumber ?? 1}
+              {evidenceTarget.sourceText ? ` · ${evidenceTarget.sourceText}` : ""}
+            </span>
+          </div>
+        ) : null}
         <div className="rendered-page">
           {preview ? (
-            <img src={assetUrl(preview)} alt={`Preview of ${active.title}`} />
+            <>
+              <img src={assetUrl(preview)} alt={`Preview of ${active.title}`} />
+              {evidenceTarget ? <EvidenceHighlight target={evidenceTarget} /> : null}
+            </>
           ) : original?.mimeType === "application/pdf" ? (
             <iframe src={assetUrl(original.assetUrl)} title={active.title} />
           ) : (
@@ -127,6 +142,49 @@ export function Viewer({
       </aside>
     </section>
   );
+}
+
+function EvidenceHighlight({target}: {target: EvidenceTarget}) {
+  const box = normalizedBox(target.bbox);
+  return (
+    <div
+      className="evidence-highlight"
+      aria-label="Evidence highlight"
+      style={{
+        left: `${box.left}%`,
+        top: `${box.top}%`,
+        width: `${box.width}%`,
+        height: `${box.height}%`,
+      }}
+    />
+  );
+}
+
+function normalizedBox(bbox?: [number, number, number, number]) {
+  if (!bbox) {
+    return {left: 12, top: 16, width: 76, height: 12};
+  }
+  const [left, top, right, bottom] = bbox;
+  const maxX = Math.max(left, right, 1);
+  const maxY = Math.max(top, bottom, 1);
+  if (maxX <= 1 && maxY <= 1) {
+    return {
+      left: clampPercent(left * 100),
+      top: clampPercent(top * 100),
+      width: clampPercent((right - left) * 100, 4),
+      height: clampPercent((bottom - top) * 100, 4),
+    };
+  }
+  return {
+    left: clampPercent((left / 612) * 100),
+    top: clampPercent((top / 792) * 100),
+    width: clampPercent(((right - left) / 612) * 100, 4),
+    height: clampPercent(((bottom - top) / 792) * 100, 4),
+  };
+}
+
+function clampPercent(value: number, minimum = 0): number {
+  return Math.min(100, Math.max(minimum, value));
 }
 
 function formatFactValue(value: unknown, currency?: string): string {

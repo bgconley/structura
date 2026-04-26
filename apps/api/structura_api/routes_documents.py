@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import mimetypes
-from contextlib import suppress
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
@@ -30,6 +29,8 @@ from lib.storage import (
     StorageError,
     StoredObject,
     UploadTooLarge,
+    cleanup_unreferenced_stored_object,
+    lock_content_hash,
 )
 
 router = APIRouter(prefix="/api/v1", tags=["Documents"])
@@ -224,6 +225,7 @@ def create_document(
                 if not document:
                     raise HTTPException(status_code=500, detail="Failed to create document")
                 document_id = document["id"]
+                lock_content_hash(cur, staged.sha256)
                 stored = storage.commit_staged(staged, kind="canonical", role="original")
                 stored_original = stored
                 staged = None
@@ -351,18 +353,18 @@ def create_document(
         ) from exc
     except HTTPException:
         if not db_committed:
-            _cleanup_unreferenced_stored_object(stored_original)
+            cleanup_unreferenced_stored_object(stored_original)
         raise
     except (InvalidObjectUri, StorageError, OSError) as exc:
         if not db_committed:
-            _cleanup_unreferenced_stored_object(stored_original)
+            cleanup_unreferenced_stored_object(stored_original)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(exc),
         ) from exc
     except Exception:
         if not db_committed:
-            _cleanup_unreferenced_stored_object(stored_original)
+            cleanup_unreferenced_stored_object(stored_original)
         raise
     finally:
         storage.cleanup_staged(staged)
@@ -393,20 +395,6 @@ def _document_access_context(principal: AuthPrincipal) -> DocumentAccessContext:
         user_id=principal.user_id,
         household_role=principal.household_role,
     )
-
-
-def _cleanup_unreferenced_stored_object(stored: StoredObject | None) -> None:
-    if not stored or not stored.created:
-        return
-    with suppress(OSError):
-        stored.path.unlink(missing_ok=True)
-        _remove_empty_storage_dirs(stored.path)
-
-
-def _remove_empty_storage_dirs(path: Path) -> None:
-    for candidate in (path.parent, path.parent.parent, path.parent.parent.parent):
-        with suppress(OSError):
-            candidate.rmdir()
 
 
 def _parse_hints_json(hints_json: str | None) -> dict[str, object]:

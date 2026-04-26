@@ -6,13 +6,20 @@ import {
   listReviewTasks,
   postReviewAction,
 } from "../reviewApi";
-import type {CanonicalField, FieldCandidate, ReviewTask} from "../types";
+import {
+  coerceCorrectionValue,
+  evidenceTargetFromCandidate,
+  referenceCandidate,
+  schemaFromReviewTask,
+} from "../reviewActions";
+import type {CanonicalField, EvidenceTarget, FieldCandidate, ReviewTask} from "../types";
+import {ReviewDecisionPanel} from "./ReviewDecisionPanel";
 import "./ReviewQueue.css";
 
 export function ReviewQueue({
   onOpenDocument,
 }: {
-  onOpenDocument: (documentId: string) => void;
+  onOpenDocument: (documentId: string, evidenceTarget?: EvidenceTarget) => void;
 }) {
   const [tasks, setTasks] = useState<ReviewTask[]>([]);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
@@ -55,58 +62,151 @@ export function ReviewQueue({
   }
 
   async function handleAccept(candidate: FieldCandidate) {
-    await postReviewAction({
-      schemaName: "review_action",
-      schemaVersion: "v1",
-      documentId: candidate.documentId,
-      actionType: "confirm_field",
-      actorType: "human",
-      fieldPath: candidate.fieldPath,
-      newValue: candidate.id,
-      metadata: {candidateId: candidate.id},
-      comment: "Accepted from review queue.",
-      createdAt: new Date().toISOString(),
-    });
-    setStatus("Candidate accepted and promoted.");
-    await refreshTasks();
+    await applyReviewAction(
+      {
+        schemaName: "review_action",
+        schemaVersion: "v1",
+        documentId: candidate.documentId,
+        actionType: "confirm_field",
+        actorType: "human",
+        fieldPath: candidate.fieldPath,
+        newValue: candidate.id,
+        metadata: {candidateId: candidate.id},
+        comment: "Accepted from review queue.",
+        createdAt: new Date().toISOString(),
+      },
+      "Candidate accepted and promoted.",
+    );
+  }
+
+  async function handleCorrect(valueText: string, comment: string) {
+    if (!activeTask?.fieldPath) {
+      setStatus("Select a field review task before correcting.");
+      return;
+    }
+    const reference = referenceCandidate(activeTask, candidates);
+    const coerced = coerceCorrectionValue(
+      valueText,
+      reference?.valueType ?? "string",
+      reference?.currency,
+    );
+    await applyReviewAction(
+      {
+        schemaName: "review_action",
+        schemaVersion: "v1",
+        documentId: activeTask.documentId,
+        reviewTaskId: activeTask.id,
+        actionType: "correct_field",
+        actorType: "human",
+        fieldPath: activeTask.fieldPath,
+        newValue: coerced.value,
+        evidenceContext: reference?.evidence,
+        metadata: coerced.metadata,
+        comment: comment || "Corrected from review queue.",
+        createdAt: new Date().toISOString(),
+      },
+      "Field corrected and review history updated.",
+    );
+  }
+
+  async function handleReject(comment: string) {
+    if (!activeTask?.fieldPath) {
+      setStatus("Select a field review task before rejecting.");
+      return;
+    }
+    await applyReviewAction(
+      {
+        schemaName: "review_action",
+        schemaVersion: "v1",
+        documentId: activeTask.documentId,
+        reviewTaskId: activeTask.id,
+        actionType: "reject_field",
+        actorType: "human",
+        fieldPath: activeTask.fieldPath,
+        comment: comment || "Rejected from review queue.",
+        createdAt: new Date().toISOString(),
+      },
+      "Field rejected and candidates closed.",
+    );
+  }
+
+  async function handleReclassify(family: string, subtype: string, comment: string) {
+    if (!activeTask) {
+      return;
+    }
+    await applyReviewAction(
+      {
+        schemaName: "review_action",
+        schemaVersion: "v1",
+        documentId: activeTask.documentId,
+        reviewTaskId: activeTask.id,
+        actionType: "reclassify_document",
+        actorType: "human",
+        fieldPath: "classification.document_family",
+        newValue: {family, subtype: subtype.trim() || null},
+        comment: comment || "Reclassified from review queue.",
+        createdAt: new Date().toISOString(),
+      },
+      "Document classification updated.",
+    );
   }
 
   async function handleMarkDone() {
     if (!activeTask) {
       return;
     }
-    await postReviewAction({
-      schemaName: "review_action",
-      schemaVersion: "v1",
-      documentId: activeTask.documentId,
-      reviewTaskId: activeTask.id,
-      actionType: "mark_done",
-      actorType: "human",
-      comment: "Marked reviewed from queue.",
-      createdAt: new Date().toISOString(),
-    });
-    setStatus("Review task closed.");
-    await refreshTasks();
+    await applyReviewAction(
+      {
+        schemaName: "review_action",
+        schemaVersion: "v1",
+        documentId: activeTask.documentId,
+        reviewTaskId: activeTask.id,
+        actionType: "mark_done",
+        actorType: "human",
+        comment: "Marked reviewed from queue.",
+        createdAt: new Date().toISOString(),
+      },
+      "Review task closed.",
+    );
   }
 
   async function handleRerunExtraction() {
     if (!activeTask) {
       return;
     }
-    await postReviewAction({
-      schemaName: "review_action",
-      schemaVersion: "v1",
-      documentId: activeTask.documentId,
-      actionType: "rerun_extraction",
-      actorType: "human",
-      metadata: {targetSchemaName: _schemaFromTask(activeTask)},
-      comment: "Manual re-run requested from review queue.",
-      createdAt: new Date().toISOString(),
-    });
-    setStatus("Extraction re-run queued.");
+    await applyReviewAction(
+      {
+        schemaName: "review_action",
+        schemaVersion: "v1",
+        documentId: activeTask.documentId,
+        actionType: "rerun_extraction",
+        actorType: "human",
+        metadata: {targetSchemaName: schemaFromReviewTask(activeTask)},
+        comment: "Manual re-run requested from review queue.",
+        createdAt: new Date().toISOString(),
+      },
+      "Extraction re-run queued.",
+    );
+  }
+
+  async function applyReviewAction(
+    payload: Parameters<typeof postReviewAction>[0],
+    successMessage: string,
+  ) {
+    try {
+      await postReviewAction(payload);
+      setStatus(successMessage);
+      await refreshTasks();
+      if (activeTask) {
+        await refreshReviewDetail(activeTask);
+      }
+    } catch (exc) {
+      setStatus(exc instanceof Error ? exc.message : "Review action failed.");
+    }
   }
 
   const fieldGroups = useMemo(() => groupCandidates(candidates), [candidates]);
+  const activeReferenceCandidate = activeTask ? referenceCandidate(activeTask, candidates) : undefined;
 
   return (
     <section className="review-workbench">
@@ -155,17 +255,32 @@ export function ReviewQueue({
                       </div>
                       <p>{candidate.status ?? "proposed"} · evidence page {candidate.evidence[0]?.pageNumber ?? "?"}</p>
                       <small>{candidate.evidence[0]?.sourceText ?? "Evidence locator available."}</small>
-                      <button type="button" onClick={() => handleAccept(candidate)}>
-                        Accept candidate
-                      </button>
+                      <div className="candidate-actions">
+                        <button type="button" onClick={() => handleAccept(candidate)}>
+                          Accept candidate
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => (
+                            onOpenDocument(candidate.documentId, evidenceTargetFromCandidate(candidate))
+                          )}
+                        >
+                          Jump to evidence
+                        </button>
+                      </div>
                     </article>
                   ))}
                 </div>
               ))}
-              <div className="review-actions">
-                <button type="button" className="primary" onClick={handleMarkDone}>Mark reviewed</button>
-                <button type="button" onClick={handleRerunExtraction}>Re-run extraction</button>
-              </div>
+              <ReviewDecisionPanel
+                activeTask={activeTask}
+                referenceCandidate={activeReferenceCandidate}
+                onCorrect={handleCorrect}
+                onReject={handleReject}
+                onReclassify={handleReclassify}
+                onMarkDone={handleMarkDone}
+                onRerunExtraction={handleRerunExtraction}
+              />
             </>
           ) : (
             <p className="empty-state">Select a review task to inspect candidates.</p>
@@ -218,14 +333,4 @@ function formatValue(value: unknown, currency?: string): string {
     return `${money.currency ?? currency ?? "USD"} ${money.amount ?? ""}`.trim();
   }
   return value === null || value === undefined ? "Not set" : String(value);
-}
-
-function _schemaFromTask(task: ReviewTask): string {
-  if (task.fieldPath?.startsWith("invoice.")) {
-    return "invoice";
-  }
-  if (task.fieldPath?.startsWith("medical_eob.")) {
-    return "medical_eob";
-  }
-  return "receipt";
 }
