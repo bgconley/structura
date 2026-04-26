@@ -8,6 +8,11 @@ from psycopg.errors import UniqueViolation
 
 from lib.auth import AuthPrincipal
 from lib.automation import repository
+from lib.automation.action_application import (
+    RuleActionApplication,
+    apply_rule_actions_with_cursor,
+    refresh_rule_action_projection,
+)
 from lib.automation.errors import AutomationError
 from lib.automation.rule_engine import (
     DocumentRuleContext,
@@ -28,8 +33,6 @@ from lib.contracts import (
 )
 from lib.db.connection import db_connection
 from lib.documents.access_policy import DocumentAccessContext
-from lib.organization import manual_filing
-from lib.organization.policy import OrganizationError
 
 
 def list_filing_rules(principal: AuthPrincipal) -> list[FilingRule]:
@@ -130,6 +133,7 @@ def apply_rule(
     principal: AuthPrincipal,
 ) -> FilingRuleApplyResponse:
     household_id = _require_household(principal)
+    post_commit_application: RuleActionApplication | None = None
     with db_connection() as conn:
         with conn.cursor() as cur:
             rule = repository.get_filing_rule(cur, rule_id=rule_id, household_id=household_id)
@@ -173,11 +177,14 @@ def apply_rule(
                     )
                 status = "suggested"
             elif evaluation.matched:
-                applied = _apply_actions_with_manual_service(
+                application = apply_rule_actions_with_cursor(
+                    cur=cur,
                     document_id=payload.document_id,
                     actions=evaluation.proposed_actions,
                     principal=principal,
                 )
+                applied = application.applied_actions
+                post_commit_application = application
                 run = repository.insert_rule_run(
                     cur,
                     rule_id=_uuid(rule["id"]),
@@ -208,6 +215,7 @@ def apply_rule(
                 )
                 status = "not_matched"
         conn.commit()
+    refresh_rule_action_projection(post_commit_application)
     response_payload = _evaluation_contract(
         rule,
         evaluation,
@@ -227,6 +235,7 @@ def list_filing_suggestions(principal: AuthPrincipal) -> list[FilingSuggestion]:
 
 def accept_suggestion(*, run_id: UUID, principal: AuthPrincipal) -> FilingRuleApplyResponse:
     household_id = _require_household(principal)
+    post_commit_application: RuleActionApplication | None = None
     with db_connection() as conn:
         with conn.cursor() as cur:
             run = repository.get_pending_suggestion(
@@ -237,11 +246,14 @@ def accept_suggestion(*, run_id: UUID, principal: AuthPrincipal) -> FilingRuleAp
             if not run:
                 raise AutomationError(404, "Filing suggestion not found")
             document_id = _uuid(run["document_id"])
-            applied = _apply_actions_with_manual_service(
+            application = apply_rule_actions_with_cursor(
+                cur=cur,
                 document_id=document_id,
                 actions=list(run.get("proposed_actions_json") or []),
                 principal=principal,
             )
+            applied = application.applied_actions
+            post_commit_application = application
             repository.mark_suggestion(
                 cur,
                 run_id=run_id,
@@ -249,6 +261,7 @@ def accept_suggestion(*, run_id: UUID, principal: AuthPrincipal) -> FilingRuleAp
                 applied_actions=applied,
             )
         conn.commit()
+    refresh_rule_action_projection(post_commit_application)
     return FilingRuleApplyResponse.model_validate(
         {
             "runId": run_id,
@@ -349,64 +362,6 @@ def _context_from_row(row: dict[str, Any]) -> DocumentRuleContext:
     )
 
 
-def _apply_actions_with_manual_service(
-    *,
-    document_id: UUID,
-    actions: list[dict[str, Any]],
-    principal: AuthPrincipal,
-) -> list[dict[str, Any]]:
-    from lib.contracts import DocumentOrganizationWrite
-
-    current_folders: list[UUID] = []
-    primary_folder: UUID | None = None
-    current_tags: list[str] = []
-    detail = None
-    try:
-        from lib.documents.read_model import get_document_detail
-
-        detail = get_document_detail(document_id, _access_context(principal))
-    except Exception as exc:
-        raise AutomationError(404, "Document not found") from exc
-    if not detail:
-        raise AutomationError(404, "Document not found")
-    current_folders = list(detail.folder_ids)
-    primary_folder = detail.primary_folder_id
-    current_tags = list(detail.tags)
-
-    for action in actions:
-        if action["type"] == "add_folder":
-            folder_id = _action_folder_id(action)
-            if folder_id and folder_id not in current_folders:
-                current_folders.append(folder_id)
-                primary_folder = primary_folder or folder_id
-        elif action["type"] == "set_primary_folder":
-            folder_id = _action_folder_id(action)
-            if folder_id:
-                if folder_id not in current_folders:
-                    current_folders.append(folder_id)
-                primary_folder = folder_id
-        elif action["type"] == "add_tag":
-            tag = str(action["tag"])
-            if tag not in current_tags:
-                current_tags.append(tag)
-    try:
-        manual_filing.update_document_organization(
-            document_id=document_id,
-            payload=DocumentOrganizationWrite.model_validate(
-                {
-                    "folderIds": current_folders,
-                    "primaryFolderId": primary_folder,
-                    "tags": current_tags,
-                }
-            ),
-            principal=principal,
-        )
-    except OrganizationError as exc:
-        raise AutomationError(exc.status_code, exc.detail) from exc
-    supported_actions = {"add_folder", "set_primary_folder", "add_tag"}
-    return [dict(action) for action in actions if action["type"] in supported_actions]
-
-
 def _evaluation_contract(
     rule: dict[str, Any],
     evaluation: RuleEvaluation,
@@ -478,11 +433,6 @@ def _require_household(principal: AuthPrincipal) -> UUID:
     if not principal.household_id:
         raise AutomationError(403, "Household required")
     return principal.household_id
-
-
-def _action_folder_id(action: dict[str, Any]) -> UUID | None:
-    value = action.get("folder_id") or action.get("folderId")
-    return _uuid(value) if value else None
 
 
 def _uuid(value: object) -> UUID:

@@ -646,21 +646,11 @@ paths:
       tags:
       - Relationships
       summary: Create or confirm a document relationship
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RelationshipWrite'
       responses:
-        '201':
-          description: Relationship created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DocumentRelationship'
-        '401':
-          description: Not authenticated
+        '501':
+          description: Document relationships are implemented in Phase 7.
+        '422':
+          description: Validation error
   /api/v1/contacts:
     get:
       tags:
@@ -1182,69 +1172,21 @@ paths:
       tags:
       - Analysis
       summary: Start an analysis run over one or more documents
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required:
-              - analysisNoteType
-              - documentIds
-              - question
-              properties:
-                analysisNoteType:
-                  type: string
-                  enum:
-                  - summary
-                  - explanation
-                  - comparison
-                  - timeline
-                  - obligation_scan
-                  - tax_scan
-                  - medical_explanation
-                documentIds:
-                  type: array
-                  minItems: 1
-                  items:
-                    type: string
-                    format: uuid
-                question:
-                  type: string
-                  minLength: 1
-                saveResult:
-                  type: boolean
-                  default: true
       responses:
-        '202':
-          description: Analysis job accepted
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AcceptedJob'
-        '401':
-          description: Not authenticated
+        '501':
+          description: Analysis notes are implemented in Phase 9.
+        '422':
+          description: Validation error
   /api/v1/exports:
     post:
       tags:
       - Exports
       summary: Create an export bundle
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ExportRequest'
       responses:
-        '202':
-          description: Export job accepted
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AcceptedJob'
-        '401':
-          description: Not authenticated
+        '501':
+          description: Exports are implemented in Phase 10.
+        '422':
+          description: Validation error
   /api/v1/jobs/{jobId}:
     get:
       tags:

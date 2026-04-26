@@ -31,7 +31,11 @@ def upsert_watched_folder(payload: WatchedFolderWrite, principal: AuthPrincipal)
     household_id = _require_household(principal)
     settings = get_settings()
     try:
-        resolved_path = validate_watch_path(payload.path, runtime_root=settings.runtime_root)
+        resolved_path = validate_watch_path(
+            payload.path,
+            runtime_root=settings.runtime_root,
+            allowed_roots=[settings.watched_folder_root],
+        )
         policy = normalize_watch_policy(payload.policy)
     except WatchedFolderPolicyError as exc:
         raise AutomationError(422, str(exc)) from exc

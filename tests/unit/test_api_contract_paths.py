@@ -34,6 +34,25 @@ def test_phase6_runtime_response_statuses_match_active_contract() -> None:
         assert actual == expected, f"{method.upper()} {path} response status drift"
 
 
+def test_deferred_placeholder_mutations_advertise_runtime_501_contract() -> None:
+    contract = yaml.safe_load(Path("contracts/api/openapi.yaml").read_text(encoding="utf-8"))
+    runtime_paths = app.openapi()["paths"]
+    placeholders = [
+        ("/api/v1/relationships", "post", {"201"}),
+        ("/api/v1/analysis-notes", "post", {"202"}),
+        ("/api/v1/exports", "post", {"202"}),
+    ]
+
+    for path, method, success_codes in placeholders:
+        expected = set(contract["paths"][path][method].get("responses", {}))
+        actual = set(runtime_paths[path][method].get("responses", {}))
+        assert "501" in expected, f"{method.upper()} {path} must advertise deferred runtime status"
+        assert expected.isdisjoint(success_codes), (
+            f"{method.upper()} {path} must not advertise success before implementation"
+        )
+        assert actual == expected, f"{method.upper()} {path} response status drift"
+
+
 def test_phase0_contract_skeleton_routes_are_protected() -> None:
     protected_paths = [
         "/api/v1/documents",

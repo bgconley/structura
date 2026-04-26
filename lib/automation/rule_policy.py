@@ -29,6 +29,25 @@ SUPPORTED_ACTION_TYPES = {
     "set_document_type",
 }
 SUPPORTED_SENSITIVITY = {"normal", "pii", "financial", "medical", "legal", "highly_sensitive"}
+SUPPORTED_DOCUMENT_FAMILIES = {
+    "generic",
+    "receipt",
+    "invoice",
+    "medical_eob",
+    "medical_bill",
+    "insurance_document",
+    "legal_contract",
+    "legal_notice",
+    "tax_document",
+    "warranty",
+    "identity_document",
+    "bank_statement",
+    "financial_statement",
+    "handwritten_note",
+    "typed_note",
+    "whitepaper",
+    "reference_document",
+}
 
 _NESTED_QUANTIFIER_RE = re.compile(r"\([^)]*[*+][^)]*\)\s*[*+{]")
 
@@ -120,6 +139,8 @@ def _validate_action(action: object) -> dict[str, Any]:
         normalized["value"] = _optional_text(normalized.get("value")) or "Review suggested filing."
     if action_type == "set_document_type":
         normalized["value"] = _normalized_text(normalized.get("value"), "Document type")
+        if normalized["value"] not in SUPPORTED_DOCUMENT_FAMILIES:
+            raise RuleValidationError(f"Unsupported document type: {normalized['value']}")
     return normalized
 
 

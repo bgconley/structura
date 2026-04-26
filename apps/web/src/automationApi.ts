@@ -1,6 +1,7 @@
 import {csrfToken, fetchJson} from "./api";
 import type {
   Contact,
+  ContactMergeSuggestion,
   ContactWrite,
   FilingRule,
   FilingRuleEvaluation,
@@ -25,6 +26,14 @@ export async function listContacts(query = ""): Promise<Contact[]> {
 
 export async function createContact(payload: ContactWrite): Promise<Contact> {
   return await fetchJson<Contact>("/api/v1/contacts", jsonPost(payload));
+}
+
+export async function listContactMergeSuggestions(): Promise<ContactMergeSuggestion[]> {
+  return (await fetchJson<ListResponse<ContactMergeSuggestion>>("/api/v1/contact-merge-suggestions")).items;
+}
+
+export async function mergeContact(sourceContactId: string, targetContactId: string): Promise<Contact> {
+  return await fetchJson<Contact>(`/api/v1/contacts/${sourceContactId}/merge`, jsonPost({targetContactId}));
 }
 
 export async function listFilingRules(): Promise<FilingRule[]> {

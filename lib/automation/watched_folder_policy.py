@@ -98,6 +98,17 @@ def iter_candidate_files(path: Path, *, recursive: bool) -> list[Path]:
     return sorted(candidate for candidate in path.glob(pattern) if candidate.is_file())
 
 
+def is_safe_candidate_file(candidate: Path, *, watch_root: Path) -> bool:
+    if candidate.is_symlink():
+        return False
+    try:
+        resolved_candidate = candidate.resolve(strict=True)
+        resolved_root = watch_root.resolve(strict=True)
+    except OSError:
+        return False
+    return resolved_candidate == resolved_root or resolved_candidate.is_relative_to(resolved_root)
+
+
 def file_is_stable(path: Path, *, min_age_seconds: int) -> bool:
     if not path.is_file() or path.suffix.lower() != ".pdf":
         return False

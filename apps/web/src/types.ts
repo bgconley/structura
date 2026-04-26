@@ -152,6 +152,13 @@ export type ContactWrite = {
   identifiers?: Record<string, unknown>;
 };
 
+export type ContactMergeSuggestion = {
+  sourceContactId: string;
+  targetContactId: string;
+  reason: string;
+  confidence: number;
+};
+
 export type FilingRule = {
   id: string;
   name: string;

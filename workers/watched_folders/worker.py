@@ -12,6 +12,7 @@ from lib.automation import watched_folder_repository
 from lib.automation.watched_folder_policy import (
     WatchedFolderPolicyError,
     file_is_stable,
+    is_safe_candidate_file,
     iter_candidate_files,
     normalize_watch_policy,
     validate_watch_path,
@@ -75,6 +76,7 @@ def scan_once(
             watched_folder,
             owner_user_id=_uuid(owner_user_id),
             runtime_root=settings.runtime_root,
+            watched_folder_root=settings.watched_folder_root,
             worker_name=worker_name,
         )
         total = total.add(
@@ -101,10 +103,15 @@ def _scan_watched_folder(
     *,
     owner_user_id: UUID,
     runtime_root: Path,
+    watched_folder_root: Path,
     worker_name: str,
 ) -> WatchScanSummary:
     try:
-        path = validate_watch_path(str(watched_folder["path"]), runtime_root=runtime_root)
+        path = validate_watch_path(
+            str(watched_folder["path"]),
+            runtime_root=runtime_root,
+            allowed_roots=[watched_folder_root],
+        )
         policy_json = watched_folder.get("policy_json")
         policy = normalize_watch_policy(policy_json if isinstance(policy_json, dict) else {})
     except WatchedFolderPolicyError:
@@ -112,6 +119,9 @@ def _scan_watched_folder(
 
     summary = WatchScanSummary()
     for candidate in iter_candidate_files(path, recursive=bool(policy["recursive"])):
+        if not is_safe_candidate_file(candidate, watch_root=path):
+            summary = summary.add(rejected=1)
+            continue
         if candidate.parent.name in {"processed", "failed"}:
             summary = summary.add(skipped=1)
             continue
