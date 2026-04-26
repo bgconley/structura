@@ -8,11 +8,11 @@ from fastapi.testclient import TestClient
 
 pytest.importorskip("psycopg")
 
-from apps.api.structura_api import routes_documents
 from apps.api.structura_api.main import create_app
 from lib.auth import AuthService
 from lib.config import get_settings
 from lib.db.connection import db_connection
+from lib.documents import ingestion as document_ingestion
 from lib.storage import ObjectStorage, StoredObject, cleanup_unreferenced_stored_object
 from workers.ingest import worker as ingest_worker
 from workers.previews import PreviewError, generate_phase1_preview
@@ -264,7 +264,7 @@ def test_phase1_upload_rolls_back_committed_object_on_job_failure(
     def fail_job_creation(*_args, **_kwargs):
         raise RuntimeError("injected job enqueue failure")
 
-    monkeypatch.setattr(routes_documents, "create_job_with_cursor", fail_job_creation)
+    monkeypatch.setattr(document_ingestion, "create_job_with_cursor", fail_job_creation)
     client = TestClient(create_app(), raise_server_exceptions=False)
     login = client.post(
         "/api/v1/auth/session",

@@ -277,8 +277,9 @@ def insert_rule_run(
             actor_user_id,
         ),
     )
+    row = cast(Row | None, cur.fetchone())
     cur.execute("UPDATE filing_rules SET last_run_at = now() WHERE id = %s", (rule_id,))
-    return cast(Row | None, cur.fetchone())
+    return row
 
 
 def create_or_refresh_suggestion_task(

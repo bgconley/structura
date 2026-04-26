@@ -660,6 +660,30 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-26T22:00:00-04:00"
+    },
+    {
+      "id": "bug-056",
+      "timestamp": "2026-04-26T22:35:00-04:00",
+      "error_message": "GPU live-DB pytest failed Phase 6 dry-run with psycopg.ProgrammingError: the last operation didn't produce records (command status: UPDATE 1).",
+      "file": "lib/automation/repository.py",
+      "root_cause": "insert_rule_run executed INSERT ... RETURNING, then updated filing_rules.last_run_at before fetching the returned insert row, so fetchone observed the UPDATE command result.",
+      "fix": "Fetch the rule-run row immediately after INSERT ... RETURNING, then update filing_rules.last_run_at and return the saved row.",
+      "tags": ["phase-6", "postgres", "repository", "integration-tests", "gpu-node"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T22:35:00-04:00"
+    },
+    {
+      "id": "bug-057",
+      "timestamp": "2026-04-26T22:35:00-04:00",
+      "error_message": "GPU live-DB pytest failed Phase 1 rollback test because routes_documents no longer exposed create_job_with_cursor after ingestion extraction.",
+      "file": "tests/integration/test_phase1_documents.py",
+      "root_cause": "Phase 6 moved upload orchestration from the document route into lib/documents/ingestion.py, but the rollback regression test still monkeypatched the old route-level import seam.",
+      "fix": "Updated the rollback test to monkeypatch lib.documents.ingestion.create_job_with_cursor, preserving the rollback failure injection at the actual enqueue boundary.",
+      "tags": ["phase-6", "phase-1", "tests", "refactor", "gpu-node"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T22:35:00-04:00"
     }
   ]
 }
