@@ -82,7 +82,7 @@ Older artifact-pack docs may group the same work differently. Treat the root pla
 
 ## Current Baseline And Next Phase
 
-As of 2026-04-26, the repo is implemented through Phase 4 on `master`; local, `origin/master`, and the GPU checkout at `/tank/repos/structura` must stay synced before any milestone validation. Phase 5 is the next implementation phase and must start from `STRUCTURA_PHASE_5_IMPLEMENTATION_PLAN.md` plus its Fresh Context artifacts.
+As of 2026-04-26, the repo is implemented through Phase 5 on `master`; local, `origin/master`, and the GPU checkout at `/tank/repos/structura` must stay synced before any milestone validation. Phase 6 is the next implementation phase and must start from `STRUCTURA_PHASE_6_IMPLEMENTATION_PLAN.md` plus its Fresh Context artifacts.
 
 Phase 4 implementation code landed in commit `d04a762` (`Implement Phase 4 extraction review`). It adds the extraction/review foundation; before calling the phase complete, current HEAD must be pushed, pulled on the GPU node, migrated through `068_phase4_extraction_review.sql`, rebuilt with the extraction profile, and validated on the GPU node.
 
@@ -96,9 +96,11 @@ Docling and its Torch/OpenCV dependency stack must stay isolated to the dedicate
 
 The Phase 3 Docling worker configures the PDF pipeline explicitly. OCR is disabled by default for deterministic digital-PDF conversion, table structure remains enabled, and Hugging Face/XDG/RapidOCR caches must stay under `/srv/structura/cache` through Compose environment or equivalent runtime configuration. Do not let OCR/model downloads write into Python site-packages.
 
-Phase 4 adds the extraction/review foundation only: classification over canonical Docling parse text, deterministic Docling-text extraction gateway, receipt/invoice/EOB validators, field and line-item candidates, canonical fact promotion, review task/action APIs, and Review Queue UI. Do not implement Phase 5 semantic search, embedding workers, hybrid ranking, facets, saved searches, or natural-language answer synthesis while finishing Phase 4 validation.
+Phase 4 adds the extraction/review foundation only: classification over canonical Docling parse text, deterministic Docling-text extraction gateway, receipt/invoice/EOB validators, field and line-item candidates, canonical fact promotion, review task/action APIs, and Review Queue UI.
 
-Phase 5 integration seams are ready after Phase 4:
+Phase 5 adds corpus retrieval only: Phase 4 fact/chunk projection refresh, BM25 lexical search with fallback, deterministic local text embeddings, `worker-embeddings`, semantic retrieval, hybrid RRF ranking, ACL-aware filters/facets, saved searches, smart-folder execution through `document_matches_saved_query`, and Corpus Search UI. Do not implement Phase 6 contacts, contact aliases, watched-folder intake, filing-rule automation, rule suggestions, or contact/rule management while finishing Phase 5 validation.
+
+Historical Phase 4-to-Phase 5 seams that Phase 5 consumed:
 
 1. Canonical accepted facts are stored in `canonical_fields`/`canonical_line_items` and exposed on document detail for search indexing and answer grounding.
 2. Phase 4 refreshes `document_chunks` lexical projection through `refresh_document_chunk_projection(document_id)`, appending accepted canonical facts into `bm25_text` without implementing Phase 5 retrieval.
@@ -109,7 +111,16 @@ Phase 5 integration seams are ready after Phase 4:
 7. Authorization remains centralized through `document_is_readable(document_id, household_id, user_id, household_role)` and must be reused for Phase 5 search result visibility and evidence reads.
 8. UI reference artifacts now include `docs/ui-reference/figma/review-extraction/` and the deterministic Linux snapshot `tests/e2e/phase4.spec.ts-snapshots/phase4-review-queue-chromium-linux.png`.
 
-Do not start Phase 5 by appending search, embedding, or ranking logic to document routes, review routes, or extraction modules. Follow the architecture stewardship rules: add cohesive search/retrieval modules and workers as needed; keep route handlers thin; put SQL in repositories or schema functions; and keep model-provider/vendor behavior behind adapters.
+Preserve the Phase 5 search architecture guardrail: do not append search, embedding, or ranking logic to document routes, review routes, or extraction modules. Follow the architecture stewardship rules: keep cohesive search/retrieval modules and workers; keep route handlers thin; put SQL in repositories or schema functions; and keep model-provider/vendor behavior behind adapters.
+
+Phase 6 integration seams are ready after Phase 5:
+
+1. Search visibility is enforced through `document_is_readable(document_id, household_id, user_id, household_role)` in `lib/search/repository.py`; Phase 6 contacts/rules/search conditions must not bypass this predicate.
+2. Search projection refresh is exposed through `lib/search/projection.py::refresh_projection_and_enqueue_embedding`; Phase 6 filing, contact-link, and rule-application mutations should call this seam after changing searchable document metadata.
+3. Embedding jobs are isolated on the `embeddings` queue and processed by `workers/embeddings/worker.py`; do not fold Phase 6 filing-rule or contact workers into the embedding worker.
+4. Saved searches are household-scoped through `/api/v1/saved-searches`; smart folders evaluate saved-query JSON through the database `document_matches_saved_query` function.
+5. Search API/UI modules live under `apps/api/structura_api/routes_search.py`, `lib/search/`, and `apps/web/src/components/SearchResults.tsx`; Phase 6 should add separate organization automation modules instead of extending these with contacts/rule orchestration.
+6. Relationship-aware chips in the Phase 5 UI are a future seam only; Phase 7 relationship graph retrieval is not implemented by Phase 5.
 
 ## Figma And UI Reference Baseline
 
@@ -121,13 +132,14 @@ docs/ui-reference/figma/viewer/
 docs/ui-reference/figma/folder-tag-filing/
 docs/ui-reference/figma/parse-debug/
 docs/ui-reference/figma/review-extraction/
+docs/ui-reference/figma/search/
 ```
 
 Inbox uses Figma frame `17:2`; Viewer uses `14:434`. Phase 2 folder/tag filing uses a composite Figma source set rather than one dedicated final filing frame: primary frame `17:2`, Viewer propagation frame `14:434`, future review-workspace reference `14:611`, and handoff frames `35:7`, `35:12`, and `35:17`. The older filing-rules/watched-folders mockups are automation scope and are not the Phase 2 manual filing baseline.
 
 The folder/tag filing capture pass added `figma-context.json`, Figma screenshots, handoff screenshots, an extraction-workspace reference screenshot, and the deterministic Playwright comparison screenshot. Keep these artifacts synchronized with any future UI changes and run the Playwright screenshot assertions rather than writing ad hoc screenshots directly into committed reference paths.
 
-The parse-debug reference set documents the Phase 3 Viewer diagnostic extension and includes `figma-context.json`, `comparison-notes.md`, `playwright-screenshot.png`, and the Linux Playwright snapshot `tests/e2e/phase3.spec.ts-snapshots/phase3-parse-debug-chromium-linux.png`. The review-extraction reference set documents the Phase 4 Review Queue and includes `figma-context.json`, `comparison-notes.md`, `figma-screenshot.png`, `playwright-screenshot.png`, and the Linux Playwright snapshot `tests/e2e/phase4.spec.ts-snapshots/phase4-review-queue-chromium-linux.png`.
+The parse-debug reference set documents the Phase 3 Viewer diagnostic extension and includes `figma-context.json`, `comparison-notes.md`, `playwright-screenshot.png`, and the Linux Playwright snapshot `tests/e2e/phase3.spec.ts-snapshots/phase3-parse-debug-chromium-linux.png`. The review-extraction reference set documents the Phase 4 Review Queue and includes `figma-context.json`, `comparison-notes.md`, `figma-screenshot.png`, `playwright-screenshot.png`, and the Linux Playwright snapshot `tests/e2e/phase4.spec.ts-snapshots/phase4-review-queue-chromium-linux.png`. The search reference set documents the Phase 5 Corpus Search surface and includes `figma-context.json`, `comparison-notes.md`, `figma-screenshot.png`, `playwright-screenshot.png`, and the Linux Playwright snapshot `tests/e2e/phase5.spec.ts-snapshots/phase5-corpus-search-chromium-linux.png`.
 
 ## GPU Node Runtime And Test Policy
 
@@ -173,7 +185,7 @@ The artifacts do not define a Docker daemon image-store/data-root path. Do not i
 
 Do not install or rely on host `node` or `npm` on the GPU node for Structura verification. The GPU host should provide orchestration capabilities such as `ssh`, `git`, `docker`, `docker compose`, ZFS tools, and Python venv tooling for Python-side gates. Web lint/build and browser E2E gates must run through pinned container images or app images so Node/npm versions stay tied to the runtime/test image contract. Current pinned surfaces are `node:20-alpine` for the web app image and `mcr.microsoft.com/playwright:v1.59.1-noble` for browser E2E.
 
-Playwright milestone validation must target the GPU-hosted web service, not a Mac-hosted Vite server. The Mac can act as the browser/controller, but the app under test must be served from the GPU node on the LAN. Current live UI target is `http://10.25.0.50:13000` with `STRUCTURA_E2E_LIVE=1`; the GPU Compose `.env` should expose only web externally via `STRUCTURA_WEB_BIND_HOST=0.0.0.0` and `STRUCTURA_WEB_PORT=13000`, while keeping API and Postgres bound to `127.0.0.1`. The canonical live browser milestone suite must include every implemented phase live spec: `tests/e2e/phase1-live.spec.ts`, `tests/e2e/phase2-live.spec.ts`, `tests/e2e/phase3-live.spec.ts`, and `tests/e2e/phase4-live.spec.ts`.
+Playwright milestone validation must target the GPU-hosted web service, not a Mac-hosted Vite server. The Mac can act as the browser/controller, but the app under test must be served from the GPU node on the LAN. Current live UI target is `http://10.25.0.50:13000` with `STRUCTURA_E2E_LIVE=1`; the GPU Compose `.env` should expose only web externally via `STRUCTURA_WEB_BIND_HOST=0.0.0.0` and `STRUCTURA_WEB_PORT=13000`, while keeping API and Postgres bound to `127.0.0.1`. The canonical live browser milestone suite must include every implemented phase live spec: `tests/e2e/phase1-live.spec.ts`, `tests/e2e/phase2-live.spec.ts`, `tests/e2e/phase3-live.spec.ts`, `tests/e2e/phase4-live.spec.ts`, and `tests/e2e/phase5-live.spec.ts`.
 
 Do not substitute backend integration tests or mocked Playwright screenshot tests for a phase's live browser smoke when that phase has a user-visible UI/runtime workflow. Phase 3 specifically requires `tests/e2e/phase3-live.spec.ts`, which uploads a generated valid PDF through the GPU-hosted web UI, waits for the live Docling worker to persist parse artifacts, and verifies the Parse Debug panel in the Viewer. The deterministic PDF helper lives at `tests/e2e/support/pdf.ts`. When a new phase adds a browser-visible workflow, add a corresponding `phaseN-live.spec.ts` or explicitly document why no live browser spec is applicable before calling the phase complete.
 

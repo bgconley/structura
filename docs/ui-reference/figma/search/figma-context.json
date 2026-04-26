@@ -1,0 +1,33 @@
+{
+  "phase": "5",
+  "surface": "corpus-search",
+  "source": {
+    "fileKey": "5GAPHbduQLu9INBOXUPxJN",
+    "nodeId": "14:797",
+    "frameName": "04 Natural Language Corpus Search v2",
+    "capturedAt": "2026-04-26"
+  },
+  "intent": "Phase 5 canonical corpus search surface for lexical, semantic, and hybrid retrieval.",
+  "requiredElements": [
+    "Search-active left navigation",
+    "Global command search entry point",
+    "Corpus Search heading and explanatory copy",
+    "Natural-language query builder",
+    "Lexical, semantic, metadata, and relationship signal chips",
+    "Filter rail for family, folder, date, review, and related-document scope",
+    "Ranked results with snippets, match strength, and evidence references",
+    "Retrieval explanation panel with query interpretation and evidence source jumps",
+    "Save search action",
+    "Create review set placeholder action for later review-set workflow"
+  ],
+  "implementationNotes": [
+    "The Phase 5 React implementation uses project CSS rather than Tailwind.",
+    "Relationship-aware signals are represented in the UI as an explicit future seam, but relationship graph execution remains later-phase scope.",
+    "Evidence jumps route into the existing viewer surface using document and page context."
+  ],
+  "artifacts": {
+    "figmaScreenshot": "figma-screenshot.png",
+    "comparisonNotes": "comparison-notes.md",
+    "playwrightScreenshot": "playwright-screenshot.png"
+  }
+}

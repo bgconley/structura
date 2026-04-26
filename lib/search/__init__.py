@@ -1,1 +1,3 @@
-"""Search planner implementations land in Phase 5."""
+from lib.search.service import SearchService
+
+__all__ = ["SearchService"]

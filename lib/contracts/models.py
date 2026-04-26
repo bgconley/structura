@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
@@ -253,6 +254,88 @@ class DocumentDetail(DocumentSummary):
     folder_ids: list[UUID] = Field(default_factory=list, alias="folderIds")
     primary_folder_id: UUID | None = Field(default=None, alias="primaryFolderId")
     filing_notes: str | None = Field(default=None, alias="filingNotes")
+
+
+class SearchRequest(ContractModel):
+    query: str = Field(min_length=1, max_length=500)
+    mode: Literal["lexical", "semantic", "hybrid"] = "hybrid"
+    families: list[str] = Field(default_factory=list)
+    folder_ids: list[UUID] = Field(default_factory=list, alias="folderIds")
+    tags: list[str] = Field(default_factory=list)
+    reviewed_only: bool | None = Field(default=None, alias="reviewedOnly")
+    date_from: date | None = Field(default=None, alias="dateFrom")
+    date_to: date | None = Field(default=None, alias="dateTo")
+    amount_min: Decimal | None = Field(default=None, alias="amountMin")
+    amount_max: Decimal | None = Field(default=None, alias="amountMax")
+    sensitivity: list[
+        Literal["normal", "pii", "financial", "medical", "legal", "highly_sensitive"]
+    ] = Field(default_factory=list)
+    primary_folder_only: bool = Field(default=False, alias="primaryFolderOnly")
+    limit: int = Field(default=25, ge=1, le=100)
+    include_debug: bool = Field(default=False, alias="includeDebug")
+
+    @model_validator(mode="after")
+    def normalize_search_request(self) -> SearchRequest:
+        self.query = self.query.strip()
+        if not self.query:
+            raise ValueError("query must not be blank")
+        self.families = [_trimmed(value) for value in self.families if _trimmed(value)]
+        self.tags = [_trimmed(value) for value in self.tags if _trimmed(value)]
+        return self
+
+
+class SearchResult(ContractModel):
+    document_id: UUID = Field(alias="documentId")
+    title: str
+    rank: int = Field(ge=1)
+    family: str | None = None
+    score: float | None = None
+    snippet: str | None = None
+    matched_chunk_id: UUID | None = Field(default=None, alias="matchedChunkId")
+    page_number: int | None = Field(default=None, alias="pageNumber", ge=1)
+    evidence: list[EvidenceRef] = Field(default_factory=list)
+    explanation: str | None = None
+    counterparty_display: str | None = Field(default=None, alias="counterpartyDisplay")
+    document_date: date | None = Field(default=None, alias="documentDate")
+    amount_total: float | None = Field(default=None, alias="amountTotal")
+    folder_paths: list[str] = Field(default_factory=list, alias="folderPaths")
+    tags: list[str] = Field(default_factory=list)
+
+
+class SearchResponse(ContractModel):
+    items: list[SearchResult]
+    facets: dict[str, dict[str, int]] = Field(default_factory=dict)
+    debug: dict[str, Any] | None = None
+
+
+class SavedSearch(ContractModel):
+    id: UUID
+    name: str
+    query: str = Field(alias="queryText")
+    filters: dict[str, Any] = Field(default_factory=dict)
+    sort: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(alias="createdAt")
+
+
+class SavedSearchWrite(ContractModel):
+    name: str = Field(min_length=1, max_length=120)
+    query: str = Field(alias="queryText", min_length=1, max_length=500)
+    filters: dict[str, Any] = Field(default_factory=dict)
+    sort: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def normalize_saved_search(self) -> SavedSearchWrite:
+        self.name = self.name.strip()
+        self.query = self.query.strip()
+        if not self.name:
+            raise ValueError("name must not be blank")
+        if not self.query:
+            raise ValueError("queryText must not be blank")
+        return self
+
+
+def _trimmed(value: str) -> str:
+    return value.strip()
 
 
 class Folder(ContractModel):

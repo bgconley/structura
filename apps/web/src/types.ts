@@ -79,6 +79,58 @@ export type EvidenceTarget = {
   textSpan?: {start: number; end: number; basis?: string};
 };
 
+export type SearchMode = "lexical" | "semantic" | "hybrid";
+
+export type SearchRequest = {
+  query: string;
+  mode?: SearchMode;
+  families?: string[];
+  folderIds?: string[];
+  tags?: string[];
+  reviewedOnly?: boolean;
+  dateFrom?: string;
+  dateTo?: string;
+  amountMin?: number;
+  amountMax?: number;
+  sensitivity?: string[];
+  primaryFolderOnly?: boolean;
+  limit?: number;
+  includeDebug?: boolean;
+};
+
+export type SearchResult = {
+  documentId: string;
+  title: string;
+  family?: string;
+  rank: number;
+  score?: number;
+  snippet?: string;
+  matchedChunkId?: string;
+  pageNumber?: number;
+  evidence?: EvidenceRef[];
+  explanation?: string;
+  counterpartyDisplay?: string;
+  documentDate?: string;
+  amountTotal?: number;
+  folderPaths?: string[];
+  tags?: string[];
+};
+
+export type SearchResponse = {
+  items: SearchResult[];
+  facets?: Record<string, Record<string, number>>;
+  debug?: Record<string, unknown> | null;
+};
+
+export type SavedSearch = {
+  id: string;
+  name: string;
+  queryText: string;
+  filters: Record<string, unknown>;
+  sort: Record<string, unknown>;
+  createdAt: string;
+};
+
 export type FieldCandidate = {
   id: string;
   documentId: string;
@@ -219,4 +271,4 @@ export type ParseDebugView = {
   jobs: ParseDebugJob[];
 };
 
-export type ViewMode = "inbox" | "viewer" | "review";
+export type ViewMode = "inbox" | "viewer" | "review" | "search";

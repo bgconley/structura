@@ -84,14 +84,6 @@ def create_watched_folder(_principal: Annotated[object, Depends(require_csrf)]) 
     )
 
 
-@router.post("/search", tags=["Search"], status_code=status.HTTP_501_NOT_IMPLEMENTED)
-def search_documents(_principal: Annotated[object, Depends(current_principal)]) -> None:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Search is implemented in Phase 5.",
-    )
-
-
 @router.post("/analysis-notes", tags=["Analysis"], status_code=status.HTTP_501_NOT_IMPLEMENTED)
 def create_analysis_note(_principal: Annotated[object, Depends(require_csrf)]) -> None:
     raise HTTPException(

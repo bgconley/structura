@@ -13,6 +13,8 @@ from lib.contracts import (
     FilingRule,
     PasswordSessionRequest,
     ReviewActionRequest,
+    SearchRequest,
+    SearchResponse,
     UploadDocumentMultipartRequest,
 )
 
@@ -179,6 +181,70 @@ def test_review_action_schema_matches_runtime_phase4_actions() -> None:
                 "createdAt": TIMESTAMP,
             }
         )
+
+
+def test_search_contract_models_match_openapi_phase5_filters_and_response() -> None:
+    registry = ContractRegistry.load("contracts")
+    registry.validate_openapi_component(
+        "SearchRequest",
+        {
+            "query": "claim ABC123 money owed",
+            "mode": "hybrid",
+            "families": ["medical_eob"],
+            "folderIds": [UUID_1],
+            "tags": ["medical"],
+            "reviewedOnly": True,
+            "dateFrom": "2025-01-01",
+            "dateTo": "2026-12-31",
+            "amountMin": 1,
+            "amountMax": 100,
+            "sensitivity": ["normal"],
+            "limit": 10,
+            "includeDebug": True,
+        },
+    )
+    request = SearchRequest.model_validate(
+        {
+            "query": "claim ABC123 money owed",
+            "mode": "hybrid",
+            "families": ["medical_eob"],
+            "dateFrom": "2025-01-01",
+            "dateTo": "2026-12-31",
+            "amountMin": 1,
+            "amountMax": 100,
+            "includeDebug": True,
+        }
+    )
+    assert request.mode == "hybrid"
+    assert request.include_debug is True
+
+    response = SearchResponse.model_validate(
+        {
+            "items": [
+                {
+                    "documentId": UUID_1,
+                    "title": "Anthem medical EOB",
+                    "family": "medical_eob",
+                    "rank": 1,
+                    "score": 0.19,
+                    "snippet": "Claim ABC123 patient responsibility $62.00",
+                    "matchedChunkId": UUID_2,
+                    "pageNumber": 1,
+                    "explanation": "matched by lexical rank 1 and semantic rank 1",
+                    "evidence": [
+                        {
+                            "pageNumber": 1,
+                            "sourceEngine": "docling",
+                            "sourceText": "Claim ABC123 patient responsibility $62.00",
+                        }
+                    ],
+                }
+            ],
+            "facets": {"families": {"medical_eob": 1}},
+            "debug": {"mode": "hybrid"},
+        }
+    )
+    assert response.items[0].explanation
     with pytest.raises(PydanticValidationError):
         ReviewActionRequest.model_validate(
             {

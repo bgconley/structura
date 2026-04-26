@@ -32,6 +32,12 @@ WHERE d.deleted_at IS NULL
       WHERE dfm.document_id = d.id
         AND dfm.folder_id = %s
     )
+    OR EXISTS (
+      SELECT 1 FROM folders smart_filter
+      WHERE smart_filter.id = %s
+        AND smart_filter.folder_kind = 'smart'
+        AND document_matches_saved_query(d.id, COALESCE(smart_filter.saved_query_json, '{}'::jsonb))
+    )
   )
 """
 
@@ -95,6 +101,12 @@ WHERE d.deleted_at IS NULL
       WHERE dfm.document_id = d.id
         AND dfm.folder_id = %s
     )
+    OR EXISTS (
+      SELECT 1 FROM folders smart_filter
+      WHERE smart_filter.id = %s
+        AND smart_filter.folder_kind = 'smart'
+        AND document_matches_saved_query(d.id, COALESCE(smart_filter.saved_query_json, '{}'::jsonb))
+    )
   )
 ORDER BY d.created_at DESC, d.id DESC
 LIMIT %s OFFSET %s
@@ -124,6 +136,7 @@ def list_document_summaries(filters: DocumentListFilters) -> tuple[list[Document
         filters.family,
         filters.review_status,
         filters.review_status,
+        filters.folder_id,
         filters.folder_id,
         filters.folder_id,
     ]

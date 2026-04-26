@@ -809,6 +809,47 @@ paths:
                 $ref: '#/components/schemas/SearchResponse'
         '401':
           description: Not authenticated
+  /api/v1/saved-searches:
+    get:
+      tags:
+      - Search
+      summary: List saved searches for the current household
+      responses:
+        '200':
+          description: Saved search list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SavedSearch'
+        '401':
+          description: Not authenticated
+    post:
+      tags:
+      - Search
+      summary: Save a reusable search query and filters
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SavedSearchWrite'
+      responses:
+        '201':
+          description: Saved search created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedSearch'
+        '401':
+          description: Not authenticated
   /api/v1/review-tasks:
     get:
       tags:
@@ -1895,11 +1936,38 @@ components:
             type: string
         reviewedOnly:
           type: boolean
+        dateFrom:
+          type: string
+          format: date
+        dateTo:
+          type: string
+          format: date
+        amountMin:
+          type: number
+        amountMax:
+          type: number
+        sensitivity:
+          type: array
+          items:
+            type: string
+            enum:
+            - normal
+            - pii
+            - financial
+            - medical
+            - legal
+            - highly_sensitive
+        primaryFolderOnly:
+          type: boolean
+          default: false
         limit:
           type: integer
           minimum: 1
           maximum: 100
           default: 25
+        includeDebug:
+          type: boolean
+          default: false
     SearchResponse:
       type: object
       additionalProperties: false
@@ -1913,6 +1981,12 @@ components:
         debug:
           type: object
           additionalProperties: true
+        facets:
+          type: object
+          additionalProperties:
+            type: object
+            additionalProperties:
+              type: integer
     SearchResult:
       type: object
       additionalProperties: false
@@ -1943,6 +2017,73 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/EvidenceRef'
+        explanation:
+          type: string
+        counterpartyDisplay:
+          type: string
+        documentDate:
+          type: string
+          format: date
+        amountTotal:
+          type: number
+        folderPaths:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+    SavedSearchWrite:
+      type: object
+      additionalProperties: false
+      required:
+      - name
+      - queryText
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        queryText:
+          type: string
+          minLength: 1
+          maxLength: 500
+        filters:
+          type: object
+          additionalProperties: true
+          default: {}
+        sort:
+          type: object
+          additionalProperties: true
+          default: {}
+    SavedSearch:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - name
+      - queryText
+      - filters
+      - sort
+      - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        queryText:
+          type: string
+        filters:
+          type: object
+          additionalProperties: true
+        sort:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
     ReviewTask:
       type: object
       additionalProperties: false

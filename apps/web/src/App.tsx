@@ -4,6 +4,7 @@ import {configureSecurityCookieNames, csrfToken, fetchJson} from "./api";
 import {Inbox} from "./components/Inbox";
 import {LoginScreen} from "./components/LoginScreen";
 import {ReviewQueue} from "./components/ReviewQueue";
+import {SearchResults} from "./components/SearchResults";
 import {Sidebar} from "./components/Sidebar";
 import {TopCommand} from "./components/TopCommand";
 import {Viewer} from "./components/Viewer";
@@ -15,6 +16,7 @@ import {
   updateDocumentOrganization,
 } from "./organizationApi";
 import {getParseDebug} from "./parseDebugApi";
+import {createSavedSearch, runSearch} from "./searchApi";
 import type {
   DocumentDetail,
   DocumentListResponse,
@@ -23,6 +25,8 @@ import type {
   EvidenceTarget,
   Folder,
   ParseDebugView,
+  SearchRequest,
+  SearchResponse,
   SessionInfo,
   Tag,
   ViewMode,
@@ -44,6 +48,9 @@ export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>("inbox");
   const [activeFilter, setActiveFilter] = useState("All");
   const [query, setQuery] = useState("");
+  const [searchResponse, setSearchResponse] = useState<SearchResponse | null>(null);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
+  const [searchStatus, setSearchStatus] = useState<string | null>(null);
   const deferredQuery = useDeferredValue(query);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -219,6 +226,55 @@ export default function App() {
     await loadDocuments(deferredQuery, activeFolderId);
   }
 
+  async function handleSearch(payload?: SearchRequest) {
+    const target: SearchRequest = payload ?? {
+      query,
+      mode: "hybrid",
+      includeDebug: true,
+    };
+    if (!target.query.trim()) {
+      setViewMode("search");
+      return;
+    }
+    setIsSearchLoading(true);
+    setError(null);
+    setSearchStatus(null);
+    try {
+      const next = await runSearch(target);
+      setSearchResponse(next);
+      setViewMode("search");
+    } catch (exc) {
+      setError(exc instanceof Error ? exc.message : "Search failed");
+      setSearchResponse(null);
+      setViewMode("search");
+    } finally {
+      setIsSearchLoading(false);
+    }
+  }
+
+  async function handleSaveSearch(payload: SearchRequest) {
+    if (!payload.query.trim()) {
+      setSearchStatus("Enter a search query before saving.");
+      return;
+    }
+    try {
+      const saved = await createSavedSearch({
+        name: `Search: ${payload.query.trim().slice(0, 72)}`,
+        queryText: payload.query.trim(),
+        filters: {
+          mode: payload.mode ?? "hybrid",
+          families: payload.families ?? [],
+          reviewedOnly: payload.reviewedOnly ?? false,
+          dateFrom: payload.dateFrom ?? null,
+          dateTo: payload.dateTo ?? null,
+        },
+      });
+      setSearchStatus(`Saved search: ${saved.name}`);
+    } catch (exc) {
+      setSearchStatus(exc instanceof Error ? exc.message : "Unable to save search.");
+    }
+  }
+
   const selectedSummary = documents.find((document) => document.id === selectedId) ?? documents[0];
   const selected = detail ?? selectedSummary ?? null;
 
@@ -234,18 +290,35 @@ export default function App() {
     <div className="app-shell">
       <Sidebar
         total={total}
-        active={viewMode === "review" ? "review" : "inbox"}
+        active={viewMode}
         onNavigate={(view) => setViewMode(view)}
       />
       <main className="app-main">
         <TopCommand
           query={query}
           setQuery={setQuery}
+          onSubmitSearch={() => void handleSearch()}
           isUploading={isUploading}
           uploadFile={uploadFile}
         />
         {viewMode === "review" ? (
           <ReviewQueue
+            onOpenDocument={(documentId, target) => {
+              setEvidenceTarget(target ?? null);
+              setSelectedId(documentId);
+              setViewMode("viewer");
+            }}
+          />
+        ) : viewMode === "search" ? (
+          <SearchResults
+            query={query}
+            setQuery={setQuery}
+            response={searchResponse}
+            isLoading={isSearchLoading}
+            error={error}
+            status={searchStatus}
+            onSubmit={handleSearch}
+            onSaveSearch={handleSaveSearch}
             onOpenDocument={(documentId, target) => {
               setEvidenceTarget(target ?? null);
               setSelectedId(documentId);

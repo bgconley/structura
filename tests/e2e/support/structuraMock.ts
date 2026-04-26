@@ -14,6 +14,7 @@ import {
   seededFieldCandidates,
   seededFolders,
   seededReviewTasks,
+  seededSearchResponse,
   seededTags,
   summaryFromDetail,
   Tag,
@@ -134,6 +135,43 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
         status: 202,
         headers: {"Content-Type": "application/json", ...corsHeaders},
         json: {jobId: "55555555-5555-4555-8555-555555555555", status: "queued"},
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/v1/search" && request.method() === "POST") {
+      const payload = request.postDataJSON() as {query?: string; families?: string[]};
+      await route.fulfill({
+        status: 200,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: seededSearchResponse(String(payload.query ?? ""), payload.families?.[0]),
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/v1/saved-searches" && request.method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: {items: []},
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/v1/saved-searches" && request.method() === "POST") {
+      expect(request.headers()["x-csrf-token"]).toBe(expectedCsrfToken);
+      const payload = request.postDataJSON() as {name?: string; queryText?: string};
+      await route.fulfill({
+        status: 201,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: {
+          id: "73737373-7373-4373-8373-737373737373",
+          name: payload.name ?? "Saved search",
+          queryText: payload.queryText ?? "",
+          filters: {},
+          sort: {},
+          createdAt: "2026-04-26T00:00:00Z",
+        },
       });
       return;
     }

@@ -8,6 +8,7 @@ from uuid import UUID
 
 from lib.extraction import ExtractionService
 from lib.jobs import JobService, record_service_health
+from lib.search.jobs import enqueue_embed_document_job
 from workers.runtime import start_health_server
 
 
@@ -64,6 +65,11 @@ def process_next_extraction_job(
                     ),
                 },
             )
+            _enqueue_embedding_refresh(
+                target_document_id,
+                household_id=claimed.household_id,
+                force_reembed=False,
+            )
         elif claimed.state.job_type == "extract":
             schema_name = str(claimed.payload.get("target_schema_name") or "")
             route_profile = str(
@@ -84,6 +90,11 @@ def process_next_extraction_job(
                     "canonical_count": persisted.canonical_count,
                     "review_task_count": persisted.review_task_count,
                 },
+            )
+            _enqueue_embedding_refresh(
+                target_document_id,
+                household_id=claimed.household_id,
+                force_reembed=False,
             )
         else:
             raise ExtractionWorkerError(
@@ -107,6 +118,25 @@ def _document_id_for_job(document_id: UUID | None, payload: dict[str, object]) -
     if not payload_document_id:
         raise ExtractionWorkerError("Extraction job is missing document_id.")
     return UUID(str(payload_document_id))
+
+
+def _enqueue_embedding_refresh(
+    document_id: UUID,
+    *,
+    household_id: UUID | None,
+    force_reembed: bool,
+) -> None:
+    from lib.db.connection import db_connection
+
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            enqueue_embed_document_job(
+                cur,
+                document_id=document_id,
+                household_id=household_id,
+                force_reembed=force_reembed,
+            )
+        conn.commit()
 
 
 def main() -> None:

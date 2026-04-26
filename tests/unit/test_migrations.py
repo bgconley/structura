@@ -15,7 +15,7 @@ def test_baseline_migration_scripts_are_present_and_ordered() -> None:
     plan = baseline_migration_plan("database")
 
     assert plan.scripts[0].name == "001_extensions.sql"
-    assert plan.scripts[-1].name == "068_phase4_extraction_review.sql"
+    assert plan.scripts[-1].name == "069_phase5_search.sql"
     assert all(script.exists() for script in plan.scripts)
 
 
@@ -49,3 +49,13 @@ def test_phase4_extraction_review_migration_is_baseline_migration() -> None:
     assert "CREATE OR REPLACE FUNCTION refresh_document_chunk_projection" in sql
     assert "review_tasks_document_status_idx" in sql
     assert "canonical_fact_history_document_created_idx" in sql
+
+
+def test_phase5_search_migration_is_baseline_migration() -> None:
+    sql = Path("database/069_phase5_search.sql").read_text(encoding="utf-8")
+
+    assert "document_chunks_bm25_idx" in sql
+    assert "bm25_text" in sql
+    assert "embeddings_active_text_owner_profile_uniq" in sql
+    assert "saved_searches_household_name_uniq" in sql
+    assert "CREATE OR REPLACE FUNCTION document_matches_saved_query" in sql

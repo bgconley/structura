@@ -18,6 +18,7 @@ BASELINE_SQL_FILES = (
     "066_folder_household_uniqueness.sql",
     "067_document_read_acl_function.sql",
     "068_phase4_extraction_review.sql",
+    "069_phase5_search.sql",
 )
 
 

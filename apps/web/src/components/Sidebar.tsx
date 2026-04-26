@@ -18,7 +18,7 @@ export function Sidebar({
 }: {
   total: number;
   active: string;
-  onNavigate: (view: "inbox" | "review") => void;
+  onNavigate: (view: "inbox" | "review" | "search") => void;
 }) {
   return (
     <aside className="sidebar">
@@ -32,13 +32,22 @@ export function Sidebar({
             key={label}
             className={
               (label === "Inbox" && active === "inbox")
+              || (label === "Search" && active === "search")
               || (label === "Review Queue" && active === "review")
                 ? "active"
                 : undefined
             }
             type="button"
-            disabled={label !== "Inbox" && label !== "Review Queue"}
-            onClick={() => onNavigate(label === "Review Queue" ? "review" : "inbox")}
+            disabled={!["Inbox", "Search", "Review Queue"].includes(label)}
+            onClick={() => {
+              if (label === "Review Queue") {
+                onNavigate("review");
+              } else if (label === "Search") {
+                onNavigate("search");
+              } else {
+                onNavigate("inbox");
+              }
+            }}
           >
             <span>{icon}</span>
             <em>{label}</em>

@@ -3,11 +3,13 @@ import {StatusChip} from "./Status";
 export function TopCommand({
   query,
   setQuery,
+  onSubmitSearch,
   isUploading,
   uploadFile,
 }: {
   query: string;
   setQuery: (value: string) => void;
+  onSubmitSearch: () => void;
   isUploading: boolean;
   uploadFile: (file: File | undefined) => Promise<void>;
 }) {
@@ -18,6 +20,12 @@ export function TopCommand({
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              onSubmitSearch();
+            }
+          }}
           placeholder="Search receipts, EOBs, warranties, claims, taxes..."
         />
         <kbd>Ctrl / ⌘ K</kbd>

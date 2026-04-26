@@ -17,6 +17,7 @@ from lib.db.connection import db_connection
 from lib.documents.access_policy import DocumentAccessContext
 from lib.documents.read_model import get_document_detail
 from lib.organization import policy, repository
+from lib.search.projection import refresh_projection_and_enqueue_embedding
 
 
 def list_folders(principal: AuthPrincipal) -> list[Folder]:
@@ -179,6 +180,12 @@ def update_document_organization(
                     changed_fields=changed_fields,
                 )
         conn.commit()
+    if changed_fields:
+        refresh_projection_and_enqueue_embedding(
+            document_id=document_id,
+            household_id=household_id,
+            force_reembed=False,
+        )
 
     detail = get_document_detail(document_id, _document_access_context(principal))
     if not detail:

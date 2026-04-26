@@ -3,6 +3,30 @@
 > Auto-maintained by OpenWolf. Last scanned: 2026-04-24T01:42:51.307Z
 > Files: 325 tracked | Anatomy hits: 0 | Misses: 0 | Manually updated: 2026-04-26
 
+## Phase 5 search additions
+
+- `apps/api/structura_api/routes_search.py` — Thin FastAPI routes for corpus search and household-scoped saved searches (~450 tok)
+- `apps/web/src/components/SearchResults.tsx` — Phase 5 Corpus Search UI with query builder, filters, ranked results, facets, evidence jumps, and saved-search action (~2200 tok)
+- `apps/web/src/components/SearchResults.css` — Phase 5 search surface styles (~1900 tok)
+- `apps/web/src/searchApi.ts` — Browser API client for search and saved-search calls (~250 tok)
+- `database/069_phase5_search.sql` — Search projection refresh, BM25 index refresh, embedding uniqueness, saved-search household columns, and smart-folder saved-query matcher (~1700 tok)
+- `lib/search/query.py` — Search request parser and normalized filter DTOs (~550 tok)
+- `lib/search/repository.py` — ACL-aware lexical/semantic/facet SQL repository for Phase 5 search (~2200 tok)
+- `lib/search/service.py` — Search orchestration and result DTO mapping for lexical, semantic, and hybrid modes (~1300 tok)
+- `lib/search/embedding_gateway.py` — Deterministic local text embedding adapter and vector helpers (~700 tok)
+- `lib/search/embedding_repository.py` — Projection refresh and embedding persistence repository (~900 tok)
+- `lib/search/embedding_service.py` — Document embedding orchestration and idempotent refresh summary (~450 tok)
+- `lib/search/jobs.py` — Embedding job enqueue helper for the `embeddings` queue (~300 tok)
+- `lib/search/projection.py` — Shared projection refresh and embedding enqueue seam for later phases (~200 tok)
+- `lib/search/saved_searches.py` — Household-scoped saved-search persistence API (~550 tok)
+- `lib/search/hybrid.py` — Reciprocal-rank fusion primitives (~450 tok)
+- `workers/embeddings/worker.py` — Phase 5 embedding worker loop and job handling (~750 tok)
+- `tests/e2e/phase5.spec.ts` — Mocked Phase 5 search UI and screenshot gate (~450 tok)
+- `tests/e2e/phase5-live.spec.ts` — GPU live upload/search/evidence browser smoke (~650 tok)
+- `tests/integration/test_phase5_search.py` — Live DB integration coverage for search, embeddings, smart folders, saved searches, and ACL negatives (~2100 tok)
+- `tests/unit/test_phase5_search_units.py` — Unit coverage for parser, deterministic embeddings, and RRF (~550 tok)
+- `docs/ui-reference/figma/search/` — Phase 5 Figma context, source screenshot, comparison notes, and Playwright screenshot artifacts (~600 tok plus images)
+
 ## ./
 
 - `.DS_Store` (~3824 tok)

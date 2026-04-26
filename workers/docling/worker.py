@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from lib.jobs import JobService, record_service_health
+from lib.search.jobs import enqueue_embed_document_job
 from workers.docling.converter import DoclingConverter
 from workers.docling.service import (
     DoclingWorkerError,
@@ -78,6 +79,10 @@ def process_next_docling_job(
             priority=38,
             queue_name="extraction",
         )
+        _enqueue_embedding_refresh(
+            target_document_id,
+            household_id=claimed.household_id,
+        )
     except Exception as exc:
         if target_document_id:
             mark_document_parse_failed(
@@ -103,6 +108,20 @@ def _document_id_for_docling(document_id: UUID | None, payload: dict[str, object
     if not payload_document_id:
         raise DoclingWorkerError("Docling job is missing document_id.")
     return UUID(str(payload_document_id))
+
+
+def _enqueue_embedding_refresh(document_id: UUID, *, household_id: UUID | None) -> None:
+    from lib.db.connection import db_connection
+
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            enqueue_embed_document_job(
+                cur,
+                document_id=document_id,
+                household_id=household_id,
+                force_reembed=False,
+            )
+        conn.commit()
 
 
 def main() -> None:

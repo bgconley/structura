@@ -73,6 +73,33 @@ export type CanonicalField = {
   }>;
 };
 
+export type SearchResponse = {
+  items: Array<{
+    documentId: string;
+    title: string;
+    family: string;
+    rank: number;
+    score: number;
+    snippet: string;
+    matchedChunkId: string;
+    pageNumber: number;
+    explanation: string;
+    counterpartyDisplay?: string;
+    documentDate?: string | null;
+    amountTotal?: number;
+    folderPaths?: string[];
+    tags?: string[];
+    evidence: Array<{
+      pageNumber: number;
+      sourceEngine: string;
+      sourceText: string;
+      bbox?: [number, number, number, number];
+    }>;
+  }>;
+  facets: Record<string, Record<string, number>>;
+  debug: Record<string, unknown>;
+};
+
 export type Folder = {
   id: string;
   parentId?: string | null;
@@ -184,6 +211,52 @@ export function seededCanonicalFields(): CanonicalField[] {
       evidence: [{pageNumber: 1, sourceEngine: "docling", sourceText: "Acme Repairs"}],
     },
   ];
+}
+
+export function seededSearchResponse(query: string, family?: string): SearchResponse {
+  if (query.toLowerCase().includes("no matching") || family === "warranty") {
+    return {
+      items: [],
+      facets: {families: {}, tags: {}, reviewStatus: {}},
+      debug: {mode: "hybrid", candidateCounts: {lexical: 0, semantic: 0}, filtersApplied: family ? 1 : 0},
+    };
+  }
+  return {
+    items: [
+      {
+        documentId: existingDocument.id,
+        title: "Anthem medical EOB",
+        family: "medical_eob",
+        rank: 1,
+        score: 0.038,
+        snippet: "Claim ABC123 · patient responsibility $62.00",
+        matchedChunkId: "61616161-6161-4161-8161-616161616161",
+        pageNumber: 1,
+        explanation: "matched by lexical rank 1 and semantic rank 1",
+        counterpartyDisplay: "Anthem",
+        documentDate: "2026-04-20",
+        amountTotal: 62,
+        folderPaths: ["/Medical"],
+        tags: ["medical", "urgent"],
+        evidence: [{
+          pageNumber: 1,
+          sourceEngine: "docling",
+          sourceText: "Claim ABC123 patient responsibility $62.00",
+          bbox: [0.18, 0.22, 0.72, 0.29],
+        }],
+      },
+    ],
+    facets: {
+      families: {medical_eob: 1},
+      tags: {medical: 1, urgent: 1},
+      reviewStatus: {user_confirmed: 1},
+    },
+    debug: {
+      mode: "hybrid",
+      candidateCounts: {lexical: 1, semantic: 1},
+      filtersApplied: family ? 1 : 0,
+    },
+  };
 }
 
 export function ensureUploadedDocument(documents: Map<string, DocumentDetail>): void {

@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     docling_do_table_structure: bool = True
     docling_ocr_model_root: Path = Path("/srv/structura/cache/rapidocr")
     docling_ocr_backend: str = "torch"
+    embedding_text_dimensions: int = 1536
 
     @property
     def canonical_objects_root(self) -> Path:

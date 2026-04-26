@@ -480,6 +480,30 @@
       "related_bugs": ["bug-038"],
       "occurrences": 1,
       "last_seen": "2026-04-26T13:38:00-04:00"
+    },
+    {
+      "id": "bug-041",
+      "timestamp": "2026-04-26T18:24:00-04:00",
+      "error_message": "make sast failed with Bandit B608 hardcoded_sql_expressions findings in lib/search/repository.py.",
+      "file": "lib/search/repository.py",
+      "root_cause": "Phase 5 search SQL used f-string query construction for internal filter predicate composition and vector casts, which Bandit flags even when values are parameterized.",
+      "fix": "Refactored search repository queries to use psycopg.sql composition for internal predicates, removed dynamic vector dimension casts from SQL text, and preserved parameterized user/filter values.",
+      "tags": ["sast", "bandit", "sql", "search", "phase-5"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T18:24:00-04:00"
+    },
+    {
+      "id": "bug-042",
+      "timestamp": "2026-04-26T18:29:00-04:00",
+      "error_message": "Phase 5 mocked Playwright test could not click the Search nav button and initially snapshotted after navigating away from the search surface.",
+      "file": "tests/e2e/phase5.spec.ts",
+      "root_cause": "The sidebar button's accessible name includes the icon letter, so /^Search$/ did not match; the screenshot assertion was placed after the evidence-jump navigation to the viewer.",
+      "fix": "Changed the locator to match /Search/, moved the screenshot assertion before the evidence jump, added explicit filter selection, and generated the Linux Phase 5 search snapshot.",
+      "tags": ["playwright", "screenshot", "ui-reference", "phase-5"],
+      "related_bugs": ["bug-040"],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T18:29:00-04:00"
     }
   ]
 }

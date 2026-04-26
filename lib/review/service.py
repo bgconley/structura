@@ -7,6 +7,7 @@ import lib.review.repository as repository
 from lib.contracts import CanonicalField, CanonicalFieldWrite, ReviewActionRequest
 from lib.documents.access_policy import DocumentAccessContext
 from lib.jobs import JobService
+from lib.search.projection import refresh_projection_and_enqueue_embedding
 
 
 class ReviewServiceError(Exception):
@@ -79,6 +80,17 @@ class ReviewService:
             )
         else:  # pragma: no cover - Pydantic constrains this.
             raise ReviewServiceError(f"Unsupported review action: {action.action_type}")
+        if action.action_type in {
+            "confirm_field",
+            "correct_field",
+            "reject_field",
+            "reclassify_document",
+        }:
+            refresh_projection_and_enqueue_embedding(
+                document_id=action.document_id,
+                household_id=access.household_id,
+                force_reembed=False,
+            )
         return {"ok": True, "reviewEventId": str(event_id)}
 
     def write_canonical_field(
@@ -105,6 +117,11 @@ class ReviewService:
             selected_candidate_id=payload.selected_candidate_id,
             source_kind=payload.source_kind,
             reason=payload.reason,
+        )
+        refresh_projection_and_enqueue_embedding(
+            document_id=document_id,
+            household_id=access.household_id,
+            force_reembed=False,
         )
         return field
 
