@@ -11,6 +11,10 @@ from starlette.responses import FileResponse
 from apps.api.structura_api.dependencies import current_principal
 from lib.auth import AuthPrincipal
 from lib.db.connection import db_connection
+from lib.documents.access_policy import (
+    DocumentAccessContext,
+    document_read_access_params,
+)
 from lib.storage import InvalidObjectUri, ObjectStorage, StorageError
 
 router = APIRouter(prefix="/api/v1", tags=["Assets"])
@@ -39,10 +43,19 @@ def get_asset(
                 FROM document_assets a
                 JOIN documents d ON d.id = a.document_id
                 WHERE a.id = %s
-                  AND d.household_id = %s
                   AND d.deleted_at IS NULL
+                  AND document_is_readable(d.id, %s, %s, %s)
                 """,
-                (assetId, principal.household_id),
+                (
+                    assetId,
+                    *document_read_access_params(
+                        DocumentAccessContext(
+                            household_id=principal.household_id,
+                            user_id=principal.user_id,
+                            household_role=principal.household_role,
+                        )
+                    ),
+                ),
             )
             row = cur.fetchone()
     if not row:

@@ -16,6 +16,7 @@ from lib.auth import AuthPrincipal
 from lib.config import get_settings
 from lib.contracts import AcceptedJob
 from lib.db.connection import db_connection
+from lib.documents.access_policy import DocumentAccessContext
 from lib.documents.read_model import (
     DocumentListFilters,
     get_document_detail,
@@ -74,7 +75,7 @@ def list_documents(
 
     summaries, total = list_document_summaries(
         DocumentListFilters(
-            household_id=principal.household_id,
+            access=_document_access_context(principal),
             query_text=q.strip() if q and q.strip() else None,
             family=family.strip() if family and family.strip() else None,
             review_status=reviewStatus.strip() if reviewStatus and reviewStatus.strip() else None,
@@ -378,10 +379,20 @@ def get_document(
 ) -> dict[str, object]:
     if not principal.household_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
-    document = get_document_detail(documentId, principal.household_id)
+    document = get_document_detail(documentId, _document_access_context(principal))
     if not document:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
     return document.model_dump(by_alias=True)
+
+
+def _document_access_context(principal: AuthPrincipal) -> DocumentAccessContext:
+    if not principal.household_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Household required")
+    return DocumentAccessContext(
+        household_id=principal.household_id,
+        user_id=principal.user_id,
+        household_role=principal.household_role,
+    )
 
 
 def _cleanup_unreferenced_stored_object(stored: StoredObject | None) -> None:

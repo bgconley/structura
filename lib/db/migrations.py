@@ -15,6 +15,8 @@ BASELINE_SQL_FILES = (
     "050_views_and_functions.sql",
     "060_seed_taxonomies.sql",
     "065_pipeline_jobs_household_scope.sql",
+    "066_folder_household_uniqueness.sql",
+    "067_document_read_acl_function.sql",
 )
 
 

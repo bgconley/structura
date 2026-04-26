@@ -1,0 +1,70 @@
+{
+  "fileKey": "5GAPHbduQLu9INBOXUPxJN",
+  "screenName": "parse-debug",
+  "implementationRoute": "/",
+  "viewport": {"width": 1440, "height": 960},
+  "captureDate": "2026-04-26",
+  "primaryFrame": {
+    "id": "14:434",
+    "name": "02 Document Viewer v2",
+    "existingArtifacts": [
+      "../viewer/figma-context.json",
+      "../viewer/figma-screenshot.png"
+    ],
+    "relevance": [
+      "The Phase 3 parse-debug panel is a diagnostic extension of the Document Viewer surface.",
+      "The Viewer frame defines the canonical shell, page rendering area, evidence inspector hierarchy, and document metadata placement."
+    ]
+  },
+  "supportingFrames": [
+    {
+      "id": "14:611",
+      "name": "03 Extraction Workspace v2",
+      "existingArtifacts": [
+        "../folder-tag-filing/extraction-workspace-reference.png"
+      ],
+      "relevance": [
+        "Defines the extraction diagnostics context that Phase 3 exposes read-only through parse artifacts, page text, chunks, and worker status."
+      ]
+    },
+    {
+      "id": "35:7",
+      "name": "06 Handoff - Interaction Specs",
+      "existingArtifacts": [
+        "../folder-tag-filing/handoff-interaction-specs.png"
+      ],
+      "relevance": [
+        "Constrains diagnostic panel loading, focus, and state persistence."
+      ]
+    },
+    {
+      "id": "35:12",
+      "name": "07 Handoff - Edge States",
+      "existingArtifacts": [
+        "../folder-tag-filing/handoff-edge-states.png"
+      ],
+      "relevance": [
+        "Constrains unavailable parse artifacts, worker failures, and degraded document states."
+      ]
+    }
+  ],
+  "implementationArtifacts": [
+    {
+      "artifact": "playwright-screenshot.png",
+      "source": "tests/e2e/phase3.spec.ts-snapshots/phase3-parse-debug-chromium-linux.png",
+      "state": "Document Viewer with Phase 3 parse-debug panel loaded for canonical Docling artifacts."
+    }
+  ],
+  "phase3Scope": {
+    "implemented": [
+      "Read-only parse-debug loader in the Viewer.",
+      "Canonical Docling artifact, page text, element, table, chunk, and job-status diagnostics.",
+      "Deterministic Playwright screenshot assertion for the parse-debug loaded state."
+    ],
+    "deferred": [
+      "Human correction workflow.",
+      "Model-assisted extraction review workspace.",
+      "Candidate-vs-canonical field adjudication UI."
+    ]
+  }
+}

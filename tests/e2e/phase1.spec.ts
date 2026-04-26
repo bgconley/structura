@@ -47,3 +47,30 @@ test("Phase 1 Inbox to Viewer workflow uses protected asset URLs", async ({page,
   await page.getByRole("button", {name: "Back to Inbox"}).click();
   await expect(page.getByRole("heading", {name: "Document Operations"})).toBeVisible();
 });
+
+test("Browser mutations use the CSRF cookie name reported by the session", async ({
+  page,
+  context,
+}, testInfo) => {
+  const customCsrfCookie = "custom_structura_csrf";
+  const customSessionCookie = "custom_structura_session";
+  const customCsrfToken = "custom-phase-browser-csrf";
+  await context.addCookies([
+    {name: customSessionCookie, value: "phase1-custom-session", domain: "localhost", path: "/"},
+    {name: customCsrfCookie, value: customCsrfToken, domain: "localhost", path: "/"},
+  ]);
+  await mockStructuraApi(page, {
+    sessionCookieName: customSessionCookie,
+    csrfCookieName: customCsrfCookie,
+    csrfTokenValue: customCsrfToken,
+  });
+
+  await page.goto("/");
+  await expect(page.getByRole("heading", {name: "Document Operations"})).toBeVisible();
+
+  const uploadPath = testInfo.outputPath("phase1-custom-csrf.pdf");
+  await writeFile(uploadPath, "%PDF-1.7\n% Custom CSRF browser fixture\n%%EOF\n");
+  await page.locator(".top-command input[type='file']").setInputFiles(uploadPath);
+
+  await expect(page.getByRole("row", {name: /phase1-browser-fixture/})).toBeVisible();
+});

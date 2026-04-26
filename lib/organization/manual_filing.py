@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from psycopg.errors import UniqueViolation
+
 from lib.auth import AuthPrincipal
 from lib.contracts import (
     DocumentDetail,
@@ -12,6 +14,7 @@ from lib.contracts import (
     TagWrite,
 )
 from lib.db.connection import db_connection
+from lib.documents.access_policy import DocumentAccessContext
 from lib.documents.read_model import get_document_detail
 from lib.organization import policy, repository
 
@@ -33,42 +36,46 @@ def create_folder(payload: FolderWrite, principal: AuthPrincipal) -> Folder:
     name = policy.normalize_folder_name(payload.name)
     acl_mode = policy.validate_acl_mode(payload.acl_mode)
     saved_query = policy.validate_saved_query(payload.folder_kind, payload.saved_query)
+    row: dict[str, object] | None = None
 
-    with db_connection() as conn:
-        with conn.cursor() as cur:
-            parent_path: str | None = None
-            if payload.parent_id:
-                parent = repository.get_writable_folder(
+    try:
+        with db_connection() as conn:
+            with conn.cursor() as cur:
+                parent_path: str | None = None
+                if payload.parent_id:
+                    parent = repository.get_writable_folder(
+                        cur,
+                        folder_id=payload.parent_id,
+                        household_id=household_id,
+                        user_id=principal.user_id,
+                    )
+                    if not parent:
+                        raise policy.organization_error(404, "Parent folder not found")
+                    parent_path = str(parent["path"])
+                path = policy.folder_path(parent_path, name)
+                if repository.folder_name_exists(
                     cur,
-                    folder_id=payload.parent_id,
+                    name=name,
+                    parent_id=payload.parent_id,
                     household_id=household_id,
-                    user_id=principal.user_id,
+                ):
+                    raise policy.organization_error(409, "Folder name already exists at this level")
+                row = repository.insert_folder(
+                    cur,
+                    parent_id=payload.parent_id,
+                    folder_kind=payload.folder_kind,
+                    name=name,
+                    description=payload.description,
+                    path=path,
+                    saved_query=saved_query,
+                    household_id=household_id,
+                    owner_user_id=principal.user_id,
+                    acl_mode=acl_mode,
+                    path_ltree=policy.ltree_from_path(path),
                 )
-                if not parent:
-                    raise policy.organization_error(404, "Parent folder not found")
-                parent_path = str(parent["path"])
-            path = policy.folder_path(parent_path, name)
-            if repository.folder_name_exists(
-                cur,
-                name=name,
-                parent_id=payload.parent_id,
-                household_id=household_id,
-            ):
-                raise policy.organization_error(409, "Folder name already exists at this level")
-            row = repository.insert_folder(
-                cur,
-                parent_id=payload.parent_id,
-                folder_kind=payload.folder_kind,
-                name=name,
-                description=payload.description,
-                path=path,
-                saved_query=saved_query,
-                household_id=household_id,
-                owner_user_id=principal.user_id,
-                acl_mode=acl_mode,
-                path_ltree=policy.ltree_from_path(path),
-            )
-        conn.commit()
+            conn.commit()
+    except UniqueViolation as exc:
+        raise policy.organization_error(409, "Folder name already exists at this level") from exc
     if not row:
         raise policy.organization_error(500, "Failed to create folder")
     return _folder_from_row(row)
@@ -113,7 +120,7 @@ def update_document_organization(
             document = repository.lock_document_for_household(
                 cur,
                 document_id=document_id,
-                household_id=household_id,
+                access=_document_access_context(principal),
             )
             if not document:
                 raise policy.organization_error(404, "Document not found")
@@ -173,10 +180,19 @@ def update_document_organization(
                 )
         conn.commit()
 
-    detail = get_document_detail(document_id, household_id)
+    detail = get_document_detail(document_id, _document_access_context(principal))
     if not detail:
         raise policy.organization_error(404, "Document not found")
     return detail
+
+
+def _document_access_context(principal: AuthPrincipal) -> DocumentAccessContext:
+    household_id = _require_household(principal)
+    return DocumentAccessContext(
+        household_id=household_id,
+        user_id=principal.user_id,
+        household_role=principal.household_role,
+    )
 
 
 def _update_document_folders(

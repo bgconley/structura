@@ -408,6 +408,66 @@
       "related_bugs": ["bug-033"],
       "occurrences": 1,
       "last_seen": "2026-04-26T22:20:00-04:00"
+    },
+    {
+      "id": "bug-035",
+      "timestamp": "2026-04-26T23:25:00-04:00",
+      "error_message": "Same-household non-owner users could list, open, and download assets for documents filed in private folders.",
+      "file": "lib/documents/read_model.py",
+      "root_cause": "Document and asset read queries enforced household membership only and did not apply the documented folder/document/sensitivity ACL predicate.",
+      "fix": "Added the baseline database function document_is_readable, applied it to document list/detail/assets and organization write locking, and added same-household private-folder negative integration coverage.",
+      "tags": ["security", "acl", "documents", "assets", "phase-3"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T23:25:00-04:00"
+    },
+    {
+      "id": "bug-036",
+      "timestamp": "2026-04-26T23:25:00-04:00",
+      "error_message": "Two households could not create the same folder name at the same parent level; the second create could return HTTP 500.",
+      "file": "database/040_indexes_bm25_pgvector.sql",
+      "root_cause": "The original folders_parent_name_uniq index scoped uniqueness by parent/name only and ignored household_id.",
+      "fix": "Added a forward migration that replaces the global index with household-scoped and system-folder-scoped unique indexes, plus deterministic 409 handling for unique races.",
+      "tags": ["database", "folders", "multi-tenant", "phase-2", "phase-3"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T23:25:00-04:00"
+    },
+    {
+      "id": "bug-037",
+      "timestamp": "2026-04-26T23:25:00-04:00",
+      "error_message": "Claimed jobs in running status could remain permanently stuck after worker crash or lease abandonment.",
+      "file": "lib/jobs/service.py",
+      "root_cause": "claim_next_job_record only considered queued/failed jobs and retry_job rejected running jobs even when their leases had expired.",
+      "fix": "Added stale running-job recovery before claim, dead-lettering when attempts are exhausted, and allowed admin retry of expired running jobs only; added integration regression coverage.",
+      "tags": ["jobs", "leases", "retry", "reliability", "phase-3"],
+      "related_bugs": ["bug-029"],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T23:25:00-04:00"
+    },
+    {
+      "id": "bug-038",
+      "timestamp": "2026-04-26T23:25:00-04:00",
+      "error_message": "Phase 3 parse-debug UI did not have an enforced screenshot baseline or committed reference artifact set.",
+      "file": "tests/e2e/phase3.spec.ts",
+      "root_cause": "The parse-debug browser test asserted text only and docs/ui-reference lacked a parse-debug reference folder.",
+      "fix": "Added deterministic Playwright screenshot assertion, committed the Linux snapshot, added parse-debug comparison notes/context, and refreshed viewer/folder filing screenshots after the Phase 3 panel changed current UI height.",
+      "tags": ["playwright", "figma", "ui-reference", "phase-3"],
+      "related_bugs": ["bug-032"],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T23:25:00-04:00"
+    },
+    {
+      "id": "bug-039",
+      "timestamp": "2026-04-26T23:25:00-04:00",
+      "error_message": "The web client hardcoded structura_csrf and would fail mutating requests if backend CSRF cookie names were customized.",
+      "file": "apps/web/src/api.ts",
+      "root_cause": "The backend already supported configurable cookie names, but SessionInfo did not expose them and the frontend always read the default CSRF cookie.",
+      "fix": "Extended SessionInfo/OpenAPI with sessionCookieName and csrfCookieName, configured the web client from the session response, and added mocked browser coverage for a custom CSRF cookie name.",
+      "tags": ["csrf", "cookies", "frontend", "configuration", "phase-3"],
+      "related_bugs": ["bug-012"],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T23:25:00-04:00"
     }
   ]
 }

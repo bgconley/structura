@@ -11,6 +11,7 @@ pytest.importorskip("psycopg")
 
 from apps.api.structura_api.main import create_app
 from lib.auth import AuthService
+from lib.auth.service import hash_password
 from lib.config import get_settings
 from lib.db.connection import db_connection
 
@@ -56,6 +57,43 @@ def _upload_document(client: TestClient, csrf: str, title: str) -> str:
     listed = client.get("/api/v1/documents", params={"q": title})
     assert listed.status_code == 200
     return str(listed.json()["items"][0]["id"])
+
+
+def _add_household_user(
+    *,
+    household_id: str,
+    email: str,
+    password: str,
+    role: str = "viewer",
+) -> None:
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO users (email, display_name)
+                VALUES (%s, %s)
+                RETURNING id
+                """,
+                (email, email),
+            )
+            user = cur.fetchone()
+            assert user
+            cur.execute(
+                """
+                INSERT INTO user_password_credentials
+                  (user_id, password_hash, hash_algorithm, params_json, must_rotate, disabled_at)
+                VALUES (%s, %s, 'argon2id', '{}'::jsonb, false, NULL)
+                """,
+                (user["id"], hash_password(password)),
+            )
+            cur.execute(
+                """
+                INSERT INTO household_memberships (household_id, user_id, role)
+                VALUES (%s, %s, %s)
+                """,
+                (uuid.UUID(household_id), user["id"], role),
+            )
+        conn.commit()
 
 
 @pytest.mark.skipif(
@@ -297,3 +335,98 @@ def test_phase2_private_folder_is_not_visible_across_households(
         json={"folderIds": [private_id]},
     )
     assert inaccessible.status_code == 422
+
+
+@pytest.mark.skipif(
+    not os.environ.get("STRUCTURA_TEST_DATABASE_URL"),
+    reason="Set STRUCTURA_TEST_DATABASE_URL to run live Phase 2 organization tests.",
+)
+def test_phase2_folder_names_are_unique_per_household(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    first, first_csrf = _phase2_client(monkeypatch, tmp_path, "folder-scope-a")
+    second, second_csrf = _phase2_client(monkeypatch, tmp_path, "folder-scope-b")
+    name = f"Shared Folder Name {uuid.uuid4().hex[:8]}"
+
+    first_create = first.post(
+        "/api/v1/folders",
+        headers={"X-CSRF-Token": first_csrf},
+        json={"folderKind": "manual", "name": name},
+    )
+    assert first_create.status_code == 201
+
+    second_create = second.post(
+        "/api/v1/folders",
+        headers={"X-CSRF-Token": second_csrf},
+        json={"folderKind": "manual", "name": name},
+    )
+    assert second_create.status_code == 201
+
+    first_duplicate = first.post(
+        "/api/v1/folders",
+        headers={"X-CSRF-Token": first_csrf},
+        json={"folderKind": "manual", "name": name},
+    )
+    assert first_duplicate.status_code == 409
+
+
+@pytest.mark.skipif(
+    not os.environ.get("STRUCTURA_TEST_DATABASE_URL"),
+    reason="Set STRUCTURA_TEST_DATABASE_URL to run live Phase 2 organization tests.",
+)
+def test_phase2_private_folder_documents_and_assets_are_acl_protected_within_household(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    owner, owner_csrf = _phase2_client(monkeypatch, tmp_path, "private-doc-owner")
+    unique = uuid.uuid4().hex[:8]
+    owner_session = owner.get("/api/v1/auth/session")
+    assert owner_session.status_code == 200
+    household_id = owner_session.json()["householdId"]
+
+    viewer_email = f"phase2-private-viewer-{unique}@example.com"
+    viewer_password = "minimum8"
+    _add_household_user(
+        household_id=household_id,
+        email=viewer_email,
+        password=viewer_password,
+        role="viewer",
+    )
+    viewer = TestClient(create_app())
+    viewer_login = viewer.post(
+        "/api/v1/auth/session",
+        json={"method": "password", "email": viewer_email, "password": viewer_password},
+    )
+    assert viewer_login.status_code == 201
+
+    title = f"Private Household Filing {unique}"
+    document_id = _upload_document(owner, owner_csrf, title)
+    private_folder = owner.post(
+        "/api/v1/folders",
+        headers={"X-CSRF-Token": owner_csrf},
+        json={"folderKind": "manual", "name": f"Owner Private {unique}", "aclMode": "private"},
+    )
+    assert private_folder.status_code == 201
+    private_folder_id = private_folder.json()["id"]
+
+    filed = owner.post(
+        f"/api/v1/documents/{document_id}/organization",
+        headers={"X-CSRF-Token": owner_csrf},
+        json={"folderIds": [private_folder_id], "primaryFolderId": private_folder_id},
+    )
+    assert filed.status_code == 200
+
+    owner_detail = owner.get(f"/api/v1/documents/{document_id}")
+    assert owner_detail.status_code == 200
+    asset_url = owner_detail.json()["assets"][0]["assetUrl"]
+
+    viewer_list = viewer.get("/api/v1/documents", params={"q": title})
+    assert viewer_list.status_code == 200
+    assert viewer_list.json()["total"] == 0
+    assert viewer.get(f"/api/v1/documents/{document_id}").status_code == 404
+    assert viewer.get(asset_url).status_code == 404
+
+    owner_list = owner.get("/api/v1/documents", params={"q": title})
+    assert owner_list.status_code == 200
+    assert owner_list.json()["total"] == 1

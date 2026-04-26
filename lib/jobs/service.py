@@ -278,6 +278,11 @@ class JobService:
         lease_expires_at = datetime.now(UTC) + timedelta(seconds=lease_seconds)
         with db_connection() as conn:
             with conn.cursor() as cur:
+                _recover_expired_running_jobs(
+                    cur,
+                    queue_name=queue_name,
+                    document_id=document_id,
+                )
                 cur.execute(
                     """
                     WITH next_job AS (
@@ -421,7 +426,14 @@ class JobService:
                         finished_at = NULL,
                         error_json = '{}'::jsonb
                     WHERE id = %s
-                      AND status IN ('failed', 'dead_letter', 'cancelled')
+                      AND (
+                        status IN ('failed', 'dead_letter', 'cancelled')
+                        OR (
+                          status = 'running'
+                          AND lease_expires_at IS NOT NULL
+                          AND lease_expires_at <= now()
+                        )
+                      )
                       AND (%s::uuid IS NULL OR household_id = %s)
                     RETURNING id, status::text
                     """,
@@ -432,6 +444,62 @@ class JobService:
         if not row:
             raise JobServiceError("Job is not retryable or does not exist.")
         return AcceptedJob.model_validate({"jobId": row["id"], "status": row["status"]})
+
+
+def _recover_expired_running_jobs(
+    cur: Any,
+    *,
+    queue_name: str,
+    document_id: UUID | None,
+) -> int:
+    cur.execute(
+        """
+        UPDATE pipeline_jobs
+        SET status = CASE
+              WHEN attempt_count >= max_attempts THEN 'dead_letter'::job_status_enum
+              ELSE 'failed'::job_status_enum
+            END,
+            worker_name = NULL,
+            started_at = CASE
+              WHEN attempt_count >= max_attempts THEN started_at
+              ELSE NULL
+            END,
+            lease_expires_at = NULL,
+            scheduled_at = CASE
+              WHEN attempt_count >= max_attempts THEN scheduled_at
+              ELSE now()
+            END,
+            finished_at = CASE
+              WHEN attempt_count >= max_attempts THEN now()
+              ELSE finished_at
+            END,
+            error_json = jsonb_strip_nulls(
+              COALESCE(error_json, '{}'::jsonb)
+              || jsonb_build_object(
+                'error_class',
+                'WorkerLeaseExpired',
+                'message',
+                'Worker lease expired before completion.',
+                'last_error',
+                'Worker lease expired before completion.',
+                'retryable',
+                attempt_count < max_attempts,
+                'retry_action',
+                CASE
+                  WHEN attempt_count >= max_attempts THEN '/api/v1/admin/jobs/' || id || '/retry'
+                  ELSE NULL
+                END
+              )
+            )
+        WHERE status = 'running'
+          AND queue_name = %s
+          AND (%s::uuid IS NULL OR document_id = %s)
+          AND lease_expires_at IS NOT NULL
+          AND lease_expires_at <= now()
+        """,
+        (queue_name, document_id, document_id),
+    )
+    return int(cur.rowcount)
 
 
 def record_service_health(

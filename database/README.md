@@ -19,7 +19,10 @@ This directory contains the starting SQL baseline for the application.
 6. `040_indexes_bm25_pgvector.sql`
 7. `050_views_and_functions.sql`
 8. `060_seed_taxonomies.sql`
-9. `070_query_examples.sql` (examples only; not required for boot)
+9. `065_pipeline_jobs_household_scope.sql`
+10. `066_folder_household_uniqueness.sql`
+11. `067_document_read_acl_function.sql`
+12. `070_query_examples.sql` (examples only; not required for boot)
 
 ## Important notes
 
@@ -27,6 +30,8 @@ This directory contains the starting SQL baseline for the application.
 - BM25 indexes are intentionally created on base tables rather than a denormalized external search engine.
 - The `embeddings` table uses variable-dimension `vector` storage so different models can coexist. Indexes are created through partial expression indexes for chosen dimensions.
 - Adjust vector dimensions in `040_indexes_bm25_pgvector.sql` if the serving path emits a different dimension in production.
+- `066_folder_household_uniqueness.sql` intentionally replaces the original global folder-name index with household-scoped uniqueness for tenant isolation.
+- `067_document_read_acl_function.sql` centralizes document/asset read authorization for application queries.
 - JSON Schemas in `contracts/schemas/` and relational persistence in these SQL files are designed to coexist. The DB stores both normalized fields and the source JSON payload.
 
 ## Source references

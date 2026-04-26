@@ -2113,6 +2113,14 @@ components:
           format: date-time
         passwordRotationRequired:
           type: boolean
+        sessionCookieName:
+          type: string
+          default: structura_session
+          description: Configured browser session cookie name.
+        csrfCookieName:
+          type: string
+          default: structura_csrf
+          description: Configured browser CSRF cookie name used for mutating requests.
           description: Present when a bootstrap password remains active and should be rotated.
     CreateMagicLinkRequest:
       type: object

@@ -1,6 +1,6 @@
 import {FormEvent, startTransition, useDeferredValue, useEffect, useState} from "react";
 
-import {csrfToken, fetchJson} from "./api";
+import {configureSecurityCookieNames, csrfToken, fetchJson} from "./api";
 import {Inbox} from "./components/Inbox";
 import {LoginScreen} from "./components/LoginScreen";
 import {Sidebar} from "./components/Sidebar";
@@ -101,6 +101,7 @@ export default function App() {
   async function bootstrap() {
     try {
       const current = await fetchJson<SessionInfo>("/api/v1/auth/session");
+      configureSecurityCookieNames(current);
       setSession(current);
       await Promise.all([loadDocuments("", activeFolderId), loadOrganization()]);
     } catch {
@@ -139,7 +140,7 @@ export default function App() {
     const form = new FormData(event.currentTarget);
     setError(null);
     try {
-      await fetchJson<SessionInfo>("/api/v1/auth/session", {
+      const created = await fetchJson<SessionInfo>("/api/v1/auth/session", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({
@@ -148,6 +149,7 @@ export default function App() {
           password: form.get("password"),
         }),
       });
+      configureSecurityCookieNames(created);
       await bootstrap();
     } catch (exc) {
       setError(exc instanceof Error ? exc.message : "Sign-in failed");

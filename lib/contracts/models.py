@@ -103,6 +103,8 @@ class SessionInfo(ContractModel):
         default=None,
         alias="passwordRotationRequired",
     )
+    session_cookie_name: str = Field(default="structura_session", alias="sessionCookieName")
+    csrf_cookie_name: str = Field(default="structura_csrf", alias="csrfCookieName")
 
 
 class FieldCandidate(ContractModel):

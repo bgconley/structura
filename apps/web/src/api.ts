@@ -1,10 +1,20 @@
 export const apiBaseUrl = import.meta.env.VITE_STRUCTURA_API_BASE_URL ?? "";
 
+let configuredCsrfCookieName = "structura_csrf";
+
+export function configureSecurityCookieNames(config: {
+  csrfCookieName?: string | null;
+}): void {
+  if (config.csrfCookieName?.trim()) {
+    configuredCsrfCookieName = config.csrfCookieName.trim();
+  }
+}
+
 export function csrfToken(): string {
   const cookie = document.cookie
     .split("; ")
-    .find((part) => part.startsWith("structura_csrf="));
-  return cookie ? decodeURIComponent(cookie.split("=")[1] ?? "") : "";
+    .find((part) => part.split("=")[0] === configuredCsrfCookieName);
+  return cookie ? decodeURIComponent(cookie.split("=").slice(1).join("=")) : "";
 }
 
 export function assetUrl(path?: string): string | undefined {

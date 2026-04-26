@@ -6,6 +6,11 @@ from uuid import UUID
 
 from psycopg.types.json import Jsonb
 
+from lib.documents.access_policy import (
+    DocumentAccessContext,
+    document_read_access_params,
+)
+
 
 def list_accessible_folders(
     cur: Any,
@@ -204,18 +209,18 @@ def lock_document_for_household(
     cur: Any,
     *,
     document_id: UUID,
-    household_id: UUID,
+    access: DocumentAccessContext,
 ) -> dict[str, object] | None:
     cur.execute(
         """
         SELECT id, primary_folder_id
-        FROM documents
-        WHERE id = %s
-          AND household_id = %s
+        FROM documents d
+        WHERE d.id = %s
           AND deleted_at IS NULL
+          AND document_is_readable(d.id, %s, %s, %s)
         FOR UPDATE
         """,
-        (document_id, household_id),
+        (document_id, *document_read_access_params(access)),
     )
     return cast(dict[str, object] | None, cur.fetchone())
 

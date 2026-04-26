@@ -494,6 +494,7 @@ class AuthService:
         )
 
     def _session_info_from_row(self, row: dict[str, Any]) -> SessionInfo:
+        settings = get_settings()
         return SessionInfo.model_validate(
             {
                 "sessionId": row["session_id"],
@@ -505,5 +506,7 @@ class AuthService:
                 "isAuthenticated": True,
                 "expiresAt": row["expires_at"],
                 "passwordRotationRequired": row["password_rotation_required"],
+                "sessionCookieName": settings.session_cookie_name,
+                "csrfCookieName": settings.csrf_cookie_name,
             }
         )

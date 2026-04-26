@@ -5,13 +5,17 @@ from uuid import UUID
 
 from lib.contracts import DocumentAsset, DocumentDetail, DocumentPage, DocumentSummary
 from lib.db.connection import db_connection
+from lib.documents.access_policy import (
+    DocumentAccessContext,
+    document_read_access_params,
+)
 
 DOCUMENT_LIST_COUNT_SQL = """
 SELECT count(*) AS total
 FROM documents d
 LEFT JOIN document_primary_amounts_v a ON a.document_id = d.id
 WHERE d.deleted_at IS NULL
-  AND d.household_id = %s
+  AND document_is_readable(d.id, %s, %s, %s)
   AND (
     %s::text IS NULL
     OR d.title ILIKE %s
@@ -74,7 +78,7 @@ SELECT
 FROM documents d
 LEFT JOIN document_primary_amounts_v a ON a.document_id = d.id
 WHERE d.deleted_at IS NULL
-  AND d.household_id = %s
+  AND document_is_readable(d.id, %s, %s, %s)
   AND (
     %s::text IS NULL
     OR d.title ILIKE %s
@@ -98,7 +102,7 @@ LIMIT %s OFFSET %s
 
 @dataclass(frozen=True)
 class DocumentListFilters:
-    household_id: UUID
+    access: DocumentAccessContext
     query_text: str | None = None
     family: str | None = None
     review_status: str | None = None
@@ -110,7 +114,7 @@ class DocumentListFilters:
 def list_document_summaries(filters: DocumentListFilters) -> tuple[list[DocumentSummary], int]:
     query_like = f"%{filters.query_text}%" if filters.query_text else None
     filter_params: list[object] = [
-        filters.household_id,
+        *document_read_access_params(filters.access),
         filters.query_text,
         query_like,
         query_like,
@@ -134,7 +138,7 @@ def list_document_summaries(filters: DocumentListFilters) -> tuple[list[Document
     return [_document_summary_from_row(row) for row in rows], total
 
 
-def get_document_detail(document_id: UUID, household_id: UUID) -> DocumentDetail | None:
+def get_document_detail(document_id: UUID, access: DocumentAccessContext) -> DocumentDetail | None:
     with db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -193,10 +197,10 @@ def get_document_detail(document_id: UUID, household_id: UUID) -> DocumentDetail
                 FROM documents d
                 LEFT JOIN document_primary_amounts_v a ON a.document_id = d.id
                 WHERE d.id = %s
-                  AND d.household_id = %s
                   AND d.deleted_at IS NULL
+                  AND document_is_readable(d.id, %s, %s, %s)
                 """,
-                (document_id, household_id),
+                (document_id, *document_read_access_params(access)),
             )
             row = cur.fetchone()
             if not row:

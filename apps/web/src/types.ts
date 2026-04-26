@@ -2,6 +2,8 @@ export type SessionInfo = {
   displayName?: string;
   email?: string;
   isAuthenticated: boolean;
+  sessionCookieName?: string;
+  csrfCookieName?: string;
 };
 
 export type DocumentSummary = {

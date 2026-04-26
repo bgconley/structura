@@ -20,10 +20,19 @@ import {
 
 export {apiOrigin, csrfToken} from "./structuraFixtures";
 
-export async function mockStructuraApi(page: Page) {
+type MockStructuraApiOptions = {
+  csrfCookieName?: string;
+  sessionCookieName?: string;
+  csrfTokenValue?: string;
+};
+
+export async function mockStructuraApi(page: Page, options: MockStructuraApiOptions = {}) {
   const documents = seededDocuments();
   const folders = seededFolders();
   const tags = seededTags();
+  const expectedCsrfToken = options.csrfTokenValue ?? csrfToken;
+  const csrfCookieName = options.csrfCookieName ?? "structura_csrf";
+  const sessionCookieName = options.sessionCookieName ?? "structura_session";
 
   await page.route(`${apiOrigin}/api/v1/**`, async (route) => {
     const request = route.request();
@@ -44,7 +53,13 @@ export async function mockStructuraApi(page: Page) {
       await route.fulfill({
         status: 200,
         headers: {"Content-Type": "application/json", ...corsHeaders},
-        json: {displayName: "Phase Reviewer", email: "phase@example.com", isAuthenticated: true},
+        json: {
+          displayName: "Phase Reviewer",
+          email: "phase@example.com",
+          isAuthenticated: true,
+          sessionCookieName,
+          csrfCookieName,
+        },
       });
       return;
     }
@@ -59,7 +74,7 @@ export async function mockStructuraApi(page: Page) {
     }
 
     if (url.pathname === "/api/v1/folders" && request.method() === "POST") {
-      expect(request.headers()["x-csrf-token"]).toBe(csrfToken);
+      expect(request.headers()["x-csrf-token"]).toBe(expectedCsrfToken);
       const folder = createFolder(request.postDataJSON() as Partial<Folder>, folders.length);
       folders.push(folder);
       await route.fulfill({
@@ -80,7 +95,7 @@ export async function mockStructuraApi(page: Page) {
     }
 
     if (url.pathname === "/api/v1/tags" && request.method() === "POST") {
-      expect(request.headers()["x-csrf-token"]).toBe(csrfToken);
+      expect(request.headers()["x-csrf-token"]).toBe(expectedCsrfToken);
       const tag = createTag(request.postDataJSON() as Partial<Tag>, tags.length);
       tags.push(tag);
       await route.fulfill({
@@ -107,7 +122,7 @@ export async function mockStructuraApi(page: Page) {
     }
 
     if (url.pathname === "/api/v1/documents" && request.method() === "POST") {
-      expect(request.headers()["x-csrf-token"]).toBe(csrfToken);
+      expect(request.headers()["x-csrf-token"]).toBe(expectedCsrfToken);
       ensureUploadedDocument(documents);
       await route.fulfill({
         status: 202,
@@ -119,7 +134,7 @@ export async function mockStructuraApi(page: Page) {
 
     const organizationMatch = url.pathname.match(/^\/api\/v1\/documents\/([^/]+)\/organization$/);
     if (organizationMatch && request.method() === "POST") {
-      expect(request.headers()["x-csrf-token"]).toBe(csrfToken);
+      expect(request.headers()["x-csrf-token"]).toBe(expectedCsrfToken);
       const document = documents.get(organizationMatch[1]);
       if (!document) {
         await route.fulfill({status: 404, headers: corsHeaders, body: "not found"});

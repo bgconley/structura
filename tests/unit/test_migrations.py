@@ -15,7 +15,7 @@ def test_baseline_migration_scripts_are_present_and_ordered() -> None:
     plan = baseline_migration_plan("database")
 
     assert plan.scripts[0].name == "001_extensions.sql"
-    assert plan.scripts[-1].name == "065_pipeline_jobs_household_scope.sql"
+    assert plan.scripts[-1].name == "067_document_read_acl_function.sql"
     assert all(script.exists() for script in plan.scripts)
 
 
@@ -24,3 +24,20 @@ def test_parties_bm25_index_preserves_artifact_search_inputs_with_citext_cast() 
 
     assert "((normalized_name::text)::pdb.simple)" in sql
     assert "address_json" in sql
+
+
+def test_folder_uniqueness_migration_is_household_scoped() -> None:
+    sql = Path("database/066_folder_household_uniqueness.sql").read_text(encoding="utf-8")
+
+    assert "DROP INDEX IF EXISTS folders_parent_name_uniq" in sql
+    assert "folders_household_parent_name_uniq" in sql
+    assert "household_id IS NOT NULL" in sql
+    assert "folders_system_parent_name_uniq" in sql
+
+
+def test_document_read_acl_function_is_baseline_migration() -> None:
+    sql = Path("database/067_document_read_acl_function.sql").read_text(encoding="utf-8")
+
+    assert "CREATE FUNCTION document_is_readable" in sql
+    assert "folder_acl" in sql
+    assert "highly_sensitive" in sql

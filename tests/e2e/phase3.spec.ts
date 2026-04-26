@@ -27,4 +27,8 @@ test("Phase 3 parse debug surface loads canonical artifact diagnostics on demand
   await expect(debug).toContainText("Current artifact: docling_json");
   await expect(debug).toContainText("Phase 3 canonical parse text");
   await expect(debug).toContainText("docling_convert succeeded");
+  await expect(page).toHaveScreenshot("phase3-parse-debug.png", {
+    fullPage: true,
+    maxDiffPixelRatio: 0.02,
+  });
 });

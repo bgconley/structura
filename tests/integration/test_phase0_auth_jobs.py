@@ -11,6 +11,7 @@ pytest.importorskip("psycopg")
 from apps.api.structura_api.main import create_app
 from lib.auth import AuthService
 from lib.config import get_settings
+from lib.db.connection import db_connection
 from lib.jobs import JobService, record_service_health
 
 
@@ -181,6 +182,106 @@ def test_phase0_job_routes_are_household_scoped(monkeypatch: pytest.MonkeyPatch)
     not os.environ.get("STRUCTURA_TEST_DATABASE_URL"),
     reason="Set STRUCTURA_TEST_DATABASE_URL to run live Phase 0 auth/job tests.",
 )
+def test_phase0_expired_running_jobs_are_recoverable(monkeypatch: pytest.MonkeyPatch) -> None:
+    database_url = os.environ["STRUCTURA_TEST_DATABASE_URL"]
+    monkeypatch.setenv("STRUCTURA_DATABASE_URL", database_url)
+    monkeypatch.setenv("STRUCTURA_ENV", "test")
+    get_settings.cache_clear()
+
+    unique = uuid.uuid4().hex[:12]
+    password = "minimum8"
+    bootstrap = AuthService().bootstrap_admin(
+        email=f"phase0-stale-job-{unique}@example.com",
+        password=password,
+        display_name="Phase 0 Stale Job Admin",
+        household_name=f"Phase 0 Stale Job {unique}",
+        must_rotate=False,
+    )
+    client = TestClient(create_app())
+    login = client.post(
+        "/api/v1/auth/session",
+        json={
+            "method": "password",
+            "email": f"phase0-stale-job-{unique}@example.com",
+            "password": password,
+        },
+    )
+    assert login.status_code == 201
+
+    job_service = JobService()
+    queue_name = f"phase0-stale-{unique}"
+    stale = job_service.create_job(
+        job_type="ingest",
+        household_id=bootstrap.household_id,
+        payload={"document_id": "stale-running-placeholder"},
+        queue_name=queue_name,
+        max_attempts=3,
+    )
+    claimed = job_service.claim_next_job_record(
+        worker_name="phase0-stale-worker",
+        queue_name=queue_name,
+        lease_seconds=1,
+    )
+    assert claimed
+    assert claimed.state.job_id == stale.job_id
+    _expire_job_lease(stale.job_id)
+
+    reclaimed = job_service.claim_next_job_record(
+        worker_name="phase0-stale-worker-2",
+        queue_name=queue_name,
+    )
+    assert reclaimed
+    assert reclaimed.state.job_id == stale.job_id
+    assert reclaimed.state.status == "running"
+
+    manual = job_service.create_job(
+        job_type="ingest",
+        household_id=bootstrap.household_id,
+        payload={"document_id": "manual-retry-stale-placeholder"},
+        queue_name=queue_name,
+        max_attempts=3,
+    )
+    manual_claim = job_service.claim_next_job_record(
+        worker_name="phase0-manual-stale-worker",
+        queue_name=queue_name,
+        lease_seconds=1,
+    )
+    assert manual_claim
+    assert manual_claim.state.job_id == manual.job_id
+    _expire_job_lease(manual.job_id)
+
+    retry = client.post(
+        f"/api/v1/admin/jobs/{manual.job_id}/retry",
+        headers={"X-CSRF-Token": client.cookies["structura_csrf"]},
+    )
+    assert retry.status_code == 202
+    assert retry.json()["status"] == "queued"
+    retried_claim = job_service.claim_next_job_record(
+        worker_name="phase0-manual-stale-worker-2",
+        queue_name=queue_name,
+    )
+    assert retried_claim
+    assert retried_claim.state.job_id == manual.job_id
+
+
+def _expire_job_lease(job_id: uuid.UUID) -> None:
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE pipeline_jobs
+                SET lease_expires_at = now() - interval '1 second'
+                WHERE id = %s
+                """,
+                (job_id,),
+            )
+        conn.commit()
+
+
+@pytest.mark.skipif(
+    not os.environ.get("STRUCTURA_TEST_DATABASE_URL"),
+    reason="Set STRUCTURA_TEST_DATABASE_URL to run live Phase 0 auth/job tests.",
+)
 def test_phase0_auth_respects_configured_cookie_names(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -209,9 +310,13 @@ def test_phase0_auth_respects_configured_cookie_names(
     )
 
     assert login.status_code == 201
+    assert login.json()["sessionCookieName"] == "custom_structura_session"
+    assert login.json()["csrfCookieName"] == "custom_structura_csrf"
     assert "custom_structura_session" in client.cookies
     assert "custom_structura_csrf" in client.cookies
-    assert client.get("/api/v1/auth/session").status_code == 200
+    session = client.get("/api/v1/auth/session")
+    assert session.status_code == 200
+    assert session.json()["csrfCookieName"] == "custom_structura_csrf"
 
     logout = client.delete(
         "/api/v1/auth/session",
