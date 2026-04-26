@@ -100,6 +100,13 @@ export function Viewer({
         <FactRow label="Counterparty" value={active.counterpartyDisplay ?? "Pending extraction"} />
         <FactRow label="Date" value={formatDate(active.documentDate)} />
         <FactRow label="Folder" value={active.folderPaths?.[0] ?? "Unfiled"} />
+        {document?.fields.slice(0, 5).map((field, index) => (
+          <FactRow
+            key={index}
+            label={String((field as {fieldPath?: string}).fieldPath ?? "Field")}
+            value={formatFactValue((field as {value?: unknown; currency?: string}).value, (field as {currency?: string}).currency)}
+          />
+        ))}
         <button type="button" className="primary">Review extracted fields</button>
         <div className="two-actions">
           <button type="button">File document</button>
@@ -120,4 +127,12 @@ export function Viewer({
       </aside>
     </section>
   );
+}
+
+function formatFactValue(value: unknown, currency?: string): string {
+  if (value && typeof value === "object" && "amount" in value) {
+    const money = value as {amount?: number; currency?: string};
+    return `${money.currency ?? currency ?? "USD"} ${money.amount ?? ""}`.trim();
+  }
+  return value === null || value === undefined ? "Pending" : String(value);
 }

@@ -4,6 +4,7 @@ import argparse
 import signal
 import sys
 import time
+from datetime import UTC, datetime
 from uuid import UUID
 
 from lib.jobs import JobService, record_service_health
@@ -61,6 +62,21 @@ def process_next_docling_job(
                 "table_count": summary.table_count,
                 "chunk_count": summary.chunk_count,
             },
+        )
+        job_service.create_job(
+            job_type="classify",
+            household_id=claimed.household_id,
+            document_id=target_document_id,
+            payload={
+                "schema_name": "classify_document_job",
+                "schema_version": "v1",
+                "document_id": str(target_document_id),
+                "requested_by": "system",
+                "created_at": datetime.now(UTC).isoformat(),
+                "stage": "phase4.classify",
+            },
+            priority=38,
+            queue_name="extraction",
         )
     except Exception as exc:
         if target_document_id:

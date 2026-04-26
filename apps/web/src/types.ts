@@ -56,6 +56,76 @@ export type DocumentListResponse = {
   total: number;
 };
 
+export type EvidenceRef = {
+  pageNumber: number;
+  sourceEngine: string;
+  sourceText?: string;
+  elementId?: string;
+  tableId?: string;
+  rowIndex?: number;
+  textSpan?: {start: number; end: number; basis?: string};
+};
+
+export type FieldCandidate = {
+  id: string;
+  documentId: string;
+  extractionId?: string;
+  fieldPath: string;
+  ordinal?: number;
+  valueType: string;
+  value: unknown;
+  normalizedValue?: unknown;
+  currency?: string;
+  confidence?: number;
+  authorityWeight?: number;
+  sourceEngine: string;
+  evidence: EvidenceRef[];
+  validation?: Record<string, unknown>;
+  status?: string;
+};
+
+export type CanonicalField = {
+  id: string;
+  documentId: string;
+  selectedCandidateId?: string;
+  fieldPath: string;
+  ordinal?: number;
+  valueType: string;
+  value: unknown;
+  currency?: string;
+  sourceKind: string;
+  reviewStatus: string;
+  evidence: EvidenceRef[];
+  validation?: Record<string, unknown>;
+  acceptedAt?: string;
+};
+
+export type ReviewTask = {
+  id: string;
+  documentId: string;
+  taskType: string;
+  status: string;
+  priority: number;
+  pageNumber?: number;
+  fieldPath?: string;
+  rationale?: string;
+};
+
+export type ReviewActionPayload = {
+  schemaName: "review_action";
+  schemaVersion: "v1";
+  documentId: string;
+  reviewTaskId?: string;
+  actionType: "confirm_field" | "correct_field" | "reject_field" | "reclassify_document" | "rerun_extraction" | "mark_done";
+  actorType: "human";
+  fieldPath?: string;
+  newValue?: unknown;
+  comment?: string;
+  evidenceContext?: EvidenceRef[];
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+};
+
 export type Folder = {
   id: string;
   parentId?: string | null;
@@ -136,4 +206,4 @@ export type ParseDebugView = {
   jobs: ParseDebugJob[];
 };
 
-export type ViewMode = "inbox" | "viewer";
+export type ViewMode = "inbox" | "viewer" | "review";

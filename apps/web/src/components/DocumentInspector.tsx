@@ -53,10 +53,17 @@ export function DocumentInspector({
           <button type="button">Jump to evidence</button>
         </div>
         {detail?.fields.length ? (
-          <p>Fields loaded.</p>
+          <div className="field-list">
+            {detail.fields.slice(0, 4).map((field, index) => (
+              <p key={index}>
+                <strong>{String((field as {fieldPath?: string}).fieldPath ?? "field")}</strong>
+                <span>{String((field as {value?: unknown}).value ?? "not set")}</span>
+              </p>
+            ))}
+          </div>
         ) : (
           <p className="pending-copy">
-            Extraction fields are pending Phase 3. The original and preview are already protected.
+            Extraction fields are pending. The original and preview are already protected.
           </p>
         )}
       </section>

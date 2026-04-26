@@ -9,6 +9,7 @@ from lib.documents.access_policy import (
     DocumentAccessContext,
     document_read_access_params,
 )
+from lib.extraction.candidate_repository import value_from_candidate_row
 
 DOCUMENT_LIST_COUNT_SQL = """
 SELECT count(*) AS total
@@ -240,6 +241,47 @@ def get_document_detail(document_id: UUID, access: DocumentAccessContext) -> Doc
                 (document_id,),
             )
             page_rows = cur.fetchall()
+            cur.execute(
+                """
+                SELECT *
+                FROM canonical_fields
+                WHERE document_id = %s
+                ORDER BY field_path, ordinal
+                """,
+                (document_id,),
+            )
+            field_rows = cur.fetchall()
+            cur.execute(
+                """
+                SELECT *
+                FROM canonical_line_items
+                WHERE document_id = %s
+                ORDER BY line_item_type, ordinal
+                """,
+                (document_id,),
+            )
+            line_item_rows = cur.fetchall()
+            cur.execute(
+                """
+                SELECT
+                  id,
+                  schema_name,
+                  schema_version,
+                  status::text AS status,
+                  source_engine::text AS source_engine,
+                  model_name,
+                  model_version,
+                  confidence,
+                  review_status::text AS review_status,
+                  created_at
+                FROM document_extractions
+                WHERE document_id = %s
+                  AND is_current
+                ORDER BY created_at DESC
+                """,
+                (document_id,),
+            )
+            extraction_rows = cur.fetchall()
 
     summary = _document_summary_from_row(row)
     pages = [
@@ -276,16 +318,61 @@ def get_document_detail(document_id: UUID, access: DocumentAccessContext) -> Doc
             "description": row.get("description"),
             "pages": [page.model_dump(by_alias=True) for page in pages],
             "assets": [asset.model_dump(by_alias=True) for asset in assets],
-            "extractions": [],
+            "extractions": [_extraction_payload(row) for row in extraction_rows],
             "relationships": [],
-            "fields": [],
-            "lineItems": [],
+            "fields": [_canonical_field_payload(row) for row in field_rows],
+            "lineItems": [_canonical_line_item_payload(row) for row in line_item_rows],
             "tags": _string_list(row.get("tags")),
             "folderIds": _uuid_list(row.get("folder_ids")),
             "primaryFolderId": row.get("primary_folder_id"),
             "filingNotes": row.get("filing_notes"),
         }
     )
+
+
+def _extraction_payload(row: dict[str, object]) -> dict[str, object]:
+    return {
+        "id": row["id"],
+        "schemaName": row["schema_name"],
+        "schemaVersion": row["schema_version"],
+        "status": row["status"],
+        "sourceEngine": row["source_engine"],
+        "modelName": row.get("model_name"),
+        "modelVersion": row.get("model_version"),
+        "confidence": row.get("confidence"),
+        "reviewStatus": row.get("review_status"),
+        "createdAt": row.get("created_at"),
+    }
+
+
+def _canonical_field_payload(row: dict[str, object]) -> dict[str, object]:
+    return {
+        "id": row["id"],
+        "fieldPath": row["field_path"],
+        "ordinal": row["ordinal"],
+        "valueType": row["value_type"],
+        "value": value_from_candidate_row(row),
+        "currency": row.get("currency_code"),
+        "sourceKind": row.get("source_kind"),
+        "reviewStatus": row.get("review_status"),
+        "evidence": row.get("evidence_json") or [],
+        "validation": row.get("validation_json") or {},
+        "acceptedAt": row.get("accepted_at"),
+    }
+
+
+def _canonical_line_item_payload(row: dict[str, object]) -> dict[str, object]:
+    return {
+        "id": row["id"],
+        "lineItemType": row["line_item_type"],
+        "ordinal": row["ordinal"],
+        "description": row.get("description"),
+        "netAmount": row.get("net_amount"),
+        "currency": row.get("currency_code"),
+        "sourceKind": row.get("source_kind"),
+        "reviewStatus": row.get("review_status"),
+        "evidence": row.get("evidence_json") or [],
+    }
 
 
 def _document_summary_from_row(row: dict[str, object]) -> DocumentSummary:

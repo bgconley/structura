@@ -1,0 +1,70 @@
+{
+  "fileKey": "5GAPHbduQLu9INBOXUPxJN",
+  "screenName": "review-extraction",
+  "implementationRoute": "/",
+  "viewport": {"width": 1440, "height": 960},
+  "captureDate": "2026-04-26",
+  "primaryFrame": {
+    "id": "14:611",
+    "name": "03 Extraction Workspace v2",
+    "artifact": "figma-screenshot.png",
+    "relevance": [
+      "Primary Phase 4 source for candidate facts, canonical facts, evidence review, and human adjudication.",
+      "Defines the extraction review hierarchy that the implemented Review Queue maps into a deterministic browser surface."
+    ]
+  },
+  "supportingFrames": [
+    {
+      "id": "14:434",
+      "name": "02 Document Viewer v2",
+      "existingArtifacts": [
+        "../viewer/figma-context.json",
+        "../viewer/figma-screenshot.png"
+      ],
+      "relevance": [
+        "Viewer shell where accepted canonical fields are surfaced after extraction and review."
+      ]
+    },
+    {
+      "id": "35:7",
+      "name": "06 Handoff - Interaction Specs",
+      "existingArtifacts": [
+        "../folder-tag-filing/handoff-interaction-specs.png"
+      ],
+      "relevance": [
+        "Constrains review action feedback, selection persistence, and evidence inspection flow."
+      ]
+    },
+    {
+      "id": "35:12",
+      "name": "07 Handoff - Edge States",
+      "existingArtifacts": [
+        "../folder-tag-filing/handoff-edge-states.png"
+      ],
+      "relevance": [
+        "Constrains empty review queue, unavailable evidence, and degraded extraction states."
+      ]
+    }
+  ],
+  "implementationArtifacts": [
+    {
+      "artifact": "playwright-screenshot.png",
+      "source": "tests/e2e/phase4.spec.ts-snapshots/phase4-review-queue-chromium-linux.png",
+      "state": "Review Queue with an invoice total candidate, source evidence, canonical summary, and human acceptance feedback."
+    }
+  ],
+  "phase4Scope": {
+    "implemented": [
+      "Review queue listing for extraction-generated tasks.",
+      "Candidate fact and canonical fact comparison.",
+      "Evidence locator display for candidate provenance.",
+      "Human confirmation and extraction rerun actions.",
+      "Deterministic Playwright screenshot assertion for the review queue state."
+    ],
+    "deferred": [
+      "Semantic search and faceted retrieval.",
+      "Embedding worker projections beyond canonical fact refresh hooks.",
+      "Natural-language search answer synthesis."
+    ]
+  }
+}

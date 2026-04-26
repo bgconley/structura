@@ -180,44 +180,57 @@ button:disabled {
   margin-top: 26px;
 }
 
-.sidebar a {
+.sidebar a,
+.sidebar button {
   display: grid;
   grid-template-columns: 18px 1fr auto;
   align-items: center;
   gap: 8px;
+  width: 100%;
   min-height: 32px;
   padding: 0 8px;
   color: var(--text);
   text-decoration: none;
   border-radius: 6px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
   font-size: 12px;
+  text-align: left;
 }
 
-.sidebar a.active {
+.sidebar a.active,
+.sidebar button.active {
   background: #dbeafe;
   color: var(--blue);
 }
 
-.sidebar a span {
+.sidebar a span,
+.sidebar button span {
   font-weight: 700;
   color: var(--muted);
 }
 
-.sidebar a.active span {
+.sidebar a.active span,
+.sidebar button.active span {
   color: var(--blue);
 }
 
-.sidebar a em {
+.sidebar a em,
+.sidebar button em {
   font-style: normal;
   font-weight: 500;
 }
 
-.sidebar a small {
+.sidebar a small,
+.sidebar button small {
   color: var(--muted);
   font-size: 11px;
 }
 
-.sidebar a b {
+.sidebar a b,
+.sidebar button b {
   justify-self: end;
   background: var(--amber-soft);
   border: 1px solid #fed7aa;
@@ -225,6 +238,11 @@ button:disabled {
   color: var(--amber);
   padding: 3px 6px;
   font-size: 11px;
+}
+
+.sidebar button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .machine-health {

@@ -1,6 +1,7 @@
 from lib.contracts.models import (
     AcceptedJob,
     CanonicalField,
+    CanonicalFieldWrite,
     CreateMagicLinkRequest,
     CreateSessionRequest,
     DocumentAsset,
@@ -16,6 +17,7 @@ from lib.contracts.models import (
     JobState,
     MagicLinkSessionRequest,
     PasswordSessionRequest,
+    ReviewActionRequest,
     ReviewTask,
     SessionInfo,
     Tag,
@@ -27,6 +29,7 @@ from lib.contracts.registry import ContractRegistry
 __all__ = [
     "AcceptedJob",
     "CanonicalField",
+    "CanonicalFieldWrite",
     "ContractRegistry",
     "CreateMagicLinkRequest",
     "CreateSessionRequest",
@@ -44,6 +47,7 @@ __all__ = [
     "MagicLinkSessionRequest",
     "PasswordSessionRequest",
     "ReviewTask",
+    "ReviewActionRequest",
     "SessionInfo",
     "Tag",
     "TagWrite",

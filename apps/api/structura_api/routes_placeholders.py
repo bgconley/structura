@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from apps.api.structura_api.dependencies import current_principal, require_csrf
 
@@ -89,62 +89,6 @@ def search_documents(_principal: Annotated[object, Depends(current_principal)]) 
     raise HTTPException(
         status_code=status.HTTP_501_NOT_IMPLEMENTED,
         detail="Search is implemented in Phase 5.",
-    )
-
-
-@router.get("/review-tasks", tags=["Review"])
-def list_review_tasks(
-    _principal: Annotated[object, Depends(current_principal)],
-    status: str | None = None,
-    limit: Annotated[int, Query(ge=1, le=200)] = 50,
-) -> dict[str, object]:
-    return {"items": []}
-
-
-@router.post(
-    "/documents/{documentId}/review-actions",
-    tags=["Review"],
-    status_code=status.HTTP_501_NOT_IMPLEMENTED,
-)
-def create_review_action(
-    documentId: UUID,
-    _principal: Annotated[object, Depends(require_csrf)],
-) -> None:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Review actions are implemented in Phase 4.",
-    )
-
-
-@router.get("/documents/{documentId}/field-candidates", tags=["Review"])
-def list_field_candidates(
-    documentId: UUID,
-    _principal: Annotated[object, Depends(current_principal)],
-    fieldPath: str | None = None,
-) -> dict[str, object]:
-    return {"items": []}
-
-
-@router.get("/documents/{documentId}/canonical-fields", tags=["Review"])
-def list_canonical_fields(
-    documentId: UUID,
-    _principal: Annotated[object, Depends(current_principal)],
-) -> dict[str, object]:
-    return {"items": []}
-
-
-@router.post(
-    "/documents/{documentId}/canonical-fields",
-    tags=["Review"],
-    status_code=status.HTTP_501_NOT_IMPLEMENTED,
-)
-def create_canonical_field(
-    documentId: UUID,
-    _principal: Annotated[object, Depends(require_csrf)],
-) -> None:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Canonical fields are implemented in Phase 4.",
     )
 
 

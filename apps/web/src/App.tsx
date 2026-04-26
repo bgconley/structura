@@ -3,6 +3,7 @@ import {FormEvent, startTransition, useDeferredValue, useEffect, useState} from 
 import {configureSecurityCookieNames, csrfToken, fetchJson} from "./api";
 import {Inbox} from "./components/Inbox";
 import {LoginScreen} from "./components/LoginScreen";
+import {ReviewQueue} from "./components/ReviewQueue";
 import {Sidebar} from "./components/Sidebar";
 import {TopCommand} from "./components/TopCommand";
 import {Viewer} from "./components/Viewer";
@@ -228,7 +229,11 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Sidebar total={total} />
+      <Sidebar
+        total={total}
+        active={viewMode === "review" ? "review" : "inbox"}
+        onNavigate={(view) => setViewMode(view)}
+      />
       <main className="app-main">
         <TopCommand
           query={query}
@@ -236,7 +241,14 @@ export default function App() {
           isUploading={isUploading}
           uploadFile={uploadFile}
         />
-        {viewMode === "viewer" && selected ? (
+        {viewMode === "review" ? (
+          <ReviewQueue
+            onOpenDocument={(documentId) => {
+              setSelectedId(documentId);
+              setViewMode("viewer");
+            }}
+          />
+        ) : viewMode === "viewer" && selected ? (
           <Viewer
             document={detail}
             summary={selectedSummary}

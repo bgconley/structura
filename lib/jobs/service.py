@@ -39,6 +39,7 @@ class ClaimedJob:
     state: JobState
     payload: dict[str, Any]
     document_id: UUID | None
+    household_id: UUID | None
 
 
 class JobServiceError(Exception):
@@ -126,6 +127,7 @@ def claimed_job_from_row(row: Mapping[str, Any]) -> ClaimedJob:
         state=job_state_from_row(row),
         payload=dict(payload) if isinstance(payload, Mapping) else {},
         document_id=cast(UUID | None, row.get("document_id")),
+        household_id=cast(UUID | None, row.get("household_id")),
     )
 
 

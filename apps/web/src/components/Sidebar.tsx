@@ -11,7 +11,15 @@ const navItems = [
   ["S", "Settings", ""],
 ];
 
-export function Sidebar({total}: {total: number}) {
+export function Sidebar({
+  total,
+  active,
+  onNavigate,
+}: {
+  total: number;
+  active: string;
+  onNavigate: (view: "inbox" | "review") => void;
+}) {
   return (
     <aside className="sidebar">
       <div className="brand-row">
@@ -20,12 +28,23 @@ export function Sidebar({total}: {total: number}) {
       </div>
       <nav aria-label="Primary">
         {navItems.map(([icon, label, badge]) => (
-          <a key={label} className={label === "Inbox" ? "active" : undefined} href="#">
+          <button
+            key={label}
+            className={
+              (label === "Inbox" && active === "inbox")
+              || (label === "Review Queue" && active === "review")
+                ? "active"
+                : undefined
+            }
+            type="button"
+            disabled={label !== "Inbox" && label !== "Review Queue"}
+            onClick={() => onNavigate(label === "Review Queue" ? "review" : "inbox")}
+          >
             <span>{icon}</span>
             <em>{label}</em>
             {label === "Inbox" ? <small>{total || badge}</small> : null}
             {label === "Review Queue" ? <b>12</b> : null}
-          </a>
+          </button>
         ))}
       </nav>
       <section className="machine-health" aria-label="Machine health">

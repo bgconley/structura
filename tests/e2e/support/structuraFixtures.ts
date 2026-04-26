@@ -30,6 +30,39 @@ export type DocumentDetail = DocumentSummary & {
   filingNotes?: string | null;
 };
 
+export type ReviewTask = {
+  id: string;
+  documentId: string;
+  taskType: string;
+  status: string;
+  priority: number;
+  fieldPath?: string;
+  rationale?: string;
+};
+
+export type FieldCandidate = {
+  id: string;
+  documentId: string;
+  fieldPath: string;
+  valueType: string;
+  value: unknown;
+  sourceEngine: string;
+  evidence: Array<{pageNumber: number; sourceEngine: string; sourceText: string}>;
+  confidence?: number;
+  status?: string;
+};
+
+export type CanonicalField = {
+  id: string;
+  documentId: string;
+  fieldPath: string;
+  valueType: string;
+  value: unknown;
+  sourceKind: string;
+  reviewStatus: string;
+  evidence: Array<{pageNumber: number; sourceEngine: string; sourceText: string}>;
+};
+
 export type Folder = {
   id: string;
   parentId?: string | null;
@@ -90,6 +123,51 @@ export function seededTags(): Tag[] {
     {id: "30303030-3030-4030-8030-303030303030", name: "Home", colorHex: "#2563EB"},
     {id: "40404040-4040-4040-8040-404040404040", name: "urgent", colorHex: "#F59E0B"},
     {id: "50505050-5050-4050-8050-505050505050", name: "tax-relevant", colorHex: "#0EA5E9"},
+  ];
+}
+
+export function seededReviewTasks(): ReviewTask[] {
+  return [
+    {
+      id: "90909090-9090-4090-8090-909090909090",
+      documentId: existingDocument.id,
+      taskType: "field_review",
+      status: "open",
+      priority: 82,
+      fieldPath: "invoice.total_amount",
+      rationale: "Total amount requires confirmation.",
+    },
+  ];
+}
+
+export function seededFieldCandidates(): FieldCandidate[] {
+  return [
+    {
+      id: "91919191-9191-4191-8191-919191919191",
+      documentId: existingDocument.id,
+      fieldPath: "invoice.total_amount",
+      valueType: "money",
+      value: {amount: 1042.15, currency: "USD"},
+      sourceEngine: "docling",
+      confidence: 0.86,
+      status: "needs_review",
+      evidence: [{pageNumber: 1, sourceEngine: "docling", sourceText: "Total 1042.15"}],
+    },
+  ];
+}
+
+export function seededCanonicalFields(): CanonicalField[] {
+  return [
+    {
+      id: "92929292-9292-4292-8292-929292929292",
+      documentId: existingDocument.id,
+      fieldPath: "invoice.vendor.display_name",
+      valueType: "string",
+      value: "Acme Repairs",
+      sourceKind: "candidate",
+      reviewStatus: "auto_accepted",
+      evidence: [{pageNumber: 1, sourceEngine: "docling", sourceText: "Acme Repairs"}],
+    },
   ];
 }
 
@@ -264,7 +342,14 @@ function existingDetail(): DocumentDetail {
         sha256: "a".repeat(64),
       },
     ],
-    fields: [],
+    fields: [
+      {
+        id: "92929292-9292-4292-8292-929292929292",
+        fieldPath: "invoice.vendor.display_name",
+        value: "Acme Repairs",
+        reviewStatus: "auto_accepted",
+      },
+    ],
     lineItems: [],
     extractions: [],
     relationships: [],

@@ -10,7 +10,10 @@ import {
   Folder,
   previewSvg,
   seededDocuments,
+  seededCanonicalFields,
+  seededFieldCandidates,
   seededFolders,
+  seededReviewTasks,
   seededTags,
   summaryFromDetail,
   Tag,
@@ -30,6 +33,9 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
   const documents = seededDocuments();
   const folders = seededFolders();
   const tags = seededTags();
+  let reviewTasks = seededReviewTasks();
+  let fieldCandidates = seededFieldCandidates();
+  const canonicalFields = seededCanonicalFields();
   const expectedCsrfToken = options.csrfTokenValue ?? csrfToken;
   const csrfCookieName = options.csrfCookieName ?? "structura_csrf";
   const sessionCookieName = options.sessionCookieName ?? "structura_session";
@@ -128,6 +134,72 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
         status: 202,
         headers: {"Content-Type": "application/json", ...corsHeaders},
         json: {jobId: "55555555-5555-4555-8555-555555555555", status: "queued"},
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/v1/review-tasks" && request.method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: {items: reviewTasks.filter((task) => task.status === "open")},
+      });
+      return;
+    }
+
+    const candidateMatch = url.pathname.match(/^\/api\/v1\/documents\/([^/]+)\/field-candidates$/);
+    if (candidateMatch && request.method() === "GET") {
+      const fieldPath = url.searchParams.get("fieldPath");
+      await route.fulfill({
+        status: 200,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: {
+          items: fieldCandidates
+            .filter((candidate) => candidate.documentId === candidateMatch[1])
+            .filter((candidate) => !fieldPath || candidate.fieldPath === fieldPath),
+        },
+      });
+      return;
+    }
+
+    const canonicalMatch = url.pathname.match(/^\/api\/v1\/documents\/([^/]+)\/canonical-fields$/);
+    if (canonicalMatch && request.method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: {
+          items: canonicalFields.filter((field) => field.documentId === canonicalMatch[1]),
+        },
+      });
+      return;
+    }
+
+    const reviewActionMatch = url.pathname.match(/^\/api\/v1\/documents\/([^/]+)\/review-actions$/);
+    if (reviewActionMatch && request.method() === "POST") {
+      expect(request.headers()["x-csrf-token"]).toBe(expectedCsrfToken);
+      const payload = request.postDataJSON() as {actionType?: string; metadata?: {candidateId?: string}};
+      if (payload.actionType === "confirm_field" && payload.metadata?.candidateId) {
+        fieldCandidates = fieldCandidates.map((candidate) => (
+          candidate.id === payload.metadata?.candidateId
+            ? {...candidate, status: "promoted"}
+            : candidate
+        ));
+        reviewTasks = reviewTasks.map((task) => ({...task, status: "resolved"}));
+      }
+      if (payload.actionType === "mark_done") {
+        reviewTasks = reviewTasks.map((task) => ({...task, status: "resolved"}));
+      }
+      const response = {
+        ok: true,
+        reviewEventId: "93939393-9393-4393-8393-939393939393",
+        ...(payload.actionType === "rerun_extraction"
+          ? {jobId: "94949494-9494-4494-8494-949494949494"}
+          : {}),
+      };
+      await route.fulfill({
+        status: 200,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: response,
       });
       return;
     }

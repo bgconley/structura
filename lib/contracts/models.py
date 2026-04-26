@@ -141,6 +141,41 @@ class CanonicalField(ContractModel):
     accepted_at: datetime | None = Field(default=None, alias="acceptedAt")
 
 
+class CanonicalFieldWrite(ContractModel):
+    selected_candidate_id: UUID | None = Field(default=None, alias="selectedCandidateId")
+    field_path: str = Field(alias="fieldPath")
+    ordinal: int = 1
+    value_type: str = Field(alias="valueType")
+    value: Any
+    currency: str | None = None
+    source_kind: Literal["candidate", "validator", "human", "system"] = Field(alias="sourceKind")
+    evidence: list[EvidenceRef] = Field(min_length=1)
+    reason: str | None = None
+
+
+class ReviewActionRequest(ContractModel):
+    schema_name: Literal["review_action"] = Field(default="review_action", alias="schemaName")
+    schema_version: Literal["v1"] = Field(default="v1", alias="schemaVersion")
+    document_id: UUID = Field(alias="documentId")
+    review_task_id: UUID | None = Field(default=None, alias="reviewTaskId")
+    action_type: Literal[
+        "confirm_field",
+        "correct_field",
+        "reject_field",
+        "reclassify_document",
+        "rerun_extraction",
+        "mark_done",
+    ] = Field(alias="actionType")
+    actor_type: Literal["human", "system", "agent"] = Field(default="human", alias="actorType")
+    field_path: str | None = Field(default=None, alias="fieldPath")
+    old_value: Any = Field(default=None, alias="oldValue")
+    new_value: Any = Field(default=None, alias="newValue")
+    comment: str | None = None
+    evidence_context: list[EvidenceRef] | None = Field(default=None, alias="evidenceContext")
+    metadata: dict[str, Any] | None = None
+    created_at: datetime | None = Field(default=None, alias="createdAt")
+
+
 class FilingRule(ContractModel):
     id: UUID
     name: str

@@ -17,6 +17,7 @@ from apps.api.structura_api.routes_jobs import router as jobs_router
 from apps.api.structura_api.routes_organization import router as organization_router
 from apps.api.structura_api.routes_parse_debug import router as parse_debug_router
 from apps.api.structura_api.routes_placeholders import router as placeholders_router
+from apps.api.structura_api.routes_review import router as review_router
 from lib.config import get_settings
 from lib.contracts import ContractRegistry
 from lib.db.migrations import baseline_migration_plan
@@ -83,6 +84,7 @@ def create_app() -> FastAPI:
     app.include_router(assets_router)
     app.include_router(organization_router)
     app.include_router(parse_debug_router)
+    app.include_router(review_router)
     app.include_router(jobs_router)
     app.include_router(admin_router)
     app.include_router(placeholders_router)
