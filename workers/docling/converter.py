@@ -42,11 +42,34 @@ class RealDoclingConverter:
         settings = get_settings()
         try:
             converter_module = import_module("docling.document_converter")
+            base_models_module = import_module("docling.datamodel.base_models")
+            pipeline_options_module = import_module("docling.datamodel.pipeline_options")
             document_converter_class = converter_module.DocumentConverter
+            pdf_format_option_class = converter_module.PdfFormatOption
+            input_format_class = base_models_module.InputFormat
+            pdf_pipeline_options_class = pipeline_options_module.PdfPipelineOptions
+            rapid_ocr_options_class = pipeline_options_module.RapidOcrOptions
         except (AttributeError, ImportError) as exc:
             raise DoclingConversionError("Docling is not installed in this runtime.") from exc
 
-        converter = document_converter_class()
+        pdf_pipeline_options = pdf_pipeline_options_class()
+        pdf_pipeline_options.do_ocr = settings.docling_do_ocr
+        pdf_pipeline_options.do_table_structure = settings.docling_do_table_structure
+        if settings.docling_do_ocr:
+            pdf_pipeline_options.ocr_options = rapid_ocr_options_class(
+                backend=settings.docling_ocr_backend,
+                lang=["english"],
+                rapidocr_params={
+                    "Global.model_root_dir": str(settings.docling_ocr_model_root),
+                },
+            )
+        converter = document_converter_class(
+            format_options={
+                input_format_class.PDF: pdf_format_option_class(
+                    pipeline_options=pdf_pipeline_options,
+                ),
+            },
+        )
         try:
             result = converter.convert(
                 source_path,

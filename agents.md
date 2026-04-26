@@ -92,6 +92,8 @@ Phase 3 adds the canonical parse foundation only: queued Docling conversion, imm
 
 Docling and its Torch/OpenCV dependency stack must stay isolated to the dedicated `worker-docling` image. Do not add Docling/Torch to shared API/previews requirements or the host GPU venv as a runtime dependency. If the API/previews image cannot import Docling, that is intentional; only `worker-docling` owns the real converter.
 
+The Phase 3 Docling worker configures the PDF pipeline explicitly. OCR is disabled by default for deterministic digital-PDF conversion, table structure remains enabled, and Hugging Face/XDG/RapidOCR caches must stay under `/srv/structura/cache` through Compose environment or equivalent runtime configuration. Do not let OCR/model downloads write into Python site-packages.
+
 ## Figma And UI Reference Baseline
 
 Strict UI evidence now lives under `docs/ui-reference/figma/`:

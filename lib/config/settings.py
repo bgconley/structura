@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     docling_max_file_size: int = 100 * 1024 * 1024
     docling_store_markdown: bool = True
     docling_store_html: bool = True
+    docling_do_ocr: bool = False
+    docling_do_table_structure: bool = True
+    docling_ocr_model_root: Path = Path("/srv/structura/cache/rapidocr")
+    docling_ocr_backend: str = "torch"
 
     @property
     def canonical_objects_root(self) -> Path:

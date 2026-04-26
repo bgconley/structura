@@ -396,6 +396,18 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-26T22:05:00-04:00"
+    },
+    {
+      "id": "bug-034",
+      "timestamp": "2026-04-26T22:20:00-04:00",
+      "error_message": "Docling/RapidOCR attempted to download OCR model files into Python site-packages and failed with PermissionError.",
+      "file": "workers/docling/converter.py",
+      "root_cause": "The worker relied on Docling's default PDF pipeline, which initializes OCR and RapidOCR model downloads even for the simple digital-PDF smoke, and RapidOCR's default model root was inside the installed package path.",
+      "fix": "Configured Docling's PDF pipeline explicitly, disabled OCR by default for Phase 3 digital-PDF conversion, and set runtime cache environment paths under /srv/structura/cache for future OCR/model enablement.",
+      "tags": ["docling", "rapidocr", "cache", "permissions", "phase-3", "gpu-node"],
+      "related_bugs": ["bug-033"],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T22:20:00-04:00"
     }
   ]
 }

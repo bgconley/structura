@@ -72,6 +72,8 @@ services:
     environment:
       STRUCTURA_DATABASE_URL: postgresql://${POSTGRES_USER:-structura}:${POSTGRES_PASSWORD:-structura}@postgres:5432/${POSTGRES_DB:-structura}
       STRUCTURA_RUNTIME_ROOT: /srv/structura
+      HF_HOME: /srv/structura/cache/huggingface
+      XDG_CACHE_HOME: /srv/structura/cache/xdg
     volumes:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/staging:/srv/structura/staging
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/canonical:/srv/structura/objects/canonical

@@ -29,6 +29,10 @@ installs a bounded `docling>=2.91,<3` dependency.
 - The shared API image intentionally does not install Docling/Torch. The heavy Docling dependency
   stack belongs only to the dedicated `worker-docling` image built from
   `workers/docling/Dockerfile`.
+- The Docling PDF pipeline is configured explicitly instead of relying on package defaults. Phase 3
+  leaves OCR disabled by default for deterministic digital-PDF conversion, keeps table structure
+  enabled, and routes Hugging Face/XDG/RapidOCR caches to `/srv/structura/cache` so later OCR
+  enablement does not write model files into Python site-packages.
 - Parse data contracts live in `lib/documents/parse_models.py`, asset/orchestration behavior lives
   in `lib/documents/canonical_parse.py`, and relational row replacement lives in
   `lib/documents/parse_repository.py`.
