@@ -9,6 +9,7 @@ from lib.contracts import SearchRequest
 from lib.search.embedding_gateway import DeterministicEmbeddingGateway, EmbeddingProfile
 from lib.search.hybrid import RankedCandidate, reciprocal_rank_fusion
 from lib.search.query import SearchValidationError, parse_search_request
+from lib.search.snippets import plain_search_snippet
 
 
 def test_search_request_defaults_and_filter_parsing_are_contract_safe() -> None:
@@ -116,6 +117,12 @@ def test_reciprocal_rank_fusion_keeps_score_scales_separate_and_explained() -> N
     assert [item.document_id for item in fused] == ["doc-b", "doc-a"]
     assert fused[0].source_ranks == {"lexical": 2, "semantic": 1}
     assert fused[0].explanation == "matched by lexical rank 2 and semantic rank 1"
+
+
+def test_search_snippet_normalization_removes_backend_highlight_markup() -> None:
+    assert plain_search_snippet("<b>Claim</b> ABC123") == "Claim ABC123"
+    assert plain_search_snippet("Patient responsibility") == "Patient responsibility"
+    assert plain_search_snippet(None) is None
 
 
 def _cosine(left: list[float], right: list[float]) -> float:

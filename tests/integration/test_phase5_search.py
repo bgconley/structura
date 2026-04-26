@@ -101,6 +101,7 @@ def test_phase5_search_lexical_semantic_hybrid_filters_facets_and_acl(
     lexical_item = _result_for_document(lexical_payload, document_id)
     assert lexical_item is not None
     assert "ABC123" in lexical_item["snippet"]
+    assert "<b>" not in lexical_item["snippet"]
     assert lexical_payload["facets"]["families"]["medical_eob"] >= 1
     assert lexical_payload["debug"]["mode"] == "lexical"
 

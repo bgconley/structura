@@ -14,6 +14,7 @@ from lib.search.embedding_gateway import (
 )
 from lib.search.hybrid import RankedCandidate, reciprocal_rank_fusion
 from lib.search.query import ParsedSearchQuery, parse_search_request
+from lib.search.snippets import plain_search_snippet
 
 
 @dataclass(frozen=True)
@@ -191,7 +192,7 @@ def _dedupe_by_document(
 
 
 def _result_payload(index: int, row: repository.SearchCandidateRow) -> dict[str, object]:
-    source_text = row.snippet or row.title
+    source_text = plain_search_snippet(row.snippet) or row.title
     evidence = []
     if row.page_number:
         evidence.append(
