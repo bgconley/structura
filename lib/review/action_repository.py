@@ -191,7 +191,7 @@ def reject_field(
                     updated_at = now()
                 WHERE document_id = %s
                   AND field_path = %s
-                  AND status IN ('proposed', 'needs_review')
+                  AND status <> 'promoted'
                 """,
                 (document_id, field_path),
             )

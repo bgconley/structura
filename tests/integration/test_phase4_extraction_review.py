@@ -329,8 +329,8 @@ def test_phase4_receipt_review_actions_correct_reject_and_reclassify(
             "documentId": str(document_id),
             "actionType": "reject_field",
             "actorType": "human",
-            "fieldPath": "receipt.transaction.tax",
-            "comment": "Tax candidate rejected for regression coverage.",
+            "fieldPath": "receipt.transaction.total",
+            "comment": "Total candidate rejected for regression coverage.",
             "createdAt": "2026-04-26T00:00:00Z",
         },
     )
@@ -372,7 +372,7 @@ def test_phase4_receipt_review_actions_correct_reject_and_reclassify(
                 SELECT count(*) AS total
                 FROM field_candidates
                 WHERE document_id = %s
-                  AND field_path = 'receipt.transaction.tax'
+                  AND field_path = 'receipt.transaction.total'
                   AND status = 'rejected'
                 """,
                 (document_id,),
