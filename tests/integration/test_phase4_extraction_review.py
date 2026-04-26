@@ -357,7 +357,7 @@ def test_phase4_receipt_review_actions_correct_reject_and_reclassify(
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT numeric_value, json_value
+                SELECT numeric_value, json_value, review_status::text AS review_status
                 FROM canonical_fields
                 WHERE document_id = %s
                   AND field_path = 'receipt.transaction.total'
@@ -367,6 +367,7 @@ def test_phase4_receipt_review_actions_correct_reject_and_reclassify(
             corrected_total = cur.fetchone()
             assert float(corrected_total["numeric_value"]) == 21.5
             assert corrected_total["json_value"] == {"amount": 21.5, "currency": "USD"}
+            assert corrected_total["review_status"] == "rejected"
             cur.execute(
                 """
                 SELECT count(*) AS total

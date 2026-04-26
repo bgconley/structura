@@ -191,7 +191,18 @@ def reject_field(
                     updated_at = now()
                 WHERE document_id = %s
                   AND field_path = %s
-                  AND status <> 'promoted'
+                  AND status <> 'rejected'
+                """,
+                (document_id, field_path),
+            )
+            previous = _canonical_row(cur, document_id, field_path, 1)
+            cur.execute(
+                """
+                UPDATE canonical_fields
+                SET review_status = 'rejected',
+                    updated_at = now()
+                WHERE document_id = %s
+                  AND field_path = %s
                 """,
                 (document_id, field_path),
             )
@@ -201,11 +212,23 @@ def reject_field(
                 review_task_id=None,
                 field_path=field_path,
                 action="reject_field",
-                old_value=None,
+                old_value=canonical_value(previous) if previous else None,
                 new_value={"status": "rejected"},
                 actor_label=str(actor_user_id),
                 reason=reason,
             )
+            if previous:
+                record_history(
+                    cur,
+                    document_id=document_id,
+                    canonical_field_id=previous["id"],
+                    field_path=field_path,
+                    action="human_rejected",
+                    old_value=canonical_value(previous),
+                    new_value={"status": "rejected"},
+                    actor_user_id=actor_user_id,
+                    reason=reason,
+                )
             close_field_review_tasks(cur, document_id, field_path)
             update_document_review_status(cur, document_id)
         conn.commit()

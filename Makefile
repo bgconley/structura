@@ -1,6 +1,7 @@
 PYTHON ?= python3
 NPM ?= npm
 SEMGREP ?= $(shell $(PYTHON) -c 'import shutil, sysconfig; print(shutil.which("semgrep") or (sysconfig.get_path("scripts") + "/semgrep"))')
+PYRIGHT_PYTHON ?= $(shell command -v $(PYTHON) 2>/dev/null || printf '%s' '$(PYTHON)')
 export PYTHONPATH := $(CURDIR)
 
 .PHONY: bootstrap test lint format contracts sast migrate api-dev web-dev compose-up worker-placeholder
@@ -20,7 +21,7 @@ lint:
 sast:
 	$(PYTHON) -m bandit -r apps lib workers scripts
 	$(SEMGREP) scan --config auto --exclude archive
-	$(PYTHON) -m pyright apps lib workers scripts
+	$(PYTHON) -m pyright --pythonpath $(PYRIGHT_PYTHON) apps lib workers scripts
 	$(PYTHON) -m mypy apps/api lib workers scripts
 
 format:
