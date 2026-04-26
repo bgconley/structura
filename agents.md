@@ -82,11 +82,15 @@ Older artifact-pack docs may group the same work differently. Treat the root pla
 
 ## Current Baseline And Next Phase
 
-As of 2026-04-26, the repo is implemented through Phase 2 at commit `f0f38d1` on `master`; local, `origin/master`, and the GPU checkout at `/tank/repos/structura` were synced to that commit. Phase 3 is the next implementation phase and must start from `STRUCTURA_PHASE_3_IMPLEMENTATION_PLAN.md` plus its Fresh Context artifacts.
+As of 2026-04-26, the repo is implemented through Phase 3 on `master`; local, `origin/master`, and the GPU checkout at `/tank/repos/structura` must stay synced before any milestone validation. Phase 4 is the next implementation phase and must start from `STRUCTURA_PHASE_4_IMPLEMENTATION_PLAN.md` plus its Fresh Context artifacts.
 
 Phase 2 includes manual organization only: manual folders, smart-folder records, tags, document title/date/filing-notes edits, multi-folder membership, primary folder selection, folder filtering, list/detail propagation, audit coverage, and usable Inbox/Viewer filing surfaces. Do not treat dynamic smart-folder execution, filing-rule automation, watched-folder ingestion, model-based filing suggestions, extraction review workflows, Docling parsing, or search ranking as Phase 2 scope; those belong to later phases unless the user explicitly changes scope.
 
 The Phase 2 hardening pass closed these previously confirmed gaps: cross-household job/admin visibility, dead-letter retry jobs that could not be claimed, buffered web proxy upload/download behavior, placeholder preview-worker execution, and incomplete folder/tag filing screenshot artifacts. Preserve those regression tests and authz/retry/proxy/worker seams when starting Phase 3.
+
+Phase 3 adds the canonical parse foundation only: queued Docling conversion, immutable derived parse artifacts, relational `document_pages`, `document_elements`, `document_tables`, and `document_chunks`, page preview asset refresh, protected admin parse-debug API, and Viewer parse-debug UI. Do not implement Phase 4 classification, extraction, model-gateway, candidate normalization, canonical promotion, review queue, or evidence-review workflow while finishing Phase 3 seams.
+
+Docling and its Torch/OpenCV dependency stack must stay isolated to the dedicated `worker-docling` image. Do not add Docling/Torch to shared API/previews requirements or the host GPU venv as a runtime dependency. If the API/previews image cannot import Docling, that is intentional; only `worker-docling` owns the real converter.
 
 ## Figma And UI Reference Baseline
 
@@ -140,7 +144,7 @@ Observability: /srv/structura/observability
 Temporary utilities scratch: /srv/structura/tmp
 ```
 
-Docker bind mounts are the `/srv/structura` paths declared in `compose.yaml` and `pro-merged-master-v1.2/infrastructure/runtime_service_matrix.csv`: Postgres uses `/srv/structura/postgres`; API uses `config/api`, `objects/canonical`, `objects/derived`, `objects/exports`, `cache`, and `logs/api`; web uses `config/web` and `cache`; ingest uses `staging`, `objects/canonical`, and `logs/workers`; previews uses `staging`, `objects/derived`, `cache`, and `logs/workers`; Docling uses `staging`, `objects/derived`, and `logs/workers`; extraction, embeddings, relationships, and analysis use `objects/derived` and `logs/workers`; model services use `models` and `logs/models`; Redis fallback uses `redis`.
+Docker bind mounts are the `/srv/structura` paths declared in `compose.yaml` and `pro-merged-master-v1.2/infrastructure/runtime_service_matrix.csv`: Postgres uses `/srv/structura/postgres`; API uses `config/api`, `objects/canonical`, `objects/derived`, `objects/exports`, `cache`, and `logs/api`; web uses `config/web` and `cache`; ingest uses `staging`, `objects/canonical`, and `logs/workers`; previews uses `staging`, `objects/derived`, `cache`, and `logs/workers`; Docling uses `staging`, `objects/canonical:ro`, `objects/derived`, `cache`, and `logs/workers`; extraction, embeddings, relationships, and analysis use `objects/derived` and `logs/workers`; model services use `models` and `logs/models`; Redis fallback uses `redis`.
 
 The artifacts do not define a Docker daemon image-store/data-root path. Do not invent or change Docker image storage without a new explicit decision or ADR; use the GPU node's existing Docker configuration until that decision is made.
 

@@ -7,7 +7,7 @@
 
 - `.DS_Store` (~3824 tok)
 - `CLAUDE.md` — OpenWolf (~57 tok)
-- `agents.md` — Agent operating guidance; root implementation plan as phase map, non-archive artifact references as required implementation depth, archive exclusion, Markdown-over-DOCX and chunked large-file review handling, conflict resolution, architecture stewardship, current Phase 2 baseline, Figma evidence, GPU-node runtime/test policy (~3200 tok)
+- `agents.md` — Agent operating guidance; root implementation plan as phase map, non-archive artifact references as required implementation depth, archive exclusion, Markdown-over-DOCX and chunked large-file review handling, conflict resolution, architecture stewardship, current Phase 3 baseline, Figma evidence, GPU-node runtime/test policy, and Docling worker dependency isolation (~3400 tok)
 - `STRUCTURA_PLAN_INDEX.md` — Canonical planning index; source alignment policy, Markdown-first duplicate-artifact handling with DOCX parity note, UI source of truth, GPU node sync policy, stop rule (~1000 tok)
 - `STRUCTURA_IMPLEMENTATION_PLAN.md` — Canonical end-to-end implementation plan; phase gates, mandatory per-phase artifact lists, API/database/event coverage, Markdown-first duplicate-artifact handling with DOCX parity note, GPU sync policy (~15500 tok)
 - `STRUCTURA_PHASE_1_IMPLEMENTATION_PLAN.md` — Phase 1 execution plan; upload, object storage, Inbox, protected asset streaming, preview, Viewer, fresh-context rereads, Firecrawl evidence rules, validation gate (~5700 tok)
@@ -23,7 +23,7 @@
 - `STRUCTURA_PHASE_11_IMPLEMENTATION_PLAN.md` — Phase 11 execution plan; golden corpus governance, expected answers, deterministic evaluation harness, extraction/search scoring, E2E and Playwright smoke tests, migration/contract regression, restore rehearsal, SAST/data-flow gate, performance measurements, release-candidate evidence pack, fresh-context rereads, Firecrawl evidence rules (~13200 tok)
 - `STRUCTURA_PHASE_12_IMPLEMENTATION_PLAN.md` — Final derived Phase 12 execution plan; internal-GA/release handoff, Phase 11 evidence intake, blocker closure, contract/schema freeze, runtime config, operator runbooks, benchmark threshold approval, UI/security/restore/performance signoff, release notes/tagging, go/no-go, post-release cadence, fresh-context rereads, Firecrawl evidence rules (~13200 tok)
 - `STRUCTURA_UI_FIGMA_QA_PLAN.md` — Canonical Figma and Playwright UI QA plan; frame ids, pixel-match rules, workflow QA, UI stop rule (~3000 tok)
-- `README.md` — Implementation status through Phase 2, canonical local/GPU verification commands, Compose runtime notes, migration baseline and tracking behavior
+- `README.md` — Implementation status through Phase 3, canonical local/GPU verification commands, Compose runtime notes, migration baseline and tracking behavior
 - `Makefile` — bootstrap, test, lint, format, contracts, migrate, API/web dev, Compose, and worker-placeholder tasks
 - `compose.yaml` — Postgres, API, web, default workers, profile-gated model placeholders, and Redis fallback services
 - `.env.example` — Local Structura environment defaults
@@ -61,6 +61,19 @@
 - `docs/ui-reference/figma/inbox/` — Phase 1 Inbox Figma context, source screenshot, Playwright comparison screenshot, and comparison notes for frame `17:2`
 - `docs/ui-reference/figma/viewer/` — Phase 1 Viewer Figma context, source screenshot, Playwright comparison screenshot, and comparison notes for frame `14:434`
 - `docs/ui-reference/figma/folder-tag-filing/` — Phase 2 folder/tag filing composite Figma evidence set; includes context JSON, primary Inbox screenshot, handoff interaction/edge/redline screenshots, extraction-workspace reference, Playwright comparison screenshot, and scope comparison notes
+
+## Phase 3 canonical parse implementation
+
+- `apps/api/structura_api/routes_parse_debug.py` — Admin-scoped parse-debug API for a document; returns bounded parse metadata, current Docling artifacts as protected asset URLs, page summaries, element/table samples, and chunk samples.
+- `lib/documents/parse_models.py` — Dataclasses for canonical parse results, parsed pages, elements, tables, chunks, and persistence summaries.
+- `lib/documents/canonical_parse.py` — Orchestrates immutable derived Docling artifact storage, current asset upserts, relational parse replacement, document parse metadata update, and cleanup on failed persistence.
+- `lib/documents/parse_repository.py` — Persistence repository for replacing `document_pages`, `document_elements`, `document_tables`, and `document_chunks`, plus document parse-state metadata.
+- `lib/documents/parse_debug.py` — Read model for protected parse-debug payloads without exposing storage object URIs.
+- `workers/docling/converter.py` — Lazy Docling adapter that imports Docling only inside the dedicated worker runtime and normalizes Docling output into Phase 3 parse models.
+- `workers/docling/service.py` — Docling job handler; verifies the original asset, converts, persists canonical parse artifacts, refreshes page previews, and records parse failure metadata safely.
+- `workers/docling/worker.py` — Queue consumer and internal health endpoint for `docling` jobs.
+- `workers/docling/Dockerfile` — Dedicated Docling worker image; installs API requirements, Docling requirements, and native OpenCV/PDF shared libraries without adding Docling/Torch to API or preview images.
+- `workers/previews/service.py` — Page-aware preview generation and page asset linkage for Phase 3, with cleanup of derived objects on failed database persistence.
 
 ## .claude/
 

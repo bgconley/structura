@@ -384,6 +384,18 @@
       "related_bugs": ["bug-025"],
       "occurrences": 1,
       "last_seen": "2026-04-26T20:30:00-04:00"
+    },
+    {
+      "id": "bug-033",
+      "timestamp": "2026-04-26T22:05:00-04:00",
+      "error_message": "Docling conversion in the dedicated worker failed with ImportError: libxcb.so.1: cannot open shared object file.",
+      "file": "workers/docling/Dockerfile",
+      "root_cause": "The Python Docling dependency stack installed successfully, but the slim worker image did not include native OpenCV/PDF pipeline shared libraries required by Docling's table model path.",
+      "fix": "Added the required native runtime libraries to the worker-docling image while keeping Docling/Torch isolated from API and preview images.",
+      "tags": ["docker", "docling", "opencv", "worker-docling", "phase-3", "gpu-node"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T22:05:00-04:00"
     }
   ]
 }
