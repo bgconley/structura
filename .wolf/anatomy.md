@@ -6,12 +6,20 @@
 ## Phase 5 search additions
 
 - `apps/api/structura_api/routes_search.py` — Thin FastAPI routes for corpus search and household-scoped saved searches (~450 tok)
-- `apps/web/src/components/SearchResults.tsx` — Phase 5 Corpus Search UI with query builder, filters, ranked results, facets, evidence jumps, and saved-search action (~2200 tok)
+- `.github/workflows/ci.yml` — Repository CI workflow for Python quality gates, contracts, tests, SAST, web lint/build, and Compose config (~500 tok)
+- `.github/workflows/gpu-live-smoke.yml` — Manual self-hosted workflow for pinned-container Playwright live smoke against GPU-hosted web (~350 tok)
+- `apps/web/src/components/SearchResults.tsx` — Phase 5 Corpus Search shell with query card, ranked results, facets, evidence jumps, and saved-search action (~1500 tok)
+- `apps/web/src/components/SearchFilterPanel.tsx` — Phase 5 search filter panel and request-payload builder for mode, family, folder, tag, review status, sensitivity, date, amount, and reviewed-only filters (~1900 tok)
 - `apps/web/src/components/SearchResults.css` — Phase 5 search surface styles (~1900 tok)
 - `apps/web/src/searchApi.ts` — Browser API client for search and saved-search calls (~250 tok)
 - `database/069_phase5_search.sql` — Search projection refresh, BM25 index refresh, embedding uniqueness, saved-search household columns, and smart-folder saved-query matcher (~1700 tok)
+- `database/071_phase5_search_guardrails.sql` — Phase 5 hardening migration replacing `document_matches_saved_query` with supported-key guardrails and broader filter handling (~1200 tok)
+- `lib/documents/list_repository.py` — Document-list read repository using shared search filter SQL for text search, manual folders, smart folders, ACLs, and pagination (~1900 tok)
+- `lib/documents/summary_mapping.py` — Small document summary row-to-contract mapper and list coercion helpers (~300 tok)
+- `lib/search/benchmark.py` — Tiny search benchmark metric helpers for hit-rate-at-k and MRR regression tracking (~350 tok)
 - `lib/search/query.py` — Search request parser and normalized filter DTOs (~550 tok)
 - `lib/search/repository.py` — ACL-aware lexical/semantic/facet SQL repository for Phase 5 search (~2200 tok)
+- `lib/search/saved_query.py` — Saved-query parser/validator that maps smart-folder JSON into canonical `SearchFilters` and rejects unsupported keys (~1200 tok)
 - `lib/search/service.py` — Search orchestration and result DTO mapping for lexical, semantic, and hybrid modes (~1300 tok)
 - `lib/search/embedding_gateway.py` — Deterministic local text embedding adapter and vector helpers (~700 tok)
 - `lib/search/embedding_repository.py` — Projection refresh and embedding persistence repository (~900 tok)
@@ -21,6 +29,7 @@
 - `lib/search/saved_searches.py` — Household-scoped saved-search persistence API (~550 tok)
 - `lib/search/hybrid.py` — Reciprocal-rank fusion primitives (~450 tok)
 - `workers/embeddings/worker.py` — Phase 5 embedding worker loop and job handling (~750 tok)
+- `workers/ingest/worker.py` — Real ingest queue consumer that claims upload ingest jobs, verifies original assets, completes jobs, and records worker health (~900 tok)
 - `tests/e2e/phase5.spec.ts` — Mocked Phase 5 search UI and screenshot gate (~450 tok)
 - `tests/e2e/phase5-live.spec.ts` — GPU live upload/search/evidence browser smoke (~650 tok)
 - `tests/integration/test_phase5_search.py` — Live DB integration coverage for search, embeddings, smart folders, saved searches, and ACL negatives (~2100 tok)
@@ -31,7 +40,7 @@
 
 - `.DS_Store` (~3824 tok)
 - `CLAUDE.md` — OpenWolf (~57 tok)
-- `agents.md` — Agent operating guidance; root implementation plan as phase map, non-archive artifact references as required implementation depth, archive exclusion, Markdown-over-DOCX and chunked large-file review handling, conflict resolution, architecture stewardship, Phase 4 baseline, Figma evidence, GPU-node runtime/test policy, all-phase live Playwright suite rule, and Docling worker dependency isolation (~3600 tok)
+- `agents.md` — Agent operating guidance; root implementation plan as phase map, non-archive artifact references as required implementation depth, archive exclusion, Markdown-over-DOCX and chunked large-file review handling, conflict resolution, architecture stewardship, Phase 5 baseline/hardening record, Phase 6 seams, Figma evidence, GPU-node runtime/test policy, all-phase live Playwright suite rule, and Docling worker dependency isolation (~4200 tok)
 - `STRUCTURA_PLAN_INDEX.md` — Canonical planning index; source alignment policy, Markdown-first duplicate-artifact handling with DOCX parity note, UI source of truth, GPU node sync policy, stop rule (~1000 tok)
 - `STRUCTURA_IMPLEMENTATION_PLAN.md` — Canonical end-to-end implementation plan; phase gates, mandatory per-phase artifact lists, API/database/event coverage, Markdown-first duplicate-artifact handling with DOCX parity note, GPU sync policy (~15500 tok)
 - `STRUCTURA_PHASE_1_IMPLEMENTATION_PLAN.md` — Phase 1 execution plan; upload, object storage, Inbox, protected asset streaming, preview, Viewer, fresh-context rereads, Firecrawl evidence rules, validation gate (~5700 tok)
@@ -47,7 +56,7 @@
 - `STRUCTURA_PHASE_11_IMPLEMENTATION_PLAN.md` — Phase 11 execution plan; golden corpus governance, expected answers, deterministic evaluation harness, extraction/search scoring, E2E and Playwright smoke tests, migration/contract regression, restore rehearsal, SAST/data-flow gate, performance measurements, release-candidate evidence pack, fresh-context rereads, Firecrawl evidence rules (~13200 tok)
 - `STRUCTURA_PHASE_12_IMPLEMENTATION_PLAN.md` — Final derived Phase 12 execution plan; internal-GA/release handoff, Phase 11 evidence intake, blocker closure, contract/schema freeze, runtime config, operator runbooks, benchmark threshold approval, UI/security/restore/performance signoff, release notes/tagging, go/no-go, post-release cadence, fresh-context rereads, Firecrawl evidence rules (~13200 tok)
 - `STRUCTURA_UI_FIGMA_QA_PLAN.md` — Canonical Figma and Playwright UI QA plan; frame ids, pixel-match rules, workflow QA, UI stop rule (~3000 tok)
-- `README.md` — Implementation status through Phase 4, canonical local/GPU verification commands including Phase 1-4 live Playwright specs, Compose runtime notes, migration baseline and tracking behavior
+- `README.md` — Implementation status through Phase 5, canonical local/GPU verification commands including Phase 1-5 live Playwright specs, Compose/runtime notes, worker profile notes, migration baseline, and tracking behavior
 - `Makefile` — bootstrap, test, lint, format, contracts, migrate, API/web dev, Compose, and worker-placeholder tasks
 - `compose.yaml` — Postgres, API, web, default workers, profile-gated model placeholders, and Redis fallback services
 - `.env.example` — Local Structura environment defaults

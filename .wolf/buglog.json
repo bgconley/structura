@@ -564,6 +564,66 @@
       "related_bugs": ["bug-046"],
       "occurrences": 1,
       "last_seen": "2026-04-26T15:14:00-04:00"
+    },
+    {
+      "id": "bug-048",
+      "timestamp": "2026-04-26T17:05:00-04:00",
+      "error_message": "Phase 5 audit found smart-folder saved queries were not planner-parity and unsupported keys could match all documents.",
+      "file": "lib/search/saved_query.py",
+      "root_cause": "Smart-folder document listing used a database helper with a small recognized-key set, while saved-query validation only checked JSON shape and did not reject unsupported semantic keys.",
+      "fix": "Added canonical saved-query parsing in lib/search/saved_query.py, routed smart-folder list resolution through lib/documents/list_repository.py and shared document_filter_sql predicates, rejected unknown saved-query keys on folder writes, and added database/071_phase5_search_guardrails.sql as a compatibility guardrail.",
+      "tags": ["phase-5", "smart-folders", "search", "planner-parity", "data-integrity"],
+      "related_bugs": ["bug-044"],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T17:05:00-04:00"
+    },
+    {
+      "id": "bug-049",
+      "timestamp": "2026-04-26T17:05:00-04:00",
+      "error_message": "Phase 5 audit found upload-created ingest jobs accumulated because worker-ingest was placeholder-only.",
+      "file": "workers/ingest/worker.py",
+      "root_cause": "The upload route enqueued ingest jobs, but compose.yaml still ran the generic placeholder worker for the ingest service, so no process claimed or completed queue_name='ingest' jobs.",
+      "fix": "Implemented workers/ingest/worker.py to claim ingest jobs, verify the original asset, complete or fail jobs, and record worker health; updated compose.yaml so worker-ingest runs the real consumer; added live DB integration coverage for ingest job consumption.",
+      "tags": ["phase-5", "ingest", "workers", "jobs", "reliability"],
+      "related_bugs": ["bug-043"],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T17:05:00-04:00"
+    },
+    {
+      "id": "bug-050",
+      "timestamp": "2026-04-26T17:05:00-04:00",
+      "error_message": "Phase 5 audit found Phase 6 placeholder POST endpoints advertised 201 success in OpenAPI while runtime returned 501.",
+      "file": "contracts/api/openapi.yaml",
+      "root_cause": "Future-phase mutation endpoints were exposed in the active contract as if implemented, while routes_placeholders.py intentionally returned HTTP 501 until Phase 6.",
+      "fix": "Changed active OpenAPI POST contracts for contacts, filing rules, and watched folders to advertise 501 placeholder responses and added unit coverage comparing runtime OpenAPI response status sets against the contract.",
+      "tags": ["phase-5", "phase-6", "openapi", "contract-parity", "placeholders"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T17:05:00-04:00"
+    },
+    {
+      "id": "bug-051",
+      "timestamp": "2026-04-26T17:05:00-04:00",
+      "error_message": "Phase 5 audit found facets and advanced search UI were narrower than the Phase 5 plan.",
+      "file": "apps/web/src/components/SearchFilterPanel.tsx",
+      "root_cause": "The initial search UI and facet repository only covered family/tag/review basics and lacked planned folder, sensitivity, date-bucket, amount, and review-status filter breadth.",
+      "fix": "Expanded SearchFilters/OpenAPI/search repository facets, added folder/tag/review-status/sensitivity/date/amount UI controls in SearchFilterPanel.tsx, preserved saved-search filter payloads, and regenerated the Phase 5 Playwright screenshot baseline.",
+      "tags": ["phase-5", "search-ui", "facets", "playwright", "figma"],
+      "related_bugs": ["bug-042"],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T17:05:00-04:00"
+    },
+    {
+      "id": "bug-052",
+      "timestamp": "2026-04-26T17:05:00-04:00",
+      "error_message": "Phase 5 audit found no in-repo CI workflow definitions.",
+      "file": ".github/workflows/ci.yml",
+      "root_cause": "Quality gates were reproducible manually and on the GPU node, but the repository did not codify those checks as CI workflow files.",
+      "fix": "Added .github/workflows/ci.yml for Python quality gates, contracts, tests, SAST, web lint/build, and Compose config; added .github/workflows/gpu-live-smoke.yml for manual self-hosted live Playwright smoke against the GPU-hosted app.",
+      "tags": ["phase-5", "ci", "github-actions", "operability"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T17:05:00-04:00"
     }
   ]
 }
