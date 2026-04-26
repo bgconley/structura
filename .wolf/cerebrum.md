@@ -110,6 +110,8 @@
 - [2026-04-26] Do not insert new current extraction assets on rerun without first superseding old current `raw_model_output` and `normalized_extraction_json` assets. The baseline has a one-current-asset unique index per document/role/page, so reruns must preserve that invariant.
 - [2026-04-26] Do not omit an already-implemented phase from the GPU live Playwright suite. Phase 3 originally had backend integration and mocked screenshot coverage but no `phase3-live.spec.ts`; every UI/runtime phase must have a live spec or an explicit documented exception before completion claims.
 - [2026-04-26] Do not generate a UI screenshot assertion after navigating away from the target surface. Phase 5 initially snapshotted after evidence jump; snapshot assertions must capture the intended screen before navigation.
+- [2026-04-26] Do not make live Playwright locators page-wide when the shared GPU database can contain duplicate labels from previous runs. Use unique markers and scope actions to the target row/card before clicking buttons such as `Jump to evidence`.
+- [2026-04-26] Do not let later-phase job volume hide earlier-phase diagnostic proof. The Viewer Parse Debug panel must keep `docling_convert` visible even after classify/extract/embed jobs are added, because Phase 3 live validation depends on the canonical parse job status being inspectable.
 
 ## Decision Log
 

@@ -528,6 +528,30 @@
       "related_bugs": ["bug-043"],
       "occurrences": 1,
       "last_seen": "2026-04-26T14:44:00-04:00"
+    },
+    {
+      "id": "bug-045",
+      "timestamp": "2026-04-26T15:05:00-04:00",
+      "error_message": "The canonical live Playwright suite failed Phase 3 after Phase 5 because the Parse Debug panel listed only the six newest jobs and hid the older docling_convert success.",
+      "file": "apps/web/src/components/ParseDebugPanel.tsx",
+      "root_cause": "Phase 5 added downstream classify/extract/embed jobs, so a recency-only parse-debug job list could omit the Phase 3 canonical parse job even though parse artifacts were present and healthy.",
+      "fix": "Changed the Parse Debug panel display helper to always preserve a docling_convert job in the visible list while still capping the list to six rows.",
+      "tags": ["playwright", "live-tests", "parse-debug", "jobs", "phase-3", "phase-5"],
+      "related_bugs": ["bug-040"],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T15:05:00-04:00"
+    },
+    {
+      "id": "bug-046",
+      "timestamp": "2026-04-26T15:05:00-04:00",
+      "error_message": "Phase 5 live Playwright evidence jump failed strict mode because multiple search results exposed identically named Jump to evidence buttons.",
+      "file": "tests/e2e/phase5-live.spec.ts",
+      "root_cause": "The live shared GPU database can contain previous search results, so a page-wide evidence-jump locator is ambiguous even when the target result is present.",
+      "fix": "Scoped Phase 5 mocked and live evidence-jump locators to the matching search-result card before clicking Jump to evidence.",
+      "tags": ["playwright", "live-tests", "search", "strict-mode", "phase-5"],
+      "related_bugs": ["bug-042", "bug-044"],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T15:05:00-04:00"
     }
   ]
 }

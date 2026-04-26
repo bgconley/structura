@@ -1,4 +1,4 @@
-import type {ParseDebugView} from "../types";
+import type {ParseDebugJob, ParseDebugView} from "../types";
 
 export function ParseDebugPanel({
   debug,
@@ -11,6 +11,8 @@ export function ParseDebugPanel({
   isLoading: boolean;
   onLoad: () => void;
 }) {
+  const visibleJobs = debug ? debugJobsForDisplay(debug.jobs) : [];
+
   return (
     <section className="parse-debug-panel">
       <div className="section-title">
@@ -40,9 +42,9 @@ export function ParseDebugPanel({
       {debug?.pages[0]?.textPreview ? (
         <pre>{debug.pages[0].textPreview}</pre>
       ) : null}
-      {debug?.jobs.length ? (
+      {visibleJobs.length ? (
         <ol className="debug-job-list">
-          {debug.jobs.slice(0, 6).map((job) => (
+          {visibleJobs.map((job) => (
             <li key={job.jobId}>
               {job.jobType} <strong>{job.status}</strong>
             </li>
@@ -51,4 +53,13 @@ export function ParseDebugPanel({
       ) : null}
     </section>
   );
+}
+
+function debugJobsForDisplay(jobs: ParseDebugJob[]): ParseDebugJob[] {
+  const visible = jobs.slice(0, 6);
+  const docling = jobs.find((job) => job.jobType === "docling_convert");
+  if (!docling || visible.some((job) => job.jobId === docling.jobId)) {
+    return visible;
+  }
+  return [docling, ...visible.slice(0, 5)];
 }

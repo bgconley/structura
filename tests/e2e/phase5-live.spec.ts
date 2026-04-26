@@ -49,7 +49,11 @@ test.describe("Phase 5 live GPU stack", () => {
     await page.getByRole("button", {name: "Search corpus"}).click();
 
     await expect(page.getByRole("button", {name: new RegExp(title)})).toBeVisible();
-    await page.getByRole("button", {name: /Jump to evidence/}).click();
+    await page
+      .locator(".search-result-card")
+      .filter({hasText: title})
+      .getByRole("button", {name: "Jump to evidence"})
+      .click();
     await expect(page.getByRole("heading", {name: "Document Viewer"})).toBeVisible();
     await expect(page.getByRole("status")).toContainText(marker);
     await page.screenshot({path: testInfo.outputPath("phase5-live-search.png"), fullPage: true});

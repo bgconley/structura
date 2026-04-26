@@ -189,6 +189,8 @@ Playwright milestone validation must target the GPU-hosted web service, not a Ma
 
 Do not substitute backend integration tests or mocked Playwright screenshot tests for a phase's live browser smoke when that phase has a user-visible UI/runtime workflow. Phase 3 specifically requires `tests/e2e/phase3-live.spec.ts`, which uploads a generated valid PDF through the GPU-hosted web UI, waits for the live Docling worker to persist parse artifacts, and verifies the Parse Debug panel in the Viewer. The deterministic PDF helper lives at `tests/e2e/support/pdf.ts`. When a new phase adds a browser-visible workflow, add a corresponding `phaseN-live.spec.ts` or explicitly document why no live browser spec is applicable before calling the phase complete.
 
+Live Playwright specs run against a shared GPU-hosted database that may contain artifacts from previous phase runs. Use unique markers and scoped locators for target rows/cards/buttons rather than page-wide text or role selectors when duplicate labels are possible. Preserve earlier-phase UI assertions as later phases add downstream jobs: the Phase 3 Parse Debug panel must continue to surface `docling_convert` status even after Phase 4/5 classify/extract/embed jobs exist.
+
 Observed GPU-node ZFS state on 2026-04-25:
 
 ```text

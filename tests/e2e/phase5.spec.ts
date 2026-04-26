@@ -37,7 +37,11 @@ test("Phase 5 search runs hybrid retrieval with filters, snippets, explanations,
   await page.getByRole("button", {name: "Save search"}).click();
   await expect(page.getByText(/Saved search:/)).toBeVisible();
 
-  await page.getByRole("button", {name: /Jump to evidence/}).click();
+  await page
+    .locator(".search-result-card")
+    .filter({hasText: "Anthem medical EOB"})
+    .getByRole("button", {name: "Jump to evidence"})
+    .click();
   await expect(page.getByRole("heading", {name: "Document Viewer"})).toBeVisible();
   await expect(page.getByRole("status")).toContainText("Claim ABC123");
   await expect(page.getByLabel("Evidence highlight")).toBeVisible();
