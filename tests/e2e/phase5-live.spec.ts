@@ -55,7 +55,8 @@ test.describe("Phase 5 live GPU stack", () => {
       .getByRole("button", {name: "Jump to evidence"})
       .click();
     await expect(page.getByRole("heading", {name: "Document Viewer"})).toBeVisible();
-    await expect(page.getByRole("status")).toContainText(marker);
+    await expect(page.getByRole("status")).toContainText(unique);
+    await expect(page.getByRole("status")).toContainText("Claim ABC123");
     await page.screenshot({path: testInfo.outputPath("phase5-live-search.png"), fullPage: true});
   });
 });
