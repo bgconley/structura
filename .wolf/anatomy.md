@@ -7,7 +7,7 @@
 
 - `.DS_Store` (~3824 tok)
 - `CLAUDE.md` — OpenWolf (~57 tok)
-- `agents.md` — Agent operating guidance; root implementation plan as phase map, non-archive artifact references as required implementation depth, archive exclusion, Markdown-over-DOCX and chunked large-file review handling, conflict resolution (~400 tok)
+- `agents.md` — Agent operating guidance; root implementation plan as phase map, non-archive artifact references as required implementation depth, archive exclusion, Markdown-over-DOCX and chunked large-file review handling, conflict resolution, architecture stewardship, current Phase 2 baseline, Figma evidence, GPU-node runtime/test policy (~3200 tok)
 - `STRUCTURA_PLAN_INDEX.md` — Canonical planning index; source alignment policy, Markdown-first duplicate-artifact handling with DOCX parity note, UI source of truth, GPU node sync policy, stop rule (~1000 tok)
 - `STRUCTURA_IMPLEMENTATION_PLAN.md` — Canonical end-to-end implementation plan; phase gates, mandatory per-phase artifact lists, API/database/event coverage, Markdown-first duplicate-artifact handling with DOCX parity note, GPU sync policy (~15500 tok)
 - `STRUCTURA_PHASE_1_IMPLEMENTATION_PLAN.md` — Phase 1 execution plan; upload, object storage, Inbox, protected asset streaming, preview, Viewer, fresh-context rereads, Firecrawl evidence rules, validation gate (~5700 tok)
@@ -23,7 +23,7 @@
 - `STRUCTURA_PHASE_11_IMPLEMENTATION_PLAN.md` — Phase 11 execution plan; golden corpus governance, expected answers, deterministic evaluation harness, extraction/search scoring, E2E and Playwright smoke tests, migration/contract regression, restore rehearsal, SAST/data-flow gate, performance measurements, release-candidate evidence pack, fresh-context rereads, Firecrawl evidence rules (~13200 tok)
 - `STRUCTURA_PHASE_12_IMPLEMENTATION_PLAN.md` — Final derived Phase 12 execution plan; internal-GA/release handoff, Phase 11 evidence intake, blocker closure, contract/schema freeze, runtime config, operator runbooks, benchmark threshold approval, UI/security/restore/performance signoff, release notes/tagging, go/no-go, post-release cadence, fresh-context rereads, Firecrawl evidence rules (~13200 tok)
 - `STRUCTURA_UI_FIGMA_QA_PLAN.md` — Canonical Figma and Playwright UI QA plan; frame ids, pixel-match rules, workflow QA, UI stop rule (~3000 tok)
-- `README.md` — Phase 0A-0F implementation status, local commands, Compose runtime notes, migration baseline and tracking behavior
+- `README.md` — Implementation status through Phase 2, canonical local/GPU verification commands, Compose runtime notes, migration baseline and tracking behavior
 - `Makefile` — bootstrap, test, lint, format, contracts, migrate, API/web dev, Compose, and worker-placeholder tasks
 - `compose.yaml` — Postgres, API, web, default workers, profile-gated model placeholders, and Redis fallback services
 - `.env.example` — Local Structura environment defaults
@@ -55,6 +55,12 @@
 - `tests/integration/` — Live Postgres baseline schema, migration idempotency, auth/session/job/service-health tests
 - `workers/placeholder.py` — Placeholder worker heartbeat loop, internal health HTTP endpoint, service-health DB snapshots
 - `workers/model_placeholder.py` — Profile-gated model service placeholder
+
+## Phase 1/2 UI reference artifacts
+
+- `docs/ui-reference/figma/inbox/` — Phase 1 Inbox Figma context, source screenshot, Playwright comparison screenshot, and comparison notes for frame `17:2`
+- `docs/ui-reference/figma/viewer/` — Phase 1 Viewer Figma context, source screenshot, Playwright comparison screenshot, and comparison notes for frame `14:434`
+- `docs/ui-reference/figma/folder-tag-filing/` — Phase 2 folder/tag filing composite Figma evidence set; includes context JSON, primary Inbox screenshot, handoff interaction/edge/redline screenshots, extraction-workspace reference, Playwright comparison screenshot, and scope comparison notes
 
 ## .claude/
 

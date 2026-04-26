@@ -80,6 +80,28 @@ The current root plan breaks Phase 0 into:
 
 Older artifact-pack docs may group the same work differently. Treat the root plan as the active sequencing layer and the artifact pack as required implementation depth.
 
+## Current Baseline And Next Phase
+
+As of 2026-04-26, the repo is implemented through Phase 2 at commit `f0f38d1` on `master`; local, `origin/master`, and the GPU checkout at `/tank/repos/structura` were synced to that commit. Phase 3 is the next implementation phase and must start from `STRUCTURA_PHASE_3_IMPLEMENTATION_PLAN.md` plus its Fresh Context artifacts.
+
+Phase 2 includes manual organization only: manual folders, smart-folder records, tags, document title/date/filing-notes edits, multi-folder membership, primary folder selection, folder filtering, list/detail propagation, audit coverage, and usable Inbox/Viewer filing surfaces. Do not treat dynamic smart-folder execution, filing-rule automation, watched-folder ingestion, model-based filing suggestions, extraction review workflows, Docling parsing, or search ranking as Phase 2 scope; those belong to later phases unless the user explicitly changes scope.
+
+The Phase 2 hardening pass closed these previously confirmed gaps: cross-household job/admin visibility, dead-letter retry jobs that could not be claimed, buffered web proxy upload/download behavior, placeholder preview-worker execution, and incomplete folder/tag filing screenshot artifacts. Preserve those regression tests and authz/retry/proxy/worker seams when starting Phase 3.
+
+## Figma And UI Reference Baseline
+
+Strict UI evidence now lives under `docs/ui-reference/figma/`:
+
+```text
+docs/ui-reference/figma/inbox/
+docs/ui-reference/figma/viewer/
+docs/ui-reference/figma/folder-tag-filing/
+```
+
+Inbox uses Figma frame `17:2`; Viewer uses `14:434`. Phase 2 folder/tag filing uses a composite Figma source set rather than one dedicated final filing frame: primary frame `17:2`, Viewer propagation frame `14:434`, future review-workspace reference `14:611`, and handoff frames `35:7`, `35:12`, and `35:17`. The older filing-rules/watched-folders mockups are automation scope and are not the Phase 2 manual filing baseline.
+
+The folder/tag filing capture pass added `figma-context.json`, Figma screenshots, handoff screenshots, an extraction-workspace reference screenshot, and the deterministic Playwright comparison screenshot. Keep these artifacts synchronized with any future UI changes and run the Playwright screenshot assertions rather than writing ad hoc screenshots directly into committed reference paths.
+
 ## GPU Node Runtime And Test Policy
 
 Do not treat Mac-only validation as phase or major-milestone completion evidence. Local Mac runs are allowed only as quick preflight checks. For live, integration, runtime, Docker, model, or milestone-completion validation, commit locally, push to GitHub, SSH to the GPU node, pull the pushed commit there, then build and test on the GPU node.

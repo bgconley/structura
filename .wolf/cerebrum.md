@@ -2,7 +2,7 @@
 
 > OpenWolf's learning memory. Updated automatically as the AI learns from interactions.
 > Do not edit manually unless correcting an error.
-> Last updated: 2026-04-25
+> Last updated: 2026-04-26
 
 ## User Preferences
 
@@ -16,6 +16,7 @@
 - Do not call Structura phase or major-milestone completion from Mac-only tests. Mac validation is preflight only; live/integration/runtime/Docker/model milestone evidence must be run on the GPU node after commit, push, SSH, and pull.
 - Before creating any GPU-node directory or ZFS dataset, inspect the current node state first. Do not assume `/tank/repos`, `/tank/repos/structura`, `/tank/venvs`, `/srv/structura`, or any `tank/structura/*` dataset is missing or present without checking.
 - Do not install or depend on host `node`/`npm` on the GPU node for Structura gates. Use pinned container/app images for web lint/build and Playwright so Node/npm versions are reproducible.
+- After completing a remediation or artifact-only pass, still commit, push, and pull to `/tank/repos/structura` when the result is project state future agents need. Documentation and UI-reference commits are part of the canonical baseline.
 - Act as an architecture steward, not only a feature implementer. Preserve separation of concerns, SRP, high cohesion, low coupling, explicit layer boundaries, small understandable units, behavior-preserving refactors, meaningful abstractions, clear interfaces, and tests/type checks as guardrails.
 - Before editing code, inspect target files for overloaded responsibilities. If a file is already accumulating unrelated routing, validation, persistence, orchestration, formatting, or UI logic, pause and extract or propose a focused refactor before adding more logic.
 - Keep route/controller/UI code thin. Put business rules and orchestration in service/domain modules, database access in repositories/DAOs, external integrations in adapters, and reusable pure rules in precisely named modules rather than vague utilities.
@@ -28,6 +29,11 @@
 - For Structura implementation work, start with the root plan, then the relevant phase-specific execution plan, then the subphase Fresh Context list. Re-read the relevant documents before coding each subphase rather than relying on old context.
 - For APIs, contracts, conventions, library behavior, security, database semantics, UI testing, backup/restore, release engineering, or any uncertain implementation decision, use Firecrawl to gather current evidence from primary sources and record the rationale in implementation notes, ADRs, or release docs.
 - The duplicate `docs/01_App_Specification` and `docs/02_Phased_Implementation_Plan` Markdown/DOCX pairs were spot-checked on 2026-04-24 and no material content differences were found; Markdown remains the default working source unless fidelity review or suspected drift requires opening DOCX.
+- As of 2026-04-26, Structura is implemented and GPU-validated through Phase 2 at commit `f0f38d1` on `master`; local, `origin/master`, and GPU `/tank/repos/structura` were synced to that commit. Phase 3 is the next implementation phase.
+- Phase 2 scope is manual organization only: manual folders, smart-folder records, tags, document metadata edits, filing notes, multi-folder membership, primary folder selection, folder filtering, list/detail propagation, audit coverage, and Inbox/Viewer filing UI. Dynamic smart-folder execution, filing-rule automation, watched-folder ingestion, model filing suggestions, extraction review workflows, Docling parsing, and search ranking remain later-phase work.
+- Phase 2 hardening closed confirmed gaps in cross-household job/admin visibility, dead-letter retry claimability, web proxy request/response buffering, preview-worker placeholder behavior, and incomplete folder/tag filing screenshot artifacts. Preserve those regression tests and seams when starting Phase 3.
+- Phase 2 folder/tag filing has a strict UI-reference artifact set under `docs/ui-reference/figma/folder-tag-filing/`: `figma-context.json`, `figma-screenshot.png`, `handoff-interaction-specs.png`, `handoff-edge-states.png`, `handoff-dev-redlines.png`, `extraction-workspace-reference.png`, `playwright-screenshot.png`, and `comparison-notes.md`.
+- The Figma source for Phase 2 folder/tag filing is composite, not a single dedicated finalized filing frame: primary `17:2`, Viewer propagation `14:434`, future extraction workspace reference `14:611`, handoff interaction specs `35:7`, edge states `35:12`, and dev redlines `35:17`. The older filing-rules/watched-folders mockups are deferred automation scope.
 
 ## Key Learnings
 
@@ -77,6 +83,8 @@
 - [2026-04-25] Do not say or imply `/tank/repos` needs to be created without inspecting the GPU node first. It already exists as `tank/repos`; future creation decisions must follow current `zfs list`/`findmnt` evidence.
 - [2026-04-25] Do not install host Node/npm on the GPU node as a workaround for web gates. Containerize Node-dependent verification with pinned images instead.
 - [2026-04-25] Do not keep appending feature logic to oversized Structura modules. `apps/api/structura_api/routes_documents.py` grew past 800 lines during Phase 2 kickoff and must be decomposed before more organization behavior is added there.
+- [2026-04-26] Do not claim strict Figma artifact completeness from Playwright snapshots alone. For implemented UI slices, maintain the `docs/ui-reference/figma/<screen>/` set with Figma context, source screenshot(s), Playwright comparison screenshot, and comparison notes.
+- [2026-04-26] Do not use the filing-rules/watched-folders mockup as the Phase 2 manual filing baseline. It represents later automation scope; Phase 2 filing is governed by the Inbox/Viewer composite source set and handoff frames.
 
 ## Decision Log
 
@@ -90,6 +98,8 @@
 - [2026-04-25] GPU-node ZFS preflight found existing pool `tank` online with `tank/repos` mounted at `/tank/repos`, but no `tank/structura` runtime dataset tree. Before production-equivalent Structura validation, create or map the missing `/srv/structura` runtime datasets intentionally; do not use Mac or root ext4 runtime state as completion evidence.
 - [2026-04-25] Structura web verification should not depend on host Node/npm. Runtime and test Node versions are controlled by pinned container images: app web image `node:20-alpine`, browser E2E image `mcr.microsoft.com/playwright:v1.59.1-noble`.
 - [2026-04-25] Architecture stewardship is a standing implementation requirement. New work should leave the codebase more modular, cohesive, testable, and less likely to collapse into god files. Complete features should be delivered through thin outer layers, cohesive services/repositories/adapters, and targeted tests rather than convenience-driven accumulation.
+- [2026-04-26] Phase 2 recovery decisions: job/admin reads are household scoped with admin role/scope enforcement; manual dead-letter retry resets attempt state so the job is claimable; preview generation is queue-worker driven rather than inline upload work; and the web API proxy streams request/response bodies instead of buffering them.
+- [2026-04-26] Phase 2 UI evidence decision: folder/tag filing is documented as a composite Figma source set and committed under `docs/ui-reference/figma/folder-tag-filing/` with deterministic Playwright snapshot assertions. A future UI change must update both the implementation and this evidence set deliberately.
 - [2026-04-24] Phase 0 auth baseline uses Argon2id password credentials, durable `sessions`, non-HttpOnly CSRF cookie paired with HttpOnly session cookie, API-token principal resolution, and route dependencies that protect document, asset, job, and admin health surfaces.
 - [2026-04-24] Phase 0 job baseline uses the `pipeline_jobs` table as the concrete queue state because the pinned ParadeDB PostgreSQL 17 image does not package PGMQ. Default workers expose internal health endpoints and record `service_health_snapshots`.
 - [2026-04-24] Baseline migrations are tracked in `structura.schema_migrations`; legacy Phase 0 databases without that table are adopted by detecting representative schema objects, then future migration runs are no-ops.

@@ -324,6 +324,66 @@
       "related_bugs": ["bug-026"],
       "occurrences": 1,
       "last_seen": "2026-04-25T04:09:00-04:00"
+    },
+    {
+      "id": "bug-028",
+      "timestamp": "2026-04-26T20:30:00-04:00",
+      "error_message": "Cross-household job/admin visibility was allowed; another household could read a job status and admin job listings were not tenant scoped.",
+      "file": "apps/api/structura_api/routes_jobs.py",
+      "root_cause": "Job/admin routes used authenticated principals without enforcing household ownership and admin role/scope rules across job read/list/retry surfaces.",
+      "fix": "Added household role to auth principals, added admin dependencies, scoped job create/read/list/retry by household, updated upload job creation to carry household_id, and added cross-household/admin regression coverage.",
+      "tags": ["security", "authz", "household", "jobs", "admin", "phase-2"],
+      "related_bugs": ["bug-020"],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T20:30:00-04:00"
+    },
+    {
+      "id": "bug-029",
+      "timestamp": "2026-04-26T20:30:00-04:00",
+      "error_message": "Manual retry of a dead-letter job could set status back to queued while attempt_count still prevented any worker from claiming it.",
+      "file": "lib/jobs/service.py",
+      "root_cause": "retry_job cleared dead-letter status but did not reset attempt_count or stale worker/lease/error fields, while claim_next_job requires attempt_count < max_attempts.",
+      "fix": "Changed manual retry to reset attempt_count to 0, clear lease/worker/start/finish/error fields, schedule the job immediately, and added regression coverage proving retried dead-letter jobs are claimable.",
+      "tags": ["reliability", "jobs", "dead-letter", "retry", "phase-2"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T20:30:00-04:00"
+    },
+    {
+      "id": "bug-030",
+      "timestamp": "2026-04-26T20:30:00-04:00",
+      "error_message": "The web API proxy buffered full upload request bodies and upstream response bodies in memory.",
+      "file": "apps/web/server.mjs",
+      "root_cause": "The static web proxy used Buffer.concat for incoming requests and arrayBuffer() for upstream responses, defeating streaming/backpressure expectations for large uploads/downloads.",
+      "fix": "Reworked the proxy to stream request bodies into fetch with duplex half mode, pipe upstream response streams back to the client, preserve headers safely, and keep explicit body-size guarding.",
+      "tags": ["performance", "reliability", "web", "proxy", "streaming", "phase-2"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T20:30:00-04:00"
+    },
+    {
+      "id": "bug-031",
+      "timestamp": "2026-04-26T20:30:00-04:00",
+      "error_message": "Preview jobs were marked retryable, but the Compose preview worker still ran a placeholder and upload generated previews inline.",
+      "file": "workers/previews/worker.py",
+      "root_cause": "The Phase 1/2 preview pipeline had queue records but no active consumer, so recovery depended on API upload-side side effects rather than worker claim/complete/fail semantics.",
+      "fix": "Added a real preview worker loop and shared worker runtime health server, moved preview generation to the worker path, changed upload to enqueue preview jobs only, and updated integration tests to process the matching document's preview job deterministically.",
+      "tags": ["workers", "previews", "jobs", "reliability", "phase-1", "phase-2"],
+      "related_bugs": ["bug-029"],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T20:30:00-04:00"
+    },
+    {
+      "id": "bug-032",
+      "timestamp": "2026-04-26T20:30:00-04:00",
+      "error_message": "The UI screenshot gate captured screenshots but did not fully enforce deterministic comparisons or include complete Phase 2 Figma source artifacts.",
+      "file": "docs/ui-reference/figma/folder-tag-filing/figma-context.json",
+      "root_cause": "Phase 1/2 Playwright tests used procedural screenshots without complete committed reference coverage for the folder/tag filing composite Figma source set.",
+      "fix": "Added Playwright toHaveScreenshot assertions and Linux baselines, captured Phase 2 folder/tag filing Figma and handoff artifacts, documented the composite source set, and committed the Playwright comparison screenshot.",
+      "tags": ["playwright", "figma", "ui-reference", "screenshots", "phase-2"],
+      "related_bugs": ["bug-025"],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T20:30:00-04:00"
     }
   ]
 }
