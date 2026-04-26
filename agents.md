@@ -175,6 +175,8 @@ Do not install or rely on host `node` or `npm` on the GPU node for Structura ver
 
 Playwright milestone validation must target the GPU-hosted web service, not a Mac-hosted Vite server. The Mac can act as the browser/controller, but the app under test must be served from the GPU node on the LAN. Current live UI target is `http://10.25.0.50:13000` with `STRUCTURA_E2E_LIVE=1`; the GPU Compose `.env` should expose only web externally via `STRUCTURA_WEB_BIND_HOST=0.0.0.0` and `STRUCTURA_WEB_PORT=13000`, while keeping API and Postgres bound to `127.0.0.1`. The canonical live browser milestone suite must include every implemented phase live spec: `tests/e2e/phase1-live.spec.ts`, `tests/e2e/phase2-live.spec.ts`, `tests/e2e/phase3-live.spec.ts`, and `tests/e2e/phase4-live.spec.ts`.
 
+Do not substitute backend integration tests or mocked Playwright screenshot tests for a phase's live browser smoke when that phase has a user-visible UI/runtime workflow. Phase 3 specifically requires `tests/e2e/phase3-live.spec.ts`, which uploads a generated valid PDF through the GPU-hosted web UI, waits for the live Docling worker to persist parse artifacts, and verifies the Parse Debug panel in the Viewer. The deterministic PDF helper lives at `tests/e2e/support/pdf.ts`. When a new phase adds a browser-visible workflow, add a corresponding `phaseN-live.spec.ts` or explicitly document why no live browser spec is applicable before calling the phase complete.
+
 Observed GPU-node ZFS state on 2026-04-25:
 
 ```text

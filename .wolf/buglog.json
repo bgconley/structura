@@ -468,6 +468,18 @@
       "related_bugs": ["bug-012"],
       "occurrences": 1,
       "last_seen": "2026-04-26T23:25:00-04:00"
+    },
+    {
+      "id": "bug-040",
+      "timestamp": "2026-04-26T13:38:00-04:00",
+      "error_message": "Phase 3 live browser validation was missing from the canonical GPU Playwright suite.",
+      "file": "tests/e2e/phase3-live.spec.ts",
+      "root_cause": "Phase 3 had GPU backend integration coverage and mocked Playwright screenshot coverage, but no live browser spec was added to exercise the GPU-hosted web/API/DB/Docling path.",
+      "fix": "Added tests/e2e/phase3-live.spec.ts with deterministic PDF upload, live Docling parse polling, and Viewer Parse Debug assertions; added tests/e2e/support/pdf.ts; updated README/agents guidance and OpenWolf memory so all implemented phase live specs must be included.",
+      "tags": ["playwright", "gpu-node", "phase-3", "live-tests", "validation"],
+      "related_bugs": ["bug-038"],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T13:38:00-04:00"
     }
   ]
 }
