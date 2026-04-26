@@ -1,0 +1,90 @@
+{
+  "fileKey": "5GAPHbduQLu9INBOXUPxJN",
+  "screenName": "folder-tag-filing",
+  "implementationRoute": "/",
+  "viewport": {"width": 1440, "height": 960},
+  "captureDate": "2026-04-26",
+  "primaryFrame": {
+    "id": "17:2",
+    "name": "01 Home - Document Operations v3",
+    "artifact": "figma-screenshot.png",
+    "relevance": [
+      "Primary Inbox workbench shell for Phase 2 manual filing controls.",
+      "Defines folder navigation, smart-folder navigation, unfiled metrics, document table folder column, and right inspector placement.",
+      "Shares the same left navigation, top command bar, status chips, table density, and evidence inspector hierarchy used by Phase 1."
+    ]
+  },
+  "supportingFrames": [
+    {
+      "id": "14:434",
+      "name": "02 Document Viewer v2",
+      "existingArtifacts": [
+        "../viewer/figma-context.json",
+        "../viewer/figma-screenshot.png"
+      ],
+      "relevance": [
+        "Viewer surface where filed folder paths, tags, title/date edits, and notes must propagate after manual filing."
+      ]
+    },
+    {
+      "id": "14:611",
+      "name": "03 Extraction Workspace v2",
+      "artifact": "extraction-workspace-reference.png",
+      "relevance": [
+        "Future review workspace filing entry point.",
+        "Phase 2 keeps the reusable manual filing model ready without implementing Phase 3/4 extraction review behavior."
+      ]
+    },
+    {
+      "id": "35:7",
+      "name": "06 Handoff - Interaction Specs",
+      "artifact": "handoff-interaction-specs.png",
+      "relevance": [
+        "Interaction rules for selection persistence, viewer behavior, and keyboard/focus expectations."
+      ]
+    },
+    {
+      "id": "35:12",
+      "name": "07 Handoff - Edge States",
+      "artifact": "handoff-edge-states.png",
+      "relevance": [
+        "Edge-state guidance for empty corpus, ingestion running, workers offline, no results, duplicate suspect, and unavailable originals."
+      ]
+    },
+    {
+      "id": "35:17",
+      "name": "08 Handoff - Dev Redlines",
+      "artifact": "handoff-dev-redlines.png",
+      "relevance": [
+        "Measurement, table, inspector, evidence, and token redlines used by the implemented filing surfaces."
+      ]
+    }
+  ],
+  "implementationArtifacts": [
+    {
+      "artifact": "playwright-screenshot.png",
+      "source": "tests/e2e/phase2.spec.ts-snapshots/phase2-filing-workflow-chromium-linux.png",
+      "state": "After creating a manual folder, creating a tag, filing a document, filtering by folder, and opening the Viewer."
+    }
+  ],
+  "phase2Scope": {
+    "implemented": [
+      "Manual folder tree and visible smart-folder records.",
+      "Manual folder creation.",
+      "Tag creation and tag picker.",
+      "Document title, document date, filing notes, folder membership, primary folder, and tag updates.",
+      "Folder/tag propagation to document list and Viewer detail."
+    ],
+    "deferred": [
+      "Dynamic smart-folder execution.",
+      "Filing-rule automation.",
+      "Watched-folder ingestion.",
+      "Model-based filing suggestions.",
+      "Extraction review workspace workflows."
+    ]
+  },
+  "notes": [
+    "The Figma file does not contain a single dedicated finalized manual folder/tag filing frame. Phase 2 uses the documented composite source set from the UI QA plan.",
+    "The older filing-rules/watched-folders mockup is not treated as Phase 2 scope because automation and watched-folder ingestion are explicitly deferred."
+  ]
+}
