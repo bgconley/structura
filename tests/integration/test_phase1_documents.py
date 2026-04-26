@@ -211,7 +211,13 @@ def test_phase1_upload_rolls_back_committed_object_on_job_failure(
         "/api/v1/documents",
         headers={"X-CSRF-Token": client.cookies["structura_csrf"]},
         data={"source": "web_upload", "suppliedTitle": title},
-        files={"file": ("rollback.pdf", b"%PDF-1.7\n%%EOF\n", "application/pdf")},
+        files={
+            "file": (
+                "rollback.pdf",
+                f"%PDF-1.7\n% rollback {unique}\n%%EOF\n".encode(),
+                "application/pdf",
+            )
+        },
     )
 
     assert failed.status_code == 500

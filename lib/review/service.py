@@ -32,7 +32,7 @@ class ReviewService:
             )
         elif action.action_type == "correct_field":
             field_path = _required(action.field_path, "fieldPath")
-            evidence = [item.model_dump(by_alias=False) for item in action.evidence_context or []]
+            evidence = _evidence_context_json(action)
             _, event_id = repository.upsert_human_canonical_field(
                 document_id=action.document_id,
                 access=access,
@@ -96,7 +96,10 @@ class ReviewService:
             field_path=payload.field_path,
             value_type=payload.value_type,
             value=payload.value,
-            evidence=[item.model_dump(by_alias=False) for item in payload.evidence],
+            evidence=[
+                item.model_dump(by_alias=False, mode="json", exclude_none=True)
+                for item in payload.evidence
+            ],
             ordinal=payload.ordinal,
             currency=payload.currency,
             selected_candidate_id=payload.selected_candidate_id,
@@ -148,6 +151,13 @@ def _candidate_id_from_action(action: ReviewActionRequest) -> UUID:
     if action.new_value:
         return UUID(str(action.new_value))
     raise ReviewServiceError("confirm_field requires metadata.candidateId.")
+
+
+def _evidence_context_json(action: ReviewActionRequest) -> list[dict[str, object]]:
+    return [
+        item.model_dump(by_alias=False, mode="json", exclude_none=True)
+        for item in action.evidence_context or []
+    ]
 
 
 def _value_type_from_action(action: ReviewActionRequest) -> str:
