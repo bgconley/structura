@@ -504,6 +504,18 @@
       "related_bugs": ["bug-040"],
       "occurrences": 1,
       "last_seen": "2026-04-26T18:29:00-04:00"
+    },
+    {
+      "id": "bug-043",
+      "timestamp": "2026-04-26T14:40:00-04:00",
+      "error_message": "GPU integration run failed because Phase 4 tests asserted direct worker claims while live Compose workers could process extraction jobs first.",
+      "file": "tests/integration/test_phase4_extraction_review.py",
+      "root_cause": "The integration tests assumed an idle queue and asserted process_next_extraction_job returned true, which is brittle when the canonical GPU stack has background extraction workers running.",
+      "fix": "Changed Phase 4 integration tests to drain jobs opportunistically and wait for persisted candidates/canonical fields/job success, making them valid against both idle test DBs and live worker stacks.",
+      "tags": ["tests", "integration", "workers", "race", "gpu-node", "phase-4", "phase-5"],
+      "related_bugs": ["bug-042"],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T14:40:00-04:00"
     }
   ]
 }

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import uuid
 from pathlib import Path
 
@@ -93,13 +94,11 @@ def test_phase4_invoice_extraction_persists_candidates_canonical_and_assets(
         document_id=document_id,
         converter=TextDoclingConverter(text),
     )
-    assert extraction_worker.process_next_extraction_job(
+    _wait_for_canonical_field(
+        document_id,
+        "invoice.total_amount",
         worker_name="phase4-extraction-test",
-        document_id=document_id,
-    )
-    assert extraction_worker.process_next_extraction_job(
-        worker_name="phase4-extraction-test",
-        document_id=document_id,
+        family="invoice",
     )
 
     detail = client.get(f"/api/v1/documents/{document_id}")
@@ -133,10 +132,7 @@ def test_phase4_invoice_extraction_persists_candidates_canonical_and_assets(
     )
     assert rerun.status_code == 200
     rerun_job_id = uuid.UUID(rerun.json()["jobId"])
-    assert extraction_worker.process_next_extraction_job(
-        worker_name="phase4-rerun-extraction-test",
-        document_id=document_id,
-    )
+    _drain_extraction_jobs(document_id, worker_name="phase4-rerun-extraction-test")
     with db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -202,13 +198,10 @@ def test_phase4_medical_eob_generates_review_task_and_accept_action_is_audited(
         document_id=document_id,
         converter=TextDoclingConverter(text),
     )
-    assert extraction_worker.process_next_extraction_job(
+    _wait_for_candidate(
+        document_id,
+        "medical_eob.total_patient_responsibility",
         worker_name="phase4-eob-extraction-test",
-        document_id=document_id,
-    )
-    assert extraction_worker.process_next_extraction_job(
-        worker_name="phase4-eob-extraction-test",
-        document_id=document_id,
     )
 
     tasks = client.get("/api/v1/review-tasks", params={"status": "open"})
@@ -279,13 +272,11 @@ def test_phase4_receipt_review_actions_correct_reject_and_reclassify(
         document_id=document_id,
         converter=TextDoclingConverter(text),
     )
-    assert extraction_worker.process_next_extraction_job(
+    _wait_for_canonical_field(
+        document_id,
+        "receipt.transaction.total",
         worker_name="phase4-receipt-extraction-test",
-        document_id=document_id,
-    )
-    assert extraction_worker.process_next_extraction_job(
-        worker_name="phase4-receipt-extraction-test",
-        document_id=document_id,
+        family="receipt",
     )
 
     detail = client.get(f"/api/v1/documents/{document_id}")
@@ -446,3 +437,76 @@ def _upload_fixture_document(client: TestClient, title: str) -> uuid.UUID:
     listed = client.get("/api/v1/documents", params={"q": title})
     assert listed.status_code == 200
     return uuid.UUID(listed.json()["items"][0]["id"])
+
+
+def _drain_extraction_jobs(document_id: uuid.UUID, *, worker_name: str) -> None:
+    for _ in range(4):
+        if not extraction_worker.process_next_extraction_job(
+            worker_name=worker_name,
+            document_id=document_id,
+        ):
+            return
+
+
+def _wait_for_canonical_field(
+    document_id: uuid.UUID,
+    field_path: str,
+    *,
+    worker_name: str,
+    family: str | None = None,
+) -> None:
+    deadline = time.monotonic() + 15
+    while True:
+        _drain_extraction_jobs(document_id, worker_name=worker_name)
+        with db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT d.document_family::text AS family,
+                           EXISTS (
+                             SELECT 1
+                             FROM canonical_fields cf
+                             WHERE cf.document_id = d.id
+                               AND cf.field_path = %s
+                           ) AS has_field
+                    FROM documents d
+                    WHERE d.id = %s
+                    """,
+                    (field_path, document_id),
+                )
+                row = cur.fetchone()
+        if row and row["has_field"] and (family is None or row["family"] == family):
+            return
+        if time.monotonic() >= deadline:
+            pytest.fail(f"Timed out waiting for canonical field {field_path}.")
+        time.sleep(0.25)
+
+
+def _wait_for_candidate(
+    document_id: uuid.UUID,
+    field_path: str,
+    *,
+    worker_name: str,
+) -> None:
+    deadline = time.monotonic() + 15
+    while True:
+        _drain_extraction_jobs(document_id, worker_name=worker_name)
+        with db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT EXISTS (
+                      SELECT 1
+                      FROM field_candidates
+                      WHERE document_id = %s
+                        AND field_path = %s
+                    ) AS has_candidate
+                    """,
+                    (document_id, field_path),
+                )
+                has_candidate = bool(cur.fetchone()["has_candidate"])
+        if has_candidate:
+            return
+        if time.monotonic() >= deadline:
+            pytest.fail(f"Timed out waiting for field candidate {field_path}.")
+        time.sleep(0.25)
