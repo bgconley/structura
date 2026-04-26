@@ -294,6 +294,66 @@ paths:
           description: Not authenticated
         '404':
           description: Document not found
+  /api/v1/documents/{documentId}/parse-debug:
+    get:
+      tags:
+      - Documents
+      summary: Fetch protected canonical parse diagnostics for a document
+      parameters:
+      - in: path
+        name: documentId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: pageLimit
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+      - in: query
+        name: elementLimit
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 100
+      - in: query
+        name: tableLimit
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+      - in: query
+        name: chunkLimit
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 100
+      - in: query
+        name: jobLimit
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 25
+      responses:
+        '200':
+          description: Canonical parse diagnostics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParseDebugView'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Admin access required
+        '404':
+          description: Document not found
   /api/v1/documents/{documentId}/review-actions:
     post:
       tags:
@@ -1126,6 +1186,55 @@ components:
           type: string
         imageUrl:
           type: string
+    ParseDebugView:
+      type: object
+      additionalProperties: false
+      required:
+      - document
+      - artifacts
+      - pages
+      - elements
+      - tables
+      - chunks
+      - jobs
+      - limits
+      properties:
+        document:
+          type: object
+          additionalProperties: true
+        artifacts:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        pages:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        elements:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        tables:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        chunks:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        jobs:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        limits:
+          type: object
+          additionalProperties: true
     ExtractionSummary:
       type: object
       additionalProperties: false

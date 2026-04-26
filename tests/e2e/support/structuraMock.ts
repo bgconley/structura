@@ -148,6 +148,47 @@ export async function mockStructuraApi(page: Page) {
       return;
     }
 
+    const parseDebugMatch = url.pathname.match(/^\/api\/v1\/documents\/([^/]+)\/parse-debug$/);
+    if (parseDebugMatch && request.method() === "GET") {
+      const document = documents.get(parseDebugMatch[1]);
+      await route.fulfill({
+        status: document ? 200 : 404,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: document
+          ? {
+              document: {
+                id: document.id,
+                title: document.title,
+                pageCount: document.pages.length,
+                metadata: {phase3: {parseStatus: "succeeded"}},
+              },
+              artifacts: [
+                {
+                  id: "99999999-9999-4999-8999-999999999999",
+                  assetRole: "docling_json",
+                  assetUrl: "/api/v1/assets/99999999-9999-4999-8999-999999999999",
+                  modelName: "docling-fixture",
+                  modelVersion: "phase3",
+                  sha256: "9".repeat(64),
+                },
+              ],
+              pages: [
+                {
+                  pageNumber: 1,
+                  imageUrl: document.pages[0]?.imageUrl,
+                  textPreview: "Phase 3 canonical parse text for browser diagnostics.",
+                },
+              ],
+              elements: [{id: "element-1", elementType: "paragraph"}],
+              tables: [{id: "table-1", tableIndex: 1}],
+              chunks: [{id: "chunk-1", chunkIndex: 1}],
+              jobs: [{jobId: "job-1", jobType: "docling_convert", status: "succeeded"}],
+            }
+          : {detail: "Document not found"},
+      });
+      return;
+    }
+
     const detailMatch = url.pathname.match(/^\/api\/v1\/documents\/([^/]+)$/);
     if (detailMatch && request.method() === "GET") {
       const document = documents.get(detailMatch[1]);

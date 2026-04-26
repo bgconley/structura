@@ -318,6 +318,29 @@ def create_document(
                     priority=45,
                     queue_name="previews",
                 )
+                docling_job_id = uuid4()
+                create_job_with_cursor(
+                    cur,
+                    job_id=docling_job_id,
+                    job_type="docling_convert",
+                    household_id=principal.household_id,
+                    document_id=document_id,
+                    batch_id=batch["id"],
+                    payload={
+                        "job_id": str(docling_job_id),
+                        "document_id": str(document_id),
+                        "asset_id": str(asset["id"]),
+                        "stage": "phase3.docling_convert",
+                        "input_object": {
+                            "sha256": stored.sha256,
+                            "mime_type": mime_type,
+                            "filename": original_name,
+                            "size_bytes": stored.byte_size,
+                        },
+                    },
+                    priority=40,
+                    queue_name="docling",
+                )
             conn.commit()
             db_committed = True
     except UploadTooLarge as exc:

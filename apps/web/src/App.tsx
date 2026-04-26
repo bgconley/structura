@@ -13,12 +13,14 @@ import {
   listTags,
   updateDocumentOrganization,
 } from "./organizationApi";
+import {getParseDebug} from "./parseDebugApi";
 import type {
   DocumentDetail,
   DocumentListResponse,
   DocumentOrganizationWrite,
   DocumentSummary,
   Folder,
+  ParseDebugView,
   SessionInfo,
   Tag,
   ViewMode,
@@ -33,6 +35,9 @@ export default function App() {
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<DocumentDetail | null>(null);
+  const [parseDebug, setParseDebug] = useState<ParseDebugView | null>(null);
+  const [parseDebugError, setParseDebugError] = useState<string | null>(null);
+  const [isParseDebugLoading, setIsParseDebugLoading] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("inbox");
   const [activeFilter, setActiveFilter] = useState("All");
   const [query, setQuery] = useState("");
@@ -55,10 +60,14 @@ export default function App() {
   useEffect(() => {
     if (!selectedId || !session?.isAuthenticated) {
       setDetail(null);
+      setParseDebug(null);
+      setParseDebugError(null);
       return;
     }
     let cancelled = false;
     setDetail(null);
+    setParseDebug(null);
+    setParseDebugError(null);
     void (async () => {
       try {
         const next = await fetchJson<DocumentDetail>(`/api/v1/documents/${selectedId}`);
@@ -75,6 +84,19 @@ export default function App() {
       cancelled = true;
     };
   }, [selectedId, session?.isAuthenticated]);
+
+  async function handleLoadParseDebug(documentId: string) {
+    setIsParseDebugLoading(true);
+    setParseDebugError(null);
+    try {
+      setParseDebug(await getParseDebug(documentId));
+    } catch (exc) {
+      setParseDebug(null);
+      setParseDebugError(exc instanceof Error ? exc.message : "Unable to load parse debug");
+    } finally {
+      setIsParseDebugLoading(false);
+    }
+  }
 
   async function bootstrap() {
     try {
@@ -220,6 +242,10 @@ export default function App() {
             folders={folders}
             tags={tags}
             onSaveOrganization={handleSaveOrganization}
+            parseDebug={parseDebug}
+            parseDebugError={parseDebugError}
+            isParseDebugLoading={isParseDebugLoading}
+            onLoadParseDebug={handleLoadParseDebug}
           />
         ) : (
           <Inbox

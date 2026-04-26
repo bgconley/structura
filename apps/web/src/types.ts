@@ -95,4 +95,43 @@ export type DocumentOrganizationWrite = {
   filingNotes?: string | null;
 };
 
+export type ParseDebugAsset = {
+  id: string;
+  assetRole: string;
+  assetUrl: string;
+  byteSize?: number;
+  modelName?: string | null;
+  modelVersion?: string | null;
+  sha256?: string;
+};
+
+export type ParseDebugPage = {
+  pageNumber: number;
+  textPreview?: string | null;
+  imageUrl?: string | null;
+};
+
+export type ParseDebugJob = {
+  jobId: string;
+  jobType: string;
+  status: string;
+  attemptCount?: number;
+  maxAttempts?: number;
+};
+
+export type ParseDebugView = {
+  document: {
+    id: string;
+    title: string;
+    pageCount?: number | null;
+    metadata?: Record<string, unknown>;
+  };
+  artifacts: ParseDebugAsset[];
+  pages: ParseDebugPage[];
+  elements: unknown[];
+  tables: unknown[];
+  chunks: unknown[];
+  jobs: ParseDebugJob[];
+};
+
 export type ViewMode = "inbox" | "viewer";

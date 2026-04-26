@@ -664,6 +664,14 @@ button:disabled {
   padding: 10px;
 }
 
+.parse-debug-panel {
+  margin-top: 16px;
+  padding: 10px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: var(--raised);
+}
+
 .filing-panel label,
 .filing-panel fieldset {
   display: grid;
@@ -684,6 +692,46 @@ button:disabled {
   padding: 0 4px;
   color: var(--muted);
   font-size: 10px;
+}
+
+.parse-debug-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.parse-debug-grid span,
+.debug-job-list li,
+.debug-copy,
+.debug-error {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.parse-debug-grid strong {
+  color: var(--text);
+}
+
+.parse-debug-panel pre {
+  max-height: 120px;
+  overflow: auto;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--text);
+  padding: 8px;
+  white-space: pre-wrap;
+  font-size: 10px;
+}
+
+.debug-error {
+  color: var(--amber);
+}
+
+.debug-job-list {
+  margin: 8px 0 0;
+  padding-left: 16px;
 }
 
 .choice-row {

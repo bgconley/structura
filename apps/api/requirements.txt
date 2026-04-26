@@ -1,4 +1,5 @@
 argon2-cffi>=23.1
+docling>=2.91,<3
 fastapi>=0.120
 email-validator>=2.0
 jsonschema>=4.0

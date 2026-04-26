@@ -327,7 +327,7 @@ def test_phase1_preview_failure_marks_retryable_job(
     def fail_preview(*_args, **_kwargs) -> None:
         raise PreviewError("injected preview failure")
 
-    monkeypatch.setattr(preview_worker, "generate_phase1_preview", fail_preview)
+    monkeypatch.setattr(preview_worker, "generate_page_previews", fail_preview)
     client = TestClient(create_app())
     login = client.post(
         "/api/v1/auth/session",

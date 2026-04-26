@@ -7,14 +7,19 @@ import time
 from uuid import UUID
 
 from lib.jobs import JobService, record_service_health
-from workers.previews import PreviewError, generate_page_previews
+from workers.docling.converter import DoclingConverter
+from workers.docling.service import (
+    DoclingWorkerError,
+    convert_document,
+    mark_document_parse_failed,
+)
 from workers.runtime import start_health_server
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Structura preview worker")
-    parser.add_argument("--worker", default="worker-previews")
-    parser.add_argument("--queue", default="previews")
+    parser = argparse.ArgumentParser(description="Structura Docling conversion worker")
+    parser.add_argument("--worker", default="worker-docling")
+    parser.add_argument("--queue", default="docling")
     parser.add_argument("--poll-seconds", type=float, default=5.0)
     parser.add_argument("--heartbeat-seconds", type=float, default=30.0)
     parser.add_argument("--health-host", default="127.0.0.1")
@@ -22,11 +27,12 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def process_next_preview_job(
+def process_next_docling_job(
     *,
-    worker_name: str = "worker-previews",
-    queue_name: str = "previews",
+    worker_name: str = "worker-docling",
+    queue_name: str = "docling",
     document_id: UUID | None = None,
+    converter: DoclingConverter | None = None,
 ) -> bool:
     job_service = JobService()
     claimed = job_service.claim_next_job_record(
@@ -37,30 +43,49 @@ def process_next_preview_job(
     if not claimed:
         return False
 
+    target_document_id: UUID | None = None
     try:
-        document_id = _document_id_for_preview(claimed.document_id, claimed.payload)
-        generate_page_previews(document_id, job_id=claimed.state.job_id)
+        target_document_id = _document_id_for_docling(claimed.document_id, claimed.payload)
+        summary = convert_document(
+            target_document_id,
+            job_id=claimed.state.job_id,
+            converter=converter,
+        )
         job_service.complete_job(
             job_id=claimed.state.job_id,
-            result={"preview_status": "generated"},
+            result={
+                "parse_status": "succeeded",
+                "docling_asset_id": str(summary.docling_asset_id),
+                "page_count": summary.page_count,
+                "element_count": summary.element_count,
+                "table_count": summary.table_count,
+                "chunk_count": summary.chunk_count,
+            },
         )
     except Exception as exc:
+        if target_document_id:
+            mark_document_parse_failed(
+                document_id=target_document_id,
+                error_class=exc.__class__.__name__,
+                message="Docling canonical conversion failed",
+                job_id=claimed.state.job_id,
+            )
         job_service.fail_job(
             job_id=claimed.state.job_id,
             error_class=exc.__class__.__name__,
-            message="Phase 1 preview generation failed",
+            message="Docling canonical conversion failed",
             retryable=True,
-            suppress=True,
+            suppress=False,
         )
     return True
 
 
-def _document_id_for_preview(document_id: UUID | None, payload: dict[str, object]) -> UUID:
+def _document_id_for_docling(document_id: UUID | None, payload: dict[str, object]) -> UUID:
     if document_id:
         return document_id
     payload_document_id = payload.get("document_id")
     if not payload_document_id:
-        raise PreviewError("Preview job is missing document_id.")
+        raise DoclingWorkerError("Docling job is missing document_id.")
     return UUID(str(payload_document_id))
 
 
@@ -77,18 +102,18 @@ def main() -> None:
     signal.signal(signal.SIGTERM, handle_stop)
     signal.signal(signal.SIGINT, handle_stop)
 
-    print(f"{args.worker}: preview worker started", flush=True)
+    print(f"{args.worker}: Docling worker started", flush=True)
     while running:
         now = time.monotonic()
         if now - last_heartbeat >= args.heartbeat_seconds:
             _record_health(args.worker, args.queue, args.heartbeat_seconds)
             last_heartbeat = now
-        processed = process_next_preview_job(worker_name=args.worker, queue_name=args.queue)
+        processed = process_next_docling_job(worker_name=args.worker, queue_name=args.queue)
         if not processed:
             time.sleep(args.poll_seconds)
     if server:
         server.shutdown()
-    print(f"{args.worker}: preview worker stopped", flush=True)
+    print(f"{args.worker}: Docling worker stopped", flush=True)
 
 
 def _record_health(worker_name: str, queue_name: str, heartbeat_seconds: float) -> None:

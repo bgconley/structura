@@ -5,6 +5,7 @@ description = "Local-first evidence-backed document workbench"
 requires-python = ">=3.11"
 dependencies = [
   "argon2-cffi>=23.1",
+  "docling>=2.91,<3",
   "email-validator>=2.0",
   "fastapi>=0.120",
   "jsonschema>=4.0",

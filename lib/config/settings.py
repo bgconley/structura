@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     queue_transport: str = "pgmq"
     enable_model_placeholders: bool = False
     max_upload_bytes: int = 100 * 1024 * 1024
+    docling_max_num_pages: int = 500
+    docling_max_file_size: int = 100 * 1024 * 1024
+    docling_store_markdown: bool = True
+    docling_store_html: bool = True
 
     @property
     def canonical_objects_root(self) -> Path:

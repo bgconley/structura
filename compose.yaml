@@ -111,13 +111,15 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    command: ["python", "-m", "workers.placeholder", "--worker", "worker-docling", "--health-port", "8203"]
+    command: ["python", "-m", "workers.docling.worker", "--worker", "worker-docling", "--health-port", "8203"]
     environment:
       STRUCTURA_DATABASE_URL: postgresql://${POSTGRES_USER:-structura}:${POSTGRES_PASSWORD:-structura}@postgres:5432/${POSTGRES_DB:-structura}
       STRUCTURA_RUNTIME_ROOT: /srv/structura
     volumes:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/staging:/srv/structura/staging
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/canonical:/srv/structura/objects/canonical:ro
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/derived:/srv/structura/objects/derived
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/cache:/srv/structura/cache
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/workers:/srv/structura/logs/workers
     depends_on:
       postgres:

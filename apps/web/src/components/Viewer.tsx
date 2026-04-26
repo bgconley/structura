@@ -1,7 +1,15 @@
 import {assetUrl} from "../api";
 import {familyLabel, formatDate} from "../format";
-import type {DocumentDetail, DocumentOrganizationWrite, DocumentSummary, Folder, Tag} from "../types";
+import type {
+  DocumentDetail,
+  DocumentOrganizationWrite,
+  DocumentSummary,
+  Folder,
+  ParseDebugView,
+  Tag,
+} from "../types";
 import {FilingPanel} from "./FilingPanel";
+import {ParseDebugPanel} from "./ParseDebugPanel";
 import {FactRow, ReviewChip, StatusChip, TrustLine} from "./Status";
 
 export function Viewer({
@@ -11,6 +19,10 @@ export function Viewer({
   folders,
   tags,
   onSaveOrganization,
+  parseDebug,
+  parseDebugError,
+  isParseDebugLoading,
+  onLoadParseDebug,
 }: {
   document: DocumentDetail | null;
   summary?: DocumentSummary;
@@ -18,6 +30,10 @@ export function Viewer({
   folders: Folder[];
   tags: Tag[];
   onSaveOrganization: (documentId: string, payload: DocumentOrganizationWrite) => Promise<void>;
+  parseDebug: ParseDebugView | null;
+  parseDebugError: string | null;
+  isParseDebugLoading: boolean;
+  onLoadParseDebug: (documentId: string) => void;
 }) {
   const active = document ?? summary;
   const original = document?.assets.find((asset) => asset.assetRole === "original");
@@ -94,6 +110,12 @@ export function Viewer({
           folders={folders}
           tags={tags}
           onSave={onSaveOrganization}
+        />
+        <ParseDebugPanel
+          debug={parseDebug}
+          error={parseDebugError}
+          isLoading={isParseDebugLoading}
+          onLoad={() => onLoadParseDebug(String(active.id))}
         />
       </aside>
     </section>

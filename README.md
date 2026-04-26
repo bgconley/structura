@@ -2,11 +2,11 @@
 
 Structura is a local-first document workbench for preserving original document bytes, deriving structural artifacts, extracting evidence-backed facts, and making a private corpus searchable and reviewable.
 
-This repository is now implemented through Phase 2:
+This repository is now implemented through Phase 3:
 
 - React + Vite web app in `apps/web`
 - FastAPI API in `apps/api` with health, contract, auth/session, protected document/asset, job, admin health, and organization routes
-- preview worker, worker placeholders, and model placeholder modules with HTTP health checks
+- preview worker, Docling worker, remaining worker placeholders, and model placeholder modules with HTTP health checks
 - shared Python libraries under `lib`
 - baseline contracts copied to `contracts`
 - baseline SQL copied to `database`
@@ -17,6 +17,7 @@ This repository is now implemented through Phase 2:
 - Postgres-backed `pipeline_jobs` service with household-scoped job visibility, bounded retry scheduling, manual retry recovery, and service-health snapshots for default workers
 - Phase 1 upload, Inbox, protected asset viewer, content-addressed immutable storage, and preview fallback generation
 - Phase 2 manual folders, tags, document filing, primary folder selection, metadata edits, folder filtering, and audit events
+- Phase 3 Docling canonical parse artifacts, page/element/table/chunk persistence, page preview assets, and protected parse-debug diagnostics
 
 ## Local Commands
 
