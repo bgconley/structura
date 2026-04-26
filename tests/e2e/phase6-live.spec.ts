@@ -32,7 +32,7 @@ test.describe("Phase 6 live GPU stack", () => {
     const ruleRow = page.locator(".rule-row").filter({hasText: `Phase6 Rule ${unique}`});
     await expect(ruleRow).toBeVisible();
     await ruleRow.getByRole("button", {name: /Dry run/}).click();
-    await expect(page.getByText(/Matched \d+ document/)).toBeVisible();
+    await expect(page.getByLabel("Rule dry-run result").getByText(/Matched \d+ document/)).toBeVisible();
 
     await page.getByRole("tab", {name: "Watched Folders"}).click();
     await page.getByLabel("Watch path").fill("/srv/structura/imports");

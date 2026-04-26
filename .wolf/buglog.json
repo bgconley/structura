@@ -696,6 +696,18 @@
       "related_bugs": ["bug-046"],
       "occurrences": 1,
       "last_seen": "2026-04-26T22:45:00-04:00"
+    },
+    {
+      "id": "bug-059",
+      "timestamp": "2026-04-26T22:50:00-04:00",
+      "error_message": "Phase 6 live Playwright failed strict mode because the matched-count text appeared in both automation status and dry-run panel.",
+      "file": "tests/e2e/phase6-live.spec.ts",
+      "root_cause": "The live spec used page-wide getByText for dry-run status after the UI intentionally rendered the same result in the global status banner and the explanatory panel.",
+      "fix": "Scoped the matched-count assertion to the Rule dry-run result panel.",
+      "tags": ["phase-6", "playwright", "live-tests", "strict-mode", "gpu-node"],
+      "related_bugs": ["bug-058"],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T22:50:00-04:00"
     }
   ]
 }
