@@ -81,7 +81,7 @@ def invoice_payload(source: ExtractionSourceDocument) -> dict[str, Any]:
         "document_id": str(source.document_id),
         "seller": {
             "display_name": seller or "Unknown seller",
-            "party_type": "vendor",
+            "party_type": "company",
             "evidence": resolver.for_value(seller or source.title),
         },
         "invoice": _without_none(
@@ -203,7 +203,11 @@ def _money(amount: Decimal | None) -> dict[str, Any] | None:
 
 def _money_after(text: str, labels: tuple[str, ...]) -> Decimal | None:
     for label in labels:
-        match = re.search(rf"{re.escape(label)}\s*[:#]?\s*\$?\s*([0-9,]+\.[0-9]{{2}})", text, re.I)
+        match = re.search(
+            rf"^\s*{re.escape(label)}\s*[:#]?\s*\$?\s*([0-9,]+\.[0-9]{{2}})",
+            text,
+            re.I | re.M,
+        )
         if match:
             return _decimal(match.group(1))
     return None
@@ -224,7 +228,7 @@ def _find_date(text: str) -> str | None:
 
 def _labeled_value(text: str, labels: tuple[str, ...]) -> str | None:
     for label in labels:
-        match = re.search(rf"^{re.escape(label)}\s*[:#]\s*(.+)$", text, re.I | re.M)
+        match = re.search(rf"^\s*{re.escape(label)}\s*[:#]\s*(.+)$", text, re.I | re.M)
         if match:
             return match.group(1).strip()
     return None

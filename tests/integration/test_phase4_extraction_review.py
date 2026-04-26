@@ -72,7 +72,10 @@ def test_phase4_invoice_extraction_persists_candidates_canonical_and_assets(
     tmp_path,
 ) -> None:
     client = _phase4_client(monkeypatch, tmp_path, "invoice")
-    document_id = _upload_fixture_document(client, "Phase 4 Invoice")
+    document_id = _upload_fixture_document(
+        client,
+        f"Phase 4 Invoice {uuid.uuid4().hex[:8]}",
+    )
     text = """
     Seller: Acme Repairs
     Buyer: Structura Household
@@ -177,7 +180,10 @@ def test_phase4_medical_eob_generates_review_task_and_accept_action_is_audited(
     tmp_path,
 ) -> None:
     client = _phase4_client(monkeypatch, tmp_path, "eob")
-    document_id = _upload_fixture_document(client, "Phase 4 EOB")
+    document_id = _upload_fixture_document(
+        client,
+        f"Phase 4 EOB {uuid.uuid4().hex[:8]}",
+    )
     text = """
     Explanation of Benefits
     Payer: Blue Plan

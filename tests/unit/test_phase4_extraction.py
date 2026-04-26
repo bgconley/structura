@@ -4,6 +4,7 @@ from uuid import uuid4
 
 from lib.extraction.classification import classify_document
 from lib.extraction.evidence import EvidenceResolver, has_concrete_evidence
+from lib.extraction.heuristics import invoice_payload
 from lib.extraction.models import ExtractionSourceDocument, ParsedElementText, ParsedPageText
 from lib.extraction.validators import validate_extraction_payload
 
@@ -55,6 +56,29 @@ def test_phase4_receipt_validation_flags_arithmetic_mismatch() -> None:
         check["code"] == "receipt.total_arithmetic" and check["status"] == "failed"
         for check in report.checks
     )
+
+
+def test_phase4_invoice_heuristic_prefers_explicit_total_and_valid_party_type() -> None:
+    source = _source(
+        """
+        Seller: Acme Repairs
+        Buyer: Structura Household
+        Invoice Number: INV-4242
+        Issue Date: 2026-04-01
+        Due Date: 2026-04-30
+        Subtotal: 1000.00
+        Tax: 42.15
+        Total: 1042.15
+        """
+    )
+
+    payload = invoice_payload(source)
+    report = validate_extraction_payload("invoice", payload)
+
+    assert payload["seller"]["display_name"] == "Acme Repairs"
+    assert payload["seller"]["party_type"] == "company"
+    assert payload["totals"]["total"]["amount"] == 1042.15
+    assert not report.needs_review
 
 
 def test_phase4_evidence_requires_concrete_locator() -> None:
