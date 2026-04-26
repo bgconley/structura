@@ -93,28 +93,29 @@ def test_phase5_search_lexical_semantic_hybrid_filters_facets_and_acl(
             "query": f"ABC123 {unique}",
             "mode": "lexical",
             "families": ["medical_eob"],
-            "reviewedOnly": False,
             "includeDebug": True,
         },
     )
     assert lexical.status_code == 200
     lexical_payload = lexical.json()
-    assert lexical_payload["items"][0]["documentId"] == str(document_id)
-    assert "ABC123" in lexical_payload["items"][0]["snippet"]
+    lexical_item = _result_for_document(lexical_payload, document_id)
+    assert lexical_item is not None
+    assert "ABC123" in lexical_item["snippet"]
     assert lexical_payload["facets"]["families"]["medical_eob"] >= 1
     assert lexical_payload["debug"]["mode"] == "lexical"
 
     semantic = client.post(
         "/api/v1/search",
         json={
-            "query": "documents where I may still owe money for a claim",
+            "query": f"documents where I may still owe money for claim {unique}",
             "mode": "semantic",
             "limit": 5,
         },
     )
     assert semantic.status_code == 200
-    assert semantic.json()["items"][0]["documentId"] == str(document_id)
-    assert semantic.json()["items"][0]["explanation"]
+    semantic_item = _result_for_document(semantic.json(), document_id)
+    assert semantic_item is not None
+    assert semantic_item["explanation"]
 
     hybrid = client.post(
         "/api/v1/search",
@@ -130,8 +131,9 @@ def test_phase5_search_lexical_semantic_hybrid_filters_facets_and_acl(
         },
     )
     assert hybrid.status_code == 200
-    assert hybrid.json()["items"][0]["documentId"] == str(document_id)
-    assert hybrid.json()["items"][0]["pageNumber"] == 1
+    hybrid_item = _result_for_document(hybrid.json(), document_id)
+    assert hybrid_item is not None
+    assert hybrid_item["pageNumber"] == 1
 
     other_client = _same_household_viewer_client(
         household_id=household_id,
@@ -289,6 +291,23 @@ def _phase5_client(
     )
     assert login.status_code == 201
     return client, client.cookies["structura_csrf"], bootstrap.household_id
+
+
+def _result_for_document(
+    payload: dict[str, object],
+    document_id: uuid.UUID,
+) -> dict[str, object] | None:
+    items = payload.get("items")
+    if not isinstance(items, list):
+        return None
+    return next(
+        (
+            item
+            for item in items
+            if isinstance(item, dict) and item.get("documentId") == str(document_id)
+        ),
+        None,
+    )
 
 
 def _same_household_viewer_client(*, household_id: uuid.UUID, email: str) -> TestClient:

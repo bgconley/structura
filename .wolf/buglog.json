@@ -516,6 +516,18 @@
       "related_bugs": ["bug-042"],
       "occurrences": 1,
       "last_seen": "2026-04-26T14:40:00-04:00"
+    },
+    {
+      "id": "bug-044",
+      "timestamp": "2026-04-26T14:44:00-04:00",
+      "error_message": "Phase 5 GPU integration search test returned no lexical items for the target document.",
+      "file": "tests/integration/test_phase5_search.py",
+      "root_cause": "The fixture marked the document user_confirmed while also sending reviewedOnly=false, so the ACL/filter path could correctly exclude it until a concurrent extraction worker changed review_status.",
+      "fix": "Removed the contradictory reviewedOnly filter from the lexical assertion, included the unique marker in semantic search, and asserted target presence by document ID instead of assuming rank 1 in a shared live DB.",
+      "tags": ["tests", "search", "filters", "gpu-node", "phase-5"],
+      "related_bugs": ["bug-043"],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T14:44:00-04:00"
     }
   ]
 }
