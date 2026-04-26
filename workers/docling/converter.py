@@ -122,16 +122,18 @@ def _pages_from_docling(
 ) -> list[ParsedPage]:
     pages_obj = docling_dict.get("pages")
     pages: list[ParsedPage] = []
+    page_texts = _page_text_map(docling_dict)
     if isinstance(pages_obj, Mapping):
         for key, page_value in sorted(pages_obj.items(), key=lambda item: _page_sort_key(item[0])):
             if isinstance(page_value, Mapping):
                 page_number = _positive_int(page_value.get("page_no") or key)
                 size = page_value.get("size")
                 width, height = _size_points(size)
+                text = _text_from_page(page_value) or page_texts.get(page_number, "")
                 pages.append(
                     ParsedPage(
                         page_number=page_number,
-                        text=_text_from_page(page_value),
+                        text=text,
                         width=width,
                         height=height,
                         has_text_layer=bool(page_value.get("has_text_layer"))
@@ -146,10 +148,12 @@ def _pages_from_docling(
             if isinstance(page_value, Mapping):
                 size = page_value.get("size")
                 width, height = _size_points(size)
+                page_number = _positive_int(page_value.get("page_no") or index)
+                text = _text_from_page(page_value) or page_texts.get(page_number, "")
                 pages.append(
                     ParsedPage(
-                        page_number=_positive_int(page_value.get("page_no") or index),
-                        text=_text_from_page(page_value),
+                        page_number=page_number,
+                        text=text,
                         width=width,
                         height=height,
                         has_text_layer=bool(page_value.get("has_text_layer"))
@@ -287,6 +291,21 @@ def _text_from_page(page_value: Mapping[str, Any]) -> str:
         if isinstance(value, str):
             return value
     return ""
+
+
+def _page_text_map(docling_dict: Mapping[str, Any]) -> dict[int, str]:
+    page_text: dict[int, list[str]] = {}
+    texts = docling_dict.get("texts")
+    if not isinstance(texts, list):
+        return {}
+    for item in texts:
+        if not isinstance(item, Mapping):
+            continue
+        text = _string_value(item.get("text"))
+        if not text:
+            continue
+        page_text.setdefault(_page_number_from_item(item), []).append(text)
+    return {page_number: "\n".join(parts) for page_number, parts in page_text.items()}
 
 
 def _page_number_from_item(item: Mapping[str, Any]) -> int:
