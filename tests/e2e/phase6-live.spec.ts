@@ -29,8 +29,9 @@ test.describe("Phase 6 live GPU stack", () => {
     await page.getByLabel("Condition value").fill("generic");
     await page.getByLabel("Action tag").fill("urgent");
     await page.getByRole("button", {name: "Save rule"}).click();
-    await expect(page.getByText(`Phase6 Rule ${unique}`)).toBeVisible();
-    await page.getByRole("button", {name: /Dry run/}).first().click();
+    const ruleRow = page.locator(".rule-row").filter({hasText: `Phase6 Rule ${unique}`});
+    await expect(ruleRow).toBeVisible();
+    await ruleRow.getByRole("button", {name: /Dry run/}).click();
     await expect(page.getByText(/Matched \d+ document/)).toBeVisible();
 
     await page.getByRole("tab", {name: "Watched Folders"}).click();

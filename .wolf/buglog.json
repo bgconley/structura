@@ -684,6 +684,18 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-26T22:35:00-04:00"
+    },
+    {
+      "id": "bug-058",
+      "timestamp": "2026-04-26T22:45:00-04:00",
+      "error_message": "Phase 6 live Playwright failed strict mode because the unique rule name matched both the automation status line and the rule row.",
+      "file": "tests/e2e/phase6-live.spec.ts",
+      "root_cause": "The live spec used page-wide getByText after saving a rule, but the UI intentionally echoes the saved rule name in the status banner and the row.",
+      "fix": "Scoped the assertion and dry-run click to the matching .rule-row, following the shared-GPU live locator rule.",
+      "tags": ["phase-6", "playwright", "live-tests", "strict-mode", "gpu-node"],
+      "related_bugs": ["bug-046"],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T22:45:00-04:00"
     }
   ]
 }
