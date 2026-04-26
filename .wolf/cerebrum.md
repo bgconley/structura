@@ -40,6 +40,8 @@
 - Job workers rely on lease expiry recovery in `JobService.claim_next_job_record`; stale `running` jobs with expired leases are requeued or dead-lettered before new claims, and admin retry may only reset running jobs after lease expiry.
 - Phase 2 folder/tag filing has a strict UI-reference artifact set under `docs/ui-reference/figma/folder-tag-filing/`: `figma-context.json`, `figma-screenshot.png`, `handoff-interaction-specs.png`, `handoff-edge-states.png`, `handoff-dev-redlines.png`, `extraction-workspace-reference.png`, `playwright-screenshot.png`, and `comparison-notes.md`.
 - Phase 3 parse-debug has a strict UI-reference artifact set under `docs/ui-reference/figma/parse-debug/` with `figma-context.json`, `comparison-notes.md`, and `playwright-screenshot.png`; the Playwright baseline is `tests/e2e/phase3.spec.ts-snapshots/phase3-parse-debug-chromium-linux.png`.
+- Phase 4 integration seams were reviewed after the Phase 3 audit remediation at commit `5fc1587` and are ready: canonical Docling artifacts and parse rows exist, candidate/canonical/review DB tables exist, classification/extraction/review contracts exist, job retry/lease recovery is hardened, document read ACL is centralized, and Viewer/parse-debug UI foundations are available.
+- Phase 4 should start with the 4.1 audit/orientation from `STRUCTURA_PHASE_4_IMPLEMENTATION_PLAN.md`, then implement cohesive extraction/review modules. Do not append Phase 4 behavior into placeholder routes or document routes; use thin routes, service/repository layers, extraction/review packages, worker modules, and model adapters.
 - The Figma source for Phase 2 folder/tag filing is composite, not a single dedicated finalized filing frame: primary `17:2`, Viewer propagation `14:434`, future extraction workspace reference `14:611`, handoff interaction specs `35:7`, edge states `35:12`, and dev redlines `35:17`. The older filing-rules/watched-folders mockups are deferred automation scope.
 
 ## Key Learnings
@@ -96,6 +98,7 @@
 - [2026-04-26] Do not assume Python package installation is enough for Docling. The worker image also needs native OpenCV/PDF pipeline libraries such as `libxcb1`, `libgl1`, `libglib2.0-0`, and related X/OpenMP runtime libs.
 - [2026-04-26] Do not implement document/asset authorization by household filter alone. Use the central `document_is_readable` predicate so folder ACL, document ACL mode, sensitivity, owner, and owner/admin access are applied consistently.
 - [2026-04-26] Do not repair Bandit SQL-construction findings by suppressing B608 when a static schema-level predicate can keep both security tooling and architecture clean.
+- [2026-04-26] Do not treat parse-debug as the Phase 4 review UI. Parse-debug is an admin diagnostic extension; Phase 4 review queue, candidate comparison, correction, and evidence-jump surfaces need their own implementation and UI-reference artifacts.
 
 ## Decision Log
 
@@ -116,6 +119,7 @@
 - [2026-04-26] Phase 3 Docling runtime decision: configure `PdfPipelineOptions` explicitly instead of relying on package defaults. OCR is off by default for deterministic digital-PDF conversion; cache paths are mounted under `/srv/structura/cache` for later OCR/model enablement.
 - [2026-04-26] Phase 3 audit remediation decision: document read ACL is centralized as a Postgres function rather than copied into route/service SQL. This keeps application queries static for SAST, applies one predicate to list/detail/assets/organization writes, and leaves Phase 4 extraction/review work with a clean authorization seam.
 - [2026-04-26] Phase 3 UI gate decision: parse-debug is treated as a Viewer diagnostic extension. The Phase 3 browser gate asserts the loaded parse-debug screenshot, and Phase 1/2 Viewer/Filing baselines were refreshed because the unloaded Phase 3 panel is now part of the current Viewer surface.
+- [2026-04-26] Phase 4 readiness decision: begin Phase 4 from synchronized commit `5fc1587`. The Phase 4 work should build on existing parse rows, candidate/canonical/review tables, evidence contracts, hardened jobs, and `document_is_readable`; remaining work is implementation, not seam repair.
 - [2026-04-24] Phase 0 auth baseline uses Argon2id password credentials, durable `sessions`, non-HttpOnly CSRF cookie paired with HttpOnly session cookie, API-token principal resolution, and route dependencies that protect document, asset, job, and admin health surfaces.
 - [2026-04-24] Phase 0 job baseline uses the `pipeline_jobs` table as the concrete queue state because the pinned ParadeDB PostgreSQL 17 image does not package PGMQ. Default workers expose internal health endpoints and record `service_health_snapshots`.
 - [2026-04-24] Baseline migrations are tracked in `structura.schema_migrations`; legacy Phase 0 databases without that table are adopted by detecting representative schema objects, then future migration runs are no-ops.

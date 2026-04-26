@@ -84,6 +84,8 @@ Older artifact-pack docs may group the same work differently. Treat the root pla
 
 As of 2026-04-26, the repo is implemented through Phase 3 on `master`; local, `origin/master`, and the GPU checkout at `/tank/repos/structura` must stay synced before any milestone validation. Phase 4 is the next implementation phase and must start from `STRUCTURA_PHASE_4_IMPLEMENTATION_PLAN.md` plus its Fresh Context artifacts.
 
+Current synchronized baseline for Phase 4 is commit `5fc1587` (`Close Phase 3 audit gaps`). This commit was pushed to `origin/master`, pulled on the GPU node, migrated through `067_document_read_acl_function.sql`, rebuilt in Compose, and validated with GPU tests/static gates and live Playwright against `http://10.25.0.50:13000`.
+
 Phase 2 includes manual organization only: manual folders, smart-folder records, tags, document title/date/filing-notes edits, multi-folder membership, primary folder selection, folder filtering, list/detail propagation, audit coverage, and usable Inbox/Viewer filing surfaces. Do not treat dynamic smart-folder execution, filing-rule automation, watched-folder ingestion, model-based filing suggestions, extraction review workflows, Docling parsing, or search ranking as Phase 2 scope; those belong to later phases unless the user explicitly changes scope.
 
 The Phase 2 hardening pass closed these previously confirmed gaps: cross-household job/admin visibility, dead-letter retry jobs that could not be claimed, buffered web proxy upload/download behavior, placeholder preview-worker execution, and incomplete folder/tag filing screenshot artifacts. Preserve those regression tests and authz/retry/proxy/worker seams when starting Phase 3.
@@ -94,6 +96,17 @@ Docling and its Torch/OpenCV dependency stack must stay isolated to the dedicate
 
 The Phase 3 Docling worker configures the PDF pipeline explicitly. OCR is disabled by default for deterministic digital-PDF conversion, table structure remains enabled, and Hugging Face/XDG/RapidOCR caches must stay under `/srv/structura/cache` through Compose environment or equivalent runtime configuration. Do not let OCR/model downloads write into Python site-packages.
 
+Phase 4 integration seams are ready at `5fc1587`:
+
+1. Canonical parse substrate exists for extraction inputs: immutable Docling artifacts plus relational pages, elements, tables, and chunks.
+2. Candidate/canonical/review persistence surfaces already exist: `field_candidates`, `line_item_candidates`, `canonical_fields`, `canonical_line_items`, `canonical_fact_history`, `review_tasks`, and `review_events`.
+3. Contracts already exist for classification, receipt/invoice/EOB extraction, evidence refs, field candidates, canonical fields, and review actions.
+4. Job runtime is ready for extraction workers: household-scoped jobs, retry reset, and stale `running` lease recovery are in place.
+5. Authorization seam is centralized in Postgres function `document_is_readable(document_id, household_id, user_id, household_role)` and must be reused for Phase 4 review, candidate, canonical, and evidence routes.
+6. UI foundation is ready: Viewer and parse-debug surfaces can host evidence-oriented review/candidate panels, but Phase 4 must add review queue, candidate comparison, correction, and evidence-jump UX intentionally.
+
+Do not start Phase 4 by appending logic to placeholder routes or existing document routes. Follow the architecture stewardship rules: add cohesive `lib/extraction`, `lib/review`, and worker modules as needed; keep route handlers thin; put SQL in repositories or schema functions; and keep model-provider/vendor behavior behind adapters.
+
 ## Figma And UI Reference Baseline
 
 Strict UI evidence now lives under `docs/ui-reference/figma/`:
@@ -102,11 +115,14 @@ Strict UI evidence now lives under `docs/ui-reference/figma/`:
 docs/ui-reference/figma/inbox/
 docs/ui-reference/figma/viewer/
 docs/ui-reference/figma/folder-tag-filing/
+docs/ui-reference/figma/parse-debug/
 ```
 
 Inbox uses Figma frame `17:2`; Viewer uses `14:434`. Phase 2 folder/tag filing uses a composite Figma source set rather than one dedicated final filing frame: primary frame `17:2`, Viewer propagation frame `14:434`, future review-workspace reference `14:611`, and handoff frames `35:7`, `35:12`, and `35:17`. The older filing-rules/watched-folders mockups are automation scope and are not the Phase 2 manual filing baseline.
 
 The folder/tag filing capture pass added `figma-context.json`, Figma screenshots, handoff screenshots, an extraction-workspace reference screenshot, and the deterministic Playwright comparison screenshot. Keep these artifacts synchronized with any future UI changes and run the Playwright screenshot assertions rather than writing ad hoc screenshots directly into committed reference paths.
+
+The parse-debug reference set documents the Phase 3 Viewer diagnostic extension and includes `figma-context.json`, `comparison-notes.md`, `playwright-screenshot.png`, and the Linux Playwright snapshot `tests/e2e/phase3.spec.ts-snapshots/phase3-parse-debug-chromium-linux.png`. Phase 4 review/evidence UI should add its own reference set rather than overloading parse-debug artifacts.
 
 ## GPU Node Runtime And Test Policy
 
