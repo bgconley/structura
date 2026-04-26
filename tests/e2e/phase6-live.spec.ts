@@ -40,7 +40,7 @@ test.describe("Phase 6 live GPU stack", () => {
     await page.getByRole("tab", {name: "Watched Folders"}).click();
     await page.getByLabel("Watch path").fill("/srv/structura/imports");
     await page.getByRole("button", {name: "Save watched folder"}).click();
-    await expect(page.getByText("/srv/structura/imports")).toBeVisible();
+    await expect(page.getByText("/srv/structura/imports", {exact: true})).toBeVisible();
 
     await page.screenshot({path: testInfo.outputPath("phase6-live-automation.png"), fullPage: true});
   });
