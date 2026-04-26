@@ -41,7 +41,7 @@ The default Postgres image is pinned to `paradedb/paradedb:0.21.5-pg17` to match
 For phase gates, the GPU node is canonical. Push the repo, pull it at `/tank/repos/structura` on `bgconley@10.25.0.50`, use `/tank/venvs/structura` for Python validation, and use pinned container images for web lint/build rather than host Node/npm. Live Playwright tests should target the GPU-hosted web service with:
 
 ```bash
-STRUCTURA_E2E_LIVE=1 npx playwright test tests/e2e/phase1-live.spec.ts tests/e2e/phase2-live.spec.ts tests/e2e/phase4-live.spec.ts --workers=1
+STRUCTURA_E2E_LIVE=1 npx playwright test tests/e2e/phase1-live.spec.ts tests/e2e/phase2-live.spec.ts tests/e2e/phase3-live.spec.ts tests/e2e/phase4-live.spec.ts --workers=1
 ```
 
 Model placeholders are behind a profile:

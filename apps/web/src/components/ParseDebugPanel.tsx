@@ -42,7 +42,7 @@ export function ParseDebugPanel({
       ) : null}
       {debug?.jobs.length ? (
         <ol className="debug-job-list">
-          {debug.jobs.slice(0, 4).map((job) => (
+          {debug.jobs.slice(0, 6).map((job) => (
             <li key={job.jobId}>
               {job.jobType} <strong>{job.status}</strong>
             </li>
