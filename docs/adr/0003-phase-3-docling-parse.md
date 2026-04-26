@@ -15,8 +15,8 @@ implementing Phase 4 extraction or review behavior.
 
 Official Docling documentation confirms the Python package install path and the
 `DocumentConverter.convert(...)` workflow, with exports available from the converted document.
-PyPI reported `2.91.0` as the current release during implementation, so the runtime dependency is
-bounded as `docling>=2.91,<3`.
+PyPI reported `2.91.0` as the current release during implementation, so the Docling worker image
+installs a bounded `docling>=2.91,<3` dependency.
 
 ## Decisions
 
@@ -26,6 +26,9 @@ bounded as `docling>=2.91,<3`.
   the placeholder for `worker-docling`.
 - Vendor-specific Docling imports are isolated in `workers/docling/converter.py` and happen lazily
   at conversion time so tests and non-worker imports do not require Docling to be installed.
+- The shared API image intentionally does not install Docling/Torch. The heavy Docling dependency
+  stack belongs only to the dedicated `worker-docling` image built from
+  `workers/docling/Dockerfile`.
 - Parse data contracts live in `lib/documents/parse_models.py`, asset/orchestration behavior lives
   in `lib/documents/canonical_parse.py`, and relational row replacement lives in
   `lib/documents/parse_repository.py`.

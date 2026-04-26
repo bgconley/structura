@@ -110,7 +110,7 @@ services:
   worker-docling:
     build:
       context: .
-      dockerfile: apps/api/Dockerfile
+      dockerfile: workers/docling/Dockerfile
     command: ["python", "-m", "workers.docling.worker", "--worker", "worker-docling", "--health-port", "8203"]
     environment:
       STRUCTURA_DATABASE_URL: postgresql://${POSTGRES_USER:-structura}:${POSTGRES_PASSWORD:-structura}@postgres:5432/${POSTGRES_DB:-structura}
