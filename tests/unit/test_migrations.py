@@ -15,7 +15,7 @@ def test_baseline_migration_scripts_are_present_and_ordered() -> None:
     plan = baseline_migration_plan("database")
 
     assert plan.scripts[0].name == "001_extensions.sql"
-    assert plan.scripts[-1].name == "069_phase5_search.sql"
+    assert plan.scripts[-1].name == "071_phase5_search_guardrails.sql"
     assert all(script.exists() for script in plan.scripts)
 
 
@@ -59,3 +59,11 @@ def test_phase5_search_migration_is_baseline_migration() -> None:
     assert "embeddings_active_text_owner_profile_uniq" in sql
     assert "saved_searches_household_name_uniq" in sql
     assert "CREATE OR REPLACE FUNCTION document_matches_saved_query" in sql
+
+
+def test_phase5_search_guardrails_migration_replaces_saved_query_function() -> None:
+    sql = Path("database/071_phase5_search_guardrails.sql").read_text(encoding="utf-8")
+
+    assert "CREATE OR REPLACE FUNCTION document_matches_saved_query" in sql
+    assert "'tags'" in sql
+    assert "bool_and(query_key IN" in sql

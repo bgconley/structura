@@ -157,6 +157,24 @@ def facet_counts(
             cur.execute(
                 _search_sql(
                     """
+                SELECT COALESCE(f.path_cache, '/' || f.name) AS value, count(DISTINCT d.id) AS total
+                FROM documents d
+                JOIN document_folder_memberships dfm ON dfm.document_id = d.id
+                JOIN folders f ON f.id = dfm.folder_id
+                LEFT JOIN document_primary_amounts_v a ON a.document_id = d.id
+                WHERE {where_sql}
+                GROUP BY COALESCE(f.path_cache, '/' || f.name)
+                ORDER BY total DESC, value
+                LIMIT 20
+                """,
+                    where_sql=where_sql,
+                ),
+                params,
+            )
+            folder_rows = cur.fetchall()
+            cur.execute(
+                _search_sql(
+                    """
                 SELECT t.name::text AS value, count(DISTINCT d.id) AS total
                 FROM documents d
                 JOIN document_tags dt ON dt.document_id = d.id
@@ -188,10 +206,47 @@ def facet_counts(
                 params,
             )
             review_rows = cur.fetchall()
+            cur.execute(
+                _search_sql(
+                    """
+                SELECT d.sensitivity::text AS value, count(*) AS total
+                FROM documents d
+                LEFT JOIN document_primary_amounts_v a ON a.document_id = d.id
+                WHERE {where_sql}
+                GROUP BY d.sensitivity::text
+                ORDER BY total DESC, value
+                LIMIT 20
+                """,
+                    where_sql=where_sql,
+                ),
+                params,
+            )
+            sensitivity_rows = cur.fetchall()
+            cur.execute(
+                _search_sql(
+                    """
+                SELECT to_char(date_trunc('month', d.document_date::timestamp), 'YYYY-MM') AS value,
+                       count(*) AS total
+                FROM documents d
+                LEFT JOIN document_primary_amounts_v a ON a.document_id = d.id
+                WHERE {where_sql}
+                  AND d.document_date IS NOT NULL
+                GROUP BY date_trunc('month', d.document_date::timestamp)
+                ORDER BY value DESC
+                LIMIT 24
+                """,
+                    where_sql=where_sql,
+                ),
+                params,
+            )
+            date_bucket_rows = cur.fetchall()
     return {
         "families": _facet_map(family_rows),
+        "folders": _facet_map(folder_rows),
         "tags": _facet_map(tag_rows),
         "reviewStatus": _facet_map(review_rows),
+        "sensitivity": _facet_map(sensitivity_rows),
+        "dateBuckets": _facet_map(date_bucket_rows),
     }
 
 
@@ -307,7 +362,7 @@ def _lexical_fallback_search(
     return [_candidate_from_row(row) for row in rows]
 
 
-def _document_filter_sql(
+def document_filter_sql(
     filters: SearchFilters,
     access: DocumentAccessContext,
 ) -> tuple[str, list[object]]:
@@ -347,6 +402,9 @@ def _document_filter_sql(
             """
         )
         params.append([tag.casefold() for tag in filters.tags])
+    if filters.review_statuses:
+        clauses.append("d.review_status::text = ANY(%s::text[])")
+        params.append(list(filters.review_statuses))
     if filters.reviewed_only is True:
         clauses.append(
             "d.review_status::text IN ('auto_accepted', 'user_confirmed', 'user_corrected')"
@@ -369,6 +427,13 @@ def _document_filter_sql(
         clauses.append("d.sensitivity::text = ANY(%s::text[])")
         params.append(list(filters.sensitivity))
     return "\n  AND ".join(clauses), params
+
+
+def _document_filter_sql(
+    filters: SearchFilters,
+    access: DocumentAccessContext,
+) -> tuple[str, list[object]]:
+    return document_filter_sql(filters, access)
 
 
 def _candidate_from_row(row: dict[str, Any]) -> SearchCandidateRow:

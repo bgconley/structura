@@ -1,20 +1,15 @@
 import {FormEvent, useState} from "react";
 
 import {familyLabel, formatAmount, formatDate} from "../format";
-import type {EvidenceTarget, SearchMode, SearchRequest, SearchResponse, SearchResult} from "../types";
+import type {EvidenceTarget, Folder, SearchRequest, SearchResponse, SearchResult, Tag} from "../types";
+import {
+  activeSearchFilters,
+  defaultSearchFilterState,
+  SearchFilterPanel,
+  searchRequestFromFilters,
+  selectedSearchFolder,
+} from "./SearchFilterPanel";
 import "./SearchResults.css";
-
-const modeOptions: SearchMode[] = ["hybrid", "lexical", "semantic"];
-const familyOptions = [
-  "",
-  "medical_eob",
-  "medical_bill",
-  "invoice",
-  "receipt",
-  "warranty",
-  "tax_document",
-  "legal_contract",
-];
 
 export function SearchResults({
   query,
@@ -23,6 +18,8 @@ export function SearchResults({
   isLoading,
   error,
   status,
+  folders,
+  tags,
   onSubmit,
   onSaveSearch,
   onOpenDocument,
@@ -33,35 +30,26 @@ export function SearchResults({
   isLoading: boolean;
   error: string | null;
   status: string | null;
+  folders: Folder[];
+  tags: Tag[];
   onSubmit: (payload: SearchRequest) => Promise<void>;
   onSaveSearch: (payload: SearchRequest) => Promise<void>;
   onOpenDocument: (documentId: string, target?: EvidenceTarget) => void;
 }) {
-  const [mode, setMode] = useState<SearchMode>("hybrid");
-  const [family, setFamily] = useState("");
-  const [reviewedOnly, setReviewedOnly] = useState(false);
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [filters, setFilters] = useState(defaultSearchFilterState);
+
+  function requestPayload(): SearchRequest {
+    return searchRequestFromFilters(query, filters);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await onSubmit({
-      query,
-      mode,
-      families: family ? [family] : [],
-      reviewedOnly: reviewedOnly || undefined,
-      dateFrom: dateFrom || undefined,
-      dateTo: dateTo || undefined,
-      includeDebug: true,
-    });
+    await onSubmit(requestPayload());
   }
 
   const items = response?.items ?? [];
-  const activeFilters = [
-    family ? familyLabel(family) : null,
-    reviewedOnly ? "reviewed only" : null,
-    dateFrom || dateTo ? `${dateFrom || "any"} to ${dateTo || "any"}` : null,
-  ].filter((value): value is string => Boolean(value));
+  const selectedFolder = selectedSearchFolder(filters, folders);
+  const activeFilters = activeSearchFilters(filters, folders);
 
   return (
     <section className="search-workbench">
@@ -93,54 +81,12 @@ export function SearchResults({
         </div>
       </form>
       <div className="search-layout">
-        <aside className="search-filter-panel">
-          <h2>Filters</h2>
-          <label>
-            Search mode
-            <select
-              aria-label="Search mode"
-              value={mode}
-              onChange={(event) => setMode(event.target.value as SearchMode)}
-            >
-              {modeOptions.map((option) => <option key={option}>{option}</option>)}
-            </select>
-          </label>
-          <label>
-            Document family filter
-            <select
-              aria-label="Document family filter"
-              value={family}
-              onChange={(event) => setFamily(event.target.value)}
-            >
-              {familyOptions.map((option) => (
-                <option key={option} value={option}>{option ? familyLabel(option) : "Any family"}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Date from
-            <input value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} type="date" />
-          </label>
-          <label>
-            Date to
-            <input value={dateTo} onChange={(event) => setDateTo(event.target.value)} type="date" />
-          </label>
-          <label className="filter-check">
-            <input
-              checked={reviewedOnly}
-              onChange={(event) => setReviewedOnly(event.target.checked)}
-              type="checkbox"
-            />
-            Reviewed only
-          </label>
-          <div className="filter-chip-list">
-            <span className={family ? "selected" : undefined}>
-              Family: {family || "Any"}
-            </span>
-            <span>Date: {dateFrom || "any"} - {dateTo || "any"}</span>
-            <span>Review: {reviewedOnly ? "Reviewed" : "Any"}</span>
-          </div>
-        </aside>
+        <SearchFilterPanel
+          filters={filters}
+          folders={folders}
+          tags={tags}
+          onChange={setFilters}
+        />
         <section className="search-results-panel">
           <div className="panel-title">
             <h2>Ranked Results</h2>
@@ -176,8 +122,12 @@ export function SearchResults({
           <h3>Query interpretation</h3>
           <div className="filter-chip-list explanation">
             <span>{query ? `query = ${query.slice(0, 42)}` : "query pending"}</span>
-            <span>mode = {mode}</span>
-            {family ? <span>document_family = {family}</span> : null}
+            <span>mode = {filters.mode}</span>
+            {filters.family ? <span>document_family = {filters.family}</span> : null}
+            {selectedFolder ? <span>folder = {selectedFolder.name}</span> : null}
+            {filters.tag ? <span>tag = {filters.tag}</span> : null}
+            {filters.reviewStatus ? <span>review_status = {filters.reviewStatus}</span> : null}
+            {filters.sensitivity ? <span>sensitivity = {filters.sensitivity}</span> : null}
             {response?.debug?.filtersApplied !== undefined ? (
               <span>filters = {String(response.debug.filtersApplied)}</span>
             ) : null}
@@ -197,18 +147,15 @@ export function SearchResults({
           </div>
           <h3>Facets</h3>
           <FacetBlock title="Families" values={response?.facets?.families} />
+          <FacetBlock title="Folders" values={response?.facets?.folders} />
           <FacetBlock title="Tags" values={response?.facets?.tags} />
+          <FacetBlock title="Review status" values={response?.facets?.reviewStatus} />
+          <FacetBlock title="Sensitivity" values={response?.facets?.sensitivity} />
+          <FacetBlock title="Date buckets" values={response?.facets?.dateBuckets} />
           <div className="retrieval-actions">
             <button
               type="button"
-              onClick={() => void onSaveSearch({
-                query,
-                mode,
-                families: family ? [family] : [],
-                reviewedOnly: reviewedOnly || undefined,
-                dateFrom: dateFrom || undefined,
-                dateTo: dateTo || undefined,
-              })}
+              onClick={() => void onSaveSearch(requestPayload())}
             >
               Save search
             </button>

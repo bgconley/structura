@@ -691,22 +691,12 @@ paths:
     post:
       tags:
       - Organization
-      summary: Create or update a normalized contact
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ContactWrite'
+      summary: Placeholder for Phase 6 normalized contact creation
       responses:
-        '201':
-          description: Contact created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Contact'
-        '401':
-          description: Not authenticated
+        '501':
+          description: Contact management is implemented in Phase 6
+        '422':
+          description: Validation error
   /api/v1/filing-rules:
     get:
       tags:
@@ -732,22 +722,12 @@ paths:
     post:
       tags:
       - Automation
-      summary: Create or update a filing rule
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/FilingRuleWrite'
+      summary: Placeholder for Phase 6 filing-rule creation
       responses:
-        '201':
-          description: Filing rule saved
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FilingRule'
-        '401':
-          description: Not authenticated
+        '501':
+          description: Filing rules are implemented in Phase 6
+        '422':
+          description: Validation error
   /api/v1/watched-folders:
     get:
       tags:
@@ -773,22 +753,12 @@ paths:
     post:
       tags:
       - Automation
-      summary: Create or update a watched-folder intake rule
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/WatchedFolderWrite'
+      summary: Placeholder for Phase 6 watched-folder creation
       responses:
-        '201':
-          description: Watched folder saved
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WatchedFolder'
-        '401':
-          description: Not authenticated
+        '501':
+          description: Watched folders are implemented in Phase 6
+        '422':
+          description: Validation error
   /api/v1/search:
     post:
       tags:
@@ -1934,6 +1904,17 @@ components:
           type: array
           items:
             type: string
+        reviewStatuses:
+          type: array
+          items:
+            type: string
+            enum:
+            - unreviewed
+            - auto_accepted
+            - needs_review
+            - user_confirmed
+            - user_corrected
+            - rejected
         reviewedOnly:
           type: boolean
         dateFrom:

@@ -6,9 +6,11 @@ import pytest
 from pydantic import ValidationError
 
 from lib.contracts import SearchRequest
+from lib.search.benchmark import BenchmarkCase, evaluate_ranked_results, summarize_results
 from lib.search.embedding_gateway import DeterministicEmbeddingGateway, EmbeddingProfile
 from lib.search.hybrid import RankedCandidate, reciprocal_rank_fusion
 from lib.search.query import SearchValidationError, parse_search_request
+from lib.search.saved_query import SavedQueryError, parse_saved_query
 from lib.search.snippets import plain_search_snippet
 
 
@@ -18,6 +20,7 @@ def test_search_request_defaults_and_filter_parsing_are_contract_safe() -> None:
             "query": "  claim ABC123 money owed  ",
             "families": ["medical_eob"],
             "tags": ["medical", "urgent"],
+            "reviewStatuses": ["needs_review"],
             "reviewedOnly": True,
             "dateFrom": "2025-01-01",
             "dateTo": "2026-12-31",
@@ -35,6 +38,7 @@ def test_search_request_defaults_and_filter_parsing_are_contract_safe() -> None:
     assert parsed.limit == 12
     assert parsed.filters.families == ("medical_eob",)
     assert parsed.filters.tags == ("medical", "urgent")
+    assert parsed.filters.review_statuses == ("needs_review",)
     assert parsed.filters.reviewed_only is True
     assert parsed.filters.date_from.isoformat() == "2025-01-01"
     assert parsed.filters.date_to.isoformat() == "2026-12-31"
@@ -61,6 +65,29 @@ def test_search_request_rejects_empty_queries_extra_filters_and_invalid_ranges()
         parse_search_request(
             SearchRequest.model_validate({"query": "invoice", "amountMin": 250, "amountMax": 10})
         )
+
+
+def test_saved_query_parses_to_search_filters_and_rejects_unknown_keys() -> None:
+    parsed = parse_saved_query(
+        {
+            "families": [" medical_eob ", "medical_eob"],
+            "tags": ["Urgent", "urgent"],
+            "review_status": ["needs_review"],
+            "sensitivity": ["medical"],
+            "dateFrom": "2026-01-01",
+            "dateTo": "2026-12-31",
+        }
+    )
+
+    assert parsed.filters.families == ("medical_eob",)
+    assert parsed.filters.tags == ("Urgent",)
+    assert parsed.filters.review_statuses == ("needs_review",)
+    assert parsed.filters.sensitivity == ("medical",)
+    assert parsed.filters.date_from and parsed.filters.date_from.isoformat() == "2026-01-01"
+    assert parsed.filters.date_to and parsed.filters.date_to.isoformat() == "2026-12-31"
+
+    with pytest.raises(SavedQueryError, match="Unsupported savedQuery key"):
+        parse_saved_query({"tags": ["urgent"], "unknownFilter": True})
 
 
 def test_deterministic_embedding_adapter_supports_conceptual_local_search() -> None:
@@ -123,6 +150,33 @@ def test_search_snippet_normalization_removes_backend_highlight_markup() -> None
     assert plain_search_snippet("<b>Claim</b> ABC123") == "Claim ABC123"
     assert plain_search_snippet("Patient responsibility") == "Patient responsibility"
     assert plain_search_snippet(None) is None
+
+
+def test_search_benchmark_reports_hit_rate_and_mrr() -> None:
+    cases = [
+        BenchmarkCase(
+            name="claim-id",
+            query={"query": "claim ABC123"},
+            expected_document_ids=("doc-a",),
+            k=3,
+        ),
+        BenchmarkCase(
+            name="warranty",
+            query={"query": "dishwasher warranty"},
+            expected_document_ids=("doc-b",),
+            k=3,
+        ),
+    ]
+    results = [
+        evaluate_ranked_results(cases[0], ["doc-x", "doc-a", "doc-z"]),
+        evaluate_ranked_results(cases[1], ["doc-b"]),
+    ]
+
+    summary = summarize_results(results)
+
+    assert results[0].hit is True
+    assert results[0].reciprocal_rank == 0.5
+    assert summary == {"caseCount": 2, "hitRateAtK": 1.0, "meanReciprocalRank": 0.75}
 
 
 def _cosine(left: list[float], right: list[float]) -> float:

@@ -4,6 +4,8 @@ import json
 import re
 from uuid import UUID
 
+from lib.search.saved_query import SavedQueryError, parse_saved_query
+
 HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
 FOLDER_ACL_MODES = {"private", "household", "custom"}
 
@@ -99,6 +101,10 @@ def validate_saved_query(
     if len(encoded) > 4096:
         raise organization_error(422, "savedQuery is too large for Phase 2")
     _validate_saved_query_value(saved_query)
+    try:
+        parse_saved_query(saved_query)
+    except SavedQueryError as exc:
+        raise organization_error(422, str(exc)) from exc
     return saved_query
 
 

@@ -16,6 +16,14 @@ SourceEngine = Literal[
     "human",
     "system",
 ]
+ReviewStatus = Literal[
+    "unreviewed",
+    "auto_accepted",
+    "needs_review",
+    "user_confirmed",
+    "user_corrected",
+    "rejected",
+]
 
 
 class ContractModel(BaseModel):
@@ -262,6 +270,7 @@ class SearchRequest(ContractModel):
     families: list[str] = Field(default_factory=list)
     folder_ids: list[UUID] = Field(default_factory=list, alias="folderIds")
     tags: list[str] = Field(default_factory=list)
+    review_statuses: list[ReviewStatus] = Field(default_factory=list, alias="reviewStatuses")
     reviewed_only: bool | None = Field(default=None, alias="reviewedOnly")
     date_from: date | None = Field(default=None, alias="dateFrom")
     date_to: date | None = Field(default=None, alias="dateTo")

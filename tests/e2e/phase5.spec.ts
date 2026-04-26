@@ -22,13 +22,24 @@ test("Phase 5 search runs hybrid retrieval with filters, snippets, explanations,
   await page.getByLabel("Corpus search query").fill("claim ABC123 where I may still owe money");
   await page.getByLabel("Search mode").selectOption("hybrid");
   await page.getByLabel("Document family filter").selectOption("medical_eob");
+  await page.getByLabel("Folder filter").selectOption({label: "/Home"});
+  await page.getByLabel("Tag filter").selectOption("Home");
+  await page.getByLabel("Review status filter").selectOption("user_confirmed");
+  await page.getByLabel("Sensitivity filter").selectOption("normal");
+  await page.getByLabel("Amount minimum").fill("50");
+  await page.getByLabel("Amount maximum").fill("100");
   await expect(page.getByText("Family: medical_eob")).toBeVisible();
+  await expect(page.getByText("Folder: Home")).toBeVisible();
+  await expect(page.getByText("Review status: user_confirmed")).toBeVisible();
   await page.getByRole("button", {name: "Search corpus"}).click();
 
   await expect(page.getByRole("button", {name: /Anthem medical EOB/})).toBeVisible();
   await expect(page.locator(".search-result-list")).toContainText("Claim ABC123");
   await expect(page.locator(".search-result-list")).toContainText("matched by lexical rank");
   await expect(page.getByText("medical_eob: 1")).toBeVisible();
+  await expect(page.getByText("/Medical: 1")).toBeVisible();
+  await expect(page.getByText("normal: 1")).toBeVisible();
+  await expect(page.getByText("2026-04: 1")).toBeVisible();
   await expect(page).toHaveScreenshot("phase5-corpus-search.png", {
     fullPage: true,
     maxDiffPixelRatio: 0.02,
@@ -56,5 +67,5 @@ test("Phase 5 search preserves filters in an actionable empty state", async ({pa
   await page.getByRole("button", {name: "Search corpus"}).click();
 
   await expect(page.getByText("No matching documents")).toBeVisible();
-  await expect(page.getByText("Active filters: warranty")).toBeVisible();
+  await expect(page.getByText("Active filters: Warranty")).toBeVisible();
 });

@@ -6,7 +6,7 @@ This repository is now implemented through Phase 5:
 
 - React + Vite web app in `apps/web`
 - FastAPI API in `apps/api` with health, contract, auth/session, protected document/asset, job, admin health, and organization routes
-- preview worker, Docling worker, extraction worker, remaining worker placeholders, and model placeholder modules with HTTP health checks
+- ingest, preview, Docling, extraction, and embedding workers plus remaining later-phase/model placeholders with HTTP health checks
 - shared Python libraries under `lib`
 - baseline contracts copied to `contracts`
 - baseline SQL copied to `database`
@@ -90,6 +90,7 @@ The baseline migration runner applies:
 11. `database/067_document_read_acl_function.sql`
 12. `database/068_phase4_extraction_review.sql`
 13. `database/069_phase5_search.sql`
+14. `database/071_phase5_search_guardrails.sql`
 
 `database/070_query_examples.sql` is intentionally excluded from default migration execution.
 

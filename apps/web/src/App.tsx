@@ -264,9 +264,16 @@ export default function App() {
         filters: {
           mode: payload.mode ?? "hybrid",
           families: payload.families ?? [],
+          folderIds: payload.folderIds ?? [],
+          tags: payload.tags ?? [],
+          reviewStatuses: payload.reviewStatuses ?? [],
           reviewedOnly: payload.reviewedOnly ?? false,
           dateFrom: payload.dateFrom ?? null,
           dateTo: payload.dateTo ?? null,
+          amountMin: payload.amountMin ?? null,
+          amountMax: payload.amountMax ?? null,
+          sensitivity: payload.sensitivity ?? [],
+          primaryFolderOnly: payload.primaryFolderOnly ?? false,
         },
       });
       setSearchStatus(`Saved search: ${saved.name}`);
@@ -317,6 +324,8 @@ export default function App() {
             isLoading={isSearchLoading}
             error={error}
             status={searchStatus}
+            folders={folders}
+            tags={tags}
             onSubmit={handleSearch}
             onSaveSearch={handleSaveSearch}
             onOpenDocument={(documentId, target) => {

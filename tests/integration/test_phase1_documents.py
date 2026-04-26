@@ -14,6 +14,7 @@ from lib.auth import AuthService
 from lib.config import get_settings
 from lib.db.connection import db_connection
 from lib.storage import ObjectStorage, StoredObject, cleanup_unreferenced_stored_object
+from workers.ingest import worker as ingest_worker
 from workers.previews import PreviewError, generate_phase1_preview
 from workers.previews import worker as preview_worker
 
@@ -110,6 +111,70 @@ def test_phase1_upload_list_detail_asset_and_duplicate(
 
     duplicate_list = client.get("/api/v1/documents", params={"q": "Phase 1 Duplicate"}).json()
     assert duplicate_list["total"] >= 1
+
+
+@pytest.mark.skipif(
+    not os.environ.get("STRUCTURA_TEST_DATABASE_URL"),
+    reason="Set STRUCTURA_TEST_DATABASE_URL to run live Phase 1 document tests.",
+)
+def test_phase1_ingest_worker_consumes_upload_ingest_job(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    database_url = os.environ["STRUCTURA_TEST_DATABASE_URL"]
+    monkeypatch.setenv("STRUCTURA_DATABASE_URL", database_url)
+    monkeypatch.setenv("STRUCTURA_RUNTIME_ROOT", str(tmp_path / "runtime"))
+    monkeypatch.setenv("STRUCTURA_ENV", "test")
+    get_settings.cache_clear()
+
+    unique = uuid.uuid4().hex[:12]
+    email = f"phase1-ingest-{unique}@example.com"
+    password = "minimum8"
+    title = f"Phase 1 Ingest {unique}"
+    AuthService().bootstrap_admin(
+        email=email,
+        password=password,
+        display_name="Phase 1 Ingest Admin",
+        household_name=f"Phase 1 Ingest {unique}",
+        must_rotate=False,
+    )
+    client = TestClient(create_app())
+    login = client.post(
+        "/api/v1/auth/session",
+        json={"method": "password", "email": email, "password": password},
+    )
+    assert login.status_code == 201
+    accepted = client.post(
+        "/api/v1/documents",
+        headers={"X-CSRF-Token": client.cookies["structura_csrf"]},
+        data={"source": "web_upload", "suppliedTitle": title},
+        files={"file": ("ingest.pdf", b"%PDF-1.7\n%%EOF\n", "application/pdf")},
+    )
+    assert accepted.status_code == 202
+    document_id = uuid.UUID(str(_document_by_title(client, title)["id"]))
+
+    assert ingest_worker.process_next_ingest_job(
+        worker_name="phase1-ingest-test",
+        document_id=document_id,
+    )
+
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT status::text AS status, result_json
+                FROM pipeline_jobs
+                WHERE document_id = %s
+                  AND job_type = 'ingest'
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                (document_id,),
+            )
+            job = cur.fetchone()
+
+    assert job["status"] == "succeeded"
+    assert job["result_json"]["ingest_status"] == "acknowledged"
 
 
 @pytest.mark.skipif(

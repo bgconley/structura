@@ -1,0 +1,29 @@
+name: GPU Live Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      web_url:
+        description: GPU-hosted Structura web URL
+        required: true
+        default: http://10.25.0.50:13000
+
+jobs:
+  phase-live:
+    name: Phase live browser smoke
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run live Playwright suite against GPU-hosted app
+        env:
+          STRUCTURA_E2E_WEB_URL: ${{ inputs.web_url }}
+        run: |
+          docker run --rm \
+            -e STRUCTURA_E2E_LIVE=1 \
+            -e STRUCTURA_E2E_WEB_URL="${STRUCTURA_E2E_WEB_URL}" \
+            -v "$PWD":/workspace \
+            --mount type=volume,src=structura-ci-node-modules,dst=/workspace/node_modules \
+            --mount type=volume,src=structura-ci-web-node-modules,dst=/workspace/apps/web/node_modules \
+            -w /workspace \
+            mcr.microsoft.com/playwright:v1.59.1-noble \
+            sh -lc "npm ci && npx playwright test tests/e2e/phase1-live.spec.ts tests/e2e/phase2-live.spec.ts tests/e2e/phase3-live.spec.ts tests/e2e/phase4-live.spec.ts tests/e2e/phase5-live.spec.ts --workers=1"

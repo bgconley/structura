@@ -19,6 +19,7 @@ BASELINE_SQL_FILES = (
     "067_document_read_acl_function.sql",
     "068_phase4_extraction_review.sql",
     "069_phase5_search.sql",
+    "071_phase5_search_guardrails.sql",
 )
 
 

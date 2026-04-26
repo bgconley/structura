@@ -16,11 +16,8 @@ from lib.config import get_settings
 from lib.contracts import AcceptedJob
 from lib.db.connection import db_connection
 from lib.documents.access_policy import DocumentAccessContext
-from lib.documents.read_model import (
-    DocumentListFilters,
-    get_document_detail,
-    list_document_summaries,
-)
+from lib.documents.list_repository import DocumentListFilters, list_document_summaries
+from lib.documents.read_model import get_document_detail
 from lib.jobs import create_job_with_cursor
 from lib.storage import (
     InvalidObjectUri,

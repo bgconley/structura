@@ -18,6 +18,7 @@ class SearchFilters:
     families: tuple[str, ...] = ()
     folder_ids: tuple[UUID, ...] = ()
     tags: tuple[str, ...] = ()
+    review_statuses: tuple[str, ...] = ()
     reviewed_only: bool | None = None
     date_from: date | None = None
     date_to: date | None = None
@@ -33,6 +34,7 @@ class SearchFilters:
                 bool(self.families),
                 bool(self.folder_ids),
                 bool(self.tags),
+                bool(self.review_statuses),
                 self.reviewed_only is not None,
                 self.date_from is not None,
                 self.date_to is not None,
@@ -74,6 +76,7 @@ def parse_search_request(request: SearchRequest) -> ParsedSearchQuery:
             families=tuple(_dedupe_text(request.families)),
             folder_ids=tuple(dict.fromkeys(request.folder_ids)),
             tags=tuple(_dedupe_text(request.tags)),
+            review_statuses=tuple(_dedupe_text(request.review_statuses)),
             reviewed_only=request.reviewed_only,
             date_from=request.date_from,
             date_to=request.date_to,

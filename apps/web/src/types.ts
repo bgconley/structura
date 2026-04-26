@@ -87,6 +87,7 @@ export type SearchRequest = {
   families?: string[];
   folderIds?: string[];
   tags?: string[];
+  reviewStatuses?: string[];
   reviewedOnly?: boolean;
   dateFrom?: string;
   dateTo?: string;

@@ -13,6 +13,21 @@ def test_runtime_openapi_paths_match_active_contract() -> None:
     assert sorted(app.openapi()["paths"]) == sorted(contract["paths"])
 
 
+def test_phase6_placeholder_response_statuses_match_active_contract() -> None:
+    contract = yaml.safe_load(Path("contracts/api/openapi.yaml").read_text(encoding="utf-8"))
+    runtime_paths = app.openapi()["paths"]
+    placeholders = [
+        ("/api/v1/contacts", "post"),
+        ("/api/v1/filing-rules", "post"),
+        ("/api/v1/watched-folders", "post"),
+    ]
+
+    for path, method in placeholders:
+        expected = sorted(contract["paths"][path][method].get("responses", {}))
+        actual = sorted(runtime_paths[path][method].get("responses", {}))
+        assert actual == expected, f"{method.upper()} {path} response status drift"
+
+
 def test_phase0_contract_skeleton_routes_are_protected() -> None:
     protected_paths = [
         "/api/v1/documents",

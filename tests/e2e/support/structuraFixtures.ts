@@ -217,7 +217,14 @@ export function seededSearchResponse(query: string, family?: string): SearchResp
   if (query.toLowerCase().includes("no matching") || family === "warranty") {
     return {
       items: [],
-      facets: {families: {}, tags: {}, reviewStatus: {}},
+      facets: {
+        families: {},
+        folders: {},
+        tags: {},
+        reviewStatus: {},
+        sensitivity: {},
+        dateBuckets: {},
+      },
       debug: {mode: "hybrid", candidateCounts: {lexical: 0, semantic: 0}, filtersApplied: family ? 1 : 0},
     };
   }
@@ -248,8 +255,11 @@ export function seededSearchResponse(query: string, family?: string): SearchResp
     ],
     facets: {
       families: {medical_eob: 1},
+      folders: {"/Medical": 1},
       tags: {medical: 1, urgent: 1},
       reviewStatus: {user_confirmed: 1},
+      sensitivity: {normal: 1},
+      dateBuckets: {"2026-04": 1},
     },
     debug: {
       mode: "hybrid",

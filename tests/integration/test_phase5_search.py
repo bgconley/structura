@@ -82,6 +82,29 @@ def test_phase5_search_lexical_semantic_hybrid_filters_facets_and_acl(
         counterparty="Anthem",
         document_date="2026-04-03",
     )
+    folder = client.post(
+        "/api/v1/folders",
+        headers={"X-CSRF-Token": csrf},
+        json={"folderKind": "manual", "name": f"Phase5 Facet Folder {unique}"},
+    )
+    assert folder.status_code == 201
+    tag_name = f"facet-tag-{unique}"
+    tag = client.post(
+        "/api/v1/tags",
+        headers={"X-CSRF-Token": csrf},
+        json={"name": tag_name},
+    )
+    assert tag.status_code == 201
+    filed = client.post(
+        f"/api/v1/documents/{document_id}/organization",
+        headers={"X-CSRF-Token": csrf},
+        json={
+            "folderIds": [folder.json()["id"]],
+            "primaryFolderId": folder.json()["id"],
+            "tags": [tag_name],
+        },
+    )
+    assert filed.status_code == 200
     assert embeddings_worker.process_next_embedding_job(
         worker_name="phase5-embedding-test",
         document_id=document_id,
@@ -103,6 +126,11 @@ def test_phase5_search_lexical_semantic_hybrid_filters_facets_and_acl(
     assert "ABC123" in lexical_item["snippet"]
     assert "<b>" not in lexical_item["snippet"]
     assert lexical_payload["facets"]["families"]["medical_eob"] >= 1
+    assert lexical_payload["facets"]["folders"][folder.json()["path"]] >= 1
+    assert lexical_payload["facets"]["tags"][tag_name] >= 1
+    assert lexical_payload["facets"]["reviewStatus"]["user_confirmed"] >= 1
+    assert lexical_payload["facets"]["sensitivity"]["normal"] >= 1
+    assert lexical_payload["facets"]["dateBuckets"]["2026-04"] >= 1
     assert lexical_payload["debug"]["mode"] == "lexical"
 
     semantic = client.post(
@@ -220,6 +248,75 @@ def test_phase5_smart_folder_saved_query_executes_without_membership(
 
     assert listed.status_code == 200
     assert any(item["id"] == str(document_id) for item in listed.json()["items"])
+
+
+@pytest.mark.skipif(
+    not os.environ.get("STRUCTURA_TEST_DATABASE_URL"),
+    reason="Set STRUCTURA_TEST_DATABASE_URL to run live Phase 5 search tests.",
+)
+def test_phase5_smart_folder_saved_query_uses_search_filter_semantics(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    client, csrf, _household_id = _phase5_client(monkeypatch, tmp_path, "smart-folder-tags")
+    unique = uuid.uuid4().hex[:8]
+    tag_name = f"smart-tag-{unique}"
+    included_id = _upload_fixture_document(client, csrf, f"Phase5 Smart Included {unique}")
+    excluded_id = _upload_fixture_document(client, csrf, f"Phase5 Smart Excluded {unique}")
+    tag = client.post(
+        "/api/v1/tags",
+        headers={"X-CSRF-Token": csrf},
+        json={"name": tag_name},
+    )
+    assert tag.status_code == 201
+    filed = client.post(
+        f"/api/v1/documents/{included_id}/organization",
+        headers={"X-CSRF-Token": csrf},
+        json={"tags": [tag_name]},
+    )
+    assert filed.status_code == 200
+    folder = client.post(
+        "/api/v1/folders",
+        headers={"X-CSRF-Token": csrf},
+        json={
+            "folderKind": "smart",
+            "name": f"Tagged Smart Phase5 {unique}",
+            "savedQuery": {"tags": [tag_name]},
+        },
+    )
+    assert folder.status_code == 201
+
+    listed = client.get("/api/v1/documents", params={"folderId": folder.json()["id"]})
+
+    assert listed.status_code == 200
+    document_ids = {item["id"] for item in listed.json()["items"]}
+    assert str(included_id) in document_ids
+    assert str(excluded_id) not in document_ids
+
+
+@pytest.mark.skipif(
+    not os.environ.get("STRUCTURA_TEST_DATABASE_URL"),
+    reason="Set STRUCTURA_TEST_DATABASE_URL to run live Phase 5 search tests.",
+)
+def test_phase5_smart_folder_rejects_unknown_saved_query_keys(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    client, csrf, _household_id = _phase5_client(monkeypatch, tmp_path, "smart-folder-invalid")
+    unique = uuid.uuid4().hex[:8]
+
+    folder = client.post(
+        "/api/v1/folders",
+        headers={"X-CSRF-Token": csrf},
+        json={
+            "folderKind": "smart",
+            "name": f"Invalid Smart Phase5 {unique}",
+            "savedQuery": {"tags": ["any"], "unknownFilter": True},
+        },
+    )
+
+    assert folder.status_code == 422
+    assert "Unsupported savedQuery key" in folder.json()["detail"]
 
 
 @pytest.mark.skipif(
