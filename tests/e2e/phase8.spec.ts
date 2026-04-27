@@ -68,3 +68,26 @@ test("Phase 8 evidence viewer stays open when a stale visual search completes", 
   await expect(page.getByRole("heading", {name: "Document Viewer"})).toBeVisible();
   await expect(page.getByText("Difficult document")).toBeVisible();
 });
+
+test("Phase 8 evidence viewer refreshes stale selected detail before showing quality cues", async ({page}) => {
+  await page.unroute(`${apiOrigin}/api/v1/**`);
+  await mockStructuraApi(page, {staleReceiptDetailOnce: true});
+
+  await page.goto("/");
+  await page.getByRole("button", {name: /Search/}).click();
+  await page.getByLabel("Corpus search query").fill("handwritten degraded intake");
+  await page.getByLabel("Search mode").selectOption("visual");
+  await page.getByRole("button", {name: "Search corpus"}).click();
+
+  const result = page.locator(".search-result-card").filter({hasText: "Handwritten repair intake"});
+  await expect(result).toBeVisible();
+  await result.getByRole("button", {name: "Jump to evidence"}).click();
+  await expect(page.getByRole("heading", {name: "Document Viewer"})).toBeVisible();
+  await expect(page.getByText("Difficult document")).toBeHidden();
+
+  await page.getByRole("button", {name: /Search/}).click();
+  await result.getByRole("button", {name: "Jump to evidence"}).click();
+  await expect(page.getByRole("heading", {name: "Document Viewer"})).toBeVisible();
+  await expect(page.getByText("Difficult document")).toBeVisible();
+  await expect(page.getByRole("note")).toContainText("handwriting detected");
+});

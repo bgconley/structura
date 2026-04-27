@@ -237,6 +237,25 @@ export default function App() {
     await loadDocuments(deferredQuery, activeFolderId);
   }
 
+  function openDocument(documentId: string, target?: EvidenceTarget) {
+    setEvidenceTarget(target ?? null);
+    setParseDebug(null);
+    setParseDebugError(null);
+    if (documentId === selectedId) {
+      setDetail(null);
+      void (async () => {
+        try {
+          setDetail(await fetchJson<DocumentDetail>(`/api/v1/documents/${documentId}`));
+        } catch (exc) {
+          setError(exc instanceof Error ? exc.message : "Unable to load document detail");
+        }
+      })();
+    } else {
+      setSelectedId(documentId);
+    }
+    setViewMode("viewer");
+  }
+
   async function handleSearch(payload?: SearchRequest) {
     const target: SearchRequest = payload ?? {
       query,
@@ -323,19 +342,11 @@ export default function App() {
           <RelationshipWorkspace
             mode={viewMode}
             documents={documents}
-            onOpenDocument={(documentId) => {
-              setEvidenceTarget(null);
-              setSelectedId(documentId);
-              setViewMode("viewer");
-            }}
+            onOpenDocument={(documentId) => openDocument(documentId)}
           />
         ) : viewMode === "review" ? (
           <ReviewQueue
-            onOpenDocument={(documentId, target) => {
-              setEvidenceTarget(target ?? null);
-              setSelectedId(documentId);
-              setViewMode("viewer");
-            }}
+            onOpenDocument={openDocument}
           />
         ) : viewMode === "search" ? (
           <SearchResults
@@ -349,11 +360,7 @@ export default function App() {
             tags={tags}
             onSubmit={handleSearch}
             onSaveSearch={handleSaveSearch}
-            onOpenDocument={(documentId, target) => {
-              setEvidenceTarget(target ?? null);
-              setSelectedId(documentId);
-              setViewMode("viewer");
-            }}
+            onOpenDocument={openDocument}
           />
         ) : viewMode === "viewer" && selected ? (
           <Viewer
@@ -365,11 +372,7 @@ export default function App() {
             tags={tags}
             onSaveOrganization={handleSaveOrganization}
             documents={documents}
-            onOpenDocument={(documentId) => {
-              setEvidenceTarget(null);
-              setSelectedId(documentId);
-              setViewMode("viewer");
-            }}
+            onOpenDocument={(documentId) => openDocument(documentId)}
             onRelationshipsChanged={() => reloadSelectedDocument(selectedId)}
             parseDebug={parseDebug}
             parseDebugError={parseDebugError}

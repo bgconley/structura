@@ -13,6 +13,7 @@ import {
   ensureUploadedDocument,
   Folder,
   previewSvg,
+  receiptDocument,
   seededCanonicalFields,
   seededContacts,
   seededDocuments,
@@ -41,6 +42,7 @@ type MockStructuraApiOptions = {
   sessionCookieName?: string;
   csrfTokenValue?: string;
   searchDelayMs?: number;
+  staleReceiptDetailOnce?: boolean;
 };
 
 export async function mockStructuraApi(page: Page, options: MockStructuraApiOptions = {}) {
@@ -58,6 +60,7 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
   let reviewTasks = seededReviewTasks();
   let fieldCandidates = seededFieldCandidates();
   const canonicalFields = seededCanonicalFields();
+  let staleReceiptDetailServed = false;
   const expectedCsrfToken = options.csrfTokenValue ?? csrfToken;
   const csrfCookieName = options.csrfCookieName ?? "structura_csrf";
   const sessionCookieName = options.sessionCookieName ?? "structura_session";
@@ -634,9 +637,21 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
     const detailMatch = url.pathname.match(/^\/api\/v1\/documents\/([^/]+)$/);
     if (detailMatch && request.method() === "GET") {
       const document = documents.get(detailMatch[1]);
-      const payload = document
+      let payload = document
         ? {...document, relationships: relationshipsForDocument(relationships, document.id)}
         : undefined;
+      if (
+        options.staleReceiptDetailOnce
+        && payload?.id === receiptDocument.id
+        && !staleReceiptDetailServed
+      ) {
+        staleReceiptDetailServed = true;
+        payload = {
+          ...payload,
+          qualitySummary: null,
+          pages: payload.pages.map((page) => ({...page, qualitySignals: null})),
+        };
+      }
       await route.fulfill({
         status: document ? 200 : 404,
         headers: {"Content-Type": "application/json", ...corsHeaders},
