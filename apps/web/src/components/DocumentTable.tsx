@@ -45,6 +45,7 @@ export function DocumentTable({
               <th>Key Amount</th>
               <th>Folder</th>
               <th>Tags</th>
+              <th>Related</th>
               <th>Review Status</th>
               <th>Pipeline</th>
             </tr>
@@ -82,6 +83,7 @@ export function DocumentTable({
                     <span className="muted-cell">None</span>
                   )}
                 </td>
+                <td>{document.relatedCount ?? 0}</td>
                 <td><ReviewChip status={document.reviewStatus} /></td>
                 <td><span className="pipeline-state">Ingested</span></td>
               </tr>

@@ -225,6 +225,42 @@ def facet_counts(
             cur.execute(
                 _search_sql(
                     """
+                SELECT dr.relationship_type::text AS value, count(DISTINCT d.id) AS total
+                FROM documents d
+                JOIN document_relationships dr ON d.id IN (dr.from_document_id, dr.to_document_id)
+                LEFT JOIN document_primary_amounts_v a ON a.document_id = d.id
+                WHERE dr.status <> 'rejected'
+                  AND {where_sql}
+                GROUP BY dr.relationship_type::text
+                ORDER BY total DESC, value
+                LIMIT 20
+                """,
+                    where_sql=where_sql,
+                ),
+                params,
+            )
+            relationship_rows = cur.fetchall()
+            cur.execute(
+                _search_sql(
+                    """
+                SELECT dd.deadline_type::text AS value, count(DISTINCT d.id) AS total
+                FROM documents d
+                JOIN document_deadlines dd ON dd.document_id = d.id
+                LEFT JOIN document_primary_amounts_v a ON a.document_id = d.id
+                WHERE dd.status IN ('open', 'due_soon', 'overdue', 'needs_review')
+                  AND {where_sql}
+                GROUP BY dd.deadline_type::text
+                ORDER BY total DESC, value
+                LIMIT 20
+                """,
+                    where_sql=where_sql,
+                ),
+                params,
+            )
+            deadline_rows = cur.fetchall()
+            cur.execute(
+                _search_sql(
+                    """
                 SELECT to_char(date_trunc('month', d.document_date::timestamp), 'YYYY-MM') AS value,
                        count(*) AS total
                 FROM documents d
@@ -246,6 +282,8 @@ def facet_counts(
         "tags": _facet_map(tag_rows),
         "reviewStatus": _facet_map(review_rows),
         "sensitivity": _facet_map(sensitivity_rows),
+        "relationshipTypes": _facet_map(relationship_rows),
+        "deadlineTypes": _facet_map(deadline_rows),
         "dateBuckets": _facet_map(date_bucket_rows),
     }
 
@@ -426,6 +464,107 @@ def document_filter_sql(
     if filters.sensitivity:
         clauses.append("d.sensitivity::text = ANY(%s::text[])")
         params.append(list(filters.sensitivity))
+    if (
+        filters.relationship_types
+        or filters.relationship_statuses
+        or filters.has_relationships is True
+    ):
+        clauses.append(
+            """
+            EXISTS (
+              SELECT 1
+              FROM document_relationships search_rel
+              WHERE d.id IN (search_rel.from_document_id, search_rel.to_document_id)
+                AND (%s::text[] IS NULL OR search_rel.relationship_type::text = ANY(%s::text[]))
+                AND (
+                  (%s::text[] IS NOT NULL AND search_rel.status = ANY(%s::text[]))
+                  OR (%s::text[] IS NULL AND search_rel.status <> 'rejected')
+                )
+                AND document_is_readable(
+                  CASE
+                    WHEN search_rel.from_document_id = d.id THEN search_rel.to_document_id
+                    ELSE search_rel.from_document_id
+                  END,
+                  %s,
+                  %s,
+                  %s
+                )
+            )
+            """
+        )
+        relationship_types = list(filters.relationship_types) or None
+        relationship_statuses = list(filters.relationship_statuses) or None
+        params.extend(
+            [
+                relationship_types,
+                relationship_types,
+                relationship_statuses,
+                relationship_statuses,
+                relationship_statuses,
+                *document_read_access_params(access),
+            ]
+        )
+    elif filters.has_relationships is False:
+        clauses.append(
+            """
+            NOT EXISTS (
+              SELECT 1
+              FROM document_relationships search_rel
+              WHERE d.id IN (search_rel.from_document_id, search_rel.to_document_id)
+                AND search_rel.status <> 'rejected'
+                AND document_is_readable(
+                  CASE
+                    WHEN search_rel.from_document_id = d.id THEN search_rel.to_document_id
+                    ELSE search_rel.from_document_id
+                  END,
+                  %s,
+                  %s,
+                  %s
+                )
+            )
+            """
+        )
+        params.extend(document_read_access_params(access))
+    if filters.deadline_types or filters.deadline_statuses or filters.has_open_deadlines is True:
+        clauses.append(
+            """
+            EXISTS (
+              SELECT 1
+              FROM document_deadlines search_deadline
+              WHERE search_deadline.document_id = d.id
+                AND (%s::text[] IS NULL OR search_deadline.deadline_type::text = ANY(%s::text[]))
+                AND (
+                  (%s::text[] IS NOT NULL AND search_deadline.status = ANY(%s::text[]))
+                  OR (
+                    %s::text[] IS NULL
+                    AND search_deadline.status IN ('open', 'due_soon', 'overdue', 'needs_review')
+                  )
+                )
+            )
+            """
+        )
+        deadline_types = list(filters.deadline_types) or None
+        deadline_statuses = list(filters.deadline_statuses) or None
+        params.extend(
+            [
+                deadline_types,
+                deadline_types,
+                deadline_statuses,
+                deadline_statuses,
+                deadline_statuses,
+            ]
+        )
+    elif filters.has_open_deadlines is False:
+        clauses.append(
+            """
+            NOT EXISTS (
+              SELECT 1
+              FROM document_deadlines search_deadline
+              WHERE search_deadline.document_id = d.id
+                AND search_deadline.status IN ('open', 'due_soon', 'overdue', 'needs_review')
+            )
+            """
+        )
     return "\n  AND ".join(clauses), params
 
 

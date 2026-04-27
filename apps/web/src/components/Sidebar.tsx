@@ -19,7 +19,7 @@ export function Sidebar({
 }: {
   total: number;
   active: string;
-  onNavigate: (view: "inbox" | "review" | "search" | "automation") => void;
+  onNavigate: (view: "inbox" | "review" | "search" | "automation" | "relationships" | "timelines") => void;
 }) {
   return (
     <aside className="sidebar">
@@ -36,16 +36,22 @@ export function Sidebar({
               || (label === "Search" && active === "search")
               || (label === "Automation" && active === "automation")
               || (label === "Review Queue" && active === "review")
+              || (label === "Relationships" && active === "relationships")
+              || (label === "Timelines" && active === "timelines")
                 ? "active"
                 : undefined
             }
             type="button"
-            disabled={!["Inbox", "Search", "Automation", "Review Queue"].includes(label)}
+            disabled={!["Inbox", "Search", "Automation", "Review Queue", "Relationships", "Timelines"].includes(label)}
             onClick={() => {
               if (label === "Review Queue") {
                 onNavigate("review");
               } else if (label === "Automation") {
                 onNavigate("automation");
+              } else if (label === "Relationships") {
+                onNavigate("relationships");
+              } else if (label === "Timelines") {
+                onNavigate("timelines");
               } else if (label === "Search") {
                 onNavigate("search");
               } else {

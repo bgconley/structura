@@ -15,6 +15,28 @@ export type DocumentSummary = {
   thumbnailUrl?: string;
   folderPaths?: string[];
   tags?: string[];
+  relatedCount?: number;
+};
+
+export type DocumentRelationship = {
+  id: string;
+  documentId: string;
+  relatedDocumentId: string;
+  relatedTitle: string;
+  relationshipType: string;
+  status: "suggested" | "confirmed" | "rejected" | "superseded";
+  direction: "from" | "to";
+  confidence?: number;
+  sourceEngine: string;
+  evidence?: Array<{
+    pageNumber: number;
+    sourceEngine: string;
+    sourceText?: string;
+    bbox?: [number, number, number, number];
+  }>;
+  comment?: string;
+  reviewTaskId?: string | null;
+  createdAt: string;
 };
 
 export type DocumentDetail = DocumentSummary & {
@@ -23,7 +45,7 @@ export type DocumentDetail = DocumentSummary & {
   fields: unknown[];
   lineItems: unknown[];
   extractions: unknown[];
-  relationships: unknown[];
+  relationships: DocumentRelationship[];
   tags: string[];
   folderIds: string[];
   primaryFolderId?: string | null;
@@ -185,10 +207,12 @@ export const needsReviewFolder: Folder = {
 
 export const uploadedDocument = summaryFromDetail(uploadedDetail());
 export const existingDocument = summaryFromDetail(existingDetail());
+export const receiptDocument = summaryFromDetail(receiptDetail());
 
 export function seededDocuments(): Map<string, DocumentDetail> {
   const existing = existingDetail();
-  return new Map([[existing.id, existing]]);
+  const receipt = receiptDetail();
+  return new Map([[existing.id, existing], [receipt.id, receipt]]);
 }
 
 export function seededFolders(): Folder[] {
@@ -381,6 +405,88 @@ export function seededCanonicalFields(): CanonicalField[] {
   ];
 }
 
+export function seededRelationships(): DocumentRelationship[] {
+  return [
+    {
+      id: "20272727-2727-4727-8727-272727272727",
+      documentId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      relatedDocumentId: "edededed-eded-4ede-8ded-edededededed",
+      relatedTitle: "Acme repair receipt",
+      relationshipType: "warranty_for",
+      status: "suggested",
+      direction: "from",
+      confidence: 0.88,
+      sourceEngine: "system",
+      comment: "Shared merchant and purchase date.",
+      evidence: [{pageNumber: 1, sourceEngine: "system", sourceText: "Acme Repairs appears on both documents."}],
+      reviewTaskId: "21272727-2727-4727-8727-272727272727",
+      createdAt: "2026-04-26T12:00:00Z",
+    },
+  ];
+}
+
+export function seededDeadlines() {
+  return [
+    {
+      id: "22272727-2727-4727-8727-272727272727",
+      documentId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      documentTitle: "Existing Warranty",
+      deadlineType: "warranty_expiration",
+      dueOn: "2026-07-20",
+      status: "open",
+      confidence: 0.84,
+      evidence: [{pageNumber: 1, sourceEngine: "system", sourceText: "Warranty expires July 20, 2026."}],
+      metadata: {sourceFieldPath: "warranty.expiration_date"},
+    },
+  ];
+}
+
+export function seededTimeline() {
+  return [
+    {
+      id: "deadline-22272727-2727-4727-8727-272727272727",
+      eventType: "deadline",
+      occurredOn: "2026-07-20",
+      title: "warranty_expiration · Existing Warranty",
+      documentId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      documentTitle: "Existing Warranty",
+      deadlineId: "22272727-2727-4727-8727-272727272727",
+      status: "open",
+      metadata: {},
+    },
+    {
+      id: "relationship-20272727-2727-4727-8727-272727272727",
+      eventType: "relationship",
+      occurredOn: "2026-04-26",
+      title: "warranty_for · Existing Warranty ↔ Acme repair receipt",
+      documentId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      documentTitle: "Existing Warranty",
+      relationshipId: "20272727-2727-4727-8727-272727272727",
+      status: "suggested",
+      metadata: {},
+    },
+  ];
+}
+
+export function seededSmartViews() {
+  return [
+    {
+      key: "relationship_suggestions",
+      title: "Relationship suggestions",
+      description: "Suggested links that need human confirmation.",
+      count: 1,
+      filters: {relationshipStatuses: ["suggested"]},
+    },
+    {
+      key: "open_deadlines",
+      title: "Open deadlines",
+      description: "Documents with unresolved due dates.",
+      count: 1,
+      filters: {hasOpenDeadlines: true},
+    },
+  ];
+}
+
 export function seededSearchResponse(query: string, family?: string): SearchResponse {
   if (query.toLowerCase().includes("no matching") || family === "warranty") {
     return {
@@ -391,6 +497,8 @@ export function seededSearchResponse(query: string, family?: string): SearchResp
         tags: {},
         reviewStatus: {},
         sensitivity: {},
+        relationshipTypes: {},
+        deadlineTypes: {},
         dateBuckets: {},
       },
       debug: {mode: "hybrid", candidateCounts: {lexical: 0, semantic: 0}, filtersApplied: family ? 1 : 0},
@@ -427,6 +535,8 @@ export function seededSearchResponse(query: string, family?: string): SearchResp
       tags: {medical: 1, urgent: 1},
       reviewStatus: {user_confirmed: 1},
       sensitivity: {normal: 1},
+      relationshipTypes: {warranty_for: 1},
+      deadlineTypes: {warranty_expiration: 1},
       dateBuckets: {"2026-04": 1},
     },
     debug: {
@@ -539,6 +649,7 @@ export function summaryFromDetail(document: DocumentDetail): DocumentSummary {
     thumbnailUrl: document.thumbnailUrl,
     folderPaths: document.folderPaths,
     tags: document.tags,
+    relatedCount: document.relationships?.filter((item) => item.status !== "rejected").length ?? 0,
   };
 }
 
@@ -616,6 +727,38 @@ function existingDetail(): DocumentDetail {
         reviewStatus: "auto_accepted",
       },
     ],
+    lineItems: [],
+    extractions: [],
+    relationships: seededRelationships(),
+    tags: ["Home"],
+    folderIds: [homeFolder.id],
+    primaryFolderId: homeFolder.id,
+    filingNotes: null,
+  };
+}
+
+function receiptDetail(): DocumentDetail {
+  return {
+    id: "edededed-eded-4ede-8ded-edededededed",
+    title: "Acme repair receipt",
+    family: "receipt",
+    lifecycleState: "active",
+    reviewStatus: "user_confirmed",
+    createdAt: "2026-04-25T10:00:00Z",
+    documentDate: "2026-04-20",
+    thumbnailUrl: "/api/v1/assets/eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+    folderPaths: [homeFolder.path],
+    pages: [{pageNumber: 1, imageUrl: "/api/v1/assets/efefefef-efef-4efe-8fef-efefefefefef"}],
+    assets: [
+      {
+        id: "eaeaeaea-eaea-4aea-8aea-eaeaeaeaeaea",
+        assetRole: "original",
+        mimeType: "application/pdf",
+        assetUrl: "/api/v1/assets/eaeaeaea-eaea-4aea-8aea-eaeaeaeaeaea",
+        sha256: "b".repeat(64),
+      },
+    ],
+    fields: [],
     lineItems: [],
     extractions: [],
     relationships: [],

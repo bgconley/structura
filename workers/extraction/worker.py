@@ -8,6 +8,7 @@ from uuid import UUID
 
 from lib.extraction import ExtractionService
 from lib.jobs import JobService, record_service_health
+from lib.relationships.jobs import enqueue_relationship_job
 from lib.search.jobs import enqueue_embed_document_job
 from workers.runtime import start_health_server
 
@@ -70,6 +71,10 @@ def process_next_extraction_job(
                 household_id=claimed.household_id,
                 force_reembed=False,
             )
+            _enqueue_relationship_refresh(
+                target_document_id,
+                household_id=claimed.household_id,
+            )
         elif claimed.state.job_type == "extract":
             schema_name = str(claimed.payload.get("target_schema_name") or "")
             route_profile = str(
@@ -95,6 +100,10 @@ def process_next_extraction_job(
                 target_document_id,
                 household_id=claimed.household_id,
                 force_reembed=False,
+            )
+            _enqueue_relationship_refresh(
+                target_document_id,
+                household_id=claimed.household_id,
             )
         else:
             raise ExtractionWorkerError(
@@ -135,6 +144,21 @@ def _enqueue_embedding_refresh(
                 document_id=document_id,
                 household_id=household_id,
                 force_reembed=force_reembed,
+            )
+        conn.commit()
+
+
+def _enqueue_relationship_refresh(document_id: UUID, *, household_id: UUID | None) -> None:
+    from lib.db.connection import db_connection
+
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            enqueue_relationship_job(
+                cur,
+                document_id=document_id,
+                household_id=household_id,
+                priority=35,
+                reason="phase7.extraction_relationship_refresh",
             )
         conn.commit()
 

@@ -1,4 +1,4 @@
-export type ViewMode = "inbox" | "review" | "search" | "viewer" | "automation";
+export type ViewMode = "inbox" | "review" | "search" | "viewer" | "automation" | "relationships" | "timelines";
 
 export type SessionInfo = {
   displayName?: string;
@@ -21,6 +21,7 @@ export type DocumentSummary = {
   thumbnailUrl?: string;
   folderPaths?: string[];
   tags?: string[];
+  relatedCount?: number;
 };
 
 export type DocumentAsset = {
@@ -46,7 +47,7 @@ export type DocumentDetail = DocumentSummary & {
   fields: unknown[];
   lineItems: unknown[];
   extractions: unknown[];
-  relationships: unknown[];
+  relationships: DocumentRelationship[];
   tags: string[];
   folderIds: string[];
   primaryFolderId?: string | null;
@@ -96,9 +97,76 @@ export type SearchRequest = {
   amountMin?: number;
   amountMax?: number;
   sensitivity?: string[];
+  relationshipTypes?: string[];
+  relationshipStatuses?: string[];
+  hasRelationships?: boolean;
+  deadlineTypes?: string[];
+  deadlineStatuses?: string[];
+  hasOpenDeadlines?: boolean;
   primaryFolderOnly?: boolean;
   limit?: number;
   includeDebug?: boolean;
+};
+
+export type DocumentRelationship = {
+  id: string;
+  documentId: string;
+  relatedDocumentId: string;
+  relatedTitle: string;
+  relationshipType: string;
+  status: "suggested" | "confirmed" | "rejected" | "superseded";
+  direction: "from" | "to";
+  confidence?: number;
+  sourceEngine: string;
+  evidence?: EvidenceRef[];
+  comment?: string | null;
+  reviewTaskId?: string | null;
+  createdAt: string;
+};
+
+export type RelationshipWrite = {
+  fromDocumentId: string;
+  toDocumentId: string;
+  relationshipType: string;
+  confidence?: number;
+  evidence?: EvidenceRef[];
+  comment?: string;
+};
+
+export type DocumentDeadline = {
+  id: string;
+  documentId: string;
+  documentTitle: string;
+  deadlineType: string;
+  dueOn: string;
+  remindFrom?: string | null;
+  status: string;
+  confidence?: number;
+  evidence?: EvidenceRef[];
+  metadata?: Record<string, unknown>;
+};
+
+export type TimelineEvent = {
+  id: string;
+  eventType: string;
+  occurredOn: string;
+  title: string;
+  documentId?: string;
+  documentTitle?: string;
+  relationshipId?: string;
+  contactId?: string;
+  contactName?: string;
+  deadlineId?: string;
+  status?: string;
+  metadata?: Record<string, unknown>;
+};
+
+export type SmartViewSummary = {
+  key: string;
+  title: string;
+  description: string;
+  count: number;
+  filters: Record<string, unknown>;
 };
 
 export type SearchResult = {

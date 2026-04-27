@@ -135,6 +135,195 @@ button:disabled {
   font-size: 12px;
 }
 
+.relationship-panel,
+.relationship-card {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--raised);
+  padding: 12px;
+}
+
+.relationship-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.relationship-panel h3,
+.relationship-card h2,
+.relationship-heading h1 {
+  margin: 0;
+}
+
+.relationship-list,
+.deadline-list,
+.smart-view-list,
+.timeline-list {
+  display: grid;
+  gap: 8px;
+}
+
+.relationship-row,
+.relationship-list.wide button,
+.deadline-list button,
+.timeline-list button,
+.smart-view-list article {
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 9px;
+}
+
+.relationship-row {
+  display: grid;
+  gap: 8px;
+}
+
+.relationship-row button,
+.relationship-list.wide button,
+.deadline-list button,
+.timeline-list button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  display: grid;
+  gap: 3px;
+  padding: 0;
+}
+
+.relationship-row.suggested {
+  border-color: #fed7aa;
+  background: var(--amber-soft);
+}
+
+.relationship-row strong,
+.relationship-list.wide strong,
+.deadline-list strong,
+.timeline-list strong,
+.smart-view-list strong {
+  color: var(--text-strong);
+  font-size: 13px;
+}
+
+.relationship-row span,
+.relationship-row em,
+.relationship-list.wide span,
+.relationship-list.wide em,
+.deadline-list span,
+.deadline-list em,
+.timeline-list span,
+.smart-view-list span {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.relationship-actions,
+.relationship-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.relationship-form {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.relationship-form label {
+  display: grid;
+  gap: 5px;
+  color: var(--text-strong);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.relationship-form input,
+.relationship-form select {
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 0 9px;
+  background: var(--panel);
+}
+
+.relationship-form button,
+.relationship-actions button {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel);
+  min-height: 30px;
+  color: var(--text);
+}
+
+.relationship-status {
+  margin: 0;
+  color: var(--green);
+  font-size: 12px;
+}
+
+.relationship-workbench {
+  padding: 24px;
+  display: grid;
+  gap: 18px;
+}
+
+.relationship-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.relationship-heading p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.relationship-workbench-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.timeline-card {
+  grid-column: 1 / -1;
+}
+
+.timeline-list button {
+  grid-template-columns: 110px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.timeline-list time {
+  color: var(--blue);
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.smart-view-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 10px;
+}
+
+.smart-view-list span {
+  grid-column: 1;
+}
+
+.smart-view-list b {
+  grid-row: 1 / 3;
+  grid-column: 2;
+  align-self: center;
+  justify-self: end;
+  border-radius: 999px;
+  background: var(--blue-soft);
+  color: var(--blue);
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
 .app-shell {
   min-height: 100vh;
   display: grid;
@@ -1585,6 +1774,7 @@ tbody tr.selected {
   .home-grid,
   .viewer-grid,
   .automation-grid,
+  .relationship-workbench-grid,
   .rule-builder,
   .watch-builder,
   .organization-rail {
@@ -1634,6 +1824,7 @@ tbody tr.selected {
   .metrics-row,
   .stage-row,
   .inline-form,
+  .timeline-list button,
   .rule-builder,
   .watch-builder,
   .quick-create {

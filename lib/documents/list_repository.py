@@ -57,7 +57,13 @@ DOCUMENT_LIST_SELECT_COLUMNS_SQL = """
       WHERE dt.document_id = d.id
     ),
     ARRAY[]::text[]
-  ) AS tags
+  ) AS tags,
+  (
+    SELECT count(*)::int
+    FROM document_relationships dr
+    WHERE dr.status IN ('suggested', 'confirmed')
+      AND d.id IN (dr.from_document_id, dr.to_document_id)
+  ) AS related_count
 """
 
 DOCUMENT_LIST_FROM_SQL = """
@@ -244,6 +250,12 @@ def _combined_document_list_filters(
         amount_min=amount_min,
         amount_max=amount_max,
         sensitivity=folder_filters.sensitivity,
+        relationship_types=folder_filters.relationship_types,
+        relationship_statuses=folder_filters.relationship_statuses,
+        has_relationships=folder_filters.has_relationships,
+        deadline_types=folder_filters.deadline_types,
+        deadline_statuses=folder_filters.deadline_statuses,
+        has_open_deadlines=folder_filters.has_open_deadlines,
         primary_folder_only=base.primary_folder_only or folder_filters.primary_folder_only,
     )
 

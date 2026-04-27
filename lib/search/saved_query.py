@@ -22,13 +22,24 @@ SUPPORTED_KEYS = {
     "amountMin",
     "dateFrom",
     "dateTo",
+    "deadlineStatuses",
+    "deadlineTypes",
+    "deadline_status",
+    "deadline_type",
     "document_family",
     "families",
     "folderIds",
     "folder_ids",
+    "hasOpenDeadlines",
+    "hasRelationships",
+    "open_deadlines",
     "open_review_tasks",
     "primaryFolderOnly",
     "primary_folder_only",
+    "relationshipStatuses",
+    "relationshipTypes",
+    "relationship_status",
+    "relationship_types",
     "reviewStatuses",
     "review_status",
     "reviewedOnly",
@@ -69,6 +80,18 @@ def parse_saved_query(value: dict[str, object] | None) -> ParsedSavedQuery:
             amount_min=_optional_decimal(saved_query, "amountMin"),
             amount_max=_optional_decimal(saved_query, "amountMax"),
             sensitivity=tuple(_text_values(saved_query, "sensitivity")),
+            relationship_types=tuple(
+                _text_values(saved_query, "relationshipTypes", "relationship_types")
+            ),
+            relationship_statuses=tuple(
+                _text_values(saved_query, "relationshipStatuses", "relationship_status")
+            ),
+            has_relationships=_optional_bool(saved_query, "hasRelationships"),
+            deadline_types=tuple(_text_values(saved_query, "deadlineTypes", "deadline_type")),
+            deadline_statuses=tuple(
+                _text_values(saved_query, "deadlineStatuses", "deadline_status")
+            ),
+            has_open_deadlines=(_optional_bool(saved_query, "hasOpenDeadlines", "open_deadlines")),
             primary_folder_only=_bool_value(
                 saved_query,
                 "primaryFolderOnly",

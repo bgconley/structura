@@ -77,7 +77,7 @@ export function SearchResults({
           <span>lexical</span>
           <span>semantic</span>
           <span>metadata</span>
-          <span className="deferred">relationships</span>
+          <span>relationships</span>
         </div>
       </form>
       <div className="search-layout">
@@ -128,6 +128,8 @@ export function SearchResults({
             {filters.tag ? <span>tag = {filters.tag}</span> : null}
             {filters.reviewStatus ? <span>review_status = {filters.reviewStatus}</span> : null}
             {filters.sensitivity ? <span>sensitivity = {filters.sensitivity}</span> : null}
+            {filters.relationshipType ? <span>relationship = {filters.relationshipType}</span> : null}
+            {filters.deadlineType ? <span>deadline = {filters.deadlineType}</span> : null}
             {response?.debug?.filtersApplied !== undefined ? (
               <span>filters = {String(response.debug.filtersApplied)}</span>
             ) : null}
@@ -151,6 +153,8 @@ export function SearchResults({
           <FacetBlock title="Tags" values={response?.facets?.tags} />
           <FacetBlock title="Review status" values={response?.facets?.reviewStatus} />
           <FacetBlock title="Sensitivity" values={response?.facets?.sensitivity} />
+          <FacetBlock title="Relationships" values={response?.facets?.relationshipTypes} />
+          <FacetBlock title="Deadlines" values={response?.facets?.deadlineTypes} />
           <FacetBlock title="Date buckets" values={response?.facets?.dateBuckets} />
           <div className="retrieval-actions">
             <button

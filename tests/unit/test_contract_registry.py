@@ -155,7 +155,7 @@ def test_json_schema_instances_cover_review_candidates_canonical_filing_and_even
     )
 
 
-def test_review_action_schema_matches_runtime_phase4_actions() -> None:
+def test_review_action_schema_matches_runtime_review_actions() -> None:
     registry = ContractRegistry.load("contracts")
     schema_actions = set(
         registry.schemas["review_action.v1.schema.json"]["properties"]["action_type"]["enum"]
@@ -167,6 +167,8 @@ def test_review_action_schema_matches_runtime_phase4_actions() -> None:
         "reclassify_document",
         "rerun_extraction",
         "mark_done",
+        "accept_relationship",
+        "reject_relationship",
     }
 
     assert schema_actions == runtime_actions

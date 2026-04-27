@@ -5,6 +5,7 @@ import {AutomationWorkbench} from "./components/AutomationWorkbench";
 import {Inbox} from "./components/Inbox";
 import {LoginScreen} from "./components/LoginScreen";
 import {ReviewQueue} from "./components/ReviewQueue";
+import {RelationshipWorkspace} from "./components/RelationshipWorkspace";
 import {SearchResults} from "./components/SearchResults";
 import {Sidebar} from "./components/Sidebar";
 import {TopCommand} from "./components/TopCommand";
@@ -227,6 +228,15 @@ export default function App() {
     await loadDocuments(deferredQuery, activeFolderId);
   }
 
+  async function reloadSelectedDocument(documentId: string | null = selectedId) {
+    if (!documentId) {
+      return;
+    }
+    const next = await fetchJson<DocumentDetail>(`/api/v1/documents/${documentId}`);
+    setDetail(next);
+    await loadDocuments(deferredQuery, activeFolderId);
+  }
+
   async function handleSearch(payload?: SearchRequest) {
     const target: SearchRequest = payload ?? {
       query,
@@ -311,6 +321,15 @@ export default function App() {
         />
         {viewMode === "automation" ? (
           <AutomationWorkbench />
+        ) : viewMode === "relationships" || viewMode === "timelines" ? (
+          <RelationshipWorkspace
+            mode={viewMode}
+            onOpenDocument={(documentId) => {
+              setEvidenceTarget(null);
+              setSelectedId(documentId);
+              setViewMode("viewer");
+            }}
+          />
         ) : viewMode === "review" ? (
           <ReviewQueue
             onOpenDocument={(documentId, target) => {
@@ -346,6 +365,13 @@ export default function App() {
             folders={folders}
             tags={tags}
             onSaveOrganization={handleSaveOrganization}
+            documents={documents}
+            onOpenDocument={(documentId) => {
+              setEvidenceTarget(null);
+              setSelectedId(documentId);
+              setViewMode("viewer");
+            }}
+            onRelationshipsChanged={() => reloadSelectedDocument(selectedId)}
             parseDebug={parseDebug}
             parseDebugError={parseDebugError}
             isParseDebugLoading={isParseDebugLoading}

@@ -26,4 +26,4 @@ jobs:
             --mount type=volume,src=structura-ci-web-node-modules,dst=/workspace/apps/web/node_modules \
             -w /workspace \
             mcr.microsoft.com/playwright:v1.59.1-noble \
-            sh -lc "npm ci && npx playwright test tests/e2e/phase1-live.spec.ts tests/e2e/phase2-live.spec.ts tests/e2e/phase3-live.spec.ts tests/e2e/phase4-live.spec.ts tests/e2e/phase5-live.spec.ts tests/e2e/phase6-live.spec.ts --workers=1"
+            sh -lc "npm ci && npx playwright test tests/e2e/phase1-live.spec.ts tests/e2e/phase2-live.spec.ts tests/e2e/phase3-live.spec.ts tests/e2e/phase4-live.spec.ts tests/e2e/phase5-live.spec.ts tests/e2e/phase6-live.spec.ts tests/e2e/phase7-live.spec.ts --workers=1"

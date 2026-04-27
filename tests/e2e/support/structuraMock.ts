@@ -20,9 +20,13 @@ import {
   seededFilingSuggestions,
   seededFieldCandidates,
   seededFolders,
+  seededDeadlines,
   seededReviewTasks,
+  seededRelationships,
   seededSearchResponse,
+  seededSmartViews,
   seededTags,
+  seededTimeline,
   seededWatchedFolders,
   summaryFromDetail,
   Tag,
@@ -45,6 +49,10 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
   const contacts = seededContacts();
   const filingRules = seededFilingRules();
   let filingSuggestions = seededFilingSuggestions();
+  let relationships = seededRelationships();
+  const deadlines = seededDeadlines();
+  const timeline = seededTimeline();
+  const smartViews = seededSmartViews();
   const watchedFolders = seededWatchedFolders();
   let reviewTasks = seededReviewTasks();
   let fieldCandidates = seededFieldCandidates();
@@ -157,6 +165,99 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
         status: 200,
         headers: {"Content-Type": "application/json", ...corsHeaders},
         json: seededSearchResponse(String(payload.query ?? ""), payload.families?.[0]),
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/v1/relationships" && request.method() === "GET") {
+      const documentId = url.searchParams.get("documentId");
+      const status = url.searchParams.get("status");
+      await route.fulfill({
+        status: 200,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: {
+          items: relationships
+            .filter((item) => !documentId || item.documentId === documentId || item.relatedDocumentId === documentId)
+            .filter((item) => !status || item.status === status)
+            .map((item) => relationshipForDocument(item, documentId ?? item.documentId)),
+        },
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/v1/relationships" && request.method() === "POST") {
+      expect(request.headers()["x-csrf-token"]).toBe(expectedCsrfToken);
+      const payload = request.postDataJSON() as {
+        fromDocumentId: string;
+        toDocumentId: string;
+        relationshipType: string;
+        comment?: string;
+      };
+      const related = documents.get(payload.toDocumentId);
+      const relationship = {
+        id: `23272727-2727-4727-8727-${String(relationships.length + 1).padStart(12, "2")}`,
+        documentId: payload.fromDocumentId,
+        relatedDocumentId: payload.toDocumentId,
+        relatedTitle: related?.title ?? "Related document",
+        relationshipType: payload.relationshipType,
+        status: "confirmed" as const,
+        direction: "from" as const,
+        confidence: 1,
+        sourceEngine: "human",
+        evidence: [{pageNumber: 1, sourceEngine: "human", sourceText: payload.comment ?? "Manual relationship."}],
+        comment: payload.comment,
+        reviewTaskId: null,
+        createdAt: "2026-04-26T13:00:00Z",
+      };
+      relationships = relationships.filter((item) => item.id !== relationship.id);
+      relationships.unshift(relationship);
+      await route.fulfill({
+        status: 201,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: relationship,
+      });
+      return;
+    }
+
+    const relationshipDecisionMatch = url.pathname.match(/^\/api\/v1\/relationships\/([^/]+)\/(accept|reject)$/);
+    if (relationshipDecisionMatch && request.method() === "POST") {
+      expect(request.headers()["x-csrf-token"]).toBe(expectedCsrfToken);
+      const status = relationshipDecisionMatch[2] === "accept" ? "confirmed" as const : "rejected" as const;
+      relationships = relationships.map((item) => (
+        item.id === relationshipDecisionMatch[1] ? {...item, status} : item
+      ));
+      const relationship = relationships.find((item) => item.id === relationshipDecisionMatch[1]);
+      await route.fulfill({
+        status: relationship ? 200 : 404,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: relationship ?? {detail: "Relationship not found"},
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/v1/deadlines" && request.method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: {items: deadlines},
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/v1/timeline" && request.method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: {items: timeline},
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/v1/smart-views" && request.method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: {items: smartViews},
       });
       return;
     }
@@ -520,10 +621,13 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
     const detailMatch = url.pathname.match(/^\/api\/v1\/documents\/([^/]+)$/);
     if (detailMatch && request.method() === "GET") {
       const document = documents.get(detailMatch[1]);
+      const payload = document
+        ? {...document, relationships: relationshipsForDocument(relationships, document.id)}
+        : undefined;
       await route.fulfill({
         status: document ? 200 : 404,
         headers: {"Content-Type": "application/json", ...corsHeaders},
-        json: document ?? {detail: "Document not found"},
+        json: payload ?? {detail: "Document not found"},
       });
       return;
     }
@@ -541,4 +645,30 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
   });
 
   return {documents, folders, tags};
+}
+
+function relationshipsForDocument(
+  relationships: ReturnType<typeof seededRelationships>,
+  documentId: string,
+) {
+  return relationships
+    .filter((item) => item.status !== "rejected")
+    .filter((item) => item.documentId === documentId || item.relatedDocumentId === documentId)
+    .map((item) => relationshipForDocument(item, documentId));
+}
+
+function relationshipForDocument(
+  relationship: ReturnType<typeof seededRelationships>[number],
+  documentId: string,
+) {
+  if (relationship.documentId === documentId) {
+    return relationship;
+  }
+  return {
+    ...relationship,
+    documentId,
+    relatedDocumentId: relationship.documentId,
+    relatedTitle: "Existing Warranty",
+    direction: "to" as const,
+  };
 }

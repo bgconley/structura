@@ -14,6 +14,7 @@ from lib.config import Settings, get_settings
 from lib.contracts import AcceptedJob, JobState
 from lib.db.connection import db_connection
 from lib.jobs import create_job_with_cursor
+from lib.relationships.jobs import enqueue_relationship_job
 from lib.storage import (
     InvalidObjectUri,
     ObjectStorage,
@@ -475,5 +476,12 @@ def _create_pipeline_jobs(
         },
         priority=40,
         queue_name="docling",
+    )
+    enqueue_relationship_job(
+        cur,
+        household_id=household_id,
+        document_id=document_id,
+        priority=30,
+        reason="phase7.upload_relationship_refresh",
     )
     return ingest_job

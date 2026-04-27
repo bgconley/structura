@@ -11,6 +11,7 @@ import type {
 } from "../types";
 import {FilingPanel} from "./FilingPanel";
 import {ParseDebugPanel} from "./ParseDebugPanel";
+import {RelationshipPanel} from "./RelationshipPanel";
 import {FactRow, ReviewChip, StatusChip, TrustLine} from "./Status";
 
 export function Viewer({
@@ -21,6 +22,9 @@ export function Viewer({
   folders,
   tags,
   onSaveOrganization,
+  documents,
+  onOpenDocument,
+  onRelationshipsChanged,
   parseDebug,
   parseDebugError,
   isParseDebugLoading,
@@ -33,6 +37,9 @@ export function Viewer({
   folders: Folder[];
   tags: Tag[];
   onSaveOrganization: (documentId: string, payload: DocumentOrganizationWrite) => Promise<void>;
+  documents: DocumentSummary[];
+  onOpenDocument: (documentId: string) => void;
+  onRelationshipsChanged: () => Promise<void>;
   parseDebug: ParseDebugView | null;
   parseDebugError: string | null;
   isParseDebugLoading: boolean;
@@ -132,6 +139,12 @@ export function Viewer({
           folders={folders}
           tags={tags}
           onSave={onSaveOrganization}
+        />
+        <RelationshipPanel
+          document={document}
+          documents={documents}
+          onOpenDocument={onOpenDocument}
+          onChanged={onRelationshipsChanged}
         />
         <ParseDebugPanel
           debug={parseDebug}

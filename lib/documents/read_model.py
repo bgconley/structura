@@ -10,6 +10,7 @@ from lib.documents.access_policy import (
 )
 from lib.documents.summary_mapping import document_summary_from_row, string_list, uuid_list
 from lib.extraction.candidate_repository import value_from_candidate_row
+from lib.relationships.service import RelationshipService
 
 
 def get_document_detail(document_id: UUID, access: DocumentAccessContext) -> DocumentDetail | None:
@@ -67,7 +68,13 @@ def get_document_detail(document_id: UUID, access: DocumentAccessContext) -> Doc
                       WHERE dt.document_id = d.id
                     ),
                     ARRAY[]::text[]
-                  ) AS tags
+                  ) AS tags,
+                  (
+                    SELECT count(*)::int
+                    FROM document_relationships dr
+                    WHERE dr.status IN ('suggested', 'confirmed')
+                      AND d.id IN (dr.from_document_id, dr.to_document_id)
+                  ) AS related_count
                 FROM documents d
                 LEFT JOIN document_primary_amounts_v a ON a.document_id = d.id
                 WHERE d.id = %s
@@ -157,6 +164,11 @@ def get_document_detail(document_id: UUID, access: DocumentAccessContext) -> Doc
             extraction_rows = cur.fetchall()
 
     summary = document_summary_from_row(row)
+    relationships = RelationshipService().list_relationships(
+        access=access,
+        document_id=document_id,
+        limit=200,
+    )
     pages = [
         DocumentPage.model_validate(
             {
@@ -192,7 +204,9 @@ def get_document_detail(document_id: UUID, access: DocumentAccessContext) -> Doc
             "pages": [page.model_dump(by_alias=True) for page in pages],
             "assets": [asset.model_dump(by_alias=True) for asset in assets],
             "extractions": [_extraction_payload(row) for row in extraction_rows],
-            "relationships": [],
+            "relationships": [
+                relationship.model_dump(by_alias=True) for relationship in relationships
+            ],
             "fields": [_canonical_field_payload(row) for row in field_rows],
             "lineItems": [_canonical_line_item_payload(row) for row in line_item_rows],
             "tags": string_list(row.get("tags")),

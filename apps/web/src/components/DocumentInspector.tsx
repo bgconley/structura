@@ -84,7 +84,18 @@ export function DocumentInspector({
       />
       <section className="related-block">
         <h3>Related Documents</h3>
-        <p>Relationship suggestions are prepared for Phase 7.</p>
+        {detail?.relationships.length ? (
+          <div className="field-list">
+            {detail.relationships.slice(0, 3).map((relationship) => (
+              <p key={relationship.id}>
+                <strong>{relationship.relationshipType.replaceAll("_", " ")}</strong>
+                <span>{relationship.relatedTitle}</span>
+              </p>
+            ))}
+          </div>
+        ) : (
+          <p>No confirmed or suggested links yet.</p>
+        )}
       </section>
     </aside>
   );

@@ -22,6 +22,26 @@ const reviewStatusOptions = [
   "rejected",
 ];
 const sensitivityOptions = ["", "normal", "pii", "financial", "medical", "legal", "highly_sensitive"];
+const relationshipTypeOptions = [
+  "",
+  "duplicate_of",
+  "related_to",
+  "invoice_for",
+  "receipt_for",
+  "eob_for",
+  "bill_for",
+  "warranty_for",
+  "renewal_of",
+];
+const deadlineTypeOptions = [
+  "",
+  "due_date",
+  "renewal_date",
+  "warranty_expiration",
+  "response_deadline",
+  "filing_deadline",
+  "appointment_date",
+];
 
 export type SearchFilterState = {
   mode: SearchMode;
@@ -30,6 +50,10 @@ export type SearchFilterState = {
   tag: string;
   reviewStatus: string;
   sensitivity: string;
+  relationshipType: string;
+  hasRelationships: boolean;
+  deadlineType: string;
+  hasOpenDeadlines: boolean;
   reviewedOnly: boolean;
   dateFrom: string;
   dateTo: string;
@@ -44,6 +68,10 @@ export const defaultSearchFilterState: SearchFilterState = {
   tag: "",
   reviewStatus: "",
   sensitivity: "",
+  relationshipType: "",
+  hasRelationships: false,
+  deadlineType: "",
+  hasOpenDeadlines: false,
   reviewedOnly: false,
   dateFrom: "",
   dateTo: "",
@@ -68,6 +96,10 @@ export function searchRequestFromFilters(
     amountMin: filters.amountMin ? Number(filters.amountMin) : undefined,
     amountMax: filters.amountMax ? Number(filters.amountMax) : undefined,
     sensitivity: filters.sensitivity ? [filters.sensitivity] : [],
+    relationshipTypes: filters.relationshipType ? [filters.relationshipType] : [],
+    hasRelationships: filters.hasRelationships || undefined,
+    deadlineTypes: filters.deadlineType ? [filters.deadlineType] : [],
+    hasOpenDeadlines: filters.hasOpenDeadlines || undefined,
     includeDebug: true,
   };
 }
@@ -83,6 +115,10 @@ export function activeSearchFilters(
     filters.tag ? `tag ${filters.tag}` : null,
     filters.reviewStatus ? `review ${filters.reviewStatus}` : null,
     filters.sensitivity ? `sensitivity ${filters.sensitivity}` : null,
+    filters.relationshipType ? `relationship ${filters.relationshipType}` : null,
+    filters.hasRelationships ? "has relationships" : null,
+    filters.deadlineType ? `deadline ${filters.deadlineType}` : null,
+    filters.hasOpenDeadlines ? "open deadlines" : null,
     filters.reviewedOnly ? "reviewed only" : null,
     filters.dateFrom || filters.dateTo
       ? `${filters.dateFrom || "any"} to ${filters.dateTo || "any"}`
@@ -198,6 +234,30 @@ export function SearchFilterPanel({
         </select>
       </label>
       <label>
+        Relationship filter
+        <select
+          aria-label="Relationship filter"
+          value={filters.relationshipType}
+          onChange={(event) => updateFilter("relationshipType", event.target.value)}
+        >
+          {relationshipTypeOptions.map((option) => (
+            <option key={option} value={option}>{option || "Any relationship"}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Deadline filter
+        <select
+          aria-label="Deadline filter"
+          value={filters.deadlineType}
+          onChange={(event) => updateFilter("deadlineType", event.target.value)}
+        >
+          {deadlineTypeOptions.map((option) => (
+            <option key={option} value={option}>{option || "Any deadline"}</option>
+          ))}
+        </select>
+      </label>
+      <label>
         Date from
         <input
           value={filters.dateFrom}
@@ -243,6 +303,22 @@ export function SearchFilterPanel({
         />
         Reviewed only
       </label>
+      <label className="filter-check">
+        <input
+          checked={filters.hasRelationships}
+          onChange={(event) => updateFilter("hasRelationships", event.target.checked)}
+          type="checkbox"
+        />
+        Has relationships
+      </label>
+      <label className="filter-check">
+        <input
+          checked={filters.hasOpenDeadlines}
+          onChange={(event) => updateFilter("hasOpenDeadlines", event.target.checked)}
+          type="checkbox"
+        />
+        Has open deadlines
+      </label>
       <div className="filter-chip-list">
         <span className={filters.family ? "selected" : undefined}>
           Family: {filters.family || "Any"}
@@ -257,9 +333,17 @@ export function SearchFilterPanel({
         <span className={filters.sensitivity ? "selected" : undefined}>
           Sensitivity: {filters.sensitivity || "Any"}
         </span>
+        <span className={filters.relationshipType ? "selected" : undefined}>
+          Relationship: {filters.relationshipType || "Any"}
+        </span>
+        <span className={filters.deadlineType ? "selected" : undefined}>
+          Deadline: {filters.deadlineType || "Any"}
+        </span>
         <span>Date: {filters.dateFrom || "any"} - {filters.dateTo || "any"}</span>
         <span>Amount: {filters.amountMin || "0"} - {filters.amountMax || "any"}</span>
         <span>Review: {filters.reviewedOnly ? "Reviewed" : "Any"}</span>
+        <span>Links: {filters.hasRelationships ? "Required" : "Any"}</span>
+        <span>Deadlines: {filters.hasOpenDeadlines ? "Open only" : "Any"}</span>
       </div>
     </aside>
   );

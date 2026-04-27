@@ -15,6 +15,7 @@ from lib.contracts import (
 )
 from lib.db.connection import db_connection
 from lib.documents.access_policy import DocumentAccessContext
+from lib.relationships.jobs import enqueue_relationship_job
 from lib.search.projection import refresh_projection_and_enqueue_embedding
 
 
@@ -124,6 +125,13 @@ def link_document_contact(
                 contact_id=payload.contact_id,
                 actor_label=principal.email,
                 payload={"documentId": str(document_id), "roleName": role_name},
+            )
+            enqueue_relationship_job(
+                cur,
+                household_id=household_id,
+                document_id=document_id,
+                priority=45,
+                reason="phase7.contact_link_relationship_refresh",
             )
         conn.commit()
     refresh_projection_and_enqueue_embedding(

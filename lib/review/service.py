@@ -4,9 +4,16 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 import lib.review.repository as repository
-from lib.contracts import CanonicalField, CanonicalFieldWrite, ReviewActionRequest
+from lib.contracts import (
+    CanonicalField,
+    CanonicalFieldWrite,
+    RelationshipDecisionRequest,
+    ReviewActionRequest,
+)
 from lib.documents.access_policy import DocumentAccessContext
 from lib.jobs import JobService
+from lib.relationships.errors import RelationshipServiceError
+from lib.relationships.service import RelationshipService
 from lib.search.projection import refresh_projection_and_enqueue_embedding
 
 
@@ -78,6 +85,28 @@ class ReviewService:
                 review_task_id=action.review_task_id,
                 reason=action.comment,
             )
+        elif action.action_type == "accept_relationship":
+            try:
+                relationship = RelationshipService().accept_relationship(
+                    _relationship_id_from_action(action),
+                    RelationshipDecisionRequest.model_validate({"comment": action.comment}),
+                    access=access,
+                    actor_user_id=actor_user_id,
+                )
+            except RelationshipServiceError as exc:
+                raise ReviewServiceError(str(exc)) from exc
+            return {"ok": True, "relationshipId": str(relationship.id)}
+        elif action.action_type == "reject_relationship":
+            try:
+                relationship = RelationshipService().reject_relationship(
+                    _relationship_id_from_action(action),
+                    RelationshipDecisionRequest.model_validate({"comment": action.comment}),
+                    access=access,
+                    actor_user_id=actor_user_id,
+                )
+            except RelationshipServiceError as exc:
+                raise ReviewServiceError(str(exc)) from exc
+            return {"ok": True, "relationshipId": str(relationship.id)}
         else:  # pragma: no cover - Pydantic constrains this.
             raise ReviewServiceError(f"Unsupported review action: {action.action_type}")
         if action.action_type in {
@@ -168,6 +197,16 @@ def _candidate_id_from_action(action: ReviewActionRequest) -> UUID:
     if action.new_value:
         return UUID(str(action.new_value))
     raise ReviewServiceError("confirm_field requires metadata.candidateId.")
+
+
+def _relationship_id_from_action(action: ReviewActionRequest) -> UUID:
+    metadata = action.metadata or {}
+    relationship_id = metadata.get("relationshipId") or metadata.get("relationship_id")
+    if not relationship_id and action.new_value:
+        relationship_id = action.new_value
+    if relationship_id:
+        return UUID(str(relationship_id))
+    raise ReviewServiceError("relationship action requires metadata.relationshipId.")
 
 
 def _evidence_context_json(action: ReviewActionRequest) -> list[dict[str, object]]:

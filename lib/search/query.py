@@ -25,6 +25,12 @@ class SearchFilters:
     amount_min: Decimal | None = None
     amount_max: Decimal | None = None
     sensitivity: tuple[str, ...] = ()
+    relationship_types: tuple[str, ...] = ()
+    relationship_statuses: tuple[str, ...] = ()
+    has_relationships: bool | None = None
+    deadline_types: tuple[str, ...] = ()
+    deadline_statuses: tuple[str, ...] = ()
+    has_open_deadlines: bool | None = None
     primary_folder_only: bool = False
 
     @property
@@ -41,6 +47,12 @@ class SearchFilters:
                 self.amount_min is not None,
                 self.amount_max is not None,
                 bool(self.sensitivity),
+                bool(self.relationship_types),
+                bool(self.relationship_statuses),
+                self.has_relationships is not None,
+                bool(self.deadline_types),
+                bool(self.deadline_statuses),
+                self.has_open_deadlines is not None,
                 self.primary_folder_only,
             ]
         )
@@ -83,6 +95,12 @@ def parse_search_request(request: SearchRequest) -> ParsedSearchQuery:
             amount_min=request.amount_min,
             amount_max=request.amount_max,
             sensitivity=tuple(_dedupe_text(request.sensitivity)),
+            relationship_types=tuple(_dedupe_text(request.relationship_types)),
+            relationship_statuses=tuple(_dedupe_text(request.relationship_statuses)),
+            has_relationships=request.has_relationships,
+            deadline_types=tuple(_dedupe_text(request.deadline_types)),
+            deadline_statuses=tuple(_dedupe_text(request.deadline_statuses)),
+            has_open_deadlines=request.has_open_deadlines,
             primary_folder_only=request.primary_folder_only,
         ),
     )

@@ -625,6 +625,17 @@ paths:
         schema:
           type: string
           format: uuid
+      - in: query
+        name: status
+        schema:
+          type: string
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 200
       responses:
         '200':
           description: Relationship list
@@ -642,13 +653,204 @@ paths:
                       $ref: '#/components/schemas/DocumentRelationship'
         '401':
           description: Not authenticated
+        '422':
+          description: Validation error
     post:
       tags:
       - Relationships
       summary: Create or confirm a document relationship
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RelationshipWrite'
       responses:
-        '501':
-          description: Document relationships are implemented in Phase 7.
+        '201':
+          description: Relationship created or confirmed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentRelationship'
+        '401':
+          description: Not authenticated
+        '403':
+          description: CSRF token required
+        '404':
+          description: Document not found
+        '422':
+          description: Validation error
+  /api/v1/relationships/{relationshipId}/accept:
+    post:
+      tags:
+      - Relationships
+      summary: Accept a suggested relationship
+      parameters:
+      - in: path
+        name: relationshipId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RelationshipDecisionRequest'
+      responses:
+        '200':
+          description: Relationship accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentRelationship'
+        '401':
+          description: Not authenticated
+        '403':
+          description: CSRF token required
+        '404':
+          description: Relationship not found
+        '422':
+          description: Validation error
+  /api/v1/relationships/{relationshipId}/reject:
+    post:
+      tags:
+      - Relationships
+      summary: Reject a suggested relationship
+      parameters:
+      - in: path
+        name: relationshipId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RelationshipDecisionRequest'
+      responses:
+        '200':
+          description: Relationship rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentRelationship'
+        '401':
+          description: Not authenticated
+        '403':
+          description: CSRF token required
+        '404':
+          description: Relationship not found
+        '422':
+          description: Validation error
+  /api/v1/deadlines:
+    get:
+      tags:
+      - Relationships
+      summary: List document deadlines
+      parameters:
+      - in: query
+        name: documentId
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: status
+        schema:
+          type: string
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 200
+      responses:
+        '200':
+          description: Deadline list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DocumentDeadline'
+        '401':
+          description: Not authenticated
+        '422':
+          description: Validation error
+  /api/v1/timeline:
+    get:
+      tags:
+      - Relationships
+      summary: List document or contact timeline events
+      parameters:
+      - in: query
+        name: documentId
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: contactId
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 200
+      responses:
+        '200':
+          description: Timeline events
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TimelineEvent'
+        '401':
+          description: Not authenticated
+        '422':
+          description: Validation error
+  /api/v1/smart-views:
+    get:
+      tags:
+      - Relationships
+      summary: List relationship-aware smart views
+      responses:
+        '200':
+          description: Smart view summaries
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SmartViewSummary'
+        '401':
+          description: Not authenticated
         '422':
           description: Validation error
   /api/v1/contacts:
@@ -1369,6 +1571,10 @@ components:
           type: array
           items:
             type: string
+        relatedCount:
+          type: integer
+          minimum: 0
+          default: 0
     DocumentDetail:
       allOf:
       - $ref: '#/components/schemas/DocumentSummary'
@@ -1599,14 +1805,48 @@ components:
       type: object
       additionalProperties: false
       required:
+      - id
+      - documentId
       - relatedDocumentId
+      - relatedTitle
       - relationshipType
+      - status
+      - direction
+      - sourceEngine
+      - createdAt
       properties:
+        id:
+          type: string
+          format: uuid
+        documentId:
+          type: string
+          format: uuid
         relatedDocumentId:
           type: string
           format: uuid
+        relatedTitle:
+          type: string
         relationshipType:
           type: string
+          enum:
+          - duplicate_of
+          - related_to
+          - invoice_for
+          - receipt_for
+          - eob_for
+          - bill_for
+          - amendment_to
+          - renewal_of
+          - attachment_to
+          - warranty_for
+          - proof_of_payment_for
+        status:
+          type: string
+          enum:
+          - suggested
+          - confirmed
+          - rejected
+          - superseded
         direction:
           type: string
           enum:
@@ -1614,8 +1854,20 @@ components:
           - to
         confidence:
           type: number
+        sourceEngine:
+          type: string
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceRef'
         comment:
           type: string
+        reviewTaskId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
     RelationshipWrite:
       type: object
       additionalProperties: false
@@ -1632,6 +1884,18 @@ components:
           format: uuid
         relationshipType:
           type: string
+          enum:
+          - duplicate_of
+          - related_to
+          - invoice_for
+          - receipt_for
+          - eob_for
+          - bill_for
+          - amendment_to
+          - renewal_of
+          - attachment_to
+          - warranty_for
+          - proof_of_payment_for
         confidence:
           type: number
         evidence:
@@ -1640,6 +1904,119 @@ components:
             $ref: '#/components/schemas/EvidenceRef'
         comment:
           type: string
+    RelationshipDecisionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        comment:
+          type: string
+          maxLength: 1000
+    DocumentDeadline:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - documentId
+      - documentTitle
+      - deadlineType
+      - dueOn
+      - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        documentId:
+          type: string
+          format: uuid
+        documentTitle:
+          type: string
+        deadlineType:
+          type: string
+          enum:
+          - due_date
+          - renewal_date
+          - warranty_expiration
+          - response_deadline
+          - filing_deadline
+          - appointment_date
+        dueOn:
+          type: string
+          format: date
+        remindFrom:
+          type: string
+          format: date
+        status:
+          type: string
+        confidence:
+          type: number
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceRef'
+        metadata:
+          type: object
+          additionalProperties: true
+    TimelineEvent:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - eventType
+      - occurredOn
+      - title
+      properties:
+        id:
+          type: string
+        eventType:
+          type: string
+        occurredOn:
+          type: string
+          format: date
+        title:
+          type: string
+        documentId:
+          type: string
+          format: uuid
+        documentTitle:
+          type: string
+        relationshipId:
+          type: string
+          format: uuid
+        contactId:
+          type: string
+          format: uuid
+        contactName:
+          type: string
+        deadlineId:
+          type: string
+          format: uuid
+        status:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+    SmartViewSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - key
+      - title
+      - description
+      - count
+      - filters
+      properties:
+        key:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        count:
+          type: integer
+          minimum: 0
+        filters:
+          type: object
+          additionalProperties: true
     FieldCandidate:
       type: object
       additionalProperties: false
@@ -2442,6 +2819,50 @@ components:
             - medical
             - legal
             - highly_sensitive
+        relationshipTypes:
+          type: array
+          items:
+            type: string
+            enum:
+            - duplicate_of
+            - related_to
+            - invoice_for
+            - receipt_for
+            - eob_for
+            - bill_for
+            - amendment_to
+            - renewal_of
+            - attachment_to
+            - warranty_for
+            - proof_of_payment_for
+        relationshipStatuses:
+          type: array
+          items:
+            type: string
+            enum:
+            - suggested
+            - confirmed
+            - rejected
+            - superseded
+        hasRelationships:
+          type: boolean
+        deadlineTypes:
+          type: array
+          items:
+            type: string
+            enum:
+            - due_date
+            - renewal_date
+            - warranty_expiration
+            - response_deadline
+            - filing_deadline
+            - appointment_date
+        deadlineStatuses:
+          type: array
+          items:
+            type: string
+        hasOpenDeadlines:
+          type: boolean
         primaryFolderOnly:
           type: boolean
           default: false

@@ -16,6 +16,29 @@ SourceEngine = Literal[
     "human",
     "system",
 ]
+RelationshipType = Literal[
+    "duplicate_of",
+    "related_to",
+    "invoice_for",
+    "receipt_for",
+    "eob_for",
+    "bill_for",
+    "amendment_to",
+    "renewal_of",
+    "attachment_to",
+    "warranty_for",
+    "proof_of_payment_for",
+]
+RelationshipStatus = Literal["suggested", "confirmed", "rejected", "superseded"]
+DeadlineStatus = Literal["open", "due_soon", "overdue", "snoozed", "resolved", "needs_review"]
+DeadlineType = Literal[
+    "due_date",
+    "renewal_date",
+    "warranty_expiration",
+    "response_deadline",
+    "filing_deadline",
+    "appointment_date",
+]
 ReviewStatus = Literal[
     "unreviewed",
     "auto_accepted",
@@ -174,6 +197,8 @@ class ReviewActionRequest(ContractModel):
         "reclassify_document",
         "rerun_extraction",
         "mark_done",
+        "accept_relationship",
+        "reject_relationship",
     ] = Field(alias="actionType")
     actor_type: Literal["human", "system", "agent"] = Field(default="human", alias="actorType")
     field_path: str | None = Field(default=None, alias="fieldPath")
@@ -285,6 +310,77 @@ class DocumentContactWrite(ContractModel):
     confidence: float | None = Field(default=None, ge=0, le=1)
 
 
+class DocumentRelationship(ContractModel):
+    id: UUID
+    document_id: UUID = Field(alias="documentId")
+    related_document_id: UUID = Field(alias="relatedDocumentId")
+    related_title: str = Field(alias="relatedTitle")
+    relationship_type: RelationshipType = Field(alias="relationshipType")
+    status: RelationshipStatus
+    direction: Literal["from", "to"]
+    confidence: float | None = Field(default=None, ge=0, le=1)
+    source_engine: SourceEngine = Field(alias="sourceEngine")
+    evidence: list[EvidenceRef] = Field(default_factory=list)
+    comment: str | None = None
+    review_task_id: UUID | None = Field(default=None, alias="reviewTaskId")
+    created_at: datetime = Field(alias="createdAt")
+
+
+class RelationshipWrite(ContractModel):
+    from_document_id: UUID = Field(alias="fromDocumentId")
+    to_document_id: UUID = Field(alias="toDocumentId")
+    relationship_type: RelationshipType = Field(alias="relationshipType")
+    confidence: float | None = Field(default=None, ge=0, le=1)
+    evidence: list[EvidenceRef] = Field(default_factory=list)
+    comment: str | None = Field(default=None, max_length=1000)
+
+    @model_validator(mode="after")
+    def reject_self_link(self) -> RelationshipWrite:
+        if self.from_document_id == self.to_document_id:
+            raise ValueError("cannot link a document to itself")
+        return self
+
+
+class RelationshipDecisionRequest(ContractModel):
+    comment: str | None = Field(default=None, max_length=1000)
+
+
+class DocumentDeadline(ContractModel):
+    id: UUID
+    document_id: UUID = Field(alias="documentId")
+    document_title: str = Field(alias="documentTitle")
+    deadline_type: DeadlineType = Field(alias="deadlineType")
+    due_on: date = Field(alias="dueOn")
+    remind_from: date | None = Field(default=None, alias="remindFrom")
+    status: DeadlineStatus | str
+    confidence: float | None = Field(default=None, ge=0, le=1)
+    evidence: list[EvidenceRef] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class TimelineEvent(ContractModel):
+    id: str
+    event_type: str = Field(alias="eventType")
+    occurred_on: date = Field(alias="occurredOn")
+    title: str
+    document_id: UUID | None = Field(default=None, alias="documentId")
+    document_title: str | None = Field(default=None, alias="documentTitle")
+    relationship_id: UUID | None = Field(default=None, alias="relationshipId")
+    contact_id: UUID | None = Field(default=None, alias="contactId")
+    contact_name: str | None = Field(default=None, alias="contactName")
+    deadline_id: UUID | None = Field(default=None, alias="deadlineId")
+    status: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class SmartViewSummary(ContractModel):
+    key: str
+    title: str
+    description: str
+    count: int = Field(ge=0)
+    filters: dict[str, Any] = Field(default_factory=dict)
+
+
 class ContactMergeSuggestion(ContractModel):
     source_contact_id: UUID = Field(alias="sourceContactId")
     target_contact_id: UUID = Field(alias="targetContactId")
@@ -356,6 +452,7 @@ class DocumentSummary(ContractModel):
     thumbnail_url: str | None = Field(default=None, alias="thumbnailUrl")
     folder_paths: list[str] = Field(default_factory=list, alias="folderPaths")
     tags: list[str] = Field(default_factory=list)
+    related_count: int = Field(default=0, alias="relatedCount")
 
 
 class DocumentAsset(ContractModel):
@@ -380,7 +477,7 @@ class DocumentDetail(DocumentSummary):
     pages: list[DocumentPage]
     assets: list[DocumentAsset]
     extractions: list[dict[str, Any]]
-    relationships: list[dict[str, Any]]
+    relationships: list[DocumentRelationship]
     fields: list[dict[str, Any]]
     line_items: list[dict[str, Any]] = Field(alias="lineItems")
     tags: list[str] = Field(default_factory=list)
@@ -405,6 +502,18 @@ class SearchRequest(ContractModel):
     sensitivity: list[
         Literal["normal", "pii", "financial", "medical", "legal", "highly_sensitive"]
     ] = Field(default_factory=list)
+    relationship_types: list[RelationshipType] = Field(
+        default_factory=list,
+        alias="relationshipTypes",
+    )
+    relationship_statuses: list[RelationshipStatus] = Field(
+        default_factory=list,
+        alias="relationshipStatuses",
+    )
+    has_relationships: bool | None = Field(default=None, alias="hasRelationships")
+    deadline_types: list[DeadlineType] = Field(default_factory=list, alias="deadlineTypes")
+    deadline_statuses: list[str] = Field(default_factory=list, alias="deadlineStatuses")
+    has_open_deadlines: bool | None = Field(default=None, alias="hasOpenDeadlines")
     primary_folder_only: bool = Field(default=False, alias="primaryFolderOnly")
     limit: int = Field(default=25, ge=1, le=100)
     include_debug: bool = Field(default=False, alias="includeDebug")
@@ -416,6 +525,9 @@ class SearchRequest(ContractModel):
             raise ValueError("query must not be blank")
         self.families = [_trimmed(value) for value in self.families if _trimmed(value)]
         self.tags = [_trimmed(value) for value in self.tags if _trimmed(value)]
+        self.deadline_statuses = [
+            _trimmed(value) for value in self.deadline_statuses if _trimmed(value)
+        ]
         return self
 
 

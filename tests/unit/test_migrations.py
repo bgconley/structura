@@ -15,7 +15,7 @@ def test_baseline_migration_scripts_are_present_and_ordered() -> None:
     plan = baseline_migration_plan("database")
 
     assert plan.scripts[0].name == "001_extensions.sql"
-    assert plan.scripts[-1].name == "072_phase6_automation.sql"
+    assert plan.scripts[-1].name == "073_phase7_relationships.sql"
     assert all(script.exists() for script in plan.scripts)
 
 
@@ -77,3 +77,14 @@ def test_phase6_automation_migration_adds_rule_and_watcher_state() -> None:
     assert "decision_status" in sql
     assert "'deferred'" in sql
     assert "filing_rule_runs_pending_suggestions_idx" in sql
+
+
+def test_phase7_relationship_migration_adds_status_deadline_and_guardrails() -> None:
+    sql = Path("database/073_phase7_relationships.sql").read_text(encoding="utf-8")
+
+    assert "document_relationships" in sql
+    assert "status" in sql
+    assert "document_relationships_active_pair_type_uniq" in sql
+    assert "document_deadlines_document_type_due_active_uniq" in sql
+    assert "deadline_type" in sql
+    assert "relationship_types" in sql

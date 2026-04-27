@@ -21,6 +21,7 @@ def document_summary_from_row(row: dict[str, object]) -> DocumentSummary:
             "thumbnailUrl": f"/api/v1/assets/{thumbnail_asset_id}" if thumbnail_asset_id else None,
             "folderPaths": string_list(row.get("folder_paths")),
             "tags": string_list(row.get("tags")),
+            "relatedCount": row.get("related_count") or 0,
         }
     )
 

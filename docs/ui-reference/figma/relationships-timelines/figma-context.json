@@ -1,0 +1,20 @@
+{
+  "phase": "Phase 7",
+  "surface": "Relationships, timelines, deadlines, and smart views",
+  "sourceFrames": [
+    {
+      "frame": "14:434",
+      "role": "Viewer baseline extended with related-document panel"
+    },
+    {
+      "frame": "14:611",
+      "role": "Workspace/review-style reference for relationship and timeline surfaces"
+    }
+  ],
+  "validatedBy": [
+    "tests/e2e/phase7.spec.ts",
+    "tests/e2e/phase7-live.spec.ts"
+  ],
+  "snapshot": "tests/e2e/phase7.spec.ts-snapshots/phase7-relationships-timeline-chromium-linux.png",
+  "notes": "Phase 7 uses existing Figma viewer/workspace language because no dedicated relationship timeline final frame exists in the artifact set."
+}
