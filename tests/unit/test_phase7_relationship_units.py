@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from datetime import date, timedelta
 from uuid import uuid4
 
 from lib.contracts import RelationshipWrite, SearchRequest
+from lib.relationships.deadline_status import deadline_status
 from lib.search.query import parse_search_request
 from lib.search.saved_query import parse_saved_query
 
@@ -66,3 +68,29 @@ def test_phase7_relationship_write_rejects_self_links() -> None:
         assert "cannot link a document to itself" in str(exc)
     else:  # pragma: no cover - the model must reject this path.
         raise AssertionError("self relationship unexpectedly validated")
+
+
+def test_phase7_deadline_status_policy_tracks_review_due_soon_and_overdue() -> None:
+    today = date.today()
+    evidence = [{"pageNumber": 1, "sourceEngine": "system", "sourceText": "due soon"}]
+
+    assert (
+        deadline_status(due_on=today - timedelta(days=1), confidence=0.95, evidence=evidence)
+        == "overdue"
+    )
+    assert (
+        deadline_status(due_on=today + timedelta(days=10), confidence=0.95, evidence=evidence)
+        == "due_soon"
+    )
+    assert (
+        deadline_status(due_on=today + timedelta(days=45), confidence=0.95, evidence=evidence)
+        == "open"
+    )
+    assert (
+        deadline_status(due_on=today + timedelta(days=45), confidence=0.2, evidence=evidence)
+        == "needs_review"
+    )
+    assert (
+        deadline_status(due_on=today + timedelta(days=45), confidence=0.95, evidence=[])
+        == "needs_review"
+    )

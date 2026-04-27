@@ -9,6 +9,7 @@ from starlette.responses import Response
 
 from apps.api.structura_api import __version__
 from apps.api.structura_api.dependencies import require_admin
+from apps.api.structura_api.openapi_contract import install_contract_aligned_openapi
 from apps.api.structura_api.routes_admin import router as admin_router
 from apps.api.structura_api.routes_assets import router as assets_router
 from apps.api.structura_api.routes_auth import router as auth_router
@@ -96,6 +97,8 @@ def create_app() -> FastAPI:
     app.include_router(jobs_router)
     app.include_router(admin_router)
     app.include_router(placeholders_router)
+
+    install_contract_aligned_openapi(app, contracts_dir=settings.contracts_dir)
 
     return app
 

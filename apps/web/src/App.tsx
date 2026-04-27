@@ -324,6 +324,7 @@ export default function App() {
         ) : viewMode === "relationships" || viewMode === "timelines" ? (
           <RelationshipWorkspace
             mode={viewMode}
+            documents={documents}
             onOpenDocument={(documentId) => {
               setEvidenceTarget(null);
               setSelectedId(documentId);

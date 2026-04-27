@@ -11,6 +11,10 @@ from psycopg import sql
 from lib.contracts import DocumentSummary
 from lib.db.connection import db_connection
 from lib.documents.access_policy import DocumentAccessContext
+from lib.documents.relationship_counts import (
+    READABLE_RELATED_COUNT_SQL,
+    readable_related_count_params,
+)
 from lib.documents.summary_mapping import document_summary_from_row
 from lib.search.query import SearchFilters
 from lib.search.repository import document_filter_sql
@@ -58,12 +62,7 @@ DOCUMENT_LIST_SELECT_COLUMNS_SQL = """
     ),
     ARRAY[]::text[]
   ) AS tags,
-  (
-    SELECT count(*)::int
-    FROM document_relationships dr
-    WHERE dr.status IN ('suggested', 'confirmed')
-      AND d.id IN (dr.from_document_id, dr.to_document_id)
-  ) AS related_count
+  {readable_related_count_sql}
 """
 
 DOCUMENT_LIST_FROM_SQL = """
@@ -111,7 +110,12 @@ def list_document_summaries(filters: DocumentListFilters) -> tuple[list[Document
             total_row = cur.fetchone()
             cur.execute(
                 _document_list_select_sql(where_sql),
-                [*filter_params, filters.limit, filters.offset],
+                [
+                    *readable_related_count_params(filters.access),
+                    *filter_params,
+                    filters.limit,
+                    filters.offset,
+                ],
             )
             rows = cur.fetchall()
 
@@ -142,10 +146,16 @@ def _document_list_select_sql(where_sql: str) -> sql.Composed:
         {order_sql}
         """
     ).format(
-        columns_sql=sql.SQL(DOCUMENT_LIST_SELECT_COLUMNS_SQL),
+        columns_sql=_document_list_columns_sql(),
         from_sql=sql.SQL(DOCUMENT_LIST_FROM_SQL),
         where_sql=sql.SQL(cast(LiteralString, where_sql)),
         order_sql=sql.SQL(DOCUMENT_LIST_ORDER_SQL),
+    )
+
+
+def _document_list_columns_sql() -> sql.Composed:
+    return sql.SQL(DOCUMENT_LIST_SELECT_COLUMNS_SQL).format(
+        readable_related_count_sql=sql.SQL(READABLE_RELATED_COUNT_SQL),
     )
 
 

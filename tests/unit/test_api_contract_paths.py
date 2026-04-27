@@ -13,6 +13,20 @@ def test_runtime_openapi_paths_match_active_contract() -> None:
     assert sorted(app.openapi()["paths"]) == sorted(contract["paths"])
 
 
+def test_runtime_openapi_response_statuses_match_active_contract() -> None:
+    contract = yaml.safe_load(Path("contracts/api/openapi.yaml").read_text(encoding="utf-8"))
+    runtime_paths = app.openapi()["paths"]
+    http_methods = {"delete", "get", "patch", "post", "put"}
+
+    for path, contract_path in contract["paths"].items():
+        for method, contract_operation in contract_path.items():
+            if method not in http_methods:
+                continue
+            expected = sorted(contract_operation.get("responses", {}))
+            actual = sorted(runtime_paths[path][method].get("responses", {}))
+            assert actual == expected, f"{method.upper()} {path} response status drift"
+
+
 def test_phase6_runtime_response_statuses_match_active_contract() -> None:
     contract = yaml.safe_load(Path("contracts/api/openapi.yaml").read_text(encoding="utf-8"))
     runtime_paths = app.openapi()["paths"]

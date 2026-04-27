@@ -2,11 +2,17 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from psycopg import sql
+
 from lib.contracts import DocumentAsset, DocumentDetail, DocumentPage
 from lib.db.connection import db_connection
 from lib.documents.access_policy import (
     DocumentAccessContext,
     document_read_access_params,
+)
+from lib.documents.relationship_counts import (
+    READABLE_RELATED_COUNT_SQL,
+    readable_related_count_params,
 )
 from lib.documents.summary_mapping import document_summary_from_row, string_list, uuid_list
 from lib.extraction.candidate_repository import value_from_candidate_row
@@ -17,71 +23,12 @@ def get_document_detail(document_id: UUID, access: DocumentAccessContext) -> Doc
     with db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """
-                SELECT
-                  d.id,
-                  d.title,
-                  d.description,
-                  d.document_family::text AS family,
-                  d.lifecycle_state::text AS lifecycle_state,
-                  d.review_status::text AS review_status,
-                  d.created_at,
-                  d.document_date,
-                  d.filing_notes,
-                  d.primary_folder_id,
-                  d.counterparty_display,
-                  a.total_amount AS amount_total,
-                  (
-                    SELECT ta.id
-                    FROM document_assets ta
-                    WHERE ta.document_id = d.id
-                      AND ta.asset_role = 'thumbnail'
-                      AND ta.is_current
-                    ORDER BY ta.page_number NULLS LAST, ta.created_at DESC
-                    LIMIT 1
-                  ) AS thumbnail_asset_id,
-                  COALESCE(
-                    (
-                      SELECT array_agg(
-                        COALESCE(f.path_cache, '/' || f.name)
-                        ORDER BY dfm.is_primary DESC, COALESCE(f.path_cache, '/' || f.name), f.name
-                      )
-                      FROM document_folder_memberships dfm
-                      JOIN folders f ON f.id = dfm.folder_id
-                      WHERE dfm.document_id = d.id
-                    ),
-                    ARRAY[]::text[]
-                  ) AS folder_paths,
-                  COALESCE(
-                    (
-                      SELECT array_agg(dfm.folder_id ORDER BY dfm.created_at, dfm.folder_id)
-                      FROM document_folder_memberships dfm
-                      WHERE dfm.document_id = d.id
-                    ),
-                    ARRAY[]::uuid[]
-                  ) AS folder_ids,
-                  COALESCE(
-                    (
-                      SELECT array_agg(t.name::text ORDER BY t.name::text)
-                      FROM document_tags dt
-                      JOIN tags t ON t.id = dt.tag_id
-                      WHERE dt.document_id = d.id
-                    ),
-                    ARRAY[]::text[]
-                  ) AS tags,
-                  (
-                    SELECT count(*)::int
-                    FROM document_relationships dr
-                    WHERE dr.status IN ('suggested', 'confirmed')
-                      AND d.id IN (dr.from_document_id, dr.to_document_id)
-                  ) AS related_count
-                FROM documents d
-                LEFT JOIN document_primary_amounts_v a ON a.document_id = d.id
-                WHERE d.id = %s
-                  AND d.deleted_at IS NULL
-                  AND document_is_readable(d.id, %s, %s, %s)
-                """,
-                (document_id, *document_read_access_params(access)),
+                _document_detail_sql(),
+                (
+                    *readable_related_count_params(access),
+                    document_id,
+                    *document_read_access_params(access),
+                ),
             )
             row = cur.fetchone()
             if not row:
@@ -215,6 +162,70 @@ def get_document_detail(document_id: UUID, access: DocumentAccessContext) -> Doc
             "filingNotes": row.get("filing_notes"),
         }
     )
+
+
+def _document_detail_sql() -> sql.Composed:
+    return sql.SQL(
+        """
+        SELECT
+          d.id,
+          d.title,
+          d.description,
+          d.document_family::text AS family,
+          d.lifecycle_state::text AS lifecycle_state,
+          d.review_status::text AS review_status,
+          d.created_at,
+          d.document_date,
+          d.filing_notes,
+          d.primary_folder_id,
+          d.counterparty_display,
+          a.total_amount AS amount_total,
+          (
+            SELECT ta.id
+            FROM document_assets ta
+            WHERE ta.document_id = d.id
+              AND ta.asset_role = 'thumbnail'
+              AND ta.is_current
+            ORDER BY ta.page_number NULLS LAST, ta.created_at DESC
+            LIMIT 1
+          ) AS thumbnail_asset_id,
+          COALESCE(
+            (
+              SELECT array_agg(
+                COALESCE(f.path_cache, '/' || f.name)
+                ORDER BY dfm.is_primary DESC, COALESCE(f.path_cache, '/' || f.name), f.name
+              )
+              FROM document_folder_memberships dfm
+              JOIN folders f ON f.id = dfm.folder_id
+              WHERE dfm.document_id = d.id
+            ),
+            ARRAY[]::text[]
+          ) AS folder_paths,
+          COALESCE(
+            (
+              SELECT array_agg(dfm.folder_id ORDER BY dfm.created_at, dfm.folder_id)
+              FROM document_folder_memberships dfm
+              WHERE dfm.document_id = d.id
+            ),
+            ARRAY[]::uuid[]
+          ) AS folder_ids,
+          COALESCE(
+            (
+              SELECT array_agg(t.name::text ORDER BY t.name::text)
+              FROM document_tags dt
+              JOIN tags t ON t.id = dt.tag_id
+              WHERE dt.document_id = d.id
+            ),
+            ARRAY[]::text[]
+          ) AS tags,
+          {readable_related_count_sql}
+        FROM documents d
+        LEFT JOIN document_primary_amounts_v a ON a.document_id = d.id
+        WHERE d.id = %s
+          AND d.deleted_at IS NULL
+          AND document_is_readable(d.id, %s, %s, %s)
+        """
+    ).format(readable_related_count_sql=sql.SQL(READABLE_RELATED_COUNT_SQL))
 
 
 def _extraction_payload(row: dict[str, object]) -> dict[str, object]:

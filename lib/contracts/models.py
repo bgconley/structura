@@ -30,7 +30,15 @@ RelationshipType = Literal[
     "proof_of_payment_for",
 ]
 RelationshipStatus = Literal["suggested", "confirmed", "rejected", "superseded"]
-DeadlineStatus = Literal["open", "due_soon", "overdue", "snoozed", "resolved", "needs_review"]
+DeadlineStatus = Literal[
+    "open",
+    "due_soon",
+    "overdue",
+    "snoozed",
+    "resolved",
+    "waived",
+    "needs_review",
+]
 DeadlineType = Literal[
     "due_date",
     "renewal_date",

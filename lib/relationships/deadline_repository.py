@@ -62,6 +62,8 @@ def upsert_deadline(
     document_id: UUID,
     deadline_type: str,
     due_on: date,
+    status: str,
+    remind_from: date | None,
     confidence: float | None,
     evidence: Sequence[Mapping[str, Any]],
     metadata: Mapping[str, Any],
@@ -69,11 +71,16 @@ def upsert_deadline(
     cur.execute(
         """
         INSERT INTO document_deadlines
-          (document_id, deadline_type, due_on, status, confidence, evidence_json, metadata_json)
-        VALUES (%s, %s, %s, 'open', %s, %s::jsonb, %s::jsonb)
+          (
+            document_id, deadline_type, due_on, remind_from, status,
+            confidence, evidence_json, metadata_json
+          )
+        VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb)
         ON CONFLICT (document_id, deadline_type, due_on)
           WHERE status IN ('open', 'due_soon', 'overdue', 'needs_review')
-        DO UPDATE SET confidence = GREATEST(
+        DO UPDATE SET status = EXCLUDED.status,
+                      remind_from = EXCLUDED.remind_from,
+                      confidence = GREATEST(
                         COALESCE(document_deadlines.confidence, 0),
                         COALESCE(EXCLUDED.confidence, 0)
                       ),
@@ -86,6 +93,8 @@ def upsert_deadline(
             document_id,
             deadline_type,
             due_on,
+            remind_from,
+            status,
             confidence,
             Jsonb(list(evidence)),
             Jsonb(dict(metadata)),

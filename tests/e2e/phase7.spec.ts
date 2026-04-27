@@ -25,6 +25,8 @@ test("Phase 7 relationships, timelines, deadlines, and smart views are actionabl
   await expect(page.getByText("Relationship accepted")).toBeVisible();
 
   await page.getByLabel("Related document").selectOption({label: "Acme repair receipt"});
+  await expect(page.getByLabel("Relationship type")).toContainText("amendment to");
+  await expect(page.getByLabel("Relationship type")).toContainText("proof of payment for");
   await page.getByLabel("Relationship type").selectOption("related_to");
   await page.getByLabel("Relationship note").fill("Manual packet link");
   await page.getByRole("button", {name: "Save relationship"}).click();
@@ -37,6 +39,11 @@ test("Phase 7 relationships, timelines, deadlines, and smart views are actionabl
 
   await page.getByRole("button", {name: /Timelines/}).click();
   await expect(page.getByRole("heading", {name: "Document Timelines"})).toBeVisible();
+  await expect(page.getByLabel("Timeline scope")).toBeVisible();
+  await page.getByLabel("Timeline scope").selectOption("contact");
+  await page.getByLabel("Timeline contact").selectOption({label: "Acme Repairs"});
+  await page.getByLabel("Timeline scope").selectOption("document");
+  await page.getByLabel("Timeline document").selectOption({label: "Existing Warranty"});
   await expect(page.getByText("warranty_expiration")).toBeVisible();
 
   await page.getByRole("button", {name: /Search/}).click();

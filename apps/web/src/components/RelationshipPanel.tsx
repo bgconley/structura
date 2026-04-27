@@ -12,6 +12,8 @@ const relationshipTypes = [
   "bill_for",
   "warranty_for",
   "renewal_of",
+  "amendment_to",
+  "proof_of_payment_for",
   "attachment_to",
 ];
 

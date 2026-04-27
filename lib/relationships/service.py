@@ -14,6 +14,7 @@ from lib.contracts import (
 from lib.db.connection import db_connection
 from lib.documents.access_policy import DocumentAccessContext
 from lib.relationships import repository
+from lib.relationships.deadline_status import deadline_status, remind_from
 from lib.relationships.errors import RelationshipServiceError
 from lib.relationships.suggestions import deterministic_relationship_suggestions
 
@@ -310,6 +311,12 @@ class RelationshipService:
                         document_id=document_id,
                         deadline_type=deadline_type,
                         due_on=row["date_value"],
+                        status=deadline_status(
+                            due_on=row["date_value"],
+                            confidence=row.get("confidence"),
+                            evidence=_evidence_list(row.get("evidence_json")),
+                        ),
+                        remind_from=remind_from(row["date_value"]),
                         confidence=row.get("confidence"),
                         evidence=_evidence_list(row.get("evidence_json")),
                         metadata={"sourceFieldPath": row["field_path"]},

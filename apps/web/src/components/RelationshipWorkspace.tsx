@@ -1,9 +1,12 @@
 import {useEffect, useState} from "react";
 
+import {listContacts} from "../automationApi";
 import {listDeadlines, listRelationships, listSmartViews, listTimeline} from "../relationshipsApi";
 import type {
+  Contact,
   DocumentDeadline,
   DocumentRelationship,
+  DocumentSummary,
   SmartViewSummary,
   TimelineEvent,
 } from "../types";
@@ -11,32 +14,38 @@ import {formatDate} from "../format";
 
 export function RelationshipWorkspace({
   mode,
+  documents,
   onOpenDocument,
 }: {
   mode: "relationships" | "timelines";
+  documents: DocumentSummary[];
   onOpenDocument: (documentId: string) => void;
 }) {
   const [relationships, setRelationships] = useState<DocumentRelationship[]>([]);
   const [deadlines, setDeadlines] = useState<DocumentDeadline[]>([]);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [smartViews, setSmartViews] = useState<SmartViewSummary[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [timelineScope, setTimelineScope] = useState<"all" | "document" | "contact">("all");
+  const [timelineDocumentId, setTimelineDocumentId] = useState("");
+  const [timelineContactId, setTimelineContactId] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const [nextRelationships, nextDeadlines, nextTimeline, nextSmartViews] = await Promise.all([
+        const [nextRelationships, nextDeadlines, nextSmartViews, nextContacts] = await Promise.all([
           listRelationships(),
           listDeadlines(),
-          listTimeline(),
           listSmartViews(),
+          listContacts(),
         ]);
         if (!cancelled) {
           setRelationships(nextRelationships);
           setDeadlines(nextDeadlines);
-          setTimeline(nextTimeline);
           setSmartViews(nextSmartViews);
+          setContacts(nextContacts);
         }
       } catch (exc) {
         if (!cancelled) {
@@ -48,6 +57,32 @@ export function RelationshipWorkspace({
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const params =
+          timelineScope === "document" && timelineDocumentId
+            ? {documentId: timelineDocumentId}
+            : timelineScope === "contact" && timelineContactId
+              ? {contactId: timelineContactId}
+              : {};
+        const nextTimeline = await listTimeline(params);
+        if (!cancelled) {
+          setTimeline(nextTimeline);
+          setError(null);
+        }
+      } catch (exc) {
+        if (!cancelled) {
+          setError(exc instanceof Error ? exc.message : "Unable to load timeline.");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [timelineScope, timelineDocumentId, timelineContactId]);
 
   const heading = mode === "timelines" ? "Document Timelines" : "Relationship Workbench";
 
@@ -101,6 +136,54 @@ export function RelationshipWorkspace({
         </section>
         <section className="relationship-card timeline-card">
           <h2>Timeline</h2>
+          <div className="timeline-controls">
+            <label>
+              Timeline scope
+              <select
+                aria-label="Timeline scope"
+                value={timelineScope}
+                onChange={(event) => {
+                  setTimelineScope(event.target.value as "all" | "document" | "contact");
+                  setTimelineDocumentId("");
+                  setTimelineContactId("");
+                }}
+              >
+                <option value="all">All readable documents</option>
+                <option value="document">Document</option>
+                <option value="contact">Contact</option>
+              </select>
+            </label>
+            {timelineScope === "document" ? (
+              <label>
+                Timeline document
+                <select
+                  aria-label="Timeline document"
+                  value={timelineDocumentId}
+                  onChange={(event) => setTimelineDocumentId(event.target.value)}
+                >
+                  <option value="">Choose document</option>
+                  {documents.map((item) => (
+                    <option key={item.id} value={item.id}>{item.title}</option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            {timelineScope === "contact" ? (
+              <label>
+                Timeline contact
+                <select
+                  aria-label="Timeline contact"
+                  value={timelineContactId}
+                  onChange={(event) => setTimelineContactId(event.target.value)}
+                >
+                  <option value="">Choose contact</option>
+                  {contacts.map((item) => (
+                    <option key={item.id} value={item.id}>{item.displayName}</option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+          </div>
           <div className="timeline-list">
             {timeline.slice(0, 16).map((item) => (
               <button

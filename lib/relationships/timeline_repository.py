@@ -54,6 +54,14 @@ def timeline_rows(
           JOIN documents to_doc ON to_doc.id = dr.to_document_id
           WHERE dr.status <> 'rejected'
             AND (%s::uuid IS NULL OR %s IN (dr.from_document_id, dr.to_document_id))
+            AND (
+              %s::uuid IS NULL
+              OR EXISTS (
+                SELECT 1
+                FROM visible_docs vd
+                WHERE vd.id IN (dr.from_document_id, dr.to_document_id)
+              )
+            )
             AND from_doc.household_id = %s
             AND to_doc.household_id = %s
             AND document_is_readable(from_doc.id, %s, %s, %s)
@@ -79,6 +87,11 @@ def timeline_rows(
             AND d.deleted_at IS NULL
             AND dd.status IN ('open', 'due_soon', 'overdue', 'needs_review')
             AND (%s::uuid IS NULL OR dd.document_id = %s)
+            AND (%s::uuid IS NULL OR EXISTS (
+              SELECT 1
+              FROM visible_docs vd
+              WHERE vd.id = dd.document_id
+            ))
             AND document_is_readable(d.id, %s, %s, %s)
         ),
         document_events AS (
@@ -117,6 +130,7 @@ def timeline_rows(
             *document_read_access_params(access),
             document_id,
             document_id,
+            contact_id,
             access.household_id,
             access.household_id,
             *document_read_access_params(access),
@@ -124,6 +138,7 @@ def timeline_rows(
             access.household_id,
             document_id,
             document_id,
+            contact_id,
             *document_read_access_params(access),
             limit,
         ),
