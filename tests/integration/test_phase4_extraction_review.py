@@ -133,12 +133,9 @@ def test_phase4_invoice_extraction_persists_candidates_canonical_and_assets(
     assert rerun.status_code == 200
     rerun_job_id = uuid.UUID(rerun.json()["jobId"])
     _drain_extraction_jobs(document_id, worker_name="phase4-rerun-extraction-test")
+    _wait_for_job_status(rerun_job_id, "succeeded")
     with db_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                "SELECT status::text AS status FROM pipeline_jobs WHERE id = %s", (rerun_job_id,)
-            )
-            assert cur.fetchone()["status"] == "succeeded"
             cur.execute(
                 """
                 SELECT asset_role::text AS role, count(*) AS total
@@ -446,6 +443,31 @@ def _drain_extraction_jobs(document_id: uuid.UUID, *, worker_name: str) -> None:
             document_id=document_id,
         ):
             return
+
+
+def _wait_for_job_status(job_id: uuid.UUID, expected_status: str) -> None:
+    deadline = time.monotonic() + 15
+    last_status = "<missing>"
+    while True:
+        with db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT status::text AS status, error_json FROM pipeline_jobs WHERE id = %s",
+                    (job_id,),
+                )
+                row = cur.fetchone()
+        if row:
+            last_status = row["status"]
+            if last_status == expected_status:
+                return
+            if last_status in {"failed", "dead_letter"}:
+                pytest.fail(f"Job {job_id} ended as {last_status}: {row['error_json']}")
+        if time.monotonic() >= deadline:
+            pytest.fail(
+                f"Timed out waiting for job {job_id} to become {expected_status}; "
+                f"last={last_status}."
+            )
+        time.sleep(0.25)
 
 
 def _wait_for_canonical_field(
