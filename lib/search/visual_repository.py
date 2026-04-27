@@ -88,7 +88,7 @@ def _visual_vector_search(
                     GREATEST(0, 1 - ranked.distance)::double precision AS source_score,
                     _safe_snippet(
                       COALESCE(
-                        p.metadata_json #>> '{phase8,quality,summary}',
+                        p.metadata_json #>> '{{phase8,quality,summary}}',
                         p.text_content,
                         d.title
                       ),

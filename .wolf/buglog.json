@@ -876,6 +876,18 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-27T02:44:00-04:00"
+    },
+    {
+      "id": "bug-074",
+      "timestamp": "2026-04-27T02:47:00-04:00",
+      "error_message": "GPU Phase 8 visual search failed with KeyError: 'phase8,quality,summary' while formatting visual SQL.",
+      "file": "lib/search/visual_repository.py",
+      "root_cause": "The visual retrieval SQL is formatted with psycopg.sql.SQL(...).format(), and the JSON path literal {phase8,quality,summary} was interpreted as a named format placeholder.",
+      "fix": "Escaped the JSON path braces as {{phase8,quality,summary}} inside the SQL template.",
+      "tags": ["phase-8", "postgres", "psycopg", "visual-search", "gpu-node"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-27T02:47:00-04:00"
     }
   ]
 }
