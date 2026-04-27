@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     docling_ocr_model_root: Path = Path("/srv/structura/cache/rapidocr")
     docling_ocr_backend: str = "torch"
     embedding_text_dimensions: int = 1536
+    embedding_visual_enabled: bool = True
+    embedding_visual_dimensions: int = 1024
+    embedding_visual_batch_size: int = 8
+    embedding_visual_max_image_bytes: int = 10 * 1024 * 1024
+    embedding_visual_timeout_seconds: int = 60
 
     @property
     def canonical_objects_root(self) -> Path:

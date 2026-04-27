@@ -211,7 +211,8 @@
 .search-result-card strong,
 .search-result-card small,
 .search-result-card em,
-.search-result-card b {
+.search-result-card b,
+.search-result-card i {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -240,6 +241,14 @@
   color: var(--muted);
   font-size: 10px;
   font-weight: 600;
+}
+
+.visual-source {
+  margin-top: 4px;
+  color: #9a3412;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
 }
 
 .result-actions {

@@ -1,0 +1,172 @@
+from __future__ import annotations
+
+from lib.contracts import SearchRequest
+from lib.documents.quality import (
+    PageQualityInput,
+    classify_page_quality,
+    summarize_document_quality,
+)
+from lib.search.benchmark import BenchmarkCase, evaluate_ranked_results, summarize_results
+from lib.search.embedding_gateway import default_visual_embedding_profile
+from lib.search.hybrid import RankedCandidate, reciprocal_rank_fusion
+from lib.search.query import parse_search_request
+from workers.embeddings.worker import EmbeddingWorkerError, _modalities_for_job
+
+
+def test_page_quality_classifier_flags_handwriting_low_text_and_degraded_layout() -> None:
+    page = PageQualityInput(
+        page_number=1,
+        text="total due",
+        has_text_layer=False,
+        ocr_confidence=0.41,
+        metadata={
+            "hasHandwriting": True,
+            "visualQuality": "degraded",
+            "parseWarnings": ["image-only fallback"],
+        },
+        table_count=3,
+        figure_count=2,
+    )
+
+    signals = classify_page_quality(page)
+
+    assert signals.review_required is True
+    assert signals.visual_embedding_eligible is True
+    assert signals.qwen_route_eligible is True
+    assert set(signals.reasons) >= {
+        "handwriting",
+        "missing_text_layer",
+        "low_text_density",
+        "low_ocr_confidence",
+        "degraded_scan",
+        "complex_layout",
+    }
+
+
+def test_page_quality_classifier_leaves_text_native_pages_on_text_path() -> None:
+    page = PageQualityInput(
+        page_number=1,
+        text="This is a dense digital invoice with invoice number ABC-123 and total 42.00.",
+        has_text_layer=True,
+        ocr_confidence=None,
+        metadata={},
+    )
+
+    signals = classify_page_quality(page)
+
+    assert signals.review_required is False
+    assert signals.visual_embedding_eligible is False
+    assert signals.qwen_route_eligible is False
+    assert signals.reasons == ("digital_text_page",)
+
+
+def test_document_quality_summary_rolls_up_page_signals() -> None:
+    summary = summarize_document_quality(
+        [
+            PageQualityInput(
+                page_number=1,
+                text="",
+                has_text_layer=False,
+                ocr_confidence=None,
+                metadata={"hasHandwriting": True},
+            ),
+            PageQualityInput(
+                page_number=2,
+                text="Clean digital text with enough content to avoid the low text threshold.",
+                has_text_layer=True,
+                ocr_confidence=None,
+                metadata={},
+            ),
+        ]
+    )
+
+    assert summary.review_required is True
+    assert summary.has_handwriting is True
+    assert summary.visual_embedding_eligible is True
+    assert summary.qwen_route_eligible is True
+    assert summary.difficult_page_numbers == (1,)
+
+
+def test_search_contract_supports_explicit_visual_retrieval_policy() -> None:
+    request = SearchRequest.model_validate(
+        {"query": "handwritten low-text warranty form", "mode": "visual", "includeVisual": True}
+    )
+
+    parsed = parse_search_request(request)
+
+    assert parsed.mode == "visual"
+    assert parsed.include_visual is True
+
+
+def test_visual_embedding_profile_uses_phase8_dimension_and_modality() -> None:
+    profile = default_visual_embedding_profile(1024)
+
+    assert profile.name == "structura-fixture-visual-embedding"
+    assert profile.modality == "visual"
+    assert profile.dimensions == 1024
+
+
+def test_visual_embedding_jobs_reject_unknown_modalities() -> None:
+    assert _modalities_for_job({"modalities": ["visual"]}) == ("visual",)
+
+    try:
+        _modalities_for_job({"modalities": ["visual", "untrusted"]})
+    except EmbeddingWorkerError as exc:
+        assert "untrusted" in str(exc)
+    else:
+        raise AssertionError("Expected unsupported modality to fail.")
+
+
+def test_reciprocal_rank_fusion_can_blend_visual_candidates() -> None:
+    fused = reciprocal_rank_fusion(
+        lexical=[
+            RankedCandidate("doc-text", "chunk-1", 1, "lexical", 19.0),
+        ],
+        semantic=[
+            RankedCandidate("doc-visual", None, 4, "semantic", 0.6),
+        ],
+        visual=[
+            RankedCandidate("doc-visual", None, 1, "visual", 0.92),
+        ],
+        limit=2,
+    )
+
+    assert fused[0].document_id == "doc-visual"
+    assert fused[0].source_ranks["visual"] == 1
+    assert "visual rank 1" in fused[0].explanation
+
+
+def test_phase8_benchmark_cases_cover_difficult_docs_without_hiding_text_regression() -> None:
+    cases = [
+        BenchmarkCase(
+            name="phase8-handwriting-visual-retrieval",
+            query={
+                "query": "handwritten degraded warranty form",
+                "mode": "visual",
+                "includeVisual": True,
+            },
+            expected_document_ids=("doc-handwritten",),
+            k=3,
+        ),
+        BenchmarkCase(
+            name="phase8-normal-text-hybrid-regression",
+            query={
+                "query": "invoice total balance due",
+                "mode": "hybrid",
+                "includeVisual": False,
+            },
+            expected_document_ids=("doc-invoice",),
+            k=3,
+        ),
+    ]
+
+    visual_result = evaluate_ranked_results(
+        cases[0], ["doc-hidden-by-acl", "doc-handwritten", "doc-other"]
+    )
+    text_result = evaluate_ranked_results(cases[1], ["doc-invoice", "doc-handwritten"])
+    summary = summarize_results([visual_result, text_result])
+
+    assert visual_result.reciprocal_rank == 0.5
+    assert text_result.reciprocal_rank == 1.0
+    assert summary["hitRateAtK"] == 1.0
+    assert summary["meanReciprocalRank"] == 0.75

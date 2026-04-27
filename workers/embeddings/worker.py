@@ -10,6 +10,8 @@ from lib.jobs import JobService, record_service_health
 from lib.search.embedding_service import EmbeddingService
 from workers.runtime import start_health_server
 
+SUPPORTED_MODALITIES = {"text", "visual", "mixed"}
+
 
 class EmbeddingWorkerError(Exception):
     pass
@@ -48,6 +50,7 @@ def process_next_embedding_job(
         summary = embedding_service.embed_document(
             target_document_id,
             force_reembed=bool(claimed.payload.get("force_reembed", False)),
+            modalities=_modalities_for_job(claimed.payload),
         )
         job_service.complete_job(
             job_id=claimed.state.job_id,
@@ -59,6 +62,7 @@ def process_next_embedding_job(
                 "model_name": summary.model_name,
                 "model_version": summary.model_version,
                 "dimensions": summary.dimensions,
+                "modality_counts": summary.modality_counts,
             },
         )
     except Exception as exc:
@@ -79,6 +83,19 @@ def _document_id_for_job(document_id: UUID | None, payload: dict[str, object]) -
     if not payload_document_id:
         raise EmbeddingWorkerError("Embedding job is missing document_id.")
     return UUID(str(payload_document_id))
+
+
+def _modalities_for_job(payload: dict[str, object]) -> tuple[str, ...]:
+    modalities = payload.get("modalities")
+    if not isinstance(modalities, list):
+        return ("text",)
+    requested = tuple(str(modality) for modality in modalities if str(modality).strip()) or (
+        "text",
+    )
+    unsupported = sorted(set(requested) - SUPPORTED_MODALITIES)
+    if unsupported:
+        raise EmbeddingWorkerError(f"Unsupported embedding modalities: {', '.join(unsupported)}")
+    return requested
 
 
 def main() -> None:
@@ -113,7 +130,11 @@ def _record_health(worker_name: str, queue_name: str, heartbeat_seconds: float) 
         record_service_health(
             service_name=worker_name,
             status="ok",
-            metrics={"queue": queue_name, "heartbeat_seconds": heartbeat_seconds},
+            metrics={
+                "queue": queue_name,
+                "heartbeat_seconds": heartbeat_seconds,
+                "supported_modalities": ["text", "visual", "mixed"],
+            },
         )
     except Exception as exc:
         print(f"{worker_name}: health snapshot skipped: {exc}", flush=True)

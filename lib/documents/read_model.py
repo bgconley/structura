@@ -60,7 +60,8 @@ def get_document_detail(document_id: UUID, access: DocumentAccessContext) -> Doc
                   p.height_points,
                   p.rotation_degrees,
                   p.text_content,
-                  p.image_asset_id
+                  p.image_asset_id,
+                  p.metadata_json
                 FROM document_pages p
                 WHERE p.document_id = %s
                 ORDER BY p.page_number
@@ -127,6 +128,7 @@ def get_document_detail(document_id: UUID, access: DocumentAccessContext) -> Doc
                 "imageUrl": (
                     f"/api/v1/assets/{page['image_asset_id']}" if page["image_asset_id"] else None
                 ),
+                "qualitySignals": _page_quality_signals(page.get("metadata_json")),
             }
         )
         for page in page_rows
@@ -175,6 +177,7 @@ def _document_detail_sql() -> sql.Composed:
           d.lifecycle_state::text AS lifecycle_state,
           d.review_status::text AS review_status,
           d.created_at,
+          d.metadata_json,
           d.document_date,
           d.filing_notes,
           d.primary_folder_id,
@@ -226,6 +229,16 @@ def _document_detail_sql() -> sql.Composed:
           AND document_is_readable(d.id, %s, %s, %s)
         """
     ).format(readable_related_count_sql=sql.SQL(READABLE_RELATED_COUNT_SQL))
+
+
+def _page_quality_signals(metadata: object) -> dict[str, object] | None:
+    if not isinstance(metadata, dict):
+        return None
+    phase8 = metadata.get("phase8")
+    if not isinstance(phase8, dict):
+        return None
+    quality = phase8.get("quality")
+    return quality if isinstance(quality, dict) else None
 
 
 def _extraction_payload(row: dict[str, object]) -> dict[str, object]:

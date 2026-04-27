@@ -28,7 +28,7 @@ def field_candidates_from_extraction(
     del document_id
     evidence_fallback = _first_evidence(payload)
     confidence = _overall_confidence(payload)
-    status = _candidate_status(validation, evidence_fallback)
+    status = _candidate_status(validation, evidence_fallback, source_engine=source_engine)
     if schema_name == "receipt":
         return _receipt_candidates(payload, confidence, source_engine, validation, status)
     if schema_name == "invoice":
@@ -46,7 +46,7 @@ def line_item_candidates_from_extraction(
     source_engine: str,
 ) -> list[LineItemCandidateFact]:
     confidence = _overall_confidence(payload)
-    status = _candidate_status(validation, _first_evidence(payload))
+    status = _candidate_status(validation, _first_evidence(payload), source_engine=source_engine)
     if schema_name == "receipt":
         return _line_items(
             payload.get("line_items"), "receipt_item", source_engine, confidence, status
@@ -419,8 +419,17 @@ def _eob_line_items(
     return facts
 
 
-def _candidate_status(validation: ValidationReport, evidence: list[dict[str, Any]]) -> str:
-    if validation.needs_review or not has_concrete_evidence(evidence):
+def _candidate_status(
+    validation: ValidationReport,
+    evidence: list[dict[str, Any]],
+    *,
+    source_engine: str,
+) -> str:
+    if (
+        validation.needs_review
+        or source_engine.startswith("qwen3_vl")
+        or not has_concrete_evidence(evidence)
+    ):
         return "needs_review"
     return "proposed"
 

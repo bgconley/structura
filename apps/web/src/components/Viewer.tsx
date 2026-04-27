@@ -48,6 +48,7 @@ export function Viewer({
   const active = document ?? summary;
   const original = document?.assets.find((asset) => asset.assetRole === "original");
   const preview = document?.pages[0]?.imageUrl;
+  const quality = document?.qualitySummary ?? summary?.qualitySummary ?? null;
 
   if (!active) {
     return null;
@@ -75,6 +76,7 @@ export function Viewer({
           <h2>{active.title}</h2>
           <StatusChip tone="green" label="Immutable original" />
           <StatusChip tone="neutral" label="Extraction pending" />
+          {quality?.reviewRequired ? <StatusChip tone="amber" label="Difficult document" /> : null}
         </div>
         {evidenceTarget ? (
           <div className="evidence-focus" role="status">
@@ -100,6 +102,12 @@ export function Viewer({
             </div>
           )}
         </div>
+        {quality ? (
+          <div className="quality-banner" role="note">
+            <strong>Phase 8 quality signals</strong>
+            <span>{quality.summary ?? quality.reasons?.join(", ")}</span>
+          </div>
+        ) : null}
         <div className="viewer-actions">
           <button type="button" className="primary">Open review</button>
           {original ? <a href={assetUrl(original.assetUrl)} download>Download original</a> : null}
@@ -117,6 +125,12 @@ export function Viewer({
         <TrustLine ok label="SHA-256 fingerprint stored" />
         <TrustLine ok={Boolean(preview)} label={preview ? "Preview asset available" : "Preview pending"} />
         <TrustLine ok={active.reviewStatus !== "needs_review"} label="Fields pending review" />
+        {quality ? (
+          <>
+            <TrustLine ok={!quality.reviewRequired} label={quality.reviewRequired ? "Difficult-document review required" : "No difficult-document review needed"} />
+            <TrustLine ok={!quality.visualEmbeddingEligible} label={quality.visualEmbeddingEligible ? "Visual retrieval eligible" : "Text retrieval sufficient"} />
+          </>
+        ) : null}
         <h3>Key fields</h3>
         <FactRow label="Family" value={familyLabel(active.family)} />
         <FactRow label="Counterparty" value={active.counterpartyDisplay ?? "Pending extraction"} />

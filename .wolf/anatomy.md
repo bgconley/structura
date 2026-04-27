@@ -94,11 +94,27 @@
 - `tests/unit/test_phase7_relationship_units.py` — Unit coverage for relationship/deadline search filters, saved-query parsing, and self-link validation (~400 tok)
 - `docs/ui-reference/figma/relationships-timelines/` — Phase 7 relationship/timeline UI context, comparison notes, and Playwright screenshot artifact (~450 tok plus image)
 
+## Phase 8 difficult-document additions
+
+- `lib/documents/quality.py` — Deterministic difficult-document quality detection, page/document metadata persistence, handwriting/review flags, and document-quality review-task creation (~1700 tok)
+- `lib/review/task_repository.py` — Shared review-task upsert helper used by extraction and document-quality workflows (~450 tok)
+- `lib/search/visual_repository.py` — ACL-aware visual vector retrieval SQL for page-level visual embeddings (~900 tok)
+- `lib/search/embedding_gateway.py` — Deterministic text and visual embedding profiles plus vector/content-hash helpers (~800 tok)
+- `lib/search/embedding_repository.py` — Text/visual embedding source lookup and active embedding persistence (~1500 tok)
+- `lib/search/embedding_service.py` — Text/visual/mixed embedding orchestration with modality counts and idempotent persistence (~900 tok)
+- `lib/search/service.py` — Search orchestration for lexical, semantic, visual, and hybrid-with-visual retrieval modes (~1700 tok)
+- `workers/embeddings/worker.py` — Embedding worker with validated text/visual/mixed modality payload handling and service-health modality metrics (~850 tok)
+- `tests/e2e/phase8.spec.ts` — Mocked Phase 8 difficult-document UI workflow and Linux screenshot gate (~500 tok)
+- `tests/e2e/phase8-live.spec.ts` — GPU live Phase 8 upload, quality cue, and visual search smoke (~550 tok)
+- `tests/integration/test_phase8_difficult_documents_integration.py` — Live DB coverage for quality detection, review task creation, visual embeddings/search ACL, and Qwen handwriting review-required routing (~2400 tok)
+- `tests/unit/test_phase8_difficult_documents.py` — Unit coverage for quality classifier, visual search contract, visual embedding profile/modality validation, RRF visual fusion, and Phase 8 benchmark cases (~900 tok)
+- `docs/ui-reference/figma/difficult-documents/` — Phase 8 difficult-document UI context, comparison notes, Playwright reference screenshot, and deterministic Linux snapshot linkage (~450 tok plus image)
+
 ## ./
 
 - `.DS_Store` (~3824 tok)
 - `CLAUDE.md` — OpenWolf (~57 tok)
-- `agents.md` / `AGENTS.md` — Agent operating guidance; root implementation plan as phase map, non-archive artifact references as required implementation depth, archive exclusion, Markdown-over-DOCX and chunked large-file review handling, conflict resolution, architecture stewardship, Phase 5/6/7 baselines and hardening records, Phase 8 seams, Figma evidence, GPU-node runtime/test policy, all-phase live Playwright suite rule, and Docling worker dependency isolation (~5200 tok)
+- `agents.md` / `AGENTS.md` — Agent operating guidance; root implementation plan as phase map, non-archive artifact references as required implementation depth, archive exclusion, Markdown-over-DOCX and chunked large-file review handling, conflict resolution, architecture stewardship, Phase 5/6/7 baselines and hardening records, Phase 8 implementation details, Phase 9 seams, Figma evidence, GPU-node runtime/test policy, all-phase live Playwright suite rule, and Docling worker dependency isolation (~5600 tok)
 - `STRUCTURA_PLAN_INDEX.md` — Canonical planning index; source alignment policy, Markdown-first duplicate-artifact handling with DOCX parity note, UI source of truth, GPU node sync policy, stop rule (~1000 tok)
 - `STRUCTURA_IMPLEMENTATION_PLAN.md` — Canonical end-to-end implementation plan; phase gates, mandatory per-phase artifact lists, API/database/event coverage, Markdown-first duplicate-artifact handling with DOCX parity note, GPU sync policy (~15500 tok)
 - `STRUCTURA_PHASE_1_IMPLEMENTATION_PLAN.md` — Phase 1 execution plan; upload, object storage, Inbox, protected asset streaming, preview, Viewer, fresh-context rereads, Firecrawl evidence rules, validation gate (~5700 tok)

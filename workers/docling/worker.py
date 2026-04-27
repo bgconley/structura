@@ -7,8 +7,9 @@ import time
 from datetime import UTC, datetime
 from uuid import UUID
 
+from lib.documents.quality import evaluate_document_quality
 from lib.jobs import JobService, record_service_health
-from lib.search.jobs import enqueue_embed_document_job
+from lib.search.jobs import enqueue_embed_document_job, enqueue_visual_embed_document_job
 from workers.docling.converter import DoclingConverter
 from workers.docling.service import (
     DoclingWorkerError,
@@ -53,6 +54,7 @@ def process_next_docling_job(
             job_id=claimed.state.job_id,
             converter=converter,
         )
+        quality = evaluate_document_quality(target_document_id)
         job_service.complete_job(
             job_id=claimed.state.job_id,
             result={
@@ -62,6 +64,11 @@ def process_next_docling_job(
                 "element_count": summary.element_count,
                 "table_count": summary.table_count,
                 "chunk_count": summary.chunk_count,
+                "phase8_quality": {
+                    "review_required": quality.review_required,
+                    "visual_embedding_eligible": quality.visual_embedding_eligible,
+                    "qwen_route_eligible": quality.qwen_route_eligible,
+                },
             },
         )
         job_service.create_job(
@@ -82,6 +89,7 @@ def process_next_docling_job(
         _enqueue_embedding_refresh(
             target_document_id,
             household_id=claimed.household_id,
+            include_visual=quality.visual_embedding_eligible,
         )
     except Exception as exc:
         if target_document_id:
@@ -110,7 +118,12 @@ def _document_id_for_docling(document_id: UUID | None, payload: dict[str, object
     return UUID(str(payload_document_id))
 
 
-def _enqueue_embedding_refresh(document_id: UUID, *, household_id: UUID | None) -> None:
+def _enqueue_embedding_refresh(
+    document_id: UUID,
+    *,
+    household_id: UUID | None,
+    include_visual: bool,
+) -> None:
     from lib.db.connection import db_connection
 
     with db_connection() as conn:
@@ -121,6 +134,13 @@ def _enqueue_embedding_refresh(document_id: UUID, *, household_id: UUID | None) 
                 household_id=household_id,
                 force_reembed=False,
             )
+            if include_visual:
+                enqueue_visual_embed_document_job(
+                    cur,
+                    document_id=document_id,
+                    household_id=household_id,
+                    force_reembed=False,
+                )
         conn.commit()
 
 

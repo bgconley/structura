@@ -66,7 +66,86 @@ def list_text_embedding_sources(cur: Any, document_id: UUID) -> list[EmbeddingSo
     ]
 
 
+def list_visual_embedding_sources(cur: Any, document_id: UUID) -> list[EmbeddingSource]:
+    cur.execute(
+        """
+        SELECT
+          p.id,
+          p.document_id,
+          p.page_number,
+          p.image_asset_id,
+          p.metadata_json -> 'phase8' -> 'quality' AS quality_json,
+          d.title,
+          d.original_filename,
+          d.document_family::text AS document_family,
+          a.sha256,
+          a.byte_size
+        FROM document_pages p
+        JOIN documents d ON d.id = p.document_id
+        JOIN document_assets a ON a.id = p.image_asset_id
+        WHERE p.document_id = %s
+          AND d.deleted_at IS NULL
+          AND COALESCE(
+            (p.metadata_json -> 'phase8' -> 'quality' ->> 'visualEmbeddingEligible')::boolean,
+            false
+          )
+          AND a.is_current
+        ORDER BY p.page_number
+        """,
+        (document_id,),
+    )
+    return [
+        EmbeddingSource(
+            owner_type="page",
+            owner_id=cast(UUID, row["id"]),
+            document_id=cast(UUID, row["document_id"]),
+            text=_visual_descriptor(row),
+            metadata={
+                "pageNumber": row["page_number"],
+                "imageAssetId": str(row["image_asset_id"]),
+                "assetSha256": row["sha256"],
+                "assetByteSize": row["byte_size"],
+                "quality": row.get("quality_json") or {},
+            },
+        )
+        for row in cur.fetchall()
+    ]
+
+
+def count_visual_eligible_pages_without_assets(cur: Any, document_id: UUID) -> int:
+    cur.execute(
+        """
+        SELECT count(*) AS total
+        FROM document_pages p
+        WHERE p.document_id = %s
+          AND COALESCE(
+            (p.metadata_json -> 'phase8' -> 'quality' ->> 'visualEmbeddingEligible')::boolean,
+            false
+          )
+          AND p.image_asset_id IS NULL
+        """,
+        (document_id,),
+    )
+    row = cur.fetchone()
+    return int(row["total"] if row else 0)
+
+
 def persist_text_embedding(
+    cur: Any,
+    *,
+    source: EmbeddingSource,
+    embedding: EmbeddedText,
+    force_reembed: bool,
+) -> bool:
+    return persist_embedding(
+        cur,
+        source=source,
+        embedding=embedding,
+        force_reembed=force_reembed,
+    )
+
+
+def persist_embedding(
     cur: Any,
     *,
     source: EmbeddingSource,
@@ -147,6 +226,26 @@ def persist_text_embedding(
         ),
     )
     return True
+
+
+def _visual_descriptor(row: dict[str, Any]) -> str:
+    quality = row.get("quality_json") or {}
+    reasons = quality.get("reasons") if isinstance(quality, dict) else []
+    reason_text = " ".join(str(reason).replace("_", " ") for reason in reasons or [])
+    summary = quality.get("summary") if isinstance(quality, dict) else ""
+    return " ".join(
+        part
+        for part in (
+            str(row.get("title") or ""),
+            str(row.get("original_filename") or ""),
+            str(row.get("document_family") or ""),
+            f"page {row.get('page_number')}",
+            reason_text,
+            str(summary or ""),
+            "visual page image handwritten degraded scan low text layout form",
+        )
+        if part
+    )
 
 
 def _active_embedding(

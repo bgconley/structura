@@ -67,6 +67,16 @@ def default_text_embedding_profile(dimensions: int = 1536) -> EmbeddingProfile:
     )
 
 
+def default_visual_embedding_profile(dimensions: int = 1024) -> EmbeddingProfile:
+    return EmbeddingProfile(
+        name="structura-fixture-visual-embedding",
+        version="v1",
+        modality="visual",
+        dimensions=dimensions,
+        metric="cosine",
+    )
+
+
 def vector_literal(values: list[float]) -> str:
     return "[" + ",".join(f"{value:.8f}" for value in values) + "]"
 

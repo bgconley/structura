@@ -1575,6 +1575,10 @@ components:
           type: integer
           minimum: 0
           default: 0
+        qualitySummary:
+          type: object
+          additionalProperties: true
+          description: Phase 8 difficult-document quality rollup; does not expose raw text or image data.
     DocumentDetail:
       allOf:
       - $ref: '#/components/schemas/DocumentSummary'
@@ -1671,6 +1675,10 @@ components:
           type: string
         imageUrl:
           type: string
+        qualitySignals:
+          type: object
+          additionalProperties: true
+          description: Page-level Phase 8 quality signals and review policy.
     ParseDebugView:
       type: object
       additionalProperties: false
@@ -2771,6 +2779,7 @@ components:
           - lexical
           - semantic
           - hybrid
+          - visual
           default: hybrid
         families:
           type: array
@@ -2866,6 +2875,9 @@ components:
         primaryFolderOnly:
           type: boolean
           default: false
+        includeVisual:
+          type: boolean
+          default: false
         limit:
           type: integer
           minimum: 1
@@ -2940,6 +2952,14 @@ components:
           type: array
           items:
             type: string
+        sourceModalities:
+          type: array
+          items:
+            type: string
+            enum:
+            - lexical
+            - semantic
+            - visual
     SavedSearchWrite:
       type: object
       additionalProperties: false

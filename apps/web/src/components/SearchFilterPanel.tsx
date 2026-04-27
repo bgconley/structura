@@ -1,7 +1,7 @@
 import {familyLabel} from "../format";
 import type {Folder, SearchMode, SearchRequest, Tag} from "../types";
 
-const modeOptions: SearchMode[] = ["hybrid", "lexical", "semantic"];
+const modeOptions: SearchMode[] = ["hybrid", "lexical", "semantic", "visual"];
 const familyOptions = [
   "",
   "medical_eob",
@@ -54,6 +54,7 @@ export type SearchFilterState = {
   hasRelationships: boolean;
   deadlineType: string;
   hasOpenDeadlines: boolean;
+  includeVisual: boolean;
   reviewedOnly: boolean;
   dateFrom: string;
   dateTo: string;
@@ -72,6 +73,7 @@ export const defaultSearchFilterState: SearchFilterState = {
   hasRelationships: false,
   deadlineType: "",
   hasOpenDeadlines: false,
+  includeVisual: false,
   reviewedOnly: false,
   dateFrom: "",
   dateTo: "",
@@ -100,6 +102,7 @@ export function searchRequestFromFilters(
     hasRelationships: filters.hasRelationships || undefined,
     deadlineTypes: filters.deadlineType ? [filters.deadlineType] : [],
     hasOpenDeadlines: filters.hasOpenDeadlines || undefined,
+    includeVisual: filters.includeVisual || filters.mode === "visual" || undefined,
     includeDebug: true,
   };
 }
@@ -119,6 +122,7 @@ export function activeSearchFilters(
     filters.hasRelationships ? "has relationships" : null,
     filters.deadlineType ? `deadline ${filters.deadlineType}` : null,
     filters.hasOpenDeadlines ? "open deadlines" : null,
+    filters.includeVisual || filters.mode === "visual" ? "visual retrieval" : null,
     filters.reviewedOnly ? "reviewed only" : null,
     filters.dateFrom || filters.dateTo
       ? `${filters.dateFrom || "any"} to ${filters.dateTo || "any"}`
@@ -319,6 +323,14 @@ export function SearchFilterPanel({
         />
         Has open deadlines
       </label>
+      <label className="filter-check">
+        <input
+          checked={filters.includeVisual}
+          onChange={(event) => updateFilter("includeVisual", event.target.checked)}
+          type="checkbox"
+        />
+        Include visual matches
+      </label>
       <div className="filter-chip-list">
         <span className={filters.family ? "selected" : undefined}>
           Family: {filters.family || "Any"}
@@ -344,6 +356,7 @@ export function SearchFilterPanel({
         <span>Review: {filters.reviewedOnly ? "Reviewed" : "Any"}</span>
         <span>Links: {filters.hasRelationships ? "Required" : "Any"}</span>
         <span>Deadlines: {filters.hasOpenDeadlines ? "Open only" : "Any"}</span>
+        <span>Visual: {filters.includeVisual || filters.mode === "visual" ? "On" : "Off"}</span>
       </div>
     </aside>
   );

@@ -65,6 +65,7 @@ class ParsedSearchQuery:
     limit: int
     filters: SearchFilters
     include_debug: bool = False
+    include_visual: bool = False
 
 
 def parse_search_request(request: SearchRequest) -> ParsedSearchQuery:
@@ -84,6 +85,7 @@ def parse_search_request(request: SearchRequest) -> ParsedSearchQuery:
         mode=request.mode,
         limit=request.limit,
         include_debug=request.include_debug,
+        include_visual=request.include_visual,
         filters=SearchFilters(
             families=tuple(_dedupe_text(request.families)),
             folder_ids=tuple(dict.fromkeys(request.folder_ids)),

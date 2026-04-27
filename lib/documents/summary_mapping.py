@@ -3,6 +3,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from lib.contracts import DocumentSummary
+from lib.documents.quality import quality_summary_from_metadata
 
 
 def document_summary_from_row(row: dict[str, object]) -> DocumentSummary:
@@ -22,6 +23,7 @@ def document_summary_from_row(row: dict[str, object]) -> DocumentSummary:
             "folderPaths": string_list(row.get("folder_paths")),
             "tags": string_list(row.get("tags")),
             "relatedCount": row.get("related_count") or 0,
+            "qualitySummary": quality_summary_from_metadata(row.get("metadata_json")),
         }
     )
 

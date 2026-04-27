@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Protocol
+from collections.abc import Mapping
+from typing import Any, Protocol
 
 from lib.extraction.heuristics import invoice_payload, medical_eob_payload, receipt_payload
 from lib.extraction.models import ExtractionSourceDocument, GatewayExtraction, ModelRoute
@@ -26,11 +27,20 @@ class DoclingHeuristicGateway:
         schema_name: str,
         route_profile: str,
     ) -> GatewayExtraction:
+        qwen_review_route = route_profile == "qwen_primary_review_required"
         route = ModelRoute(
-            source_engine="docling",
-            model_name="docling-heuristic-extractor",
-            model_version="phase4-v1",
-            prompt_version="no-prompt-deterministic-v1",
+            source_engine="qwen3_vl_8b" if qwen_review_route else "docling",
+            model_name=(
+                "qwen3-vl-deterministic-handwriting-route"
+                if qwen_review_route
+                else "docling-heuristic-extractor"
+            ),
+            model_version="phase8-v1" if qwen_review_route else "phase4-v1",
+            prompt_version=(
+                "qwen-handwriting-review-required-v1"
+                if qwen_review_route
+                else "no-prompt-deterministic-v1"
+            ),
             route_profile=route_profile,
         )
         if schema_name == "receipt":
@@ -41,6 +51,8 @@ class DoclingHeuristicGateway:
             normalized = medical_eob_payload(source)
         else:
             raise ValueError(f"Unsupported extraction schema: {schema_name}")
+        if qwen_review_route:
+            normalized = _mark_qwen_review_required(normalized)
         return GatewayExtraction(
             schema_name=schema_name,
             schema_version="v1",
@@ -53,3 +65,33 @@ class DoclingHeuristicGateway:
                 "normalized": normalized,
             },
         )
+
+
+def _mark_qwen_review_required(payload: dict[str, object]) -> dict[str, object]:
+    normalized = dict(payload)
+    confidence = _mapping_as_dict(normalized.get("confidence"))
+    confidence["overall"] = min(float(confidence.get("overall") or 0.0), 0.68)
+    confidence["schema_fit"] = min(float(confidence.get("schema_fit") or 0.0), 0.66)
+    normalized["confidence"] = confidence
+    validation = _mapping_as_dict(normalized.get("validation"))
+    validation["needs_review"] = True
+    checks = list(validation.get("checks") or [])
+    checks.append(
+        {
+            "check": "phase8_handwriting_route",
+            "status": "needs_review",
+            "message": "Qwen handwriting/degraded-document route defaults to human review.",
+        }
+    )
+    normalized["validation"] = {**validation, "checks": checks}
+    metadata = _mapping_as_dict(normalized.get("metadata"))
+    normalized["metadata"] = {
+        **metadata,
+        "phase8Route": "qwen_primary_review_required",
+        "reviewRequired": True,
+    }
+    return normalized
+
+
+def _mapping_as_dict(value: object) -> dict[str, Any]:
+    return dict(value) if isinstance(value, Mapping) else {}

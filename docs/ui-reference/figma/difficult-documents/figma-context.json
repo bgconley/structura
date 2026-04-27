@@ -1,0 +1,20 @@
+{
+  "phase": "Phase 8",
+  "surface": "Difficult-document quality cues, visual retrieval, and review-required uncertainty",
+  "sourceFrames": [
+    {
+      "frame": "14:434",
+      "role": "Viewer baseline extended with difficult-document quality banners and trust cues"
+    },
+    {
+      "frame": "14:611",
+      "role": "Review/workspace reference for review-required uncertainty and evidence-forward actions"
+    }
+  ],
+  "validatedBy": [
+    "tests/e2e/phase8.spec.ts",
+    "tests/e2e/phase8-live.spec.ts"
+  ],
+  "snapshot": "tests/e2e/phase8.spec.ts-snapshots/phase8-difficult-documents-chromium-linux.png",
+  "notes": "Phase 8 extends existing Viewer, Search, and Review Queue language because no dedicated difficult-document final frame exists in the artifact set."
+}

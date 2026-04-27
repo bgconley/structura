@@ -25,10 +25,12 @@ def reciprocal_rank_fusion(
     *,
     lexical: list[RankedCandidate],
     semantic: list[RankedCandidate],
+    visual: list[RankedCandidate] | None = None,
     limit: int,
     k: int = 60,
     semantic_weight: float = 1.2,
     lexical_weight: float = 1.0,
+    visual_weight: float = 1.4,
 ) -> list[FusedCandidate]:
     scores: dict[str, float] = {}
     ranks: dict[str, dict[str, int]] = {}
@@ -48,6 +50,14 @@ def reciprocal_rank_fusion(
         chunks=chunks,
         k=k,
         weight=semantic_weight,
+    )
+    _accumulate(
+        candidates=visual or [],
+        scores=scores,
+        ranks=ranks,
+        chunks=chunks,
+        k=k,
+        weight=visual_weight,
     )
     ordered = sorted(scores.items(), key=lambda item: (-item[1], item[0]))
     return [

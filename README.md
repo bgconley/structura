@@ -2,11 +2,11 @@
 
 Structura is a local-first document workbench for preserving original document bytes, deriving structural artifacts, extracting evidence-backed facts, and making a private corpus searchable and reviewable.
 
-This repository is now implemented through Phase 7:
+This repository is now implemented through Phase 8:
 
 - React + Vite web app in `apps/web`
 - FastAPI API in `apps/api` with health, contract, auth/session, protected document/asset, job, admin health, and organization routes
-- ingest, preview, Docling, extraction, embedding, watched-folder, and relationship workers plus remaining later-phase/model placeholders with HTTP health checks
+- ingest, preview, Docling, extraction, text/visual embedding, watched-folder, and relationship workers plus remaining later-phase/model placeholders with HTTP health checks
 - shared Python libraries under `lib`
 - baseline contracts copied to `contracts`
 - baseline SQL copied to `database`
@@ -22,6 +22,7 @@ This repository is now implemented through Phase 7:
 - Phase 5 lexical, semantic, and hybrid corpus search; search projection refresh; deterministic text embeddings; embedding worker; facets; saved searches; smart-folder execution; and Corpus Search UI
 - Phase 6 contacts, aliases, document-contact links, duplicate merge suggestions, watched-folder PDF intake, filing rules, dry-run explanations, reviewable filing suggestions, operator maintenance CLI commands, and Automation Workbench UI
 - Phase 7 document relationships, relationship suggestions, accept/reject review actions, relationship worker, related-document Viewer panel, timelines, deadlines, relationship/deadline search filters, smart views, and Relationships/Timelines UI
+- Phase 8 difficult-document quality detection, review-required uncertainty, selective visual embeddings, Qwen handwriting routing, visual/hybrid retrieval policy, and difficult-document Viewer/Search/Review cues
 
 ## Local Commands
 
@@ -44,7 +45,7 @@ The default Postgres image is pinned to `paradedb/paradedb:0.21.5-pg17` to match
 For phase gates, the GPU node is canonical. Push the repo, pull it at `/tank/repos/structura` on `bgconley@10.25.0.50`, use `/tank/venvs/structura` for Python validation, and use pinned container images for web lint/build rather than host Node/npm. Live Playwright tests should target the GPU-hosted web service with:
 
 ```bash
-STRUCTURA_E2E_LIVE=1 npx playwright test tests/e2e/phase1-live.spec.ts tests/e2e/phase2-live.spec.ts tests/e2e/phase3-live.spec.ts tests/e2e/phase4-live.spec.ts tests/e2e/phase5-live.spec.ts tests/e2e/phase6-live.spec.ts tests/e2e/phase7-live.spec.ts --workers=1
+STRUCTURA_E2E_LIVE=1 npx playwright test tests/e2e/phase1-live.spec.ts tests/e2e/phase2-live.spec.ts tests/e2e/phase3-live.spec.ts tests/e2e/phase4-live.spec.ts tests/e2e/phase5-live.spec.ts tests/e2e/phase6-live.spec.ts tests/e2e/phase7-live.spec.ts tests/e2e/phase8-live.spec.ts --workers=1
 ```
 
 Model placeholders are behind a profile:
@@ -57,6 +58,12 @@ Search indexing workers are behind the search profile:
 
 ```bash
 docker compose --profile search up worker-embeddings
+```
+
+Visual embedding workers are behind the visual profile:
+
+```bash
+docker compose --profile visual up worker-visual-embeddings
 ```
 
 Watched-folder intake is behind the automation profile:

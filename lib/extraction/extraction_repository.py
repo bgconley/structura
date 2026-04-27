@@ -17,7 +17,6 @@ from lib.extraction.canonical_repository import (
     promote_candidates,
     refresh_document_chunk_projection,
     update_document_rollups,
-    upsert_review_task,
 )
 from lib.extraction.errors import ExtractionRepositoryError
 from lib.extraction.models import (
@@ -29,6 +28,7 @@ from lib.extraction.models import (
     PersistedExtraction,
     ValidationReport,
 )
+from lib.review.task_repository import upsert_review_task
 from lib.storage import ObjectStorage, StoredObject
 
 

@@ -1,4 +1,4 @@
-export function StatusChip({tone, label}: {tone: "green" | "blue" | "neutral"; label: string}) {
+export function StatusChip({tone, label}: {tone: "green" | "blue" | "neutral" | "amber"; label: string}) {
   return (
     <span className={`status-chip ${tone}`}>
       <i />

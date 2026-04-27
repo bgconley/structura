@@ -22,6 +22,13 @@ export type DocumentSummary = {
   folderPaths?: string[];
   tags?: string[];
   relatedCount?: number;
+  qualitySummary?: {
+    reasons?: string[];
+    reviewRequired?: boolean;
+    visualEmbeddingEligible?: boolean;
+    qwenRouteEligible?: boolean;
+    summary?: string;
+  } | null;
 };
 
 export type DocumentAsset = {
@@ -38,6 +45,13 @@ export type DocumentPage = {
   width?: number;
   height?: number;
   imageUrl?: string;
+  qualitySignals?: {
+    reasons?: string[];
+    reviewRequired?: boolean;
+    visualEmbeddingEligible?: boolean;
+    qwenRouteEligible?: boolean;
+    summary?: string;
+  } | null;
 };
 
 export type DocumentDetail = DocumentSummary & {
@@ -82,7 +96,7 @@ export type EvidenceTarget = {
   textSpan?: {start: number; end: number; basis?: string};
 };
 
-export type SearchMode = "lexical" | "semantic" | "hybrid";
+export type SearchMode = "lexical" | "semantic" | "hybrid" | "visual";
 
 export type SearchRequest = {
   query: string;
@@ -104,6 +118,7 @@ export type SearchRequest = {
   deadlineStatuses?: string[];
   hasOpenDeadlines?: boolean;
   primaryFolderOnly?: boolean;
+  includeVisual?: boolean;
   limit?: number;
   includeDebug?: boolean;
 };
@@ -185,6 +200,7 @@ export type SearchResult = {
   amountTotal?: number;
   folderPaths?: string[];
   tags?: string[];
+  sourceModalities?: string[];
 };
 
 export type SearchResponse = {

@@ -461,6 +461,7 @@ class DocumentSummary(ContractModel):
     folder_paths: list[str] = Field(default_factory=list, alias="folderPaths")
     tags: list[str] = Field(default_factory=list)
     related_count: int = Field(default=0, alias="relatedCount")
+    quality_summary: dict[str, Any] | None = Field(default=None, alias="qualitySummary")
 
 
 class DocumentAsset(ContractModel):
@@ -479,6 +480,7 @@ class DocumentPage(ContractModel):
     rotation_degrees: int | None = Field(default=None, alias="rotationDegrees")
     text_content: str | None = Field(default=None, alias="textContent")
     image_url: str | None = Field(default=None, alias="imageUrl")
+    quality_signals: dict[str, Any] | None = Field(default=None, alias="qualitySignals")
 
 
 class DocumentDetail(DocumentSummary):
@@ -497,7 +499,7 @@ class DocumentDetail(DocumentSummary):
 
 class SearchRequest(ContractModel):
     query: str = Field(min_length=1, max_length=500)
-    mode: Literal["lexical", "semantic", "hybrid"] = "hybrid"
+    mode: Literal["lexical", "semantic", "hybrid", "visual"] = "hybrid"
     families: list[str] = Field(default_factory=list)
     folder_ids: list[UUID] = Field(default_factory=list, alias="folderIds")
     tags: list[str] = Field(default_factory=list)
@@ -523,6 +525,7 @@ class SearchRequest(ContractModel):
     deadline_statuses: list[str] = Field(default_factory=list, alias="deadlineStatuses")
     has_open_deadlines: bool | None = Field(default=None, alias="hasOpenDeadlines")
     primary_folder_only: bool = Field(default=False, alias="primaryFolderOnly")
+    include_visual: bool = Field(default=False, alias="includeVisual")
     limit: int = Field(default=25, ge=1, le=100)
     include_debug: bool = Field(default=False, alias="includeDebug")
 
@@ -555,6 +558,7 @@ class SearchResult(ContractModel):
     amount_total: float | None = Field(default=None, alias="amountTotal")
     folder_paths: list[str] = Field(default_factory=list, alias="folderPaths")
     tags: list[str] = Field(default_factory=list)
+    source_modalities: list[str] = Field(default_factory=list, alias="sourceModalities")
 
 
 class SearchResponse(ContractModel):

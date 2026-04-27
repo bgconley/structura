@@ -160,11 +160,20 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
     }
 
     if (url.pathname === "/api/v1/search" && request.method() === "POST") {
-      const payload = request.postDataJSON() as {query?: string; families?: string[]};
+      const payload = request.postDataJSON() as {
+        query?: string;
+        families?: string[];
+        includeVisual?: boolean;
+        mode?: string;
+      };
       await route.fulfill({
         status: 200,
         headers: {"Content-Type": "application/json", ...corsHeaders},
-        json: seededSearchResponse(String(payload.query ?? ""), payload.families?.[0]),
+        json: seededSearchResponse(
+          String(payload.query ?? ""),
+          payload.families?.[0],
+          Boolean(payload.includeVisual || payload.mode === "visual"),
+        ),
       });
       return;
     }

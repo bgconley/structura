@@ -177,6 +177,28 @@ services:
       timeout: 5s
       retries: 10
 
+  worker-visual-embeddings:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["python", "-m", "workers.embeddings.worker", "--worker", "worker-visual-embeddings", "--queue", "visual-embeddings", "--health-port", "8209"]
+    environment:
+      STRUCTURA_DATABASE_URL: postgresql://${POSTGRES_USER:-structura}:${POSTGRES_PASSWORD:-structura}@postgres:5432/${POSTGRES_DB:-structura}
+      STRUCTURA_RUNTIME_ROOT: /srv/structura
+      STRUCTURA_EMBEDDING_VISUAL_ENABLED: ${STRUCTURA_EMBEDDING_VISUAL_ENABLED:-true}
+    volumes:
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/derived:/srv/structura/objects/derived
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/workers:/srv/structura/logs/workers
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["visual"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8209/healthz')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   worker-watched-folders:
     build:
       context: .

@@ -12,6 +12,7 @@ from lib.extraction.candidate_repository import (
 )
 from lib.extraction.errors import ExtractionRepositoryError
 from lib.extraction.models import ExtractionSourceDocument, ValidationReport
+from lib.review.task_repository import upsert_review_task
 
 
 def promote_candidates(
@@ -183,55 +184,6 @@ def upsert_canonical_field(
     if not row:
         raise ExtractionRepositoryError("Canonical field upsert failed.")
     return cast(UUID, row["id"])
-
-
-def upsert_review_task(
-    cur: Any,
-    *,
-    document_id: UUID,
-    extraction_id: UUID | None,
-    task_type: str,
-    reason: str,
-    priority: int,
-    metadata: Mapping[str, Any],
-) -> None:
-    field_path = metadata.get("fieldPath")
-    cur.execute(
-        """
-        SELECT id
-        FROM review_tasks
-        WHERE document_id = %s
-          AND task_type = %s
-          AND status IN ('open', 'in_progress')
-          AND COALESCE(metadata_json->>'fieldPath', '') = COALESCE(%s, '')
-        ORDER BY created_at DESC
-        LIMIT 1
-        """,
-        (document_id, task_type, str(field_path) if field_path else None),
-    )
-    existing = cur.fetchone()
-    if existing:
-        cur.execute(
-            """
-            UPDATE review_tasks
-            SET extraction_id = %s,
-                reason = %s,
-                priority = GREATEST(priority, %s),
-                metadata_json = metadata_json || %s::jsonb,
-                updated_at = now()
-            WHERE id = %s
-            """,
-            (extraction_id, reason, priority, Jsonb(dict(metadata)), existing["id"]),
-        )
-        return
-    cur.execute(
-        """
-        INSERT INTO review_tasks
-          (document_id, extraction_id, task_type, reason, priority, metadata_json)
-        VALUES (%s, %s, %s, %s, %s, %s::jsonb)
-        """,
-        (document_id, extraction_id, task_type, reason, priority, Jsonb(dict(metadata))),
-    )
 
 
 def canonical_is_human_controlled(

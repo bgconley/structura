@@ -76,6 +76,9 @@ export function SearchResults({
         <div className="retrieval-chips" aria-label="Retrieval signals">
           <span>lexical</span>
           <span>semantic</span>
+          <span className={filters.includeVisual || filters.mode === "visual" ? undefined : "deferred"}>
+            visual
+          </span>
           <span>metadata</span>
           <span>relationships</span>
         </div>
@@ -123,6 +126,7 @@ export function SearchResults({
           <div className="filter-chip-list explanation">
             <span>{query ? `query = ${query.slice(0, 42)}` : "query pending"}</span>
             <span>mode = {filters.mode}</span>
+            {filters.includeVisual || filters.mode === "visual" ? <span>visual retrieval = on</span> : null}
             {filters.family ? <span>document_family = {filters.family}</span> : null}
             {selectedFolder ? <span>folder = {selectedFolder.name}</span> : null}
             {filters.tag ? <span>tag = {filters.tag}</span> : null}
@@ -193,6 +197,9 @@ function SearchResultCard({
           </small>
           <em>{item.snippet ?? "Evidence-backed result available."}</em>
           <b>{item.explanation ?? "matched by search rank"}</b>
+          {item.sourceModalities?.includes("visual") ? (
+            <i className="visual-source">visual match · review uncertainty visible</i>
+          ) : null}
         </span>
       </button>
       <div className="result-actions">

@@ -840,6 +840,30 @@
       "related_bugs": ["bug-040"],
       "occurrences": 1,
       "last_seen": "2026-04-27T03:43:00-04:00"
+    },
+    {
+      "id": "bug-071",
+      "timestamp": "2026-04-27T02:37:00-04:00",
+      "error_message": "Local pytest full-suite collection failed because Phase 8 unit and integration test files shared the same basename.",
+      "file": "tests/integration/test_phase8_difficult_documents.py",
+      "root_cause": "Pytest imported the integration module as test_phase8_difficult_documents first, then rejected the unit module with the same import name.",
+      "fix": "Renamed the integration file to tests/integration/test_phase8_difficult_documents_integration.py so full-suite collection is stable.",
+      "tags": ["phase-8", "pytest", "test-collection"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-27T02:37:00-04:00"
+    },
+    {
+      "id": "bug-072",
+      "timestamp": "2026-04-27T02:38:00-04:00",
+      "error_message": "Phase 8 mocked Playwright screenshot run failed strict-mode click because /Review/ matched both sidebar Review Queue and document Review extracted fields.",
+      "file": "tests/e2e/phase8.spec.ts",
+      "root_cause": "The test used a broad page-wide Review button locator after navigating to Viewer, where multiple review-related controls are visible.",
+      "fix": "Scoped the navigation action to the exact sidebar Review Queue button before asserting document-quality review tasks.",
+      "tags": ["phase-8", "playwright", "selectors", "ui"],
+      "related_bugs": ["bug-039", "bug-058", "bug-069"],
+      "occurrences": 1,
+      "last_seen": "2026-04-27T02:38:00-04:00"
     }
   ]
 }

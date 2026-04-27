@@ -29,6 +29,7 @@ DOCUMENT_LIST_SELECT_COLUMNS_SQL = """
   d.lifecycle_state::text AS lifecycle_state,
   d.review_status::text AS review_status,
   d.created_at,
+  d.metadata_json,
   d.document_date,
   d.counterparty_display,
   a.total_amount AS amount_total,

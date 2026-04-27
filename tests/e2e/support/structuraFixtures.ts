@@ -16,6 +16,13 @@ export type DocumentSummary = {
   folderPaths?: string[];
   tags?: string[];
   relatedCount?: number;
+  qualitySummary?: {
+    reasons?: string[];
+    reviewRequired?: boolean;
+    visualEmbeddingEligible?: boolean;
+    qwenRouteEligible?: boolean;
+    summary?: string;
+  } | null;
 };
 
 export type DocumentRelationship = {
@@ -40,7 +47,17 @@ export type DocumentRelationship = {
 };
 
 export type DocumentDetail = DocumentSummary & {
-  pages: Array<{pageNumber: number; imageUrl?: string}>;
+  pages: Array<{
+    pageNumber: number;
+    imageUrl?: string;
+    qualitySignals?: {
+      reasons?: string[];
+      reviewRequired?: boolean;
+      visualEmbeddingEligible?: boolean;
+      qwenRouteEligible?: boolean;
+      summary?: string;
+    } | null;
+  }>;
   assets: Array<{id: string; assetRole: string; mimeType: string; assetUrl: string; sha256?: string}>;
   fields: unknown[];
   lineItems: unknown[];
@@ -117,6 +134,7 @@ export type SearchResponse = {
       sourceText: string;
       bbox?: [number, number, number, number];
     }>;
+    sourceModalities?: string[];
   }>;
   facets: Record<string, Record<string, number>>;
   debug: Record<string, unknown>;
@@ -366,6 +384,14 @@ export function seededReviewTasks(): ReviewTask[] {
       fieldPath: "invoice.total_amount",
       rationale: "Total amount requires confirmation.",
     },
+    {
+      id: "93939393-9393-4393-8393-939393939393",
+      documentId: receiptDocument.id,
+      taskType: "document_quality",
+      status: "open",
+      priority: 88,
+      rationale: "Difficult document requires review: handwriting detected, sparse text, degraded scan.",
+    },
   ];
 }
 
@@ -385,6 +411,22 @@ export function seededFieldCandidates(): FieldCandidate[] {
         sourceEngine: "docling",
         sourceText: "Total 1042.15",
         bbox: [0.18, 0.22, 0.72, 0.29],
+      }],
+    },
+    {
+      id: "94949494-9494-4494-8494-949494949494",
+      documentId: receiptDocument.id,
+      fieldPath: "receipt.transaction.total",
+      valueType: "money",
+      value: {amount: 104.15, currency: "USD"},
+      sourceEngine: "qwen3_vl_8b",
+      confidence: 0.68,
+      status: "needs_review",
+      evidence: [{
+        pageNumber: 1,
+        sourceEngine: "qwen3_vl_8b",
+        sourceText: "Handwritten total 104.15",
+        bbox: [0.16, 0.2, 0.78, 0.34],
       }],
     },
   ];
@@ -487,7 +529,11 @@ export function seededSmartViews() {
   ];
 }
 
-export function seededSearchResponse(query: string, family?: string): SearchResponse {
+export function seededSearchResponse(
+  query: string,
+  family?: string,
+  includeVisual = false,
+): SearchResponse {
   if (query.toLowerCase().includes("no matching") || family === "warranty") {
     return {
       items: [],
@@ -502,6 +548,50 @@ export function seededSearchResponse(query: string, family?: string): SearchResp
         dateBuckets: {},
       },
       debug: {mode: "hybrid", candidateCounts: {lexical: 0, semantic: 0}, filtersApplied: family ? 1 : 0},
+    };
+  }
+  if (includeVisual || query.toLowerCase().includes("handwritten")) {
+    return {
+      items: [
+        {
+          documentId: receiptDocument.id,
+          title: "Handwritten repair intake",
+          family: "receipt",
+          rank: 1,
+          score: 0.046,
+          snippet: "handwriting detected, sparse text, degraded scan",
+          matchedChunkId: "71717171-7171-4171-8171-717171717171",
+          pageNumber: 1,
+          explanation: "matched by visual rank 1 with rank fusion",
+          counterpartyDisplay: "Acme Repairs",
+          documentDate: "2026-04-18",
+          amountTotal: 104.15,
+          folderPaths: ["/Home"],
+          tags: ["urgent"],
+          sourceModalities: ["visual"],
+          evidence: [{
+            pageNumber: 1,
+            sourceEngine: "qwen3_vl_8b",
+            sourceText: "Handwritten intake form requires review.",
+            bbox: [0.16, 0.2, 0.78, 0.34],
+          }],
+        },
+      ],
+      facets: {
+        families: {receipt: 1},
+        folders: {"/Home": 1},
+        tags: {urgent: 1},
+        reviewStatus: {needs_review: 1},
+        sensitivity: {normal: 1},
+        relationshipTypes: {},
+        deadlineTypes: {},
+        dateBuckets: {"2026-04": 1},
+      },
+      debug: {
+        mode: "visual",
+        candidateCounts: {lexical: 0, semantic: 0, visual: 1},
+        filtersApplied: family ? 1 : 0,
+      },
     };
   }
   return {
@@ -521,6 +611,7 @@ export function seededSearchResponse(query: string, family?: string): SearchResp
         amountTotal: 62,
         folderPaths: ["/Medical"],
         tags: ["medical", "urgent"],
+        sourceModalities: ["lexical", "semantic"],
         evidence: [{
           pageNumber: 1,
           sourceEngine: "docling",
@@ -650,6 +741,7 @@ export function summaryFromDetail(document: DocumentDetail): DocumentSummary {
     folderPaths: document.folderPaths,
     tags: document.tags,
     relatedCount: document.relationships?.filter((item) => item.status !== "rejected").length ?? 0,
+    qualitySummary: document.qualitySummary,
   };
 }
 
@@ -748,7 +840,24 @@ function receiptDetail(): DocumentDetail {
     documentDate: "2026-04-20",
     thumbnailUrl: "/api/v1/assets/eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
     folderPaths: [homeFolder.path],
-    pages: [{pageNumber: 1, imageUrl: "/api/v1/assets/efefefef-efef-4efe-8fef-efefefefefef"}],
+    qualitySummary: {
+      reasons: ["handwriting", "low_text_density", "degraded_scan"],
+      reviewRequired: true,
+      visualEmbeddingEligible: true,
+      qwenRouteEligible: true,
+      summary: "handwriting detected, sparse text, degraded scan",
+    },
+    pages: [{
+      pageNumber: 1,
+      imageUrl: "/api/v1/assets/efefefef-efef-4efe-8fef-efefefefefef",
+      qualitySignals: {
+        reasons: ["handwriting", "low_text_density", "degraded_scan"],
+        reviewRequired: true,
+        visualEmbeddingEligible: true,
+        qwenRouteEligible: true,
+        summary: "handwriting detected, sparse text, degraded scan",
+      },
+    }],
     assets: [
       {
         id: "eaeaeaea-eaea-4aea-8aea-eaeaeaeaeaea",

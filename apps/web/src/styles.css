@@ -608,6 +608,7 @@ button:disabled {
   border: 1px solid var(--line);
 }
 
+.status-chip.amber,
 .review-chip.amber {
   color: var(--amber);
   background: var(--amber-soft);
@@ -1403,6 +1404,23 @@ tbody tr.selected {
 }
 
 .evidence-focus span {
+  color: var(--muted);
+}
+
+.quality-banner {
+  display: grid;
+  gap: 3px;
+  width: min(520px, 82%);
+  margin: 12px auto 0;
+  border: 1px solid #fed7aa;
+  border-radius: 6px;
+  background: var(--amber-soft);
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: 12px;
+}
+
+.quality-banner span {
   color: var(--muted);
 }
 

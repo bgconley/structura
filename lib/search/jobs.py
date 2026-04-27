@@ -13,6 +13,10 @@ def enqueue_embed_document_job(
     document_id: UUID,
     household_id: UUID | None = None,
     force_reembed: bool = False,
+    modalities: tuple[str, ...] = ("text",),
+    owner_types: tuple[str, ...] | None = None,
+    model_profile: str | None = None,
+    queue_name: str = "embeddings",
     priority: int = 32,
 ) -> UUID:
     if household_id is None:
@@ -20,25 +24,58 @@ def enqueue_embed_document_job(
         row = cur.fetchone()
         household_id = row["household_id"] if row else None
     job_id = uuid4()
+    requested_modalities = list(dict.fromkeys(modalities or ("text",)))
+    payload = {
+        "schema_name": "embed_document_job",
+        "schema_version": "v1",
+        "job_id": str(job_id),
+        "created_at": datetime.now(UTC).isoformat(),
+        "attempt": 1,
+        "priority": priority,
+        "document_id": str(document_id),
+        "modalities": requested_modalities,
+        "model_profile": model_profile or _model_profile_for_modalities(requested_modalities),
+        "force_reembed": force_reembed,
+    }
+    if owner_types:
+        payload["owner_types"] = list(owner_types)
     create_job_with_cursor(
         cur,
         job_id=job_id,
         job_type="embed",
         household_id=household_id,
         document_id=document_id,
-        payload={
-            "schema_name": "embed_document_job",
-            "schema_version": "v1",
-            "job_id": str(job_id),
-            "created_at": datetime.now(UTC).isoformat(),
-            "attempt": 1,
-            "priority": priority,
-            "document_id": str(document_id),
-            "modalities": ["text"],
-            "model_profile": "structura-fixture-text-embedding:v1",
-            "force_reembed": force_reembed,
-        },
+        payload=payload,
         priority=priority,
-        queue_name="embeddings",
+        queue_name=queue_name,
     )
     return job_id
+
+
+def enqueue_visual_embed_document_job(
+    cur: Any,
+    *,
+    document_id: UUID,
+    household_id: UUID | None = None,
+    force_reembed: bool = False,
+    priority: int = 34,
+) -> UUID:
+    return enqueue_embed_document_job(
+        cur,
+        document_id=document_id,
+        household_id=household_id,
+        force_reembed=force_reembed,
+        modalities=("visual",),
+        owner_types=("page", "asset"),
+        model_profile="structura-fixture-visual-embedding:v1",
+        queue_name="visual-embeddings",
+        priority=priority,
+    )
+
+
+def _model_profile_for_modalities(modalities: list[str]) -> str:
+    if modalities == ["visual"]:
+        return "structura-fixture-visual-embedding:v1"
+    if "visual" in modalities:
+        return "structura-fixture-mixed-embedding:v1"
+    return "structura-fixture-text-embedding:v1"

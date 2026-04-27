@@ -11,10 +11,12 @@ from lib.search.embedding_gateway import (
     DeterministicEmbeddingGateway,
     EmbeddingProfile,
     default_text_embedding_profile,
+    default_visual_embedding_profile,
 )
 from lib.search.hybrid import RankedCandidate, reciprocal_rank_fusion
 from lib.search.query import ParsedSearchQuery, parse_search_request
 from lib.search.snippets import plain_search_snippet
+from lib.search.visual_repository import visual_search
 
 
 @dataclass(frozen=True)
@@ -22,8 +24,10 @@ class SearchExecutionTrace:
     mode: str
     lexical_candidates: int
     semantic_candidates: int
+    visual_candidates: int
     filters_applied: int
     embedding_profile: str
+    visual_embedding_profile: str
     result_count: int
 
     def as_debug(self) -> dict[str, object]:
@@ -32,9 +36,11 @@ class SearchExecutionTrace:
             "candidateCounts": {
                 "lexical": self.lexical_candidates,
                 "semantic": self.semantic_candidates,
+                "visual": self.visual_candidates,
             },
             "filtersApplied": self.filters_applied,
             "embeddingProfile": self.embedding_profile,
+            "visualEmbeddingProfile": self.visual_embedding_profile,
             "resultCount": self.result_count,
         }
 
@@ -45,12 +51,22 @@ class SearchService:
         *,
         embedding_profile: EmbeddingProfile | None = None,
         embedding_gateway: DeterministicEmbeddingGateway | None = None,
+        visual_embedding_profile: EmbeddingProfile | None = None,
+        visual_embedding_gateway: DeterministicEmbeddingGateway | None = None,
     ) -> None:
+        settings = get_settings()
         self.embedding_profile = embedding_profile or default_text_embedding_profile(
-            get_settings().embedding_text_dimensions
+            settings.embedding_text_dimensions
         )
         self.embedding_gateway = embedding_gateway or DeterministicEmbeddingGateway(
             self.embedding_profile
+        )
+        self.visual_embedding_profile = (
+            visual_embedding_profile
+            or default_visual_embedding_profile(settings.embedding_visual_dimensions)
+        )
+        self.visual_embedding_gateway = visual_embedding_gateway or DeterministicEmbeddingGateway(
+            self.visual_embedding_profile
         )
 
     def search(self, request: SearchRequest, *, access: DocumentAccessContext) -> SearchResponse:
@@ -63,14 +79,23 @@ class SearchService:
             if parsed.mode in {"semantic", "hybrid"}
             else []
         )
-        rows = _rank_candidates(parsed=parsed, lexical=lexical, semantic=semantic)
+        visual = (
+            self._visual_candidates(parsed, access)
+            if parsed.mode == "visual" or (parsed.mode == "hybrid" and parsed.include_visual)
+            else []
+        )
+        rows = _rank_candidates(parsed=parsed, lexical=lexical, semantic=semantic, visual=visual)
         facets = repository.facet_counts(access=access, filters=parsed.filters)
         trace = SearchExecutionTrace(
             mode=parsed.mode,
             lexical_candidates=len(lexical),
             semantic_candidates=len(semantic),
+            visual_candidates=len(visual),
             filters_applied=parsed.filters.applied_count,
             embedding_profile=f"{self.embedding_profile.name}:{self.embedding_profile.version}",
+            visual_embedding_profile=(
+                f"{self.visual_embedding_profile.name}:{self.visual_embedding_profile.version}"
+            ),
             result_count=len(rows),
         )
         return SearchResponse.model_validate(
@@ -99,6 +124,24 @@ class SearchService:
             oversample=max(parsed.limit * 8, 40),
         )
 
+    def _visual_candidates(
+        self,
+        parsed: ParsedSearchQuery,
+        access: DocumentAccessContext,
+    ) -> list[repository.SearchCandidateRow]:
+        query_embedding = self.visual_embedding_gateway.embed_texts([parsed.query])[0]
+        return visual_search(
+            access=access,
+            query_vector=query_embedding.values,
+            query=parsed.query,
+            profile_name=self.visual_embedding_profile.name,
+            profile_version=self.visual_embedding_profile.version,
+            dimensions=self.visual_embedding_profile.dimensions,
+            filters=parsed.filters,
+            limit=parsed.limit,
+            oversample=max(parsed.limit * 8, 40),
+        )
+
 
 def _lexical_candidates(
     parsed: ParsedSearchQuery,
@@ -117,11 +160,14 @@ def _rank_candidates(
     parsed: ParsedSearchQuery,
     lexical: list[repository.SearchCandidateRow],
     semantic: list[repository.SearchCandidateRow],
+    visual: list[repository.SearchCandidateRow],
 ) -> list[repository.SearchCandidateRow]:
     if parsed.mode == "lexical":
         return _dedupe_by_document(lexical)[: parsed.limit]
     if parsed.mode == "semantic":
         return _dedupe_by_document(semantic)[: parsed.limit]
+    if parsed.mode == "visual":
+        return _dedupe_by_document(visual)[: parsed.limit]
     fused = reciprocal_rank_fusion(
         lexical=[
             RankedCandidate(
@@ -143,11 +189,22 @@ def _rank_candidates(
             )
             for row in semantic
         ],
+        visual=[
+            RankedCandidate(
+                document_id=str(row.document_id),
+                chunk_id=str(row.matched_chunk_id) if row.matched_chunk_id else None,
+                rank=row.rank,
+                source="visual",
+                score=row.source_score,
+            )
+            for row in visual
+        ],
         limit=parsed.limit,
     )
     by_document = {
         **{str(row.document_id): row for row in reversed(lexical)},
         **{str(row.document_id): row for row in reversed(semantic)},
+        **{str(row.document_id): row for row in reversed(visual)},
     }
     ranked: list[repository.SearchCandidateRow] = []
     for fused_candidate in fused:
@@ -159,7 +216,7 @@ def _rank_candidates(
                     title=row.title,
                     family=row.family,
                     rank=len(ranked) + 1,
-                    source="hybrid",
+                    source=fused_candidate.explanation,
                     source_score=fused_candidate.score,
                     snippet=row.snippet,
                     matched_chunk_id=(
@@ -221,11 +278,20 @@ def _result_payload(index: int, row: repository.SearchCandidateRow) -> dict[str,
             "amountTotal": row.amount_total,
             "folderPaths": row.folder_paths,
             "tags": row.tags,
+            "sourceModalities": _source_modalities(row),
         }
     ).model_dump(by_alias=True, exclude_none=True)
 
 
 def _result_explanation(row: repository.SearchCandidateRow) -> str:
-    if row.source == "hybrid":
-        return "matched by lexical rank and semantic rank fusion"
+    if row.source.startswith("matched by"):
+        return f"{row.source} with rank fusion"
     return f"matched by {row.source} rank {row.rank}"
+
+
+def _source_modalities(row: repository.SearchCandidateRow) -> list[str]:
+    source = row.source
+    modalities = [modality for modality in ("lexical", "semantic", "visual") if modality in source]
+    if modalities:
+        return modalities
+    return [source]
