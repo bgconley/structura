@@ -73,11 +73,32 @@
 - `tests/unit/test_phase6_cli.py` — CLI dry-run import validation and execute-mode upload coverage (~500 tok)
 - `docs/ui-reference/figma/automation/` — Phase 6 automation UI context, comparison notes, Playwright reference screenshot, and deterministic Linux snapshot linkage (~500 tok plus image)
 
+## Phase 7 relationship additions
+
+- `apps/api/structura_api/routes_relationships.py` — Thin relationship/deadline/timeline/smart-view API routes with protected reads and CSRF-protected decisions (~800 tok)
+- `apps/web/src/components/RelationshipPanel.tsx` — Viewer related-document panel for manual link creation and suggested relationship accept/reject actions (~1000 tok)
+- `apps/web/src/components/RelationshipWorkspace.tsx` — Relationships/Timelines workspace for links, deadlines, smart views, and timeline navigation (~800 tok)
+- `apps/web/src/relationshipsApi.ts` — Browser API client for relationship, deadline, timeline, and smart-view endpoints (~500 tok)
+- `database/073_phase7_relationships.sql` — Relationship status/review metadata, deadline guardrails, indexes, and saved-query relationship/deadline support (~1300 tok)
+- `lib/relationships/relationship_repository.py` — Relationship list/get/upsert/decision/review-task/audit/context persistence (~2100 tok)
+- `lib/relationships/deadline_repository.py` — Deadline list/upsert persistence (~450 tok)
+- `lib/relationships/timeline_repository.py` — Timeline and relationship/deadline smart-view projection SQL (~1000 tok)
+- `lib/relationships/repository.py` — Compatibility facade re-exporting focused relationship repositories (~200 tok)
+- `lib/relationships/service.py` — Relationship/deadline/timeline/smart-view orchestration and DTO mapping (~2200 tok)
+- `lib/relationships/suggestions.py` — Deterministic duplicate/contact/family relationship suggestion rules (~650 tok)
+- `lib/relationships/jobs.py` — Relationship job enqueue helper for the `relationships` queue (~250 tok)
+- `workers/relationships/worker.py` — Real relationship worker loop for deadline refresh and relationship suggestions (~750 tok)
+- `tests/e2e/phase7.spec.ts` — Mocked Phase 7 relationships/timelines UI workflow and Linux screenshot gate (~450 tok)
+- `tests/e2e/phase7-live.spec.ts` — GPU live Phase 7 relationship creation and relationship/timeline workspace smoke (~450 tok)
+- `tests/integration/test_phase7_relationships.py` — Live DB coverage for manual relationships, timeline/search decisions, and idempotent worker suggestions (~1000 tok)
+- `tests/unit/test_phase7_relationship_units.py` — Unit coverage for relationship/deadline search filters, saved-query parsing, and self-link validation (~400 tok)
+- `docs/ui-reference/figma/relationships-timelines/` — Phase 7 relationship/timeline UI context, comparison notes, and Playwright screenshot artifact (~450 tok plus image)
+
 ## ./
 
 - `.DS_Store` (~3824 tok)
 - `CLAUDE.md` — OpenWolf (~57 tok)
-- `agents.md` / `AGENTS.md` — Agent operating guidance; root implementation plan as phase map, non-archive artifact references as required implementation depth, archive exclusion, Markdown-over-DOCX and chunked large-file review handling, conflict resolution, architecture stewardship, Phase 5 baseline/hardening record, Phase 6 remediation baseline and Phase 7 seams, Figma evidence, GPU-node runtime/test policy, all-phase live Playwright suite rule, and Docling worker dependency isolation (~4500 tok)
+- `agents.md` / `AGENTS.md` — Agent operating guidance; root implementation plan as phase map, non-archive artifact references as required implementation depth, archive exclusion, Markdown-over-DOCX and chunked large-file review handling, conflict resolution, architecture stewardship, Phase 5/6/7 baselines and hardening records, Phase 8 seams, Figma evidence, GPU-node runtime/test policy, all-phase live Playwright suite rule, and Docling worker dependency isolation (~5200 tok)
 - `STRUCTURA_PLAN_INDEX.md` — Canonical planning index; source alignment policy, Markdown-first duplicate-artifact handling with DOCX parity note, UI source of truth, GPU node sync policy, stop rule (~1000 tok)
 - `STRUCTURA_IMPLEMENTATION_PLAN.md` — Canonical end-to-end implementation plan; phase gates, mandatory per-phase artifact lists, API/database/event coverage, Markdown-first duplicate-artifact handling with DOCX parity note, GPU sync policy (~15500 tok)
 - `STRUCTURA_PHASE_1_IMPLEMENTATION_PLAN.md` — Phase 1 execution plan; upload, object storage, Inbox, protected asset streaming, preview, Viewer, fresh-context rereads, Firecrawl evidence rules, validation gate (~5700 tok)
@@ -93,7 +114,7 @@
 - `STRUCTURA_PHASE_11_IMPLEMENTATION_PLAN.md` — Phase 11 execution plan; golden corpus governance, expected answers, deterministic evaluation harness, extraction/search scoring, E2E and Playwright smoke tests, migration/contract regression, restore rehearsal, SAST/data-flow gate, performance measurements, release-candidate evidence pack, fresh-context rereads, Firecrawl evidence rules (~13200 tok)
 - `STRUCTURA_PHASE_12_IMPLEMENTATION_PLAN.md` — Final derived Phase 12 execution plan; internal-GA/release handoff, Phase 11 evidence intake, blocker closure, contract/schema freeze, runtime config, operator runbooks, benchmark threshold approval, UI/security/restore/performance signoff, release notes/tagging, go/no-go, post-release cadence, fresh-context rereads, Firecrawl evidence rules (~13200 tok)
 - `STRUCTURA_UI_FIGMA_QA_PLAN.md` — Canonical Figma and Playwright UI QA plan; frame ids, pixel-match rules, workflow QA, UI stop rule (~3000 tok)
-- `README.md` — Implementation status through Phase 6, canonical local/GPU verification commands including Phase 1-6 live Playwright specs, Compose/runtime notes, worker profile notes, migration baseline, and tracking behavior
+- `README.md` — Implementation status through Phase 7, canonical local/GPU verification commands including Phase 1-7 live Playwright specs, Compose/runtime notes, worker profile notes, migration baseline, and tracking behavior
 - `Makefile` — bootstrap, test, lint, format, contracts, migrate, API/web dev, Compose, and worker-placeholder tasks
 - `compose.yaml` — Postgres, API, web, default workers, profile-gated model placeholders, and Redis fallback services
 - `.env.example` — Local Structura environment defaults

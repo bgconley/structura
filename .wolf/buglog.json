@@ -804,6 +804,42 @@
       "related_bugs": ["bug-055"],
       "occurrences": 1,
       "last_seen": "2026-04-26T23:05:00-04:00"
+    },
+    {
+      "id": "bug-068",
+      "timestamp": "2026-04-27T03:38:00-04:00",
+      "error_message": "GPU Phase 7 relationship worker test failed because deadline refresh selected canonical_fields.confidence.",
+      "file": "lib/relationships/service.py",
+      "root_cause": "The canonical_fields table does not own confidence; selected candidate confidence lives on field_candidates and human/system canonical fields may legitimately have no candidate confidence.",
+      "fix": "Changed deadline refresh to left join field_candidates through selected_candidate_id and preserve null confidence, while accepting canonical evidence_json objects as evidence lists.",
+      "tags": ["phase-7", "relationships", "deadlines", "postgres", "gpu-node"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-27T03:38:00-04:00"
+    },
+    {
+      "id": "bug-069",
+      "timestamp": "2026-04-27T03:40:00-04:00",
+      "error_message": "Phase 7 live Playwright failed strict-mode assertions because shared GPU data produced duplicate relationship/timeline labels.",
+      "file": "tests/e2e/phase7-live.spec.ts",
+      "root_cause": "The live spec used page-wide text/role locators in a database that retains prior live test artifacts, so titles and relationship labels appeared in multiple widgets.",
+      "fix": "Scoped assertions to the target Viewer relationship list, relationship workbench card, and timeline card rather than asserting page-wide text.",
+      "tags": ["phase-7", "playwright", "gpu-node", "shared-db", "selectors"],
+      "related_bugs": ["bug-039", "bug-058"],
+      "occurrences": 1,
+      "last_seen": "2026-04-27T03:40:00-04:00"
+    },
+    {
+      "id": "bug-070",
+      "timestamp": "2026-04-27T03:43:00-04:00",
+      "error_message": "GPU current-HEAD pytest found Phase 4 rerun extraction status still running after the integration drain helper.",
+      "file": "tests/integration/test_phase4_extraction_review.py",
+      "root_cause": "The live Compose extraction worker can claim durable extraction jobs while integration tests run against the shared GPU database, so the test's in-process drain helper does not always own the job lifecycle.",
+      "fix": "Changed the test to drain opportunistically and then poll the queued job until terminal success or failure, making it safe when the live worker claims the job first.",
+      "tags": ["phase-4", "phase-7", "jobs", "gpu-node", "integration-tests"],
+      "related_bugs": ["bug-040"],
+      "occurrences": 1,
+      "last_seen": "2026-04-27T03:43:00-04:00"
     }
   ]
 }
