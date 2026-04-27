@@ -1,10 +1,21 @@
 from __future__ import annotations
 
 from io import BytesIO
+from types import ModuleType
 
 import pytest
 
-from lib.storage import InvalidObjectUri, ObjectStorage, StorageError, object_uri, parse_object_uri
+from lib.documents import canonical_parse
+from lib.extraction import extraction_repository
+from lib.storage import (
+    InvalidObjectUri,
+    ObjectStorage,
+    StorageError,
+    StoredObject,
+    object_uri,
+    parse_object_uri,
+)
+from workers.previews import service as preview_service
 
 
 def test_content_addressed_write_dedupe_and_verify(tmp_path) -> None:
@@ -68,3 +79,44 @@ def test_immutable_existing_object_mismatch_is_rejected(tmp_path) -> None:
             kind="canonical",
             role="original",
         )
+
+
+@pytest.mark.parametrize(
+    ("module", "cleanup_name"),
+    [
+        (canonical_parse, "_cleanup_created_objects"),
+        (extraction_repository, "_cleanup_created"),
+        (preview_service, "_cleanup_created_objects"),
+    ],
+)
+def test_rollback_cleanup_delegates_to_reference_safe_cleanup(
+    module: ModuleType,
+    cleanup_name: str,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    path = tmp_path / f"{module.__name__.replace('.', '-')}.blob"
+    path.write_bytes(b"referenced derived bytes")
+    stored = StoredObject(
+        uri=object_uri(
+            kind="derived",
+            sha256="a" * 64,
+            filename=f"{module.__name__.replace('.', '-')}.blob",
+        ),
+        sha256="a" * 64,
+        byte_size=path.stat().st_size,
+        path=path,
+        created=True,
+    )
+    cleaned: list[StoredObject] = []
+
+    def fake_cleanup(value: StoredObject | None) -> None:
+        if value is not None:
+            cleaned.append(value)
+
+    monkeypatch.setattr(module, "cleanup_unreferenced_stored_object", fake_cleanup, raising=False)
+
+    getattr(module, cleanup_name)([stored])
+
+    assert cleaned == [stored]
+    assert path.exists()

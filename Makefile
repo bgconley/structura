@@ -4,7 +4,7 @@ SEMGREP ?= $(shell $(PYTHON) -c 'import shutil, sysconfig; print(shutil.which("s
 PYRIGHT_PYTHON ?= $(shell command -v $(PYTHON) 2>/dev/null || printf '%s' '$(PYTHON)')
 export PYTHONPATH := $(CURDIR)
 
-.PHONY: bootstrap test lint format contracts sast migrate api-dev web-dev compose-up worker-placeholder
+.PHONY: bootstrap test integration-test lint format contracts sast migrate api-dev web-dev compose-up worker-placeholder
 
 bootstrap:
 	$(PYTHON) -m pip install -r apps/api/requirements.txt
@@ -13,6 +13,9 @@ bootstrap:
 
 test:
 	$(PYTHON) -m pytest
+
+integration-test:
+	$(PYTHON) scripts/run_integration_tests.py
 
 lint:
 	$(PYTHON) -m ruff check .

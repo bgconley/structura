@@ -29,6 +29,7 @@ This repository is now implemented through Phase 8:
 ```bash
 make bootstrap
 make test
+make integration-test
 make contracts
 make api-dev
 make web-dev
@@ -47,6 +48,8 @@ For phase gates, the GPU node is canonical. Push the repo, pull it at `/tank/rep
 ```bash
 STRUCTURA_E2E_LIVE=1 npx playwright test tests/e2e/phase1-live.spec.ts tests/e2e/phase2-live.spec.ts tests/e2e/phase3-live.spec.ts tests/e2e/phase4-live.spec.ts tests/e2e/phase5-live.spec.ts tests/e2e/phase6-live.spec.ts tests/e2e/phase7-live.spec.ts tests/e2e/phase8-live.spec.ts --workers=1
 ```
+
+Use `make integration-test` for DB-backed integration validation. It creates a disposable migrated database from `STRUCTURA_INTEGRATION_BASE_DATABASE_URL`, runs `tests/integration`, and drops the database afterward so test fixtures do not pollute the canonical runtime DB.
 
 Model placeholders are behind a profile:
 

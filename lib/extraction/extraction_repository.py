@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from contextlib import suppress
 from typing import Any, cast
 from uuid import UUID
 
@@ -29,7 +28,7 @@ from lib.extraction.models import (
     ValidationReport,
 )
 from lib.review.task_repository import upsert_review_task
-from lib.storage import ObjectStorage, StoredObject
+from lib.storage import ObjectStorage, StoredObject, cleanup_unreferenced_stored_object
 
 
 def persist_classification(
@@ -441,5 +440,4 @@ def _remember_created(objects: list[StoredObject], stored: StoredObject) -> None
 
 def _cleanup_created(objects: list[StoredObject]) -> None:
     for stored in objects:
-        with suppress(OSError):
-            stored.path.unlink(missing_ok=True)
+        cleanup_unreferenced_stored_object(stored)

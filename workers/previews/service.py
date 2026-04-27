@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from contextlib import suppress
 from typing import Any
 from uuid import UUID
 
@@ -10,7 +9,7 @@ from psycopg.types.json import Jsonb
 
 from lib.db.connection import db_connection
 from lib.documents.assets import upsert_current_asset
-from lib.storage import ObjectStorage, StoredObject
+from lib.storage import ObjectStorage, StoredObject, cleanup_unreferenced_stored_object
 
 SVG_MIME = "image/svg+xml"
 PREVIEW_RENDERER_NAME = "structura-svg-page-preview"
@@ -276,5 +275,4 @@ def _remember_created(objects: list[StoredObject], stored: StoredObject | None) 
 
 def _cleanup_created_objects(objects: list[StoredObject]) -> None:
     for stored in objects:
-        with suppress(OSError):
-            stored.path.unlink(missing_ok=True)
+        cleanup_unreferenced_stored_object(stored)

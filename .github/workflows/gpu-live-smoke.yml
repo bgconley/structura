@@ -7,6 +7,8 @@ on:
         description: GPU-hosted Structura web URL
         required: true
         default: http://10.25.0.50:13000
+  schedule:
+    - cron: "17 8 * * *"
 
 jobs:
   phase-live:
@@ -16,7 +18,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run live Playwright suite against GPU-hosted app
         env:
-          STRUCTURA_E2E_WEB_URL: ${{ inputs.web_url }}
+          STRUCTURA_E2E_WEB_URL: ${{ inputs.web_url || 'http://10.25.0.50:13000' }}
         run: |
           docker run --rm \
             -e STRUCTURA_E2E_LIVE=1 \

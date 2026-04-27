@@ -440,9 +440,38 @@ def test_phase1_preview_generation_is_idempotent(
                 (document_id,),
             )
             page_count = cur.fetchone()["total"]
+            cur.execute(
+                """
+                SELECT id, uri, sha256, byte_size
+                FROM document_assets
+                WHERE document_id = %s
+                  AND asset_role = 'thumbnail'
+                  AND is_current
+                LIMIT 1
+                """,
+                (document_id,),
+            )
+            thumbnail_asset = cur.fetchone()
 
     assert counts == {"page_image": 1, "thumbnail": 1}
     assert page_count == 1
+    assert thumbnail_asset
+    storage = ObjectStorage(settings=get_settings())
+    thumbnail_path = storage.path_for_uri(thumbnail_asset["uri"])
+    assert thumbnail_path.exists()
+
+    cleanup_unreferenced_stored_object(
+        StoredObject(
+            uri=thumbnail_asset["uri"],
+            sha256=thumbnail_asset["sha256"],
+            byte_size=thumbnail_asset["byte_size"],
+            path=thumbnail_path,
+            created=True,
+        )
+    )
+
+    assert thumbnail_path.exists()
+    assert client.get(f"/api/v1/assets/{thumbnail_asset['id']}").status_code == 200
 
 
 @pytest.mark.skipif(
