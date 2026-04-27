@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -14,6 +15,7 @@ from psycopg import sql
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 DEFAULT_DATABASE_URL = "postgresql://structura:structura@localhost:5432/structura"
+SAFE_DATABASE_NAME_RE = re.compile(r"^structura_it_[a-f0-9]{16}$")
 
 
 def main() -> int:
@@ -65,7 +67,10 @@ def _database_url_with_name(url: str, database_name: str) -> str:
 
 
 def _create_database(admin_url: str, database_name: str) -> None:
+    _validate_database_name(database_name)
     with psycopg.connect(admin_url, autocommit=True) as conn:
+        # Name is generated, regex-validated, and quoted as an identifier.
+        # nosemgrep
         conn.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(database_name)))
 
 
@@ -90,16 +95,24 @@ def _run_pytest(pytest_args: list[str]) -> int:
 
 
 def _drop_database(admin_url: str, database_name: str) -> None:
+    _validate_database_name(database_name)
     with psycopg.connect(admin_url, autocommit=True) as conn:
         conn.execute(
             "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = %s",
             (database_name,),
         )
         conn.execute(
+            # Name is generated, regex-validated, and quoted as an identifier.
+            # nosemgrep
             sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(
                 sql.Identifier(database_name),
             )
         )
+
+
+def _validate_database_name(database_name: str) -> None:
+    if not SAFE_DATABASE_NAME_RE.fullmatch(database_name):
+        raise SystemExit("Integration test database name is not safe.")
 
 
 if __name__ == "__main__":
