@@ -20,7 +20,7 @@ ALTER TABLE document_deadlines
 
 ALTER TABLE document_deadlines
   ADD CONSTRAINT document_deadlines_status_check
-  CHECK (status IN ('open', 'due_soon', 'overdue', 'snoozed', 'resolved', 'waived', 'needs_review'));
+  CHECK (status IN ('open', 'due_soon', 'overdue', 'snoozed', 'resolved', 'needs_review'));
 
 CREATE UNIQUE INDEX IF NOT EXISTS document_relationships_active_pair_type_uniq
   ON document_relationships (

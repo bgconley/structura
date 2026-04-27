@@ -15,7 +15,7 @@ def test_baseline_migration_scripts_are_present_and_ordered() -> None:
     plan = baseline_migration_plan("database")
 
     assert plan.scripts[0].name == "001_extensions.sql"
-    assert plan.scripts[-1].name == "073_phase7_relationships.sql"
+    assert plan.scripts[-1].name == "074_phase7_deadline_status_waived.sql"
     assert all(script.exists() for script in plan.scripts)
 
 
@@ -88,3 +88,12 @@ def test_phase7_relationship_migration_adds_status_deadline_and_guardrails() -> 
     assert "document_deadlines_document_type_due_active_uniq" in sql
     assert "deadline_type" in sql
     assert "relationship_types" in sql
+
+
+def test_phase7_deadline_status_waived_migration_preserves_applied_phase7_checksum() -> None:
+    phase7_sql = Path("database/073_phase7_relationships.sql").read_text(encoding="utf-8")
+    waived_sql = Path("database/074_phase7_deadline_status_waived.sql").read_text(encoding="utf-8")
+
+    assert "'waived'" not in phase7_sql
+    assert "'waived'" in waived_sql
+    assert "document_deadlines_status_check" in waived_sql

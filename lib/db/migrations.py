@@ -22,6 +22,7 @@ BASELINE_SQL_FILES = (
     "071_phase5_search_guardrails.sql",
     "072_phase6_automation.sql",
     "073_phase7_relationships.sql",
+    "074_phase7_deadline_status_waived.sql",
 )
 
 
