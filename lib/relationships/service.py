@@ -282,11 +282,20 @@ class RelationshipService:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT field_path, date_value, evidence_json, confidence
-                    FROM canonical_fields
-                    WHERE document_id = %s
-                      AND date_value IS NOT NULL
-                      AND review_status IN ('auto_accepted', 'user_confirmed', 'user_corrected')
+                    SELECT
+                      cf.field_path,
+                      cf.date_value,
+                      cf.evidence_json,
+                      fc.confidence
+                    FROM canonical_fields cf
+                    LEFT JOIN field_candidates fc ON fc.id = cf.selected_candidate_id
+                    WHERE cf.document_id = %s
+                      AND cf.date_value IS NOT NULL
+                      AND cf.review_status IN (
+                        'auto_accepted',
+                        'user_confirmed',
+                        'user_corrected'
+                      )
                     """,
                     (document_id,),
                 )
@@ -431,6 +440,8 @@ def _timeline_event_from_row(row: dict[str, Any]) -> TimelineEvent:
 def _evidence_list(raw: object) -> list[dict[str, Any]]:
     if isinstance(raw, list):
         return [item for item in raw if isinstance(item, dict)]
+    if isinstance(raw, dict):
+        return [raw]
     return []
 
 
