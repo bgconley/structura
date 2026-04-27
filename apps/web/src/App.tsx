@@ -243,8 +243,8 @@ export default function App() {
       mode: "hybrid",
       includeDebug: true,
     };
+    setViewMode("search");
     if (!target.query.trim()) {
-      setViewMode("search");
       return;
     }
     setIsSearchLoading(true);
@@ -253,11 +253,9 @@ export default function App() {
     try {
       const next = await runSearch(target);
       setSearchResponse(next);
-      setViewMode("search");
     } catch (exc) {
       setError(exc instanceof Error ? exc.message : "Search failed");
       setSearchResponse(null);
-      setViewMode("search");
     } finally {
       setIsSearchLoading(false);
     }

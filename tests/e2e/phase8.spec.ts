@@ -1,6 +1,6 @@
 import {expect, test} from "@playwright/test";
 
-import {csrfToken, mockStructuraApi} from "./support/structuraMock";
+import {apiOrigin, csrfToken, mockStructuraApi} from "./support/structuraMock";
 
 test.skip(process.env.STRUCTURA_E2E_LIVE === "1", "Mocked browser tests are local-only.");
 
@@ -44,4 +44,27 @@ test("Phase 8 difficult-document visual retrieval and review cues are visible", 
     fullPage: true,
     maxDiffPixelRatio: 0.02,
   });
+});
+
+test("Phase 8 evidence viewer stays open when a stale visual search completes", async ({page}) => {
+  await page.unroute(`${apiOrigin}/api/v1/**`);
+  await mockStructuraApi(page, {searchDelayMs: 800});
+
+  await page.goto("/");
+  await page.getByRole("button", {name: /Search/}).click();
+
+  await page.getByLabel("Corpus search query").fill("handwritten degraded intake");
+  await page.getByLabel("Search mode").selectOption("visual");
+  await page.getByRole("button", {name: "Search corpus"}).click();
+
+  const result = page.locator(".search-result-card").filter({hasText: "Handwritten repair intake"});
+  await expect(result).toBeVisible();
+
+  await page.getByRole("button", {name: "Search corpus"}).click();
+  await result.getByRole("button", {name: "Jump to evidence"}).click();
+  await expect(page.getByRole("heading", {name: "Document Viewer"})).toBeVisible();
+
+  await page.waitForTimeout(1_000);
+  await expect(page.getByRole("heading", {name: "Document Viewer"})).toBeVisible();
+  await expect(page.getByText("Difficult document")).toBeVisible();
 });

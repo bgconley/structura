@@ -40,6 +40,7 @@ type MockStructuraApiOptions = {
   csrfCookieName?: string;
   sessionCookieName?: string;
   csrfTokenValue?: string;
+  searchDelayMs?: number;
 };
 
 export async function mockStructuraApi(page: Page, options: MockStructuraApiOptions = {}) {
@@ -166,6 +167,9 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
         includeVisual?: boolean;
         mode?: string;
       };
+      if (options.searchDelayMs) {
+        await new Promise((resolve) => setTimeout(resolve, options.searchDelayMs));
+      }
       await route.fulfill({
         status: 200,
         headers: {"Content-Type": "application/json", ...corsHeaders},
