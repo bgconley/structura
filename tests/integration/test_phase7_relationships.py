@@ -161,13 +161,11 @@ def test_phase7_contact_timeline_excludes_unrelated_relationship_events(
             "contactId": contact_id,
             "roleName": "vendor",
             "confidence": 0.97,
-            "evidence": [
-                {
-                    "pageNumber": 1,
-                    "sourceEngine": "human",
-                    "sourceText": "Contact appears on the document.",
-                }
-            ],
+            "evidence": {
+                "pageNumber": 1,
+                "sourceEngine": "human",
+                "sourceText": "Contact appears on the document.",
+            },
         },
     )
     assert linked.status_code == 201
