@@ -101,9 +101,8 @@ def _drop_database(admin_url: str, database_name: str) -> None:
             "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = %s",
             (database_name,),
         )
-        conn.execute(
-            # Name is generated, regex-validated, and quoted as an identifier.
-            # nosemgrep
+        # Name is generated, regex-validated, and quoted as an identifier.
+        conn.execute(  # nosemgrep
             sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(
                 sql.Identifier(database_name),
             )
