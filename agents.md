@@ -118,6 +118,10 @@ Phase 7 was canonically validated on the GPU node at commit `eebdb3d`: migration
 
 Phase 8 implementation adds `lib/documents/quality.py`, shared `lib/review/task_repository.py`, visual retrieval in `lib/search/visual_repository.py`, visual profile support in `lib/search/embedding_gateway.py`, visual source/persistence logic in `lib/search/embedding_repository.py`, text/visual/mixed orchestration in `lib/search/embedding_service.py`, visual/hybrid policy in `lib/search/service.py`, Qwen review-required routing in `lib/extraction/classification.py` and `lib/extraction/gateway.py`, `worker-visual-embeddings` in `compose.yaml`, Phase 8 mocked/live Playwright specs, and `docs/ui-reference/figma/difficult-documents/`.
 
+Phase 8 hardening landed in commits `27cc3b0` and `4a83690`. It closed two live UI/runtime races: late search responses must not navigate the user back out of an evidence Viewer, and opening an already-selected document from search/review/relationship surfaces must refresh document detail so newly persisted `qualitySummary` and page `qualitySignals` are visible after asynchronous worker completion. Preserve `tests/e2e/phase8.spec.ts` coverage for both regressions.
+
+Phase 8 was canonically validated on the GPU node at commit `4a83690`: `web` was rebuilt/restarted from the current image; `ruff`, format check, contract validation, `pyright`, `mypy`, `pytest` with live Postgres (`113 passed`), `make sast`, pinned `node:20-alpine` web lint/build, Compose health, and the full live Playwright suite for phases 1-8 against `http://10.25.0.50:13000` all passed.
+
 Phase 9 integration seams after Phase 8:
 
 1. Analysis context must consume `qualitySummary`, page `qualitySignals`, `sourceModalities`, accepted canonical facts, relationship/deadline context, and ACL-safe evidence refs rather than raw storage paths or hidden assets.

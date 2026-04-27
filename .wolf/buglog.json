@@ -888,6 +888,30 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-27T02:47:00-04:00"
+    },
+    {
+      "id": "bug-075",
+      "timestamp": "2026-04-27T03:00:00-04:00",
+      "error_message": "Phase 8 live Playwright reached the Viewer, then a still-in-flight visual search response navigated the UI back to Search before the difficult-document cue was asserted.",
+      "file": "apps/web/src/App.tsx",
+      "root_cause": "handleSearch set viewMode to search after the asynchronous search request completed, so a user could open an evidence result while a repeated search was still in flight and then be pulled back to Search by the late response.",
+      "fix": "Moved Search navigation to the start of handleSearch and stopped late success/error responses from changing viewMode; added a mocked Phase 8 regression for stale visual-search completion after opening evidence.",
+      "tags": ["phase-8", "playwright", "ui-state", "search", "gpu-node"],
+      "related_bugs": ["bug-069"],
+      "occurrences": 1,
+      "last_seen": "2026-04-27T03:00:00-04:00"
+    },
+    {
+      "id": "bug-076",
+      "timestamp": "2026-04-27T03:06:00-04:00",
+      "error_message": "Phase 8 live Playwright opened the target handwriting document but did not show Difficult document even though the detail API returned qualitySummary.reviewRequired=true.",
+      "file": "apps/web/src/App.tsx",
+      "root_cause": "The document was selected immediately after upload before Docling quality metadata existed. Later visual search opened the same selected document ID, so React did not refetch detail and the Viewer rendered stale pre-quality state.",
+      "fix": "Centralized document opening through openDocument; when the requested document is already selected, the app clears stale detail and refetches /api/v1/documents/{id}. Added a mocked Phase 8 regression for stale selected-detail refresh.",
+      "tags": ["phase-8", "playwright", "ui-state", "worker-race", "gpu-node"],
+      "related_bugs": ["bug-075"],
+      "occurrences": 1,
+      "last_seen": "2026-04-27T03:06:00-04:00"
     }
   ]
 }
