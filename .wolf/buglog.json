@@ -864,6 +864,18 @@
       "related_bugs": ["bug-039", "bug-058", "bug-069"],
       "occurrences": 1,
       "last_seen": "2026-04-27T02:38:00-04:00"
+    },
+    {
+      "id": "bug-073",
+      "timestamp": "2026-04-27T02:44:00-04:00",
+      "error_message": "GPU Phase 8 integration tests failed because new document quality metadata was not persisted under metadata_json.phase8.quality.",
+      "file": "lib/documents/quality.py",
+      "root_cause": "Postgres jsonb_set with path {phase8,quality} and create_missing=true does not create the missing intermediate phase8 object on new metadata_json values.",
+      "fix": "Updated quality persistence to set the top-level phase8 object while merging an inner quality object, preserving existing sibling Phase 8 metadata and creating phase8 when absent.",
+      "tags": ["phase-8", "postgres", "jsonb", "gpu-node", "integration-tests"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-27T02:44:00-04:00"
     }
   ]
 }

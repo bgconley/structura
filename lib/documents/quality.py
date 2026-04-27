@@ -263,8 +263,9 @@ def _persist_quality_summary(
             UPDATE document_pages
             SET metadata_json = jsonb_set(
                   COALESCE(metadata_json, '{}'::jsonb),
-                  '{phase8,quality}',
-                  %s::jsonb,
+                  '{phase8}',
+                  COALESCE(metadata_json->'phase8', '{}'::jsonb)
+                    || jsonb_build_object('quality', %s::jsonb),
                   true
                 ),
                 updated_at = now()
@@ -283,8 +284,9 @@ def _persist_quality_summary(
             END,
             metadata_json = jsonb_set(
               COALESCE(metadata_json, '{}'::jsonb),
-              '{phase8,quality}',
-              %s::jsonb,
+              '{phase8}',
+              COALESCE(metadata_json->'phase8', '{}'::jsonb)
+                || jsonb_build_object('quality', %s::jsonb),
               true
             ),
             updated_at = now()
