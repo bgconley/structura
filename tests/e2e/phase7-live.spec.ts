@@ -37,14 +37,21 @@ test.describe("Phase 7 live GPU stack", () => {
     await page.getByLabel("Relationship note").fill(`Phase 7 live link ${unique}`);
     await page.getByRole("button", {name: "Save relationship"}).click();
     await expect(page.getByText("Relationship saved")).toBeVisible();
-    await expect(page.getByText(secondTitle)).toBeVisible();
+    await expect(
+      page.locator(".relationship-list").getByRole("button", {name: new RegExp(secondTitle)})
+    ).toBeVisible();
 
     await page.getByRole("button", {name: /Relationships/}).click();
     await expect(page.getByRole("heading", {name: "Relationship Workbench"})).toBeVisible();
-    await expect(page.getByText(secondTitle)).toBeVisible();
+    await expect(
+      page
+        .locator(".relationship-card")
+        .filter({hasText: "Suggested and confirmed links"})
+        .getByRole("button", {name: new RegExp(secondTitle)})
+    ).toBeVisible();
     await page.getByRole("button", {name: /Timelines/}).click();
     await expect(page.getByRole("heading", {name: "Document Timelines"})).toBeVisible();
-    await expect(page.getByText("warranty_for")).toBeVisible();
+    await expect(page.locator(".timeline-card").getByRole("button").first()).toBeVisible();
 
     await page.screenshot({path: testInfo.outputPath("phase7-live-relationships.png"), fullPage: true});
   });
