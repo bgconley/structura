@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import shutil
-import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -13,6 +12,7 @@ import psycopg
 from psycopg import sql
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 DEFAULT_DATABASE_URL = "postgresql://structura:structura@localhost:5432/structura"
 
 
@@ -46,20 +46,10 @@ def main() -> int:
     try:
         _create_database(admin_url, test_database)
         created_database = True
-        subprocess.run(
-            [sys.executable, "scripts/migrate.py"],
-            cwd=ROOT,
-            env=env,
-            check=True,
-        )
+        os.environ.update(env)
+        _run_migrations()
         pytest_args = sys.argv[1:] or ["-q", "tests/integration"]
-        completed = subprocess.run(
-            [sys.executable, "-m", "pytest", *pytest_args],
-            cwd=ROOT,
-            env=env,
-            check=False,
-        )
-        return int(completed.returncode)
+        return _run_pytest(pytest_args)
     finally:
         if created_database:
             _drop_database(admin_url, test_database)
@@ -77,6 +67,26 @@ def _database_url_with_name(url: str, database_name: str) -> str:
 def _create_database(admin_url: str, database_name: str) -> None:
     with psycopg.connect(admin_url, autocommit=True) as conn:
         conn.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(database_name)))
+
+
+def _run_migrations() -> None:
+    from lib.config import get_settings
+    from lib.db.migrations import apply_baseline_migrations, baseline_migration_plan
+
+    get_settings.cache_clear()
+    settings = get_settings()
+    plan = baseline_migration_plan(settings.database_dir)
+    print("Applying Structura baseline migrations:")
+    for script in plan.scripts:
+        print(f"  - {script.name}")
+    applied = apply_baseline_migrations(settings.database_url, settings.database_dir)
+    print(f"Applied {len(applied)} migration scripts.")
+
+
+def _run_pytest(pytest_args: list[str]) -> int:
+    import pytest
+
+    return int(pytest.main(pytest_args))
 
 
 def _drop_database(admin_url: str, database_name: str) -> None:
