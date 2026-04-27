@@ -708,6 +708,102 @@
       "related_bugs": ["bug-058"],
       "occurrences": 1,
       "last_seen": "2026-04-26T22:50:00-04:00"
+    },
+    {
+      "id": "bug-060",
+      "timestamp": "2026-04-26T23:05:00-04:00",
+      "error_message": "Phase 6 audit found filing-rule policy allowed set_sensitivity, create_review_task, and set_document_type but execution silently skipped them.",
+      "file": "lib/automation/action_application.py",
+      "root_cause": "The rule policy and contract accepted a broader action set than the apply/accept execution path, which only mutated folder/tag state.",
+      "fix": "Added cursor-based action application for folder, tag, sensitivity, document family, and review-task actions; updated policy validation; and added integration coverage for direct apply and suggestion accept.",
+      "tags": ["phase-6", "automation", "filing-rules", "correctness", "contracts"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T23:05:00-04:00"
+    },
+    {
+      "id": "bug-061",
+      "timestamp": "2026-04-26T23:05:00-04:00",
+      "error_message": "Phase 6 audit found rule application and suggestion acceptance were not transactionally atomic with filing-rule run/audit persistence.",
+      "file": "lib/automation/service.py",
+      "root_cause": "Automation called the independently committing manual filing service before writing filing_rule_runs and suggestion decisions, so partial failure could leave document mutations without matching automation audit state.",
+      "fix": "Extracted cursor-based organization mutation into lib/organization/document_organization.py and made automation apply/accept share one transaction for document actions, run persistence, and suggestion decisions, with projection refresh after commit.",
+      "tags": ["phase-6", "transactions", "data-integrity", "automation", "postgres"],
+      "related_bugs": ["bug-060"],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T23:05:00-04:00"
+    },
+    {
+      "id": "bug-062",
+      "timestamp": "2026-04-26T23:05:00-04:00",
+      "error_message": "Phase 6 audit found later-phase placeholder endpoints advertised success responses in OpenAPI while runtime returned 501.",
+      "file": "contracts/api/openapi.yaml",
+      "root_cause": "Relationship, analysis-note, and export mutation contracts were prematurely documented as implemented even though routes_placeholders.py still returned HTTP 501 until later phases.",
+      "fix": "Changed active OpenAPI responses for deferred mutation endpoints to advertise 501/422 placeholder behavior and added runtime/contract status parity tests.",
+      "tags": ["phase-6", "phase-7", "openapi", "contract-parity", "placeholders"],
+      "related_bugs": ["bug-050"],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T23:05:00-04:00"
+    },
+    {
+      "id": "bug-063",
+      "timestamp": "2026-04-26T23:05:00-04:00",
+      "error_message": "Phase 6 audit found watched-folder validation accepted arbitrary absolute existing directories instead of enforcing allowed intake roots.",
+      "file": "lib/automation/watched_folders.py",
+      "root_cause": "The policy layer supported allowed_roots, but the API service and worker did not pass a configured root, widening the filesystem trust boundary.",
+      "fix": "Added STRUCTURA_WATCHED_FOLDER_ROOT, passed it through Compose to API and worker services, enforced allowed roots in watched-folder validation and worker scans, and rejected symlinked candidate files.",
+      "tags": ["phase-6", "watched-folders", "security", "filesystem", "policy"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T23:05:00-04:00"
+    },
+    {
+      "id": "bug-064",
+      "timestamp": "2026-04-26T23:05:00-04:00",
+      "error_message": "Phase 6 audit found the Automation Workbench UI was narrower than the planned contacts/rules/watchers workflow scope.",
+      "file": "apps/web/src/components/AutomationWorkbench.tsx",
+      "root_cause": "The initial component concentrated multiple UI responsibilities in one surface and did not expose richer contact merge, rule edit, watcher policy, pause/resume, and explanation controls.",
+      "fix": "Split Automation Workbench into focused panel components, added contact merge suggestion display, richer rule builder/dry-run explanations, watched-folder policy and pause/resume controls, and regenerated the Linux screenshot baseline.",
+      "tags": ["phase-6", "ui", "architecture", "playwright", "figma"],
+      "related_bugs": ["bug-054"],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T23:05:00-04:00"
+    },
+    {
+      "id": "bug-065",
+      "timestamp": "2026-04-26T23:05:00-04:00",
+      "error_message": "GPU live smoke workflow omitted tests/e2e/phase6-live.spec.ts after Phase 6 implementation.",
+      "file": ".github/workflows/gpu-live-smoke.yml",
+      "root_cause": "The manual GPU live-smoke workflow was not extended when Phase 6 added a live browser spec.",
+      "fix": "Added tests/e2e/phase6-live.spec.ts to the GPU live-smoke workflow so canonical live validation covers all implemented UI/runtime phases.",
+      "tags": ["phase-6", "github-actions", "playwright", "gpu-node", "operability"],
+      "related_bugs": ["bug-046"],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T23:05:00-04:00"
+    },
+    {
+      "id": "bug-066",
+      "timestamp": "2026-04-26T23:05:00-04:00",
+      "error_message": "Phase 6 audit found CLI bulk-import --execute existed but intentionally exited without importing files.",
+      "file": "scripts/structura.py",
+      "root_cause": "The CLI implemented dry-run validation and maintenance helpers first, leaving execute mode as guidance text rather than a real ingestion path.",
+      "fix": "Implemented dependency-free authenticated upload posting for stable PDF files using explicit API URL/token validation and added unit coverage for token-required and upload execution paths.",
+      "tags": ["phase-6", "cli", "bulk-import", "api-upload", "operability"],
+      "related_bugs": ["bug-053"],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T23:05:00-04:00"
+    },
+    {
+      "id": "bug-067",
+      "timestamp": "2026-04-26T23:05:00-04:00",
+      "error_message": "Host npm web build failed after Linux container dependency operations changed node_modules optional dependency state.",
+      "file": "apps/web/package.json",
+      "root_cause": "Mac host node_modules had been affected by containerized npm operations and Rollup optional native dependencies were not in a reliable host-local state.",
+      "fix": "Treated host npm as a non-canonical preflight only and verified web lint/build with the pinned node:20-alpine container locally and on the GPU node.",
+      "tags": ["phase-6", "npm", "node", "web-build", "containers"],
+      "related_bugs": ["bug-055"],
+      "occurrences": 1,
+      "last_seen": "2026-04-26T23:05:00-04:00"
     }
   ]
 }
