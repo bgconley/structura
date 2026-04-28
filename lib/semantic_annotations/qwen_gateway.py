@@ -200,7 +200,7 @@ class QwenSemanticAnnotationGateway:
                 response_json_schema=semantic_annotation_model_output_schema(),
                 max_output_tokens=_max_output_tokens_for_profile(profile_name),
                 temperature=0.0,
-                timeout_seconds=60,
+                timeout_seconds=_timeout_seconds_for_profile(profile_name),
             )
         )
 
@@ -236,9 +236,14 @@ def _max_image_inputs_for_profile(_profile_name: str) -> int:
 
 
 def _max_output_tokens_for_profile(profile_name: str) -> int:
-    if profile_name == QWEN_SEMANTIC_PROFILE:
-        return 4096
-    return 8192
+    _ = profile_name
+    return 4096
+
+
+def _timeout_seconds_for_profile(profile_name: str) -> int:
+    if profile_name == QWEN_SEMANTIC_HQ_PROFILE:
+        return 180
+    return 60
 
 
 def _source_for_pages(

@@ -113,6 +113,9 @@ def test_live_qwen_high_quality_gateway_uses_qwen8b_profile() -> None:
     assert result.manifest.source_engine == "qwen3_vl_8b"
     assert result.manifest.profile_name == QWEN_SEMANTIC_HQ_PROFILE
     assert result.manifest.prompt_version == "phase8_5-semantic-high-quality-v1"
+    assert client.request is not None
+    assert client.request.timeout_seconds == 180
+    assert client.request.max_output_tokens == 4096
 
 
 def test_live_qwen_smart_gateway_chunks_pages_for_one_image_semantic_service() -> None:
