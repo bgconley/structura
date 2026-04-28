@@ -203,6 +203,34 @@ def test_live_qwen_gateway_drops_invalid_expected_field_names_from_model_output(
     assert persisted_region["expected_fields"] == ["total_amount"]
 
 
+def test_live_qwen_gateway_marks_unknown_docling_grounding_review_required() -> None:
+    source = _source_with_page_image()
+    payload = _semantic_payload(source.pages[0].page_id)
+    regions = payload["regions"]
+    assert isinstance(regions, list)
+    region = regions[0]
+    assert isinstance(region, dict)
+    region["grounding"] = {
+        "kind": "element",
+        "page_id": None,
+        "element_id": str(uuid4()),
+        "table_id": None,
+    }
+    client = FakeSemanticVisionClient(
+        profile_name=QWEN_SEMANTIC_PROFILE,
+        source_engine="qwen3_vl_2b",
+        normalized_json=payload,
+    )
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
+
+    repaired_region = result.manifest.regions[0]
+    assert repaired_region.semantic_type == "unmatched_region"
+    assert repaired_region.grounding.kind == "unmatched_region"
+    assert repaired_region.review_required is True
+    assert repaired_region.confidence == 0.2
+
+
 def test_live_qwen_gateway_retries_once_after_truncated_model_output() -> None:
     source = _source_with_page_image()
 

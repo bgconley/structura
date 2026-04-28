@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import unicodedata
+from dataclasses import replace
 from typing import Protocol
 from uuid import UUID
 
@@ -432,7 +433,10 @@ def _manifest_from_response(
     if not isinstance(pages_raw, list) or not isinstance(regions_raw, list):
         raise ModelProtocolError("Semantic annotation output must include pages and regions.")
     pages = [_page_from_json(item) for item in pages_raw]
-    regions = [_region_from_json(item) for item in regions_raw]
+    regions = _repair_region_grounding_for_source(
+        [_region_from_json(item) for item in regions_raw],
+        source=source,
+    )
     sanitized_payload = dict(normalized)
     sanitized_payload["regions"] = [_region_manifest_json(region) for region in regions]
     return DocumentSemanticManifest(
@@ -495,6 +499,64 @@ def _region_from_json(item: object) -> SemanticRegionAnnotation:
         reason=str(item["reason"]) if item.get("reason") else None,
         confidence=float(item["confidence"]) if item.get("confidence") is not None else None,
     )
+
+
+def _repair_region_grounding_for_source(
+    regions: list[SemanticRegionAnnotation],
+    *,
+    source: ExtractionSourceDocument,
+) -> list[SemanticRegionAnnotation]:
+    valid_page_ids = {page.page_id for page in source.pages}
+    valid_element_ids = {element.element_id for element in source.elements}
+    valid_table_ids = {table.table_id for table in source.tables}
+    return [
+        _repair_region_grounding(
+            region,
+            valid_page_ids=valid_page_ids,
+            valid_element_ids=valid_element_ids,
+            valid_table_ids=valid_table_ids,
+        )
+        for region in regions
+    ]
+
+
+def _repair_region_grounding(
+    region: SemanticRegionAnnotation,
+    *,
+    valid_page_ids: set[UUID],
+    valid_element_ids: set[UUID],
+    valid_table_ids: set[UUID],
+) -> SemanticRegionAnnotation:
+    grounding = region.grounding
+    if grounding.kind == "page" and grounding.page_id in valid_page_ids:
+        return region
+    if grounding.kind == "element" and grounding.element_id in valid_element_ids:
+        return region
+    if grounding.kind == "table" and grounding.table_id in valid_table_ids:
+        return region
+    if grounding.page_id in valid_page_ids:
+        return replace(
+            region,
+            grounding=SemanticGroundingRef(kind="page", page_id=grounding.page_id),
+            review_required=True,
+            confidence=_low_confidence(region.confidence),
+        )
+    return replace(
+        region,
+        semantic_type="unmatched_region",
+        granite_task="ignore",
+        target_schema=None,
+        expected_fields=(),
+        grounding=SemanticGroundingRef(kind="unmatched_region"),
+        review_required=True,
+        confidence=_low_confidence(region.confidence),
+    )
+
+
+def _low_confidence(confidence: float | None) -> float:
+    if confidence is None:
+        return 0.2
+    return min(confidence, 0.2)
 
 
 def _uuid_or_none(value: object) -> UUID | None:
