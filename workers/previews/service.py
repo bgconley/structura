@@ -1,7 +1,10 @@
 # ruff: noqa: E501
 from __future__ import annotations
 
+import io
 from collections.abc import Mapping
+from dataclasses import dataclass
+from importlib import import_module
 from typing import Any
 from uuid import UUID
 
@@ -12,12 +15,25 @@ from lib.documents.assets import upsert_current_asset
 from lib.storage import ObjectStorage, StoredObject, cleanup_unreferenced_stored_object
 
 SVG_MIME = "image/svg+xml"
+PNG_MIME = "image/png"
 PREVIEW_RENDERER_NAME = "structura-svg-page-preview"
 PREVIEW_RENDERER_VERSION = "phase3.1"
+PDF_RENDERER_NAME = "structura-pdfium-page-raster"
+PDF_RENDERER_VERSION = "phase8.5"
 
 
 class PreviewError(Exception):
     pass
+
+
+@dataclass(frozen=True)
+class PagePreviewImage:
+    data: bytes
+    mime_type: str
+    preview_kind: str
+    renderer_name: str
+    renderer_version: str
+    renderer_format: str
 
 
 def generate_phase1_preview(document_id: UUID, *, storage: ObjectStorage | None = None) -> None:
@@ -64,6 +80,7 @@ def _document_for_preview(cur: Any, document_id: UUID) -> dict[str, Any]:
           d.document_family::text AS document_family,
           COALESCE(d.page_count, 1) AS page_count,
           a.id AS original_asset_id,
+          a.uri AS original_asset_uri,
           a.mime_type,
           a.byte_size,
           a.sha256
@@ -119,7 +136,7 @@ def _generate_page_assets(
 ) -> None:
     page_number = int(page["page_number"])
     thumbnail = _thumbnail_svg(document, page)
-    preview = _page_preview_svg(document, page)
+    preview = _page_preview_image(storage, document, page)
     thumbnail_object = storage.store_bytes(
         thumbnail,
         kind="derived",
@@ -127,12 +144,27 @@ def _generate_page_assets(
     )
     _remember_created(created_objects, thumbnail_object)
     preview_object = storage.store_bytes(
-        preview,
+        preview.data,
         kind="derived",
         role=f"page-preview-{document['id']}-{page_number}",
     )
     _remember_created(created_objects, preview_object)
-    metadata = _preview_metadata(document, page_number, job_id)
+    thumbnail_metadata = _preview_metadata(
+        document,
+        page_number,
+        job_id,
+        renderer_name=PREVIEW_RENDERER_NAME,
+        renderer_version=PREVIEW_RENDERER_VERSION,
+        renderer_format="svg",
+    )
+    preview_metadata = _preview_metadata(
+        document,
+        page_number,
+        job_id,
+        renderer_name=preview.renderer_name,
+        renderer_version=preview.renderer_version,
+        renderer_format=preview.renderer_format,
+    )
 
     thumbnail_asset_id = upsert_current_asset(
         cur,
@@ -143,7 +175,7 @@ def _generate_page_assets(
         mime_type=SVG_MIME,
         byte_size=thumbnail_object.byte_size,
         sha256=thumbnail_object.sha256,
-        metadata={**metadata, "previewKind": "svg_thumbnail"},
+        metadata={**thumbnail_metadata, "previewKind": "svg_thumbnail"},
     )
     page_asset_id = upsert_current_asset(
         cur,
@@ -151,10 +183,10 @@ def _generate_page_assets(
         asset_role="page_image",
         page_number=page_number,
         uri=preview_object.uri,
-        mime_type=SVG_MIME,
+        mime_type=preview.mime_type,
         byte_size=preview_object.byte_size,
         sha256=preview_object.sha256,
-        metadata={**metadata, "previewKind": "svg_page_preview"},
+        metadata={**preview_metadata, "previewKind": preview.preview_kind},
     )
     cur.execute(
         """
@@ -186,7 +218,7 @@ def _generate_page_assets(
             page.get("text_content") or None,
             page_asset_id,
             thumbnail_asset_id,
-            Jsonb(metadata),
+            Jsonb(preview_metadata),
         ),
     )
 
@@ -195,14 +227,18 @@ def _preview_metadata(
     document: Mapping[str, Any],
     page_number: int,
     job_id: UUID | None,
+    *,
+    renderer_name: str,
+    renderer_version: str,
+    renderer_format: str,
 ) -> dict[str, Any]:
     return {
         "phase": "phase3",
         "previewStatus": "generated",
         "renderer": {
-            "name": PREVIEW_RENDERER_NAME,
-            "version": PREVIEW_RENDERER_VERSION,
-            "format": "svg",
+            "name": renderer_name,
+            "version": renderer_version,
+            "format": renderer_format,
         },
         "source": "original_asset",
         "sourceAssetId": str(document["original_asset_id"]),
@@ -210,6 +246,71 @@ def _preview_metadata(
         "pageNumber": page_number,
         "jobId": str(job_id) if job_id else None,
     }
+
+
+def _page_preview_image(
+    storage: ObjectStorage,
+    document: Mapping[str, Any],
+    page: Mapping[str, Any],
+) -> PagePreviewImage:
+    if document.get("mime_type") == "application/pdf" and document.get("original_asset_uri"):
+        rendered = _try_render_pdf_page_png(storage, document, int(page["page_number"]))
+        if rendered is not None:
+            return rendered
+    return PagePreviewImage(
+        data=_page_preview_svg(document, page),
+        mime_type=SVG_MIME,
+        preview_kind="svg_page_preview",
+        renderer_name=PREVIEW_RENDERER_NAME,
+        renderer_version=PREVIEW_RENDERER_VERSION,
+        renderer_format="svg",
+    )
+
+
+def _try_render_pdf_page_png(
+    storage: ObjectStorage,
+    document: Mapping[str, Any],
+    page_number: int,
+) -> PagePreviewImage | None:
+    try:
+        pypdfium2 = import_module("pypdfium2")
+    except ImportError:
+        return None
+    try:
+        source_path = storage.path_for_uri(str(document["original_asset_uri"]))
+        pdf = pypdfium2.PdfDocument(str(source_path))
+        try:
+            if page_number < 1 or page_number > len(pdf):
+                return None
+            pdf_page = pdf[page_number - 1]
+            try:
+                bitmap = pdf_page.render(scale=2)
+                image = bitmap.to_pil()
+                if image.mode not in {"RGB", "RGBA"}:
+                    image = image.convert("RGB")
+                output = io.BytesIO()
+                image.save(output, format="PNG")
+                data = output.getvalue()
+            finally:
+                close_page = getattr(pdf_page, "close", None)
+                if callable(close_page):
+                    close_page()
+        finally:
+            close_pdf = getattr(pdf, "close", None)
+            if callable(close_pdf):
+                close_pdf()
+    except Exception:
+        return None
+    if not data:
+        return None
+    return PagePreviewImage(
+        data=data,
+        mime_type=PNG_MIME,
+        preview_kind="pdf_raster_page_image",
+        renderer_name=PDF_RENDERER_NAME,
+        renderer_version=PDF_RENDERER_VERSION,
+        renderer_format="png",
+    )
 
 
 def _thumbnail_svg(document: Mapping[str, Any], page: Mapping[str, Any]) -> bytes:
