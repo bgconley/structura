@@ -15,16 +15,7 @@ sys.path.insert(0, str(ROOT))
 
 from lib.config import get_settings  # noqa: E402
 from lib.db.connection import db_connection  # noqa: E402
-from lib.documents.ingestion import (  # noqa: E402
-    DocumentIngestionRequest,
-    ingest_document_path,
-)
 from lib.semantic_annotations.jobs import enqueue_semantic_annotation_job  # noqa: E402
-from workers.embeddings.worker import process_next_embedding_job  # noqa: E402
-from workers.extraction.worker import process_next_extraction_job  # noqa: E402
-from workers.semantic_annotations.worker import (  # noqa: E402
-    process_next_semantic_annotation_job,
-)
 
 CONTROLLED_WORKERS = (
     "worker-docling",
@@ -121,36 +112,59 @@ def _ingest_pdf(
     if not pdf_path.exists():
         raise SystemExit(f"PDF does not exist: {pdf_path}")
     household_id, user_id = owner
-    result = ingest_document_path(
-        pdf_path,
-        request=DocumentIngestionRequest(
-            household_id=household_id,
-            owner_user_id=user_id,
-            source="bulk_import",
-            filename=pdf_path.name,
-            declared_mime_type="application/pdf",
-            supplied_title=f"{title_prefix}: {pdf_path.stem}",
-            hints={
-                "phase": "phase8_5_private_corpus",
-                "textEmbedder": "skipped_by_request",
-                "sourcePath": str(pdf_path),
-            },
-            requested_by="phase8_5_private_corpus",
-        ),
+    code = (
+        "from pathlib import Path\n"
+        "from uuid import UUID\n"
+        "import json, sys\n"
+        "from lib.documents.ingestion import DocumentIngestionRequest, ingest_document_path\n"
+        "path = Path(sys.argv[1])\n"
+        "household_id = UUID(sys.argv[2])\n"
+        "user_id = UUID(sys.argv[3])\n"
+        "title_prefix = sys.argv[4]\n"
+        "result = ingest_document_path(\n"
+        "    path,\n"
+        "    request=DocumentIngestionRequest(\n"
+        "        household_id=household_id,\n"
+        "        owner_user_id=user_id,\n"
+        "        source='bulk_import',\n"
+        "        filename=path.name,\n"
+        "        declared_mime_type='application/pdf',\n"
+        "        supplied_title=f'{title_prefix}: {path.stem}',\n"
+        "        hints={\n"
+        "            'phase': 'phase8_5_private_corpus',\n"
+        "            'textEmbedder': 'skipped_by_request',\n"
+        "            'sourcePath': str(path),\n"
+        "        },\n"
+        "        requested_by='phase8_5_private_corpus',\n"
+        "    ),\n"
+        ")\n"
+        "print(json.dumps({\n"
+        "    'document_id': str(result.document_id),\n"
+        "    'sha256': result.sha256,\n"
+        "    'filename': path.name,\n"
+        "}))\n"
+    )
+    payload = _compose_python_json(
+        "api",
+        code,
+        str(pdf_path),
+        str(household_id),
+        str(user_id),
+        title_prefix,
     )
     print(
         json.dumps(
             {
                 "stage": "ingested",
-                "document_id": str(result.document_id),
-                "filename": pdf_path.name,
-                "sha256": result.sha256,
+                "document_id": payload["document_id"],
+                "filename": payload["filename"],
+                "sha256": payload["sha256"],
             },
             sort_keys=True,
         ),
         flush=True,
     )
-    return result.document_id
+    return UUID(str(payload["document_id"]))
 
 
 def _run_docling(document_id: UUID, *, timeout_seconds: int) -> None:
@@ -162,31 +176,24 @@ def _run_docling(document_id: UUID, *, timeout_seconds: int) -> None:
         "worker_name='phase8-5-private-docling', document_id=UUID(sys.argv[1]))\n"
         "raise SystemExit(0 if ok else 2)\n"
     )
-    subprocess.run(
-        [
-            "docker",
-            "compose",
-            "run",
-            "--rm",
-            "--no-deps",
-            "worker-docling",
-            "python",
-            "-c",
-            code,
-            str(document_id),
-        ],
-        cwd=ROOT,
-        check=True,
-        timeout=timeout_seconds,
+    _compose_python(
+        "worker-docling",
+        code,
+        str(document_id),
+        timeout_seconds=timeout_seconds,
     )
     _require_no_failed_jobs(document_id, queue_name="docling")
 
 
 def _drain_semantic(document_id: UUID, *, label: str) -> None:
     processed = _drain(
-        lambda: process_next_semantic_annotation_job(
+        lambda: _process_one_worker_job(
+            "worker-semantic-annotations",
+            "workers.semantic_annotations.worker",
+            "process_next_semantic_annotation_job",
             worker_name=f"phase8-5-private-semantic-{label}",
             document_id=document_id,
+            live_model_env=True,
         ),
         max_jobs=8,
     )
@@ -231,16 +238,24 @@ def _drain_extraction_and_rescue(document_id: UUID) -> None:
     semantic_jobs = 0
     for _ in range(12):
         extracted = _drain(
-            lambda: process_next_extraction_job(
+            lambda: _process_one_worker_job(
+                "worker-extraction",
+                "workers.extraction.worker",
+                "process_next_extraction_job",
                 worker_name="phase8-5-private-extraction",
                 document_id=document_id,
+                live_model_env=True,
             ),
             max_jobs=24,
         )
         semantic = _drain(
-            lambda: process_next_semantic_annotation_job(
+            lambda: _process_one_worker_job(
+                "worker-semantic-annotations",
+                "workers.semantic_annotations.worker",
+                "process_next_semantic_annotation_job",
                 worker_name="phase8-5-private-semantic-rescue",
                 document_id=document_id,
+                live_model_env=True,
             ),
             max_jobs=8,
         )
@@ -266,10 +281,14 @@ def _drain_extraction_and_rescue(document_id: UUID) -> None:
 
 def _drain_visual_embedding(document_id: UUID) -> None:
     processed = _drain(
-        lambda: process_next_embedding_job(
+        lambda: _process_one_worker_job(
+            "worker-visual-embeddings",
+            "workers.embeddings.worker",
+            "process_next_embedding_job",
             worker_name="phase8-5-private-visual-embeddings",
             queue_name="visual-embeddings",
             document_id=document_id,
+            live_model_env=True,
         ),
         max_jobs=4,
     )
@@ -290,6 +309,94 @@ def _drain(process_one: Any, *, max_jobs: int) -> int:
             return count
         count += 1
     return count
+
+
+def _process_one_worker_job(
+    service: str,
+    module_name: str,
+    function_name: str,
+    *,
+    worker_name: str,
+    document_id: UUID,
+    queue_name: str | None = None,
+    live_model_env: bool,
+) -> bool:
+    queue_argument = f", queue_name={queue_name!r}" if queue_name else ""
+    code = (
+        "from uuid import UUID\n"
+        "import sys\n"
+        f"from {module_name} import {function_name}\n"
+        f"ok = {function_name}("
+        f"worker_name={worker_name!r}, "
+        "document_id=UUID(sys.argv[1])"
+        f"{queue_argument})\n"
+        "raise SystemExit(0 if ok else 2)\n"
+    )
+    result = _compose_python(
+        service,
+        code,
+        str(document_id),
+        check=False,
+        live_model_env=live_model_env,
+        timeout_seconds=900,
+    )
+    if result.returncode == 0:
+        return True
+    if result.returncode == 2:
+        return False
+    raise subprocess.CalledProcessError(result.returncode, result.args)
+
+
+def _compose_python_json(
+    service: str,
+    code: str,
+    *args: str,
+    live_model_env: bool = False,
+    timeout_seconds: int = 300,
+) -> dict[str, object]:
+    result = _compose_python(
+        service,
+        code,
+        *args,
+        live_model_env=live_model_env,
+        timeout_seconds=timeout_seconds,
+    )
+    lines = [line for line in result.stdout.splitlines() if line.strip()]
+    if not lines:
+        raise SystemExit(f"{service} command did not emit JSON.")
+    parsed = json.loads(lines[-1])
+    if not isinstance(parsed, dict):
+        raise SystemExit(f"{service} command JSON output was not an object.")
+    return parsed
+
+
+def _compose_python(
+    service: str,
+    code: str,
+    *args: str,
+    check: bool = True,
+    live_model_env: bool = False,
+    timeout_seconds: int = 300,
+) -> subprocess.CompletedProcess[str]:
+    command = ["docker", "compose", "run", "--rm", "--no-deps"]
+    if live_model_env:
+        command.extend(
+            [
+                "-e",
+                "STRUCTURA_MODEL_MODE=live",
+                "-e",
+                "STRUCTURA_EMBEDDING_VISUAL_ENABLED=true",
+            ]
+        )
+    command.extend([service, "python", "-c", code, *args])
+    return subprocess.run(
+        command,
+        cwd=ROOT,
+        check=check,
+        timeout=timeout_seconds,
+        text=True,
+        capture_output=True,
+    )
 
 
 def _cancel_text_embedding_jobs(document_id: UUID) -> None:
