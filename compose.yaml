@@ -436,7 +436,7 @@ services:
             - driver: nvidia
               device_ids: ["${STRUCTURA_MODEL_QWEN_GPU:-0}"]
               capabilities: [gpu]
-    profiles: ["models-live", "qwen-live"]
+    profiles: ["qwen-hq-live"]
 
   model-granite:
     <<: *live-model-runtime
@@ -518,7 +518,7 @@ services:
       STRUCTURA_VLLM_SERVED_MODEL_NAME: Qwen/Qwen3-VL-Embedding-2B
       STRUCTURA_VLLM_PORT: "8103"
       STRUCTURA_VLLM_DTYPE: bfloat16
-      STRUCTURA_VLLM_MAX_MODEL_LEN: "8192"
+      STRUCTURA_VLLM_MAX_MODEL_LEN: "4096"
       STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION: "0.30"
       STRUCTURA_VLLM_MAX_NUM_SEQS: "8"
       STRUCTURA_VLLM_MM_PROCESSOR_CACHE_GB: "0"

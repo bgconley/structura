@@ -8,6 +8,15 @@ TEXT_EMBED_URL="${STRUCTURA_MODEL_TEXT_EMBED_URL:-http://127.0.0.1:8102}"
 VISUAL_EMBED_URL="${STRUCTURA_MODEL_VISUAL_EMBED_URL:-http://127.0.0.1:8103}"
 HEALTH_TIMEOUT_SECONDS="${STRUCTURA_MODEL_SMOKE_HEALTH_TIMEOUT_SECONDS:-1200}"
 HEALTH_POLL_SECONDS="${STRUCTURA_MODEL_SMOKE_HEALTH_POLL_SECONDS:-5}"
+MANAGE_COMPOSE="${STRUCTURA_MODEL_SMOKE_MANAGE_COMPOSE:-0}"
+COMPOSE_PROFILES=(--profile models-live --profile qwen-hq-live --profile visual-embed-live)
+MODEL_SERVICES=(
+  model-qwen-semantic
+  model-qwen
+  model-granite
+  model-embed
+  model-vl-embed
+)
 
 echo "Phase 8.5 GPU model smoke"
 
@@ -38,23 +47,82 @@ probe_health() {
   exit 1
 }
 
-probe_health "model-qwen" "${QWEN_URL}"
-probe_health "model-qwen-semantic" "${QWEN_SEMANTIC_URL}"
-probe_health "model-granite" "${GRANITE_URL}"
-probe_health "model-embed" "${TEXT_EMBED_URL}"
-probe_health "model-vl-embed" "${VISUAL_EMBED_URL}"
+probe_live_models() {
+  "${PYTHON:-python3}" scripts/gpu/probe_phase8_5_live_models.py \
+    --qwen-url "${QWEN_URL}" \
+    --qwen-model "${STRUCTURA_MODEL_QWEN_MODEL:-Qwen/Qwen3-VL-8B-Instruct}" \
+    --qwen-semantic-url "${QWEN_SEMANTIC_URL}" \
+    --qwen-semantic-model "${STRUCTURA_MODEL_QWEN_SEMANTIC_MODEL:-Qwen/Qwen3-VL-2B-Instruct}" \
+    --granite-url "${GRANITE_URL}" \
+    --granite-model "${STRUCTURA_MODEL_GRANITE_MODEL:-ibm-granite/granite-4.0-3b-vision}" \
+    --text-embed-url "${TEXT_EMBED_URL}" \
+    --text-embed-model "${STRUCTURA_MODEL_TEXT_EMBED_MODEL:-Qwen/Qwen3-Embedding-4B}" \
+    --visual-embed-url "${VISUAL_EMBED_URL}" \
+    --visual-embed-model "${STRUCTURA_MODEL_VISUAL_EMBED_MODEL:-Qwen/Qwen3-VL-Embedding-2B}" \
+    "$@"
+}
 
-"${PYTHON:-python3}" scripts/gpu/probe_phase8_5_live_models.py \
-  --qwen-url "${QWEN_URL}" \
-  --qwen-model "${STRUCTURA_MODEL_QWEN_MODEL:-Qwen/Qwen3-VL-8B-Instruct}" \
-  --qwen-semantic-url "${QWEN_SEMANTIC_URL}" \
-  --qwen-semantic-model "${STRUCTURA_MODEL_QWEN_SEMANTIC_MODEL:-Qwen/Qwen3-VL-2B-Instruct}" \
-  --granite-url "${GRANITE_URL}" \
-  --granite-model "${STRUCTURA_MODEL_GRANITE_MODEL:-ibm-granite/granite-4.0-3b-vision}" \
-  --text-embed-url "${TEXT_EMBED_URL}" \
-  --text-embed-model "${STRUCTURA_MODEL_TEXT_EMBED_MODEL:-Qwen/Qwen3-Embedding-4B}" \
-  --visual-embed-url "${VISUAL_EMBED_URL}" \
-  --visual-embed-model "${STRUCTURA_MODEL_VISUAL_EMBED_MODEL:-Qwen/Qwen3-VL-Embedding-2B}"
+compose_model() {
+  docker compose "${COMPOSE_PROFILES[@]}" "$@"
+}
+
+start_core_services() {
+  echo "Starting always-on Phase 8.5 core model services"
+  compose_model stop "${MODEL_SERVICES[@]}" >/dev/null || true
+  compose_model up -d --force-recreate model-qwen-semantic model-granite model-embed
+}
+
+probe_core_services() {
+  probe_health "model-qwen-semantic" "${QWEN_SEMANTIC_URL}"
+  probe_health "model-granite" "${GRANITE_URL}"
+  probe_health "model-embed" "${TEXT_EMBED_URL}"
+  probe_live_models --skip-qwen --skip-visual-embed
+}
+
+probe_hq_qwen() {
+  echo "Validating on-demand HQ Qwen service"
+  compose_model stop model-qwen-semantic >/dev/null || true
+  compose_model up -d --force-recreate model-qwen
+  probe_health "model-qwen" "${QWEN_URL}"
+  probe_live_models \
+    --skip-qwen-semantic \
+    --skip-granite \
+    --skip-text-embed \
+    --skip-visual-embed
+  compose_model stop model-qwen >/dev/null || true
+  compose_model up -d --force-recreate model-qwen-semantic
+  probe_health "model-qwen-semantic" "${QWEN_SEMANTIC_URL}"
+}
+
+probe_visual_embedding() {
+  echo "Validating on-demand visual embedding service"
+  compose_model stop model-granite model-embed >/dev/null || true
+  compose_model up -d --force-recreate model-vl-embed
+  probe_health "model-vl-embed" "${VISUAL_EMBED_URL}"
+  probe_live_models \
+    --skip-qwen \
+    --skip-qwen-semantic \
+    --skip-granite \
+    --skip-text-embed
+  compose_model stop model-vl-embed >/dev/null || true
+  compose_model up -d --force-recreate model-granite model-embed
+  probe_health "model-granite" "${GRANITE_URL}"
+  probe_health "model-embed" "${TEXT_EMBED_URL}"
+}
+
+if [[ "$MANAGE_COMPOSE" == "1" || "$MANAGE_COMPOSE" == "true" ]]; then
+  start_core_services
+  probe_core_services
+  probe_hq_qwen
+  probe_visual_embedding
+else
+  probe_health "model-qwen" "${QWEN_URL}"
+  probe_health "model-qwen-semantic" "${QWEN_SEMANTIC_URL}"
+  probe_health "model-granite" "${GRANITE_URL}"
+  probe_health "model-embed" "${TEXT_EMBED_URL}"
+  probe_health "model-vl-embed" "${VISUAL_EMBED_URL}"
+  probe_live_models
+fi
 
 "${PYTHON:-python3}" scripts/run_model_corpus.py \
   --require-model-backed \

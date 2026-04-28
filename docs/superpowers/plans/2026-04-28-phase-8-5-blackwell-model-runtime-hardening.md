@@ -4,7 +4,7 @@
 
 **Goal:** Make Phase 8.5 live model serving deterministic on the 2x RTX PRO 4000 Blackwell GPU node by using source-backed vLLM/Compose configuration, real readiness waits, and inference probes.
 
-**Architecture:** Docker Compose owns physical GPU placement with explicit device reservations; each container sees exactly one GPU and uses inside-container `CUDA_VISIBLE_DEVICES=0`. Model launch scripts expose memory/context/concurrency knobs without hardcoding oversized defaults, and the GPU smoke waits for first-load readiness before forcing inference probes.
+**Architecture:** Docker Compose owns physical GPU placement with explicit device reservations; each container sees exactly one GPU and uses inside-container `CUDA_VISIBLE_DEVICES=0`. Model launch scripts expose memory/context/concurrency knobs without hardcoding oversized defaults, and the GPU smoke waits for first-load readiness before forcing inference probes. Live GPU validation showed that Qwen3-VL 2B + Qwen3-VL 8B on one 24GB Blackwell card and Granite + text + visual embeddings on the second card do not all fit as always-on services with useful KV cache, so the runtime contract is now always-on core plus sequential/on-demand HQ and visual services.
 
 **Tech Stack:** Docker Compose GPU reservations, NVIDIA Container Toolkit, voipmonitor/vLLM cu130, vLLM OpenAI-compatible server, Qwen3-VL, Granite 4.0 Vision, Hugging Face TEI, pytest.
 
@@ -15,7 +15,7 @@
 **Files:**
 - Modify: `tests/unit/test_compose_model_profiles.py`
 
-- [ ] **Step 1: Update tests to reject `gpus: all` for live model services**
+- [x] **Step 1: Update tests to reject `gpus: all` for live model services**
 
 Expected assertions:
 - Each live model service has `deploy.resources.reservations.devices[0].driver == "nvidia"`.
@@ -24,7 +24,7 @@ Expected assertions:
 - Each live model service sets `STRUCTURA_CUDA_VISIBLE_DEVICES == "0"` and `CUDA_DEVICE_ORDER == "PCI_BUS_ID"`.
 - Each live model service has `ipc: host`, `shm_size`, and `ulimits`.
 
-- [ ] **Step 2: Run the targeted test and verify RED**
+- [x] **Step 2: Run the targeted test and verify RED**
 
 Run: `python3 -m pytest -q tests/unit/test_compose_model_profiles.py`
 
@@ -35,11 +35,11 @@ Expected before implementation: failure because services still use `gpus: all` a
 **Files:**
 - Modify: `compose.yaml`
 
-- [ ] **Step 1: Add a reusable live-model runtime anchor**
+- [x] **Step 1: Add a reusable live-model runtime anchor**
 
 Add a top-level YAML extension with `ipc: host`, shared memory, and GPU-friendly ulimits.
 
-- [ ] **Step 2: Replace live model `gpus: all` with explicit device reservations**
+- [x] **Step 2: Replace live model `gpus: all` with explicit device reservations**
 
 For each live model service, add:
 - `device_ids: ["${STRUCTURA_MODEL_<NAME>_GPU:-N}"]`
@@ -47,11 +47,11 @@ For each live model service, add:
 - `STRUCTURA_CUDA_VISIBLE_DEVICES: "0"`
 - `CUDA_DEVICE_ORDER: PCI_BUS_ID`
 
-- [ ] **Step 3: Keep live services bound to loopback ports**
+- [x] **Step 3: Keep live services bound to loopback ports**
 
 Do not expose model ports publicly; retain `127.0.0.1` default binding.
 
-- [ ] **Step 4: Run Compose config checks**
+- [x] **Step 4: Run Compose config checks**
 
 Run:
 - `docker compose --profile models-live config -q`
@@ -67,15 +67,15 @@ Expected: both commands pass.
 - Modify: `workers/model_services/start_qwen_vllm.sh`
 - Modify: `workers/model_services/start_visual_embed_vllm.sh`
 
-- [ ] **Step 1: Add Granite vLLM flags**
+- [x] **Step 1: Add Granite vLLM flags**
 
 Expose `STRUCTURA_GRANITE_MAX_MODEL_LEN`, `STRUCTURA_GRANITE_GPU_MEMORY_UTILIZATION`, `STRUCTURA_GRANITE_MAX_NUM_SEQS`, and `STRUCTURA_GRANITE_LIMIT_MM_PER_PROMPT`; forward them to the Granite vLLM wrapper.
 
-- [ ] **Step 2: Disable video and right-size context/concurrency**
+- [x] **Step 2: Disable video and right-size context/concurrency**
 
 Default all VLM services to image-only prompts. Use reduced `max_num_seqs` and explicit `max_model_len` to leave enough KV cache without trying to reserve full upstream defaults.
 
-- [ ] **Step 3: Run targeted unit tests**
+- [x] **Step 3: Run targeted unit tests**
 
 Run: `python3 -m pytest -q tests/unit/test_compose_model_profiles.py`
 
@@ -86,15 +86,22 @@ Expected: pass.
 **Files:**
 - Modify: `scripts/gpu/phase8_5_model_smoke.sh`
 
-- [ ] **Step 1: Replace immediate health failure with bounded readiness wait**
+- [x] **Step 1: Replace immediate health failure with bounded readiness wait**
 
 Poll `/healthz` then `/health` for each service until success or timeout. Default timeout should handle first model load/download; make it configurable with `STRUCTURA_MODEL_SMOKE_HEALTH_TIMEOUT_SECONDS`.
 
-- [ ] **Step 2: Keep inference probes required**
+- [x] **Step 2: Keep inference probes required**
 
 Do not accept container health alone. The script must still run `scripts/gpu/probe_phase8_5_live_models.py`.
 
-- [ ] **Step 3: Keep model-backed corpus evidence explicit**
+- [x] **Step 3: Keep model-backed corpus evidence explicit**
+
+- [x] **Step 4: Add sequential managed smoke mode**
+
+The smoke script now supports `STRUCTURA_MODEL_SMOKE_MANAGE_COMPOSE=1` to validate
+always-on core services first, Qwen3-VL 8B HQ/rescue second, and visual embeddings
+third. This preserves truthful validation without pretending all 24GB-card model
+surfaces are safely co-resident.
 
 Do not fabricate a corpus manifest. Keep `scripts/run_model_corpus.py --require-model-backed`; if the private manifest is absent, the smoke gate must report that as a real remaining blocker.
 
@@ -103,7 +110,7 @@ Do not fabricate a corpus manifest. Keep `scripts/run_model_corpus.py --require-
 **Files:**
 - No source edits unless verification exposes a defect.
 
-- [ ] **Step 1: Local deterministic checks**
+- [x] **Step 1: Local deterministic checks**
 
 Run:
 - `python3 -m ruff check .`
@@ -113,11 +120,11 @@ Run:
 - `docker compose --profile models-live config -q`
 - `docker compose --profile visual-embed-live config -q`
 
-- [ ] **Step 2: Commit and push**
+- [x] **Step 2: Commit and push**
 
 Commit only relevant files; do not stage `.DS_Store`.
 
-- [ ] **Step 3: GPU deterministic checks**
+- [x] **Step 3: GPU deterministic checks**
 
 Pull to `/tank/repos/structura` and run the same deterministic checks with `/tank/venvs/structura/bin/python`.
 

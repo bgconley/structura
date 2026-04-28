@@ -33,37 +33,47 @@ def main() -> int:
     parser.add_argument("--text-embed-model", default="Qwen/Qwen3-Embedding-4B")
     parser.add_argument("--visual-embed-url", default="http://127.0.0.1:8103")
     parser.add_argument("--visual-embed-model", default="Qwen/Qwen3-VL-Embedding-2B")
+    parser.add_argument("--skip-qwen", action="store_true")
+    parser.add_argument("--skip-qwen-semantic", action="store_true")
+    parser.add_argument("--skip-granite", action="store_true")
+    parser.add_argument("--skip-text-embed", action="store_true")
+    parser.add_argument("--skip-visual-embed", action="store_true")
     parser.add_argument("--timeout", type=float, default=120.0)
     args = parser.parse_args()
 
-    probe_vision_generate(
-        ProbeTarget("model-qwen", args.qwen_url, args.qwen_model),
-        timeout=args.timeout,
-    )
-    probe_vision_generate(
-        ProbeTarget(
-            "model-qwen-semantic",
-            args.qwen_semantic_url,
-            args.qwen_semantic_model,
-        ),
-        timeout=args.timeout,
-    )
-    probe_vision_generate(
-        ProbeTarget("model-granite", args.granite_url, args.granite_model),
-        timeout=args.timeout,
-    )
-    probe_embedding(
-        ProbeTarget("model-embed", args.text_embed_url, args.text_embed_model),
-        dimensions=1536,
-        visual=False,
-        timeout=args.timeout,
-    )
-    probe_embedding(
-        ProbeTarget("model-vl-embed", args.visual_embed_url, args.visual_embed_model),
-        dimensions=1024,
-        visual=True,
-        timeout=args.timeout,
-    )
+    if not args.skip_qwen:
+        probe_vision_generate(
+            ProbeTarget("model-qwen", args.qwen_url, args.qwen_model),
+            timeout=args.timeout,
+        )
+    if not args.skip_qwen_semantic:
+        probe_vision_generate(
+            ProbeTarget(
+                "model-qwen-semantic",
+                args.qwen_semantic_url,
+                args.qwen_semantic_model,
+            ),
+            timeout=args.timeout,
+        )
+    if not args.skip_granite:
+        probe_vision_generate(
+            ProbeTarget("model-granite", args.granite_url, args.granite_model),
+            timeout=args.timeout,
+        )
+    if not args.skip_text_embed:
+        probe_embedding(
+            ProbeTarget("model-embed", args.text_embed_url, args.text_embed_model),
+            dimensions=1536,
+            visual=False,
+            timeout=args.timeout,
+        )
+    if not args.skip_visual_embed:
+        probe_embedding(
+            ProbeTarget("model-vl-embed", args.visual_embed_url, args.visual_embed_model),
+            dimensions=1024,
+            visual=True,
+            timeout=args.timeout,
+        )
     print("Phase 8.5 live inference probes completed")
     return 0
 

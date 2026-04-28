@@ -8,9 +8,24 @@ passes thresholds.
 ssh -i /Users/brennanconley/vibecode/infx/ubuntu24_ed25519 bgconley@10.25.0.50
 cd /tank/repos/structura
 git pull --ff-only
-docker compose --profile models-live up -d model-qwen-semantic model-qwen model-granite model-embed
+docker compose --profile models-live up -d model-qwen-semantic model-granite model-embed
+docker compose --profile qwen-hq-live up -d model-qwen
 docker compose --profile visual-embed-live up -d model-vl-embed
 STRUCTURA_MODEL_MODE=live PYTHON=/tank/venvs/structura/bin/python bash scripts/gpu/phase8_5_model_smoke.sh
+```
+
+On the current 2x 24GB Blackwell node, do not start every live model at once.
+`models-live` is the always-on core profile: Qwen3-VL 2B semantic, Granite 4.0
+3B Vision, and text embeddings. Qwen3-VL 8B HQ/rescue and visual embeddings
+are explicit on-demand profiles because co-residency can leave vLLM with no
+available KV-cache blocks. Use the managed smoke mode to validate the full
+model set sequentially and restore the always-on core services afterward:
+
+```bash
+STRUCTURA_MODEL_MODE=live \
+STRUCTURA_MODEL_SMOKE_MANAGE_COMPOSE=1 \
+PYTHON=/tank/venvs/structura/bin/python \
+bash scripts/gpu/phase8_5_model_smoke.sh
 ```
 
 The smoke gate waits for first-load health and performs one minimal live inference
@@ -27,12 +42,14 @@ values before model inspection.
 The default memory/context settings are intentionally conservative:
 
 - Qwen3-VL 2B semantic: always-on, image-only, 32K context, low concurrency.
-- Qwen3-VL 8B HQ/rescue: live-capable but should be treated as on-demand until
-  co-residency benchmarks prove stable margins.
+- Qwen3-VL 8B HQ/rescue: on-demand by default; it shares the first Blackwell
+  card with the 2B semantic service and should not be co-resident unless a
+  benchmark proves stable KV-cache margins.
 - Granite 4.0 3B Vision: high-priority structured extraction, image-only, 32K
   context rather than the much larger upstream default.
 - Text embeddings and visual embeddings: model-backed surfaces, but visual
-  embedding remains a batch/offline candidate if it competes with Granite.
+  embedding remains batch/offline and is validated separately because it
+  competes with Granite/text embeddings for the second Blackwell card.
 
 If smoke output shows KV-cache preemption, increase that service's
 `STRUCTURA_*_GPU_MEMORY_UTILIZATION` or reduce `STRUCTURA_*_MAX_NUM_SEQS`.

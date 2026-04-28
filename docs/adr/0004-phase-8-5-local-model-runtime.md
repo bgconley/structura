@@ -29,13 +29,18 @@ outputs, fake provenance, or unverified structure extraction.
   preemption logs.
 - `model-qwen-semantic` runs the Qwen3-VL-2B semantic profile as the always-on semantic annotator.
 - `model-qwen` runs the Qwen3-VL-8B HQ/rescue profile and owns handwriting, degraded OCR rescue,
-  visual fallback, and later cited analysis support; it may be on-demand if co-residency does not
-  pass GPU validation.
+  visual fallback, and later cited analysis support; it is on-demand by default because co-residency
+  with the always-on 2B semantic service failed GPU validation with vLLM KV-cache exhaustion.
 - `model-granite` owns structured bills, invoices, receipts, EOBs, tables, charts, forms, and
   semantic KVP extraction.
-- `model-embed` runs on the RTX 3090 path and serves Qwen3-Embedding-4B at 1536 dimensions.
+- `model-embed` serves Qwen3-Embedding-4B at 1536 dimensions. On the current single-node
+  Blackwell Compose deployment it shares the second Blackwell card with Granite; the RTX 3090 path
+  remains a later cross-node placement option.
 - `model-vl-embed` serves Qwen3-VL-Embedding at 1024 dimensions as scheduled/offline work until
-  concurrency with Granite is benchmarked.
+  concurrency with Granite is benchmarked. It is not part of the always-on `models-live` profile.
+- The Phase 8.5 GPU smoke script supports managed sequential validation: core services first,
+  then on-demand Qwen HQ, then on-demand visual embeddings. This reflects the hardware envelope
+  while still requiring every model endpoint to prove live inference before Phase 9.
 - Fixture mode is explicitly named and test-only. Live/required mode must call configured model
   services and must fail safely when unavailable.
 - `source_engine = qwen3_vl_8b` or `source_engine = granite_vision_3b` may be persisted only after

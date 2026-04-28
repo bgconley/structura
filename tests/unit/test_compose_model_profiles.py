@@ -38,6 +38,7 @@ def test_model_profiles_are_safe_and_gpu_placed() -> None:
         assert environment["STRUCTURA_CUDA_VISIBLE_DEVICES"] == "0"
         assert any("/srv/structura/models" in volume for volume in service.get("volumes", []))
 
+    assert services["model-qwen"]["profiles"] == ["qwen-hq-live"]
     assert services["model-vl-embed"]["profiles"] == ["visual-embed-live"]
     semantic_worker = services["worker-semantic-annotations"]
     assert "workers.semantic_annotations.worker" in semantic_worker["command"]
@@ -94,3 +95,24 @@ def test_live_model_profiles_have_concrete_blackwell_commands() -> None:
     assert "voipmonitor/vllm:cu130" in visual_embed["image"]
     assert "start_visual_embed_vllm.sh" in " ".join(visual_embed["command"])
     assert visual_embed["environment"]["STRUCTURA_VLLM_MODEL_ID"] == ("Qwen/Qwen3-VL-Embedding-2B")
+
+
+def test_phase8_5_smoke_supports_sequential_model_validation() -> None:
+    smoke = Path("scripts/gpu/phase8_5_model_smoke.sh").read_text()
+    probe = Path("scripts/gpu/probe_phase8_5_live_models.py").read_text()
+
+    assert "STRUCTURA_MODEL_SMOKE_MANAGE_COMPOSE" in smoke
+    assert "start_core_services" in smoke
+    assert "probe_hq_qwen" in smoke
+    assert "probe_visual_embedding" in smoke
+    assert "--skip-qwen" in smoke
+    assert "--skip-visual-embed" in smoke
+
+    for flag in (
+        "--skip-qwen",
+        "--skip-qwen-semantic",
+        "--skip-granite",
+        "--skip-text-embed",
+        "--skip-visual-embed",
+    ):
+        assert flag in probe
