@@ -529,11 +529,20 @@ def _repair_region_grounding(
 ) -> SemanticRegionAnnotation:
     grounding = region.grounding
     if grounding.kind == "page" and grounding.page_id in valid_page_ids:
-        return region
+        return replace(
+            region,
+            grounding=SemanticGroundingRef(kind="page", page_id=grounding.page_id),
+        )
     if grounding.kind == "element" and grounding.element_id in valid_element_ids:
-        return region
+        return replace(
+            region,
+            grounding=SemanticGroundingRef(kind="element", element_id=grounding.element_id),
+        )
     if grounding.kind == "table" and grounding.table_id in valid_table_ids:
-        return region
+        return replace(
+            region,
+            grounding=SemanticGroundingRef(kind="table", table_id=grounding.table_id),
+        )
     if grounding.page_id in valid_page_ids:
         return replace(
             region,

@@ -231,6 +231,34 @@ def test_live_qwen_gateway_marks_unknown_docling_grounding_review_required() -> 
     assert repaired_region.confidence == 0.2
 
 
+def test_live_qwen_gateway_clears_extraneous_grounding_ids() -> None:
+    source = _source_with_page_image()
+    payload = _semantic_payload(source.pages[0].page_id)
+    regions = payload["regions"]
+    assert isinstance(regions, list)
+    region = regions[0]
+    assert isinstance(region, dict)
+    region["grounding"] = {
+        "kind": "page",
+        "page_id": str(source.pages[0].page_id),
+        "element_id": str(uuid4()),
+        "table_id": None,
+    }
+    client = FakeSemanticVisionClient(
+        profile_name=QWEN_SEMANTIC_PROFILE,
+        source_engine="qwen3_vl_2b",
+        normalized_json=payload,
+    )
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
+
+    repaired_grounding = result.manifest.regions[0].grounding
+    assert repaired_grounding.kind == "page"
+    assert repaired_grounding.page_id == source.pages[0].page_id
+    assert repaired_grounding.element_id is None
+    assert repaired_grounding.table_id is None
+
+
 def test_live_qwen_gateway_retries_once_after_truncated_model_output() -> None:
     source = _source_with_page_image()
 
