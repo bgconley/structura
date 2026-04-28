@@ -41,6 +41,7 @@ def test_qwen_semantic_profiles_distinguish_smart_and_high_quality_modes() -> No
     assert high_quality.base_model == "Qwen/Qwen3-VL-8B-Instruct"
     assert high_quality.source_engine == "qwen3_vl_8b"
     assert high_quality.default_gpu_role == "blackwell-0-high-quality"
+    assert high_quality.max_images_per_request == 1
 
 
 def test_qwen_and_granite_profiles_have_distinct_truthful_source_engines() -> None:

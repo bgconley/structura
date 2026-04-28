@@ -156,6 +156,47 @@ def test_live_qwen_smart_gateway_chunks_pages_for_one_image_semantic_service() -
     assert result.manifest.confidence["chunk_count"] == 2
 
 
+def test_live_qwen_high_quality_gateway_chunks_pages_for_one_image_hq_service() -> None:
+    source = _source_with_two_page_images()
+    page_by_hash = {page.image_sha256: page.page_id for page in source.pages if page.image_sha256}
+
+    class ChunkingClient:
+        requests: list[VisionGenerateRequest]
+
+        def __init__(self) -> None:
+            self.requests = []
+
+        def generate(self, request: VisionGenerateRequest) -> VisionGenerateResponse:
+            self.requests.append(request)
+            image_hash = request.image_inputs[0].validated_sha256()
+            page_id = page_by_hash[image_hash]
+            return VisionGenerateResponse(
+                profile_name=QWEN_SEMANTIC_HQ_PROFILE,
+                model_name="fake-qwen",
+                model_version="test",
+                source_engine="qwen3_vl_8b",
+                prompt_version=request.prompt_version,
+                raw_text="{}",
+                normalized_json=_semantic_payload(page_id),
+                confidence_json={"overall": 0.82},
+                input_sha256=(image_hash,),
+                latency_ms=1,
+            )
+
+    client = ChunkingClient()
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(
+        source,
+        quality_mode="high_quality",
+    )
+
+    assert len(client.requests) == 2
+    assert [len(request.image_inputs) for request in client.requests] == [1, 1]
+    assert len(result.manifest.pages) == 2
+    assert result.manifest.profile_name == QWEN_SEMANTIC_HQ_PROFILE
+    assert result.manifest.confidence["chunk_count"] == 2
+
+
 def test_live_qwen_gateway_rejects_malformed_model_output() -> None:
     source = _source_with_page_image()
     client = FakeSemanticVisionClient(

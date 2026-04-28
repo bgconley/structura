@@ -36,7 +36,7 @@ _PROFILES: dict[str, ModelProfile] = {
         source_engine="qwen3_vl_8b",
         default_gpu_role="blackwell-0",
         max_image_bytes=10 * 1024 * 1024,
-        max_images_per_request=4,
+        max_images_per_request=1,
         max_model_len=32768,
     ),
     QWEN_SEMANTIC_PROFILE: ModelProfile(
@@ -60,7 +60,7 @@ _PROFILES: dict[str, ModelProfile] = {
         source_engine="qwen3_vl_8b",
         default_gpu_role="blackwell-0-high-quality",
         max_image_bytes=10 * 1024 * 1024,
-        max_images_per_request=4,
+        max_images_per_request=1,
         max_model_len=32768,
     ),
     GRANITE_VISION_PROFILE: ModelProfile(

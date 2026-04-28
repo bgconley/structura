@@ -231,10 +231,8 @@ def _prompt_version_for_mode(quality_mode: str) -> str:
     return "phase8_5-semantic-smart-v1"
 
 
-def _max_image_inputs_for_profile(profile_name: str) -> int:
-    if profile_name == QWEN_SEMANTIC_PROFILE:
-        return 1
-    return 4
+def _max_image_inputs_for_profile(_profile_name: str) -> int:
+    return 1
 
 
 def _max_output_tokens_for_profile(profile_name: str) -> int:
