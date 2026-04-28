@@ -165,12 +165,10 @@ Create a draft 2020-12 schema with:
     },
     "pages": {
       "type": "array",
-      "maxItems": 8,
       "items": { "$ref": "#/$defs/pageAnnotation" }
     },
     "regions": {
       "type": "array",
-      "maxItems": 32,
       "items": { "$ref": "#/$defs/regionAnnotation" }
     },
     "quality_flags": {
@@ -181,20 +179,17 @@ Create a draft 2020-12 schema with:
         "visual_degradation": { "type": "boolean" },
         "poor_ocr": { "type": "boolean" },
         "ambiguous_document_type": { "type": "boolean" },
-        "reason": { "type": ["string", "null"], "maxLength": 240 }
+        "reason": { "type": ["string", "null"] }
       }
     },
     "confidence": { "$ref": "#/$defs/confidenceObject" }
   },
   "$defs": {
     "uuid": {
-      "type": "string",
-      "format": "uuid"
+      "type": "string"
     },
     "confidence": {
-      "type": ["number", "null"],
-      "minimum": 0,
-      "maximum": 1
+      "type": ["number", "null"]
     },
     "confidenceObject": {
       "type": "object",
@@ -243,8 +238,7 @@ Create a draft 2020-12 schema with:
           ]
         },
         "document_type_hint": {
-          "type": ["string", "null"],
-          "maxLength": 80
+          "type": ["string", "null"]
         },
         "extraction_usefulness": {
           "type": "string",
@@ -256,7 +250,6 @@ Create a draft 2020-12 schema with:
         "escalation_required": { "type": "boolean" },
         "escalation_reasons": {
           "type": "array",
-          "uniqueItems": true,
           "items": {
             "type": "string",
             "enum": [
@@ -271,7 +264,7 @@ Create a draft 2020-12 schema with:
             ]
           }
         },
-        "reason": { "type": ["string", "null"], "maxLength": 240 },
+        "reason": { "type": ["string", "null"] },
         "confidence": { "$ref": "#/$defs/confidence" }
       }
     },
@@ -332,16 +325,11 @@ Create a draft 2020-12 schema with:
         },
         "expected_fields": {
           "type": "array",
-          "maxItems": 20,
-          "items": {
-            "type": "string",
-            "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$",
-            "maxLength": 96
-          }
+          "items": { "type": "string" }
         },
         "grounding": { "$ref": "#/$defs/grounding" },
         "review_required": { "type": "boolean" },
-        "reason": { "type": ["string", "null"], "maxLength": 240 },
+        "reason": { "type": ["string", "null"] },
         "confidence": { "$ref": "#/$defs/confidence" }
       }
     },
@@ -354,9 +342,9 @@ Create a draft 2020-12 schema with:
           "type": "string",
           "enum": ["page", "element", "table", "unmatched_region"]
         },
-        "page_id": { "type": ["string", "null"], "format": "uuid" },
-        "element_id": { "type": ["string", "null"], "format": "uuid" },
-        "table_id": { "type": ["string", "null"], "format": "uuid" }
+        "page_id": { "type": ["string", "null"] },
+        "element_id": { "type": ["string", "null"] },
+        "table_id": { "type": ["string", "null"] }
       }
     }
   }

@@ -34,12 +34,10 @@
     },
     "pages": {
       "type": "array",
-      "maxItems": 8,
       "items": { "$ref": "#/$defs/pageAnnotation" }
     },
     "regions": {
       "type": "array",
-      "maxItems": 32,
       "items": { "$ref": "#/$defs/regionAnnotation" }
     },
     "quality_flags": {
@@ -50,20 +48,17 @@
         "visual_degradation": { "type": "boolean" },
         "poor_ocr": { "type": "boolean" },
         "ambiguous_document_type": { "type": "boolean" },
-        "reason": { "type": ["string", "null"], "maxLength": 240 }
+        "reason": { "type": ["string", "null"] }
       }
     },
     "confidence": { "$ref": "#/$defs/confidenceObject" }
   },
   "$defs": {
     "uuid": {
-      "type": "string",
-      "format": "uuid"
+      "type": "string"
     },
     "confidence": {
-      "type": ["number", "null"],
-      "minimum": 0,
-      "maximum": 1
+      "type": ["number", "null"]
     },
     "confidenceObject": {
       "type": "object",
@@ -151,9 +146,9 @@
               "visual_degradation"
             ]
           },
-          "uniqueItems": true
+          "default": []
         },
-        "reason": { "type": ["string", "null"], "maxLength": 240 },
+        "reason": { "type": ["string", "null"] },
         "confidence": { "$ref": "#/$defs/confidence" }
       }
     },
@@ -209,15 +204,11 @@
         },
         "expected_fields": {
           "type": "array",
-          "maxItems": 24,
-          "items": {
-            "type": "string",
-            "pattern": "^[a-z][a-z0-9_]{0,63}$"
-          }
+          "items": { "type": "string" }
         },
         "grounding": { "$ref": "#/$defs/grounding" },
         "review_required": { "type": "boolean" },
-        "reason": { "type": ["string", "null"], "maxLength": 240 },
+        "reason": { "type": ["string", "null"] },
         "confidence": { "$ref": "#/$defs/confidence" }
       }
     },
@@ -230,9 +221,9 @@
           "type": "string",
           "enum": ["page", "element", "table", "unmatched_region"]
         },
-        "page_id": { "oneOf": [{ "$ref": "#/$defs/uuid" }, { "type": "null" }] },
-        "element_id": { "oneOf": [{ "$ref": "#/$defs/uuid" }, { "type": "null" }] },
-        "table_id": { "oneOf": [{ "$ref": "#/$defs/uuid" }, { "type": "null" }] }
+        "page_id": { "type": ["string", "null"] },
+        "element_id": { "type": ["string", "null"] },
+        "table_id": { "type": ["string", "null"] }
       }
     }
   }

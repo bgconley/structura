@@ -109,6 +109,26 @@ def test_semantic_annotation_schema_rejects_extracted_region_values() -> None:
         Draft202012Validator(semantic_annotation_manifest_schema()).validate(manifest)
 
 
+def test_semantic_annotation_schema_uses_vllm_supported_subset() -> None:
+    from lib.semantic_annotations.schema import semantic_annotation_manifest_schema
+
+    unsupported_keywords = {"uniqueItems", "oneOf", "anyOf", "allOf"}
+    found: list[str] = []
+
+    def visit(value: object) -> None:
+        if isinstance(value, dict):
+            found.extend(str(key) for key in value if key in unsupported_keywords)
+            for child in value.values():
+                visit(child)
+        elif isinstance(value, list):
+            for child in value:
+                visit(child)
+
+    visit(semantic_annotation_manifest_schema())
+
+    assert found == []
+
+
 def _manifest_with_region(region: SemanticRegionAnnotation) -> DocumentSemanticManifest:
     page_id = region.grounding.page_id or uuid4()
     return DocumentSemanticManifest(

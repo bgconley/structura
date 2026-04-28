@@ -110,7 +110,10 @@ The schema should be committed as
 `contracts/schemas/semantic_annotation_manifest.v1.schema.json`.
 
 The schema uses JSON Schema draft 2020-12, `additionalProperties: false` at every
-object level, and required fields for stable downstream parsing.
+object level, and required fields for stable downstream parsing. The model-facing
+schema must stay within vLLM/xgrammar's supported structured-output subset; do not
+use keywords such as `uniqueItems`, `oneOf`, `anyOf`, or `allOf`. Enforce those
+deeper constraints in Structura's local schema/policy validators instead.
 
 Top-level required fields:
 
