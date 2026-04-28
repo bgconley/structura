@@ -116,6 +116,8 @@ def test_live_qwen_high_quality_gateway_uses_qwen8b_profile() -> None:
     assert client.request is not None
     assert client.request.timeout_seconds == 180
     assert client.request.max_output_tokens == 4096
+    assert client.request.response_schema_name == "semantic_annotation_model_output"
+    assert client.request.response_json_schema is None
 
 
 def test_live_qwen_smart_gateway_chunks_pages_for_one_image_semantic_service() -> None:

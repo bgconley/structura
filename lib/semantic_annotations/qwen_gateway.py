@@ -197,7 +197,7 @@ class QwenSemanticAnnotationGateway:
                 prompt=_prompt(source),
                 image_inputs=_image_inputs(source, storage=self.storage),
                 response_schema_name="semantic_annotation_model_output",
-                response_json_schema=semantic_annotation_model_output_schema(),
+                response_json_schema=_response_json_schema_for_profile(profile_name),
                 max_output_tokens=_max_output_tokens_for_profile(profile_name),
                 temperature=0.0,
                 timeout_seconds=_timeout_seconds_for_profile(profile_name),
@@ -233,6 +233,12 @@ def _prompt_version_for_mode(quality_mode: str) -> str:
 
 def _max_image_inputs_for_profile(_profile_name: str) -> int:
     return 1
+
+
+def _response_json_schema_for_profile(profile_name: str) -> dict[str, object] | None:
+    if profile_name == QWEN_SEMANTIC_PROFILE:
+        return semantic_annotation_model_output_schema()
+    return None
 
 
 def _max_output_tokens_for_profile(profile_name: str) -> int:
