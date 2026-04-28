@@ -22,6 +22,7 @@ from lib.search.embedding_gateway import (
 )
 from lib.search.hybrid import RankedCandidate, reciprocal_rank_fusion
 from lib.search.query import parse_search_request
+from lib.search.visual_repository import _visual_distance_sql
 from workers.embeddings.worker import EmbeddingWorkerError, _modalities_for_job
 
 
@@ -116,6 +117,11 @@ def test_visual_embedding_profile_uses_phase8_dimension_and_modality() -> None:
     assert profile.name == "structura-fixture-visual-byte-embedding"
     assert profile.modality == "visual"
     assert profile.dimensions == 2048
+
+
+def test_visual_search_uses_halfvec_distance_for_native_qwen_dimensions() -> None:
+    assert _visual_distance_sql(2048) == "e.embedding::halfvec(2048) <=> %s::halfvec(2048)"
+    assert _visual_distance_sql(1536) == "e.embedding <=> %s::vector"
 
 
 def test_visual_embedding_gateway_depends_on_image_bytes_not_metadata_only() -> None:

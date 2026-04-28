@@ -54,16 +54,17 @@ def _visual_vector_search(
 ) -> list[SearchCandidateRow]:
     where_sql, params = document_filter_sql(filters, access)
     vector = vector_literal(query_vector)
+    distance_sql = _visual_distance_sql(dimensions)
     with db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 _search_sql(
                     """
-                WITH ranked AS (
-                  SELECT
-                    e.owner_id AS matched_page_id,
-                    e.document_id,
-                    e.embedding <=> %s::vector AS distance
+                                  WITH ranked AS (
+                                    SELECT
+                                      e.owner_id AS matched_page_id,
+                                      e.document_id,
+                                      {distance_sql} AS distance
                   FROM embeddings e
                   JOIN document_pages p ON p.id = e.owner_id AND e.owner_type = 'page'
                   JOIN documents d ON d.id = e.document_id
@@ -74,7 +75,7 @@ def _visual_vector_search(
                     AND COALESCE(e.model_version, '') = %s
                     AND e.embedding_dimensions = %s
                     AND {where_sql}
-                  ORDER BY e.embedding <=> %s::vector
+                                    ORDER BY {distance_sql}
                   LIMIT %s
                 )
                 SELECT *
@@ -108,8 +109,9 @@ def _visual_vector_search(
                 ) result
                 ORDER BY rank
                 LIMIT %s
-                """,
+                                  """,
                     where_sql=where_sql,
+                    distance_sql=distance_sql,
                 ),
                 (
                     vector,
@@ -127,8 +129,17 @@ def _visual_vector_search(
     return [_candidate_from_row(row) for row in rows]
 
 
-def _search_sql(template: LiteralString, *, where_sql: str) -> Any:
-    return sql.SQL(template).format(where_sql=sql.SQL(cast(LiteralString, where_sql)))
+def _visual_distance_sql(dimensions: int) -> str:
+    if dimensions == 2048:
+        return "e.embedding::halfvec(2048) <=> %s::halfvec(2048)"
+    return "e.embedding <=> %s::vector"
+
+
+def _search_sql(template: LiteralString, *, where_sql: str, distance_sql: str) -> Any:
+    return sql.SQL(template).format(
+        where_sql=sql.SQL(cast(LiteralString, where_sql)),
+        distance_sql=sql.SQL(cast(LiteralString, distance_sql)),
+    )
 
 
 def _candidate_from_row(row: dict[str, Any]) -> SearchCandidateRow:

@@ -117,5 +117,6 @@ def test_phase8_5_visual_embedding_native_dimension_migration_is_baseline_migrat
     sql = Path("database/076_phase8_5_visual_embedding_2048.sql").read_text(encoding="utf-8")
 
     assert "embeddings_visual_2048_hnsw_idx" in sql
-    assert "embedding::vector(2048)" in sql
+    assert "embedding::halfvec(2048)" in sql
+    assert "halfvec_cosine_ops" in sql
     assert "embedding_dimensions = 2048" in sql
