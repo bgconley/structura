@@ -7,7 +7,9 @@ server_dir="${STRUCTURA_GRANITE_SERVER_DIR:-/srv/structura/models/granite-vllm-s
 port="${STRUCTURA_GRANITE_PORT:-8101}"
 
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
-if [[ -z "${CUDA_VISIBLE_DEVICES:-}" && -n "${NVIDIA_VISIBLE_DEVICES:-}" && "$NVIDIA_VISIBLE_DEVICES" != "all" ]]; then
+if [[ -n "${STRUCTURA_CUDA_VISIBLE_DEVICES:-}" ]]; then
+  export CUDA_VISIBLE_DEVICES="$STRUCTURA_CUDA_VISIBLE_DEVICES"
+elif [[ ("${CUDA_VISIBLE_DEVICES:-}" == "" || "${CUDA_VISIBLE_DEVICES:-}" == "void") && -n "${NVIDIA_VISIBLE_DEVICES:-}" && "$NVIDIA_VISIBLE_DEVICES" != "all" && "$NVIDIA_VISIBLE_DEVICES" != "void" ]]; then
   export CUDA_VISIBLE_DEVICES="$NVIDIA_VISIBLE_DEVICES"
 fi
 
