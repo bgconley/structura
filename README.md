@@ -69,9 +69,9 @@ Live Phase 8.5 model services are behind explicit profiles. Compose defaults use
 for text embeddings; release candidates still need digest-pinned image evidence:
 
 ```bash
-docker compose --profile models-live up -d model-qwen-semantic model-qwen model-granite model-embed
-docker compose --profile visual-embed-live up -d model-vl-embed
-STRUCTURA_MODEL_MODE=live bash scripts/gpu/phase8_5_model_smoke.sh
+STRUCTURA_MODEL_MODE=live \
+STRUCTURA_MODEL_SMOKE_MANAGE_COMPOSE=1 \
+bash scripts/gpu/phase8_5_model_smoke.sh
 ```
 
 Semantic annotation workers are behind the semantic/extraction profile. They consume
@@ -155,6 +155,7 @@ The baseline migration runner applies:
 16. `database/073_phase7_relationships.sql`
 17. `database/074_phase7_deadline_status_waived.sql`
 18. `database/075_phase8_5_semantic_annotations.sql`
+19. `database/076_phase8_5_visual_embedding_2048.sql`
 
 `database/070_query_examples.sql` is intentionally excluded from default migration execution.
 

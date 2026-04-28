@@ -52,6 +52,9 @@ The default memory/context settings are intentionally conservative:
 - Text embeddings and visual embeddings: model-backed surfaces, but both remain
   batch/offline or RTX 3090 offload candidates on this hardware. Qwen3-Embedding
   4B consumed enough memory to conflict with Granite on a 24GB Blackwell card.
+  Qwen3-VL-Embedding 2B returns native 2048-dimensional vectors and rejects the
+  OpenAI `dimensions` override, so do not configure Structura visual embeddings
+  as 1024-dimensional unless a different backend is explicitly selected.
 
 If smoke output shows KV-cache preemption, increase that service's
 `STRUCTURA_*_GPU_MEMORY_UTILIZATION` or reduce `STRUCTURA_*_MAX_NUM_SEQS`.

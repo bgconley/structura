@@ -52,8 +52,8 @@ def test_visual_model_embedding_gateway_requires_image_bytes() -> None:
             profile_name=VISUAL_EMBED_PROFILE,
             model_name="Qwen/Qwen3-VL-Embedding-2B",
             model_version="vllm",
-            dimensions=1024,
-            vectors=(tuple([0.0, 1.0, *([0.0] * 1022)]),),
+            dimensions=2048,
+            vectors=(tuple([0.0, 1.0, *([0.0] * 2046)]),),
             input_sha256=(hashlib.sha256(image_bytes).hexdigest(),),
             latency_ms=4,
         )
@@ -70,8 +70,8 @@ def test_visual_model_embedding_gateway_requires_image_bytes() -> None:
         ]
     )[0]
 
-    assert embedded.profile.name == "qwen3-vl-embedding-2b-1024"
-    assert embedded.profile.dimensions == 1024
+    assert embedded.profile.name == "qwen3-vl-embedding-2b-2048"
+    assert embedded.profile.dimensions == 2048
     assert embedded.values[1] == 1.0
     assert client.request is not None
     assert client.request.inputs[0].image_bytes == image_bytes

@@ -61,8 +61,8 @@ def test_embedding_profiles_preserve_existing_pgvector_dimensions_and_gpu_placem
     assert text.output_dimensions == 1536
     assert text.pgvector_index == "embeddings_text_1536_hnsw_idx"
     assert text.default_gpu_role == "rtx3090-0"
-    assert visual.output_dimensions == 1024
-    assert visual.pgvector_index == "embeddings_visual_1024_hnsw_idx"
+    assert visual.output_dimensions == 2048
+    assert visual.pgvector_index == "embeddings_visual_2048_hnsw_idx"
     assert visual.default_gpu_role == "blackwell-1-alternate"
 
 
@@ -82,4 +82,4 @@ def test_configured_model_profiles_resolve_settings_values() -> None:
     assert profiles.qwen.name == QWEN_VL_PROFILE
     assert profiles.granite.name == GRANITE_VISION_PROFILE
     assert profiles.text_embedding.output_dimensions == 1536
-    assert profiles.visual_embedding.output_dimensions == 1024
+    assert profiles.visual_embedding.output_dimensions == 2048

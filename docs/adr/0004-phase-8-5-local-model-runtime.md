@@ -37,7 +37,7 @@ outputs, fake provenance, or unverified structure extraction.
   single-node Blackwell Compose deployment. GPU validation showed it competes with Granite for too
   much memory on one 24GB card, so the RTX 3090 path remains the preferred always-available text
   embedding placement once cross-node serving is wired.
-- `model-vl-embed` serves Qwen3-VL-Embedding at 1024 dimensions as scheduled/offline work until
+- `model-vl-embed` serves Qwen3-VL-Embedding at its native 2048 dimensions as scheduled/offline work until
   concurrency with Granite is benchmarked. It is not part of the always-on `models-live` profile.
 - The Phase 8.5 GPU smoke script supports managed sequential validation: core services first,
   then on-demand Qwen HQ, then text embeddings, then visual embeddings. This reflects the hardware

@@ -7,7 +7,7 @@ QWEN_SEMANTIC_PROFILE = "qwen3-vl-2b-semantic:v1"
 QWEN_SEMANTIC_HQ_PROFILE = "qwen3-vl-8b-semantic-hq:v1"
 GRANITE_VISION_PROFILE = "granite-4.0-3b-vision-bf16:v1"
 TEXT_EMBED_PROFILE = "qwen3-embedding-4b-1536:v1"
-VISUAL_EMBED_PROFILE = "qwen3-vl-embedding-2b-1024:v1"
+VISUAL_EMBED_PROFILE = "qwen3-vl-embedding-2b-2048:v1"
 
 
 @dataclass(frozen=True)
@@ -92,11 +92,11 @@ _PROFILES: dict[str, ModelProfile] = {
         base_model="Qwen/Qwen3-VL-Embedding-2B",
         backend="vllm-embed",
         source_engine="system",
-        output_dimensions=1024,
+        output_dimensions=2048,
         default_gpu_role="blackwell-1-alternate",
         max_image_bytes=10 * 1024 * 1024,
         max_images_per_request=8,
-        pgvector_index="embeddings_visual_1024_hnsw_idx",
+        pgvector_index="embeddings_visual_2048_hnsw_idx",
     ),
 }
 

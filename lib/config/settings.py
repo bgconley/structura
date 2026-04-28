@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     docling_ocr_backend: str = "torch"
     embedding_text_dimensions: int = 1536
     embedding_visual_enabled: bool = True
-    embedding_visual_dimensions: int = 1024
+    embedding_visual_dimensions: int = 2048
     embedding_visual_batch_size: int = 8
     embedding_visual_max_image_bytes: int = 10 * 1024 * 1024
     embedding_visual_timeout_seconds: int = 60
@@ -60,7 +60,7 @@ class Settings(BaseSettings):
     qwen_semantic_profile: str = "qwen3-vl-2b-semantic:v1"
     granite_profile: str = "granite-4.0-3b-vision-bf16:v1"
     text_embed_profile: str = "qwen3-embedding-4b-1536:v1"
-    visual_embed_profile: str = "qwen3-vl-embedding-2b-1024:v1"
+    visual_embed_profile: str = "qwen3-vl-embedding-2b-2048:v1"
     model_input_scratch_root: Path = Path("/srv/structura/tmp/model-inputs")
     model_http_timeout_seconds: int = 60
     model_max_image_bytes: int = 10 * 1024 * 1024

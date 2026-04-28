@@ -111,11 +111,11 @@ def test_search_contract_supports_explicit_visual_retrieval_policy() -> None:
 
 
 def test_visual_embedding_profile_uses_phase8_dimension_and_modality() -> None:
-    profile = default_visual_embedding_profile(1024)
+    profile = default_visual_embedding_profile(2048)
 
     assert profile.name == "structura-fixture-visual-byte-embedding"
     assert profile.modality == "visual"
-    assert profile.dimensions == 1024
+    assert profile.dimensions == 2048
 
 
 def test_visual_embedding_gateway_depends_on_image_bytes_not_metadata_only() -> None:

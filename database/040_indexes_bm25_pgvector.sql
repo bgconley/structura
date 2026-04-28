@@ -112,12 +112,12 @@ WHERE is_active
   AND modality = 'text'
   AND embedding_dimensions = 1536;
 
-CREATE INDEX embeddings_visual_1024_hnsw_idx
+CREATE INDEX embeddings_visual_2048_hnsw_idx
 ON embeddings
-USING hnsw ((embedding::vector(1024)) vector_cosine_ops)
+USING hnsw ((embedding::vector(2048)) vector_cosine_ops)
 WHERE is_active
   AND modality = 'visual'
-  AND embedding_dimensions = 1024;
+  AND embedding_dimensions = 2048;
 
 CREATE INDEX embeddings_mixed_1536_hnsw_idx
 ON embeddings

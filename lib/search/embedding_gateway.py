@@ -89,7 +89,7 @@ def default_text_embedding_profile(dimensions: int = 1536) -> EmbeddingProfile:
     )
 
 
-def default_visual_embedding_profile(dimensions: int = 1024) -> EmbeddingProfile:
+def default_visual_embedding_profile(dimensions: int = 2048) -> EmbeddingProfile:
     return EmbeddingProfile(
         name="structura-fixture-visual-byte-embedding",
         version="v1",

@@ -15,7 +15,7 @@ def test_baseline_migration_scripts_are_present_and_ordered() -> None:
     plan = baseline_migration_plan("database")
 
     assert plan.scripts[0].name == "001_extensions.sql"
-    assert plan.scripts[-1].name == "075_phase8_5_semantic_annotations.sql"
+    assert plan.scripts[-1].name == "076_phase8_5_visual_embedding_2048.sql"
     assert all(script.exists() for script in plan.scripts)
 
 
@@ -103,7 +103,7 @@ def test_phase8_5_semantic_annotation_migration_is_baseline_migration() -> None:
     plan = baseline_migration_plan("database")
     names = [script.name for script in plan.scripts]
 
-    assert names[-1] == "075_phase8_5_semantic_annotations.sql"
+    assert "075_phase8_5_semantic_annotations.sql" in names
 
     sql = Path("database/075_phase8_5_semantic_annotations.sql").read_text(encoding="utf-8")
     assert "CREATE TABLE IF NOT EXISTS document_semantic_annotations" in sql
@@ -111,3 +111,11 @@ def test_phase8_5_semantic_annotation_migration_is_baseline_migration() -> None:
     assert "CREATE TABLE IF NOT EXISTS semantic_region_annotations" in sql
     assert "ALTER TYPE job_type_enum ADD VALUE IF NOT EXISTS 'semantic_annotate'" in sql
     assert "document_semantic_annotations_current_uniq" in sql
+
+
+def test_phase8_5_visual_embedding_native_dimension_migration_is_baseline_migration() -> None:
+    sql = Path("database/076_phase8_5_visual_embedding_2048.sql").read_text(encoding="utf-8")
+
+    assert "embeddings_visual_2048_hnsw_idx" in sql
+    assert "embedding::vector(2048)" in sql
+    assert "embedding_dimensions = 2048" in sql

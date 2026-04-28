@@ -145,6 +145,7 @@
 - [2026-04-28] Do not load page image bytes in extraction repositories. Repositories should expose page asset URI/MIME/hash metadata; vision gateways own the I/O boundary when they actually need model inputs.
 - [2026-04-28] Do not tune Phase 8.5 Blackwell model services by trial-and-error alone. For voipmonitor/cu130 vLLM on SM120, use Firecrawl-backed primary/fork sources before changing placement, memory, KV-cache, or quantization settings; container health without real inference is not enough evidence.
 - [2026-04-28] Do not treat all Phase 8.5 live model surfaces as safely co-resident on the two 24GB Blackwell cards. GPU validation showed vLLM KV-cache exhaustion when Qwen3-VL 2B and 8B shared one card and when Granite/text/visual embeddings competed on the second card. `models-live` is now Qwen2B semantic + Granite only; Qwen3-VL 8B HQ/rescue, text embeddings, and visual embeddings are explicit on-demand/offload profiles validated sequentially by the managed smoke gate.
+- [2026-04-28] Do not request down-projected `dimensions` from Qwen3-VL-Embedding 2B unless a serving backend explicitly proves matryoshka support. The live voipmonitor/cu130 vLLM endpoint rejects the `dimensions` parameter and returns native 2048-dimensional vectors, so Structura visual embedding defaults, profile names, validation, and pgvector indexes must use 2048 dimensions.
 
 ## Decision Log
 

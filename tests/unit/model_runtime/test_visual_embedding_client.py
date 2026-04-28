@@ -9,8 +9,8 @@ from lib.model_runtime.http_client import ModelProtocolError
 from lib.model_runtime.profiles import VISUAL_EMBED_PROFILE, get_model_profile
 
 
-def test_visual_embedding_client_requires_image_bytes_and_validates_1024_dimensions() -> None:
-    vector = [0.0] * 1024
+def test_visual_embedding_client_requires_image_bytes_and_validates_2048_dimensions() -> None:
+    vector = [0.0] * 2048
     vector[3] = 1.0
     client = VisualEmbeddingClient(
         profile=get_model_profile(VISUAL_EMBED_PROFILE),
@@ -37,19 +37,19 @@ def test_visual_embedding_client_requires_image_bytes_and_validates_1024_dimensi
                     mime_type="image/png",
                 ),
             ),
-            output_dimensions=1024,
+            output_dimensions=2048,
             timeout_seconds=30,
         )
     )
 
-    assert response.dimensions == 1024
+    assert response.dimensions == 2048
     assert response.profile_name == VISUAL_EMBED_PROFILE
     assert response.vectors == (tuple(vector),)
     assert response.input_sha256[0]
 
 
 def test_visual_embedding_client_falls_back_to_openai_multimodal_embedding_endpoint() -> None:
-    vector = [0.0] * 1024
+    vector = [0.0] * 2048
     vector[7] = 1.0
     seen_payloads: list[dict[str, object]] = []
 
@@ -83,12 +83,13 @@ def test_visual_embedding_client_falls_back_to_openai_multimodal_embedding_endpo
                     mime_type="image/png",
                 ),
             ),
-            output_dimensions=1024,
+            output_dimensions=2048,
             timeout_seconds=30,
         )
     )
 
     assert response.vectors == (tuple(vector),)
+    assert "dimensions" not in seen_payloads[0]
     messages = seen_payloads[0]["messages"]
     assert isinstance(messages, list)
     content = messages[1]["content"]
@@ -108,7 +109,7 @@ def test_visual_embedding_client_rejects_descriptor_only_input() -> None:
             EmbeddingRequest(
                 profile_name=VISUAL_EMBED_PROFILE,
                 inputs=(EmbeddingInput(text="descriptor only"),),
-                output_dimensions=1024,
+                output_dimensions=2048,
                 timeout_seconds=30,
             )
         )

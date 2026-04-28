@@ -43,7 +43,7 @@ def _manifest(*, fixture_type: str) -> dict[str, object]:
             "qwen": {"profile": "qwen3-vl-8b-instruct-nvfp4-local:v1"},
             "granite": {"profile": "granite-4.0-3b-vision-bf16:v1"},
             "textEmbedding": {"profile": "qwen3-embedding-4b-1536:v1"},
-            "visualEmbedding": {"profile": "qwen3-vl-embedding-2b-1024:v1"},
+            "visualEmbedding": {"profile": "qwen3-vl-embedding-2b-2048:v1"},
         },
         "metrics": {
             "qwen_handwriting_route_success_rate": 1.0,

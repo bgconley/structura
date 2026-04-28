@@ -29,6 +29,7 @@ This directory contains the starting SQL baseline for the application.
 16. `073_phase7_relationships.sql`
 17. `074_phase7_deadline_status_waived.sql`
 18. `075_phase8_5_semantic_annotations.sql`
+19. `076_phase8_5_visual_embedding_2048.sql`
 
 `070_query_examples.sql` is examples only and is not required for boot.
 
@@ -41,6 +42,7 @@ This directory contains the starting SQL baseline for the application.
 - `066_folder_household_uniqueness.sql` intentionally replaces the original global folder-name index with household-scoped uniqueness for tenant isolation.
 - `067_document_read_acl_function.sql` centralizes document/asset read authorization for application queries.
 - `075_phase8_5_semantic_annotations.sql` adds Docling-grounded semantic annotation manifests. These rows are routing/planning metadata for Qwen and Granite; they are not canonical extracted facts.
+- `076_phase8_5_visual_embedding_2048.sql` adds the native Qwen3-VL-Embedding 2B 2048-dimensional visual vector index used by the live model service.
 - JSON Schemas in `contracts/schemas/` and relational persistence in these SQL files are designed to coexist. The DB stores both normalized fields and the source JSON payload.
 - Keep this list synchronized with `lib/db/migrations.py`; the migration runner is the authoritative apply order.
 

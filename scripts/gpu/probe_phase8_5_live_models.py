@@ -70,7 +70,7 @@ def main() -> int:
     if not args.skip_visual_embed:
         probe_embedding(
             ProbeTarget("model-vl-embed", args.visual_embed_url, args.visual_embed_model),
-            dimensions=1024,
+            dimensions=2048,
             visual=True,
             timeout=args.timeout,
         )
@@ -116,7 +116,7 @@ def probe_embedding(
     timeout: float,
 ) -> None:
     if visual:
-        payload = _visual_embedding_payload(target.model, dimensions)
+        payload = _visual_embedding_payload(target.model)
     else:
         payload = {
             "model": target.model,
@@ -136,7 +136,7 @@ def probe_embedding(
     print(f"{target.name}: embedding ok")
 
 
-def _visual_embedding_payload(model: str, dimensions: int) -> dict[str, Any]:
+def _visual_embedding_payload(model: str) -> dict[str, Any]:
     image_url = f"data:image/png;base64,{base64.b64encode(PNG_1X1).decode('ascii')}"
     return {
         "model": model,
@@ -153,7 +153,6 @@ def _visual_embedding_payload(model: str, dimensions: int) -> dict[str, Any]:
                 ],
             },
         ],
-        "dimensions": dimensions,
     }
 
 

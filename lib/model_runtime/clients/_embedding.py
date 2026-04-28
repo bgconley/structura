@@ -133,7 +133,6 @@ class EmbeddingHttpClient:
                 },
                 {"role": "user", "content": content},
             ],
-            "dimensions": request.output_dimensions,
             "metadata": {"profile_name": request.profile_name},
         }
 
