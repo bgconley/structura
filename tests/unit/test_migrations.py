@@ -15,7 +15,7 @@ def test_baseline_migration_scripts_are_present_and_ordered() -> None:
     plan = baseline_migration_plan("database")
 
     assert plan.scripts[0].name == "001_extensions.sql"
-    assert plan.scripts[-1].name == "074_phase7_deadline_status_waived.sql"
+    assert plan.scripts[-1].name == "075_phase8_5_semantic_annotations.sql"
     assert all(script.exists() for script in plan.scripts)
 
 
@@ -97,3 +97,16 @@ def test_phase7_deadline_status_waived_migration_preserves_applied_phase7_checks
     assert "'waived'" not in phase7_sql
     assert "'waived'" in waived_sql
     assert "document_deadlines_status_check" in waived_sql
+
+
+def test_phase8_5_semantic_annotation_migration_is_baseline_migration() -> None:
+    plan = baseline_migration_plan("database")
+    names = [script.name for script in plan.scripts]
+
+    assert names[-1] == "075_phase8_5_semantic_annotations.sql"
+
+    sql = Path("database/075_phase8_5_semantic_annotations.sql").read_text(encoding="utf-8")
+    assert "CREATE TABLE IF NOT EXISTS document_semantic_annotations" in sql
+    assert "CREATE TABLE IF NOT EXISTS page_semantic_annotations" in sql
+    assert "CREATE TABLE IF NOT EXISTS semantic_region_annotations" in sql
+    assert "document_semantic_annotations_current_uniq" in sql

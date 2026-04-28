@@ -1,0 +1,1 @@
+"""Semantic annotation worker package."""

@@ -1,12 +1,19 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Protocol
 from uuid import UUID
 
 from lib.extraction.classification import TARGET_EXTRACTION_SCHEMAS, classify_document
 from lib.extraction.gateway import ExtractionGateway
 from lib.extraction.gateways.routing import default_extraction_gateway
-from lib.extraction.models import ClassificationDecision, PersistedExtraction
+from lib.extraction.models import (
+    ClassificationDecision,
+    ExtractionSourceDocument,
+    PersistedExtraction,
+)
 from lib.extraction.normalization import (
     field_candidates_from_extraction,
     line_item_candidates_from_extraction,
@@ -19,10 +26,20 @@ from lib.extraction.repository import (
 from lib.extraction.schema_registry import ExtractionSchemaRegistry
 from lib.extraction.validators import validate_extraction_payload
 from lib.jobs import JobService
+from lib.semantic_annotations.models import SemanticExtractionTask
+from lib.semantic_annotations.repository import load_semantic_extraction_task
 
 
 class ExtractionServiceError(Exception):
     pass
+
+
+class CreatedJob(Protocol):
+    job_id: UUID
+
+
+class JobCreator(Protocol):
+    def create_job(self, **kwargs: object) -> CreatedJob: ...
 
 
 @dataclass(frozen=True)
@@ -38,11 +55,19 @@ class ExtractionService:
         *,
         registry: ExtractionSchemaRegistry | None = None,
         gateway: ExtractionGateway | None = None,
-        jobs: JobService | None = None,
+        jobs: JobCreator | None = None,
+        source_loader: Callable[[UUID], ExtractionSourceDocument] = load_extraction_source,
+        semantic_task_loader: Callable[[UUID], SemanticExtractionTask] = (
+            load_semantic_extraction_task
+        ),
+        persister: Callable[..., PersistedExtraction] = persist_extraction_run,
     ) -> None:
         self.registry = registry or ExtractionSchemaRegistry()
         self.gateway = gateway or default_extraction_gateway()
         self.jobs = jobs or JobService()
+        self.source_loader = source_loader
+        self.semantic_task_loader = semantic_task_loader
+        self.persister = persister
 
     def classify_document(
         self,
@@ -51,7 +76,7 @@ class ExtractionService:
         force_reclassify: bool = False,
     ) -> ClassificationResult:
         del force_reclassify
-        source = load_extraction_source(document_id)
+        source = self.source_loader(document_id)
         decision = classify_document(source, registry=self.registry)
         extraction_id = persist_classification(decision, source=source)
         queued_job_id = None
@@ -85,14 +110,22 @@ class ExtractionService:
         *,
         schema_name: str,
         route_profile: str = "docling_plus_structured_extraction",
+        semantic_region_id: UUID | None = None,
+        allow_rescue: bool = True,
     ) -> PersistedExtraction:
-        source = load_extraction_source(document_id)
+        source = self.source_loader(document_id)
         if schema_name not in TARGET_EXTRACTION_SCHEMAS:
             raise ExtractionServiceError(f"Unsupported extraction schema: {schema_name}")
+        semantic_task = self._semantic_task_for_document(
+            document_id,
+            schema_name=schema_name,
+            semantic_region_id=semantic_region_id,
+        )
         gateway_result = self.gateway.extract(
             source,
             schema_name=schema_name,
             route_profile=route_profile,
+            semantic_task=semantic_task,
         )
         validation = validate_extraction_payload(
             schema_name,
@@ -100,6 +133,8 @@ class ExtractionService:
             registry=self.registry,
         )
         gateway_result.normalized_json["validation"] = validation.as_json()
+        if allow_rescue and semantic_task is not None and validation.needs_review:
+            self._enqueue_rescue_semantic_pass(source, semantic_task)
         field_candidates = field_candidates_from_extraction(
             document_id=document_id,
             schema_name=schema_name,
@@ -113,10 +148,49 @@ class ExtractionService:
             validation=validation,
             source_engine=gateway_result.route.source_engine,
         )
-        return persist_extraction_run(
+        return self.persister(
             gateway_result,
             source=source,
             validation=validation,
             field_candidates=field_candidates,
             line_item_candidates=line_item_candidates,
+        )
+
+    def _semantic_task_for_document(
+        self,
+        document_id: UUID,
+        *,
+        schema_name: str,
+        semantic_region_id: UUID | None,
+    ) -> SemanticExtractionTask | None:
+        if semantic_region_id is None:
+            return None
+        task = self.semantic_task_loader(semantic_region_id)
+        if task.document_id != document_id:
+            raise ExtractionServiceError("Semantic extraction task document mismatch.")
+        if task.target_schema and task.target_schema != schema_name:
+            raise ExtractionServiceError("Semantic extraction task schema mismatch.")
+        return task
+
+    def _enqueue_rescue_semantic_pass(
+        self,
+        source: ExtractionSourceDocument,
+        semantic_task: SemanticExtractionTask,
+    ) -> None:
+        self.jobs.create_job(
+            job_type="semantic_annotate",
+            household_id=source.household_id,
+            document_id=source.document_id,
+            payload={
+                "schema_name": "semantic_annotate_document_job",
+                "schema_version": "v1",
+                "document_id": str(source.document_id),
+                "quality_mode": "rescue",
+                "requested_by": "system",
+                "reason": "phase8_5.validation_failed_rescue",
+                "source_semantic_region_id": str(semantic_task.region_id),
+                "created_at": datetime.now(UTC).isoformat(),
+            },
+            priority=26,
+            queue_name="semantic-annotations",
         )

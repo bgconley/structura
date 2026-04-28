@@ -294,6 +294,61 @@ paths:
           description: Not authenticated
         '404':
           description: Document not found
+  /api/v1/documents/{documentId}/semantic-annotations/current:
+    get:
+      tags:
+      - Documents
+      summary: Fetch the current semantic annotation manifest for a document
+      parameters:
+      - in: path
+        name: documentId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: qualityMode
+        schema:
+          type: string
+          enum:
+          - smart
+          - high_quality
+          - rescue
+          default: smart
+      responses:
+        '200':
+          description: Current semantic annotation manifest or null
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          description: Not authenticated
+        '404':
+          description: Document not found
+  /api/v1/documents/{documentId}/semantic-annotations/high-quality:
+    post:
+      tags:
+      - Documents
+      summary: Queue a high-quality semantic annotation pass for a document
+      parameters:
+      - in: path
+        name: documentId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '202':
+          description: High-quality semantic annotation queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedJob'
+        '401':
+          description: Not authenticated
+        '404':
+          description: Document not found
   /api/v1/documents/{documentId}/parse-debug:
     get:
       tags:

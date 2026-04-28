@@ -10,6 +10,7 @@ from uuid import UUID
 from lib.documents.quality import evaluate_document_quality
 from lib.jobs import JobService, record_service_health
 from lib.search.jobs import enqueue_embed_document_job, enqueue_visual_embed_document_job
+from lib.semantic_annotations.jobs import enqueue_semantic_annotation_job
 from workers.docling.converter import DoclingConverter
 from workers.docling.service import (
     DoclingWorkerError,
@@ -91,6 +92,10 @@ def process_next_docling_job(
             household_id=claimed.household_id,
             include_visual=quality.visual_embedding_eligible,
         )
+        _enqueue_semantic_annotation(
+            target_document_id,
+            household_id=claimed.household_id,
+        )
     except Exception as exc:
         if target_document_id:
             mark_document_parse_failed(
@@ -141,6 +146,21 @@ def _enqueue_embedding_refresh(
                     household_id=household_id,
                     force_reembed=False,
                 )
+        conn.commit()
+
+
+def _enqueue_semantic_annotation(document_id: UUID, *, household_id: UUID | None) -> None:
+    from lib.db.connection import db_connection
+
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            enqueue_semantic_annotation_job(
+                cur,
+                document_id=document_id,
+                household_id=household_id,
+                quality_mode="smart",
+                requested_by="system",
+            )
         conn.commit()
 
 

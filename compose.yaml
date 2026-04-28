@@ -159,6 +159,29 @@ services:
       timeout: 5s
       retries: 10
 
+  worker-semantic-annotations:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["python", "-m", "workers.semantic_annotations.worker", "--worker", "worker-semantic-annotations", "--health-port", "8210"]
+    environment:
+      STRUCTURA_DATABASE_URL: postgresql://${POSTGRES_USER:-structura}:${POSTGRES_PASSWORD:-structura}@postgres:5432/${POSTGRES_DB:-structura}
+      STRUCTURA_RUNTIME_ROOT: /srv/structura
+      STRUCTURA_MODEL_MODE: ${STRUCTURA_MODEL_MODE:-fixture}
+      STRUCTURA_MODEL_QWEN_URL: http://model-qwen:8100
+    volumes:
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/derived:/srv/structura/objects/derived
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/workers:/srv/structura/logs/workers
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["semantic", "extraction"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8210/healthz')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   worker-embeddings:
     build:
       context: .

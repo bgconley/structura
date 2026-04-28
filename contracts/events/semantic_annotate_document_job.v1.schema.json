@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/events/semantic_annotate_document_job.v1.schema.json",
+  "title": "Semantic Annotate Document Job v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "job_id",
+    "created_at",
+    "document_id",
+    "quality_mode"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "semantic_annotate_document_job"
+    },
+    "schema_version": {
+      "const": "v1"
+    },
+    "job_id": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/uuid"
+    },
+    "correlation_id": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/uuid"
+    },
+    "created_at": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/timestamp"
+    },
+    "document_id": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/uuid"
+    },
+    "quality_mode": {
+      "type": "string",
+      "enum": ["smart", "high_quality", "rescue"]
+    },
+    "requested_by": {
+      "type": "string",
+      "enum": ["system", "user", "agent", "scheduler", "reviewer"]
+    },
+    "reason": {
+      "type": "string"
+    },
+    "source_semantic_region_id": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/uuid"
+    },
+    "metadata": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/metadataObject"
+    }
+  }
+}

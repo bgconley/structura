@@ -13,8 +13,9 @@ These schemas define queue payloads for the async pipeline.
 
 1. `ingest_document_job`
 2. `classify_document_job`
-3. one or more `extract_document_job`
-4. one or more `embed_document_job`
-5. optional `analyze_documents_job`
+3. `semantic_annotate_document_job` after Docling parse for Smart/High Quality planning
+4. one or more `extract_document_job`, optionally scoped to semantic regions
+5. one or more `embed_document_job`
+6. optional `analyze_documents_job`
 
 Different implementations may collapse or expand these stages, but the stored job ledger should preserve equivalent state transitions.

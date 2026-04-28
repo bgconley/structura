@@ -4,6 +4,8 @@ import pytest
 
 from lib.model_runtime.profiles import (
     GRANITE_VISION_PROFILE,
+    QWEN_SEMANTIC_HQ_PROFILE,
+    QWEN_SEMANTIC_PROFILE,
     QWEN_VL_PROFILE,
     TEXT_EMBED_PROFILE,
     VISUAL_EMBED_PROFILE,
@@ -17,6 +19,8 @@ from lib.model_runtime.settings import configured_model_profiles
 def test_phase8_5_required_live_profiles_are_registered() -> None:
     assert required_live_profile_names() == (
         QWEN_VL_PROFILE,
+        QWEN_SEMANTIC_PROFILE,
+        QWEN_SEMANTIC_HQ_PROFILE,
         GRANITE_VISION_PROFILE,
         TEXT_EMBED_PROFILE,
         VISUAL_EMBED_PROFILE,
@@ -25,6 +29,18 @@ def test_phase8_5_required_live_profiles_are_registered() -> None:
     profiles = [get_model_profile(name) for name in required_live_profile_names()]
 
     assert all(isinstance(profile, ModelProfile) for profile in profiles)
+
+
+def test_qwen_semantic_profiles_distinguish_smart_and_high_quality_modes() -> None:
+    smart = get_model_profile(QWEN_SEMANTIC_PROFILE)
+    high_quality = get_model_profile(QWEN_SEMANTIC_HQ_PROFILE)
+
+    assert smart.base_model == "Qwen/Qwen3-VL-2B-Instruct"
+    assert smart.source_engine == "qwen3_vl_2b"
+    assert smart.default_gpu_role == "blackwell-0"
+    assert high_quality.base_model == "Qwen/Qwen3-VL-8B-Instruct"
+    assert high_quality.source_engine == "qwen3_vl_8b"
+    assert high_quality.default_gpu_role == "blackwell-0-high-quality"
 
 
 def test_qwen_and_granite_profiles_have_distinct_truthful_source_engines() -> None:

@@ -23,6 +23,7 @@ BASELINE_SQL_FILES = (
     "072_phase6_automation.sql",
     "073_phase7_relationships.sql",
     "074_phase7_deadline_status_waived.sql",
+    "075_phase8_5_semantic_annotations.sql",
 )
 
 

@@ -9,6 +9,7 @@ from lib.model_runtime.clients.granite_vision import GraniteVisionClient
 from lib.model_runtime.clients.qwen_vl import QwenVLClient
 from lib.model_runtime.http_client import ModelRuntimeError
 from lib.model_runtime.profiles import get_model_profile
+from lib.semantic_annotations.models import SemanticExtractionTask
 
 QWEN_ROUTE_PROFILES = {"qwen_primary_review_required"}
 GRANITE_ROUTE_PROFILES = {
@@ -38,25 +39,34 @@ class ModelRoutingExtractionGateway:
         *,
         schema_name: str,
         route_profile: str,
+        semantic_task: SemanticExtractionTask | None = None,
     ) -> GatewayExtraction:
         if route_profile in QWEN_ROUTE_PROFILES:
-            return self.qwen.extract(source, schema_name=schema_name, route_profile=route_profile)
+            return self.qwen.extract(
+                source,
+                schema_name=schema_name,
+                route_profile=route_profile,
+                semantic_task=semantic_task,
+            )
         if route_profile == "granite_then_qwen_fallback_review_required":
             return self._granite_then_qwen(
                 source,
                 schema_name=schema_name,
                 route_profile=route_profile,
+                semantic_task=semantic_task,
             )
         if route_profile in GRANITE_ROUTE_PROFILES or schema_name in STRUCTURED_SCHEMAS:
             return self.granite.extract(
                 source,
                 schema_name=schema_name,
                 route_profile=route_profile,
+                semantic_task=semantic_task,
             )
         return self.deterministic.extract(
             source,
             schema_name=schema_name,
             route_profile=route_profile,
+            semantic_task=semantic_task,
         )
 
     def _granite_then_qwen(
@@ -65,18 +75,21 @@ class ModelRoutingExtractionGateway:
         *,
         schema_name: str,
         route_profile: str,
+        semantic_task: SemanticExtractionTask | None = None,
     ) -> GatewayExtraction:
         try:
             return self.granite.extract(
                 source,
                 schema_name=schema_name,
                 route_profile=route_profile,
+                semantic_task=semantic_task,
             )
         except ModelRuntimeError:
             return self.qwen.extract(
                 source,
                 schema_name=schema_name,
                 route_profile=route_profile,
+                semantic_task=semantic_task,
             )
 
 

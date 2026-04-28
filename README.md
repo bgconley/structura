@@ -2,8 +2,8 @@
 
 Structura is a local-first document workbench for preserving original document bytes, deriving structural artifacts, extracting evidence-backed facts, and making a private corpus searchable and reviewable.
 
-This repository is now implemented through Phase 8 with the Phase 8.5 model-runtime
-foundation in progress:
+This repository is now implemented through Phase 8 with the Phase 8.5 semantic
+annotation/model-runtime foundation in progress:
 
 - React + Vite web app in `apps/web`
 - FastAPI API in `apps/api` with health, contract, auth/session, protected document/asset, job, admin health, and organization routes
@@ -24,7 +24,7 @@ foundation in progress:
 - Phase 6 contacts, aliases, document-contact links, duplicate merge suggestions, watched-folder PDF intake, filing rules, dry-run explanations, reviewable filing suggestions, operator maintenance CLI commands, and Automation Workbench UI
 - Phase 7 document relationships, relationship suggestions, accept/reject review actions, relationship worker, related-document Viewer panel, timelines, deadlines, relationship/deadline search filters, smart views, and Relationships/Timelines UI
 - Phase 8 difficult-document quality detection, review-required uncertainty, selective fixture visual byte embeddings, Qwen-eligible handwriting fallback with honest Docling provenance until live mode is enabled, visual/hybrid retrieval policy, and difficult-document Viewer/Search/Review cues
-- Phase 8.5 model runtime profiles, bounded internal model HTTP clients, Qwen/Granite/text/visual model adapters, fixture-vs-live mode separation, model service health snapshots, and model-corpus gate scaffolding
+- Phase 8.5 semantic annotation manifests, Qwen Smart/High Quality annotation profiles, targeted Granite extraction jobs, semantic worker/runtime profile, bounded internal model HTTP clients, fixture-vs-live mode separation, model service health snapshots, and model-corpus gate scaffolding
 
 ## Local Commands
 
@@ -69,6 +69,13 @@ Live Phase 8.5 model services are behind explicit profiles and require approved 
 ```bash
 docker compose --profile models-live up model-qwen model-granite model-embed
 docker compose --profile visual-embed-live up model-vl-embed
+```
+
+Semantic annotation workers are behind the semantic/extraction profile. They consume
+Docling-grounded page images and route targeted Granite extraction jobs:
+
+```bash
+docker compose --profile semantic up worker-semantic-annotations
 ```
 
 Run deterministic model-corpus shape validation with:
@@ -144,6 +151,7 @@ The baseline migration runner applies:
 15. `database/072_phase6_automation.sql`
 16. `database/073_phase7_relationships.sql`
 17. `database/074_phase7_deadline_status_waived.sql`
+18. `database/075_phase8_5_semantic_annotations.sql`
 
 `database/070_query_examples.sql` is intentionally excluded from default migration execution.
 

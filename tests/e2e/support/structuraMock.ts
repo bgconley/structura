@@ -634,6 +634,41 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
       return;
     }
 
+    const semanticCurrentMatch = url.pathname.match(
+      /^\/api\/v1\/documents\/([^/]+)\/semantic-annotations\/current$/,
+    );
+    if (semanticCurrentMatch && request.method() === "GET") {
+      const document = documents.get(semanticCurrentMatch[1]);
+      await route.fulfill({
+        status: document ? 200 : 404,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: document
+          ? {
+              documentId: document.id,
+              qualityMode: url.searchParams.get("qualityMode") ?? "smart",
+              current: semanticAnnotationForDocument(document.id),
+            }
+          : {detail: "Document not found"},
+      });
+      return;
+    }
+
+    const semanticHighQualityMatch = url.pathname.match(
+      /^\/api\/v1\/documents\/([^/]+)\/semantic-annotations\/high-quality$/,
+    );
+    if (semanticHighQualityMatch && request.method() === "POST") {
+      expect(request.headers()["x-csrf-token"]).toBe(expectedCsrfToken);
+      const document = documents.get(semanticHighQualityMatch[1]);
+      await route.fulfill({
+        status: document ? 202 : 404,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: document
+          ? {jobId: "85858585-8585-4585-8585-858585858585", status: "queued"}
+          : {detail: "Document not found"},
+      });
+      return;
+    }
+
     const detailMatch = url.pathname.match(/^\/api\/v1\/documents\/([^/]+)$/);
     if (detailMatch && request.method() === "GET") {
       const document = documents.get(detailMatch[1]);
@@ -673,6 +708,54 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
   });
 
   return {documents, folders, tags};
+}
+
+function semanticAnnotationForDocument(documentId: string) {
+  return {
+    qualityMode: "smart",
+    profileName: "qwen3-vl-2b-semantic:v1",
+    sourceEngine: "qwen3_vl_2b",
+    modelName: "Qwen/Qwen3-VL-2B-Instruct",
+    modelVersion: "fixture",
+    promptVersion: "phase8_5-semantic-smart-v1",
+    reviewRequired: false,
+    escalationReason: null,
+    confidence: {overall: 0.91},
+    pages: [
+      {
+        pageId: "56565656-5656-4565-8565-565656565656",
+        pageNumber: 1,
+        pageRole: "receipt_summary",
+        documentTypeHint: "receipt",
+        extractionUsefulness: "high",
+        isBoilerplate: false,
+        hasStructuredTargets: true,
+        ambiguous: false,
+        escalationRequired: false,
+        reason: "Qwen identified a receipt summary page.",
+        confidence: 0.91,
+      },
+    ],
+    regions: [
+      {
+        semanticType: "receipt_line_item_table",
+        priority: "high",
+        graniteTask: "tables_json",
+        targetSchema: "receipt",
+        expectedFields: ["line_items", "total_amount"],
+        reviewRequired: false,
+        reason: "Line-item area should be sent to Granite tables_json.",
+        confidence: 0.88,
+        grounding: {
+          kind: "page",
+          pageId: "56565656-5656-4565-8565-565656565656",
+          elementId: null,
+          tableId: null,
+        },
+      },
+    ],
+    manifestDocumentId: documentId,
+  };
 }
 
 function relationshipsForDocument(

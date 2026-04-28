@@ -13,6 +13,7 @@ from lib.model_runtime.contracts import (
     VisionGenerateResponse,
 )
 from lib.model_runtime.http_client import ModelProtocolError
+from lib.semantic_annotations.models import SemanticExtractionTask
 from lib.storage import ObjectStorage
 
 
@@ -39,12 +40,18 @@ class VisionExtractionGateway:
         *,
         schema_name: str,
         route_profile: str,
+        semantic_task: SemanticExtractionTask | None = None,
     ) -> GatewayExtraction:
         response = self.client.generate(
             VisionGenerateRequest(
                 profile_name=self.profile_name,
                 prompt_version=self.prompt_version,
-                prompt=_prompt(source=source, schema_name=schema_name, route_profile=route_profile),
+                prompt=_prompt(
+                    source=source,
+                    schema_name=schema_name,
+                    route_profile=route_profile,
+                    semantic_task=semantic_task,
+                ),
                 image_inputs=_image_inputs(source, storage=self.storage),
                 response_schema_name=schema_name,
                 max_output_tokens=2048,
@@ -74,6 +81,7 @@ class VisionExtractionGateway:
                 "latencyMs": response.latency_ms,
                 "confidence": response.confidence_json,
                 "rawText": response.raw_text,
+                "semanticTask": _semantic_task_json(semantic_task),
             },
         )
 
@@ -107,9 +115,39 @@ def _prompt(
     source: ExtractionSourceDocument,
     schema_name: str,
     route_profile: str,
+    semantic_task: SemanticExtractionTask | None = None,
 ) -> str:
-    return (
+    base = (
         "Extract evidence-backed structured fields from the provided document page images. "
         f"Target schema: {schema_name}. Route profile: {route_profile}. "
         "Use Docling text only as context; image evidence is authoritative for visual fields."
     )
+    if semantic_task is None:
+        return base
+    return (
+        f"{base} Semantic task from Qwen annotation: "
+        f"type={semantic_task.semantic_type}; granite_task={semantic_task.granite_task}; "
+        f"expected_fields={list(semantic_task.expected_fields)}; "
+        f"grounding={semantic_task.grounding.kind}; reason={semantic_task.reason or ''}."
+    )
+
+
+def _semantic_task_json(task: SemanticExtractionTask | None) -> dict[str, object] | None:
+    if task is None:
+        return None
+    return {
+        "semanticRegionId": str(task.region_id),
+        "semanticAnnotationId": str(task.annotation_id),
+        "semanticType": task.semantic_type,
+        "graniteTask": task.granite_task,
+        "targetSchema": task.target_schema,
+        "expectedFields": list(task.expected_fields),
+        "grounding": {
+            "kind": task.grounding.kind,
+            "pageId": str(task.grounding.page_id) if task.grounding.page_id else None,
+            "elementId": (str(task.grounding.element_id) if task.grounding.element_id else None),
+            "tableId": str(task.grounding.table_id) if task.grounding.table_id else None,
+        },
+        "confidence": task.confidence,
+        "reason": task.reason,
+    }

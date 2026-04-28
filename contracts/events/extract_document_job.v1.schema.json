@@ -80,6 +80,37 @@
     "force_reextract": {
       "type": "boolean",
       "default": false
+    },
+    "semantic_annotation_id": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/uuid"
+    },
+    "semantic_region_id": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/uuid"
+    },
+    "semantic_granite_task": {
+      "type": "string",
+      "enum": [
+        "kvp",
+        "tables_json",
+        "tables_html",
+        "tables_otsl",
+        "chart2csv",
+        "chart2summary",
+        "chart2code"
+      ]
+    },
+    "semantic_type": {
+      "type": "string"
+    },
+    "semantic_expected_fields": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "semantic_rescue": {
+      "type": "boolean",
+      "default": false
     }
   }
 }

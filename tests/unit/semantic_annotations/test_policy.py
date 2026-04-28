@@ -1,0 +1,168 @@
+from __future__ import annotations
+
+from uuid import uuid4
+
+import pytest
+
+from lib.semantic_annotations.models import (
+    DocumentSemanticManifest,
+    PageSemanticAnnotation,
+    SemanticGroundingRef,
+    SemanticRegionAnnotation,
+)
+from lib.semantic_annotations.policy import (
+    SemanticAnnotationValidationError,
+    high_quality_required,
+    validate_manifest,
+)
+
+
+def _manifest_with_region(region: SemanticRegionAnnotation) -> DocumentSemanticManifest:
+    page_id = uuid4()
+    return DocumentSemanticManifest(
+        document_id=uuid4(),
+        household_id=uuid4(),
+        quality_mode="smart",
+        profile_name="qwen3-vl-2b-semantic:v1",
+        source_engine="qwen3_vl_2b",
+        model_name="Qwen/Qwen3-VL-2B-Instruct",
+        model_version="test",
+        prompt_version="phase8_5-semantic-smart-v1",
+        pages=[
+            PageSemanticAnnotation(
+                page_id=page_id,
+                page_number=1,
+                page_role="claim_summary",
+                document_type_hint="medical_eob",
+                extraction_usefulness="high",
+                has_structured_targets=True,
+                confidence=0.86,
+            )
+        ],
+        regions=[region],
+        confidence={"overall": 0.84},
+        manifest={"document_type": "medical_eob"},
+    )
+
+
+def test_validate_manifest_accepts_docling_grounded_region() -> None:
+    element_id = uuid4()
+    region = SemanticRegionAnnotation(
+        semantic_type="covered_services_line_item_table",
+        priority="high",
+        granite_task="tables_json",
+        target_schema="medical_eob",
+        expected_fields=("service_date", "allowed_amount", "patient_responsibility"),
+        grounding=SemanticGroundingRef(kind="element", element_id=element_id),
+        reason="Docling table-like element contains claim line items.",
+        confidence=0.91,
+    )
+
+    validate_manifest(
+        _manifest_with_region(region),
+        valid_page_ids={uuid4()},
+        valid_element_ids={element_id},
+        valid_table_ids=set(),
+    )
+
+
+def test_validate_manifest_rejects_unknown_granite_task() -> None:
+    region = SemanticRegionAnnotation(
+        semantic_type="billing_summary",
+        priority="high",
+        granite_task="made_up_task",
+        target_schema="invoice",
+        grounding=SemanticGroundingRef(kind="page", page_id=uuid4()),
+        review_required=True,
+    )
+
+    page_id = region.grounding.page_id
+    assert page_id is not None
+    with pytest.raises(SemanticAnnotationValidationError, match="granite task"):
+        validate_manifest(
+            _manifest_with_region(region),
+            valid_page_ids={page_id},
+            valid_element_ids=set(),
+            valid_table_ids=set(),
+        )
+
+
+def test_validate_manifest_rejects_unknown_semantic_type() -> None:
+    region = SemanticRegionAnnotation(
+        semantic_type="some_new_unreviewed_type",
+        priority="medium",
+        granite_task="kvp",
+        target_schema="receipt",
+        grounding=SemanticGroundingRef(kind="page", page_id=uuid4()),
+        review_required=True,
+    )
+
+    page_id = region.grounding.page_id
+    assert page_id is not None
+    with pytest.raises(SemanticAnnotationValidationError, match="semantic type"):
+        validate_manifest(
+            _manifest_with_region(region),
+            valid_page_ids={page_id},
+            valid_element_ids=set(),
+            valid_table_ids=set(),
+        )
+
+
+def test_validate_manifest_requires_unmatched_regions_to_be_review_required() -> None:
+    region = SemanticRegionAnnotation(
+        semantic_type="unmatched_region",
+        priority="low",
+        granite_task=None,
+        grounding=SemanticGroundingRef(kind="unmatched_region"),
+        review_required=False,
+        confidence=0.4,
+    )
+
+    with pytest.raises(SemanticAnnotationValidationError, match="review-required"):
+        validate_manifest(
+            _manifest_with_region(region),
+            valid_page_ids=set(),
+            valid_element_ids=set(),
+            valid_table_ids=set(),
+        )
+
+
+def test_high_quality_policy_triggers_for_failure_low_confidence_and_sensitive_domains() -> None:
+    assert high_quality_required(
+        validation_failed=True,
+        confidence=0.9,
+        document_family="invoice",
+        quality_flags={},
+        user_marked_important=False,
+    )
+    assert high_quality_required(
+        validation_failed=False,
+        confidence=0.55,
+        document_family="invoice",
+        quality_flags={},
+        user_marked_important=False,
+    )
+    assert high_quality_required(
+        validation_failed=False,
+        confidence=0.88,
+        document_family="medical_eob",
+        quality_flags={},
+        user_marked_important=False,
+    )
+    assert high_quality_required(
+        validation_failed=False,
+        confidence=0.88,
+        document_family="generic",
+        quality_flags={"ocr_quality": "poor"},
+        user_marked_important=False,
+    )
+
+
+def test_high_quality_policy_does_not_trigger_for_clean_low_risk_document() -> None:
+    assert not high_quality_required(
+        validation_failed=False,
+        confidence=0.9,
+        document_family="generic",
+        quality_flags={},
+        user_marked_important=False,
+    )

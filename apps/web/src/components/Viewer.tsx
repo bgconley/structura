@@ -7,6 +7,7 @@ import type {
   DocumentSummary,
   Folder,
   ParseDebugView,
+  SemanticAnnotationManifest,
   Tag,
 } from "../types";
 import {FilingPanel} from "./FilingPanel";
@@ -29,6 +30,11 @@ export function Viewer({
   parseDebugError,
   isParseDebugLoading,
   onLoadParseDebug,
+  semanticAnnotation,
+  semanticAnnotationError,
+  isSemanticAnnotationLoading,
+  onLoadSemanticAnnotation,
+  onQueueHighQualityPass,
 }: {
   document: DocumentDetail | null;
   summary?: DocumentSummary;
@@ -44,6 +50,11 @@ export function Viewer({
   parseDebugError: string | null;
   isParseDebugLoading: boolean;
   onLoadParseDebug: (documentId: string) => void;
+  semanticAnnotation: SemanticAnnotationManifest | null;
+  semanticAnnotationError: string | null;
+  isSemanticAnnotationLoading: boolean;
+  onLoadSemanticAnnotation: (documentId: string) => void;
+  onQueueHighQualityPass: (documentId: string) => Promise<void>;
 }) {
   const active = document ?? summary;
   const original = document?.assets.find((asset) => asset.assetRole === "original");
@@ -166,7 +177,63 @@ export function Viewer({
           isLoading={isParseDebugLoading}
           onLoad={() => onLoadParseDebug(String(active.id))}
         />
+        <SemanticAnnotationPanel
+          manifest={semanticAnnotation}
+          error={semanticAnnotationError}
+          isLoading={isSemanticAnnotationLoading}
+          onLoad={() => onLoadSemanticAnnotation(String(active.id))}
+          onHighQuality={() => onQueueHighQualityPass(String(active.id))}
+        />
       </aside>
+    </section>
+  );
+}
+
+function SemanticAnnotationPanel({
+  manifest,
+  error,
+  isLoading,
+  onLoad,
+  onHighQuality,
+}: {
+  manifest: SemanticAnnotationManifest | null;
+  error: string | null;
+  isLoading: boolean;
+  onLoad: () => void;
+  onHighQuality: () => Promise<void>;
+}) {
+  return (
+    <section className="semantic-annotation-panel">
+      <h3>Smart Parse</h3>
+      <p className="debug-copy">
+        Qwen semantic annotations stay grounded to Docling pages and route targeted Granite extraction.
+      </p>
+      <div className="two-actions">
+        <button type="button" onClick={onLoad} disabled={isLoading}>
+          {isLoading ? "Loading..." : "Load Smart Parse"}
+        </button>
+        <button type="button" onClick={() => void onHighQuality()}>
+          High Quality Pass
+        </button>
+      </div>
+      {error ? <p className="form-error">{error}</p> : null}
+      {manifest ? (
+        <div className="semantic-annotation-summary">
+          <span>{manifest.qualityMode} · {manifest.sourceEngine}</span>
+          <strong>{manifest.modelName}</strong>
+          <p>{manifest.regions.length} semantic region targets · {manifest.pages.length} pages</p>
+          <ul>
+            {manifest.regions.slice(0, 4).map((region, index) => (
+              <li key={`${region.semanticType}-${index}`}>
+                <b>{region.semanticType}</b>
+                <span>{region.graniteTask ?? "no extraction"} · {region.grounding.kind}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <p className="empty-state">No semantic manifest loaded.</p>
+      )}
     </section>
   );
 }

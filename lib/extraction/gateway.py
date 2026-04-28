@@ -5,6 +5,7 @@ from typing import Any, Protocol
 
 from lib.extraction.heuristics import invoice_payload, medical_eob_payload, receipt_payload
 from lib.extraction.models import ExtractionSourceDocument, GatewayExtraction, ModelRoute
+from lib.semantic_annotations.models import SemanticExtractionTask
 
 
 class ExtractionGateway(Protocol):
@@ -14,6 +15,7 @@ class ExtractionGateway(Protocol):
         *,
         schema_name: str,
         route_profile: str,
+        semantic_task: SemanticExtractionTask | None = None,
     ) -> GatewayExtraction: ...
 
 
@@ -26,7 +28,9 @@ class DoclingHeuristicGateway:
         *,
         schema_name: str,
         route_profile: str,
+        semantic_task: SemanticExtractionTask | None = None,
     ) -> GatewayExtraction:
+        del semantic_task
         qwen_review_route = route_profile == "qwen_primary_review_required"
         route = ModelRoute(
             source_engine="docling",

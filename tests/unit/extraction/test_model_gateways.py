@@ -13,6 +13,7 @@ from lib.extraction.models import (
 )
 from lib.model_runtime.contracts import VisionGenerateRequest, VisionGenerateResponse
 from lib.model_runtime.profiles import GRANITE_VISION_PROFILE, QWEN_VL_PROFILE
+from lib.semantic_annotations.models import SemanticExtractionTask, SemanticGroundingRef
 
 
 @dataclass
@@ -70,6 +71,38 @@ def test_granite_extraction_gateway_truthfully_sets_granite_provenance() -> None
     assert result.route.source_engine == "granite_vision_3b"
     assert result.normalized_json["from_model"] is True
     assert result.raw_output_json["profileName"] == GRANITE_VISION_PROFILE
+
+
+def test_granite_gateway_prompt_includes_grounded_semantic_task() -> None:
+    client = FakeVisionClient(
+        source_engine="granite_vision_3b",
+        profile_name=GRANITE_VISION_PROFILE,
+    )
+    source = _source_with_page_image()
+    task = SemanticExtractionTask(
+        region_id=uuid4(),
+        annotation_id=uuid4(),
+        document_id=source.document_id,
+        semantic_type="invoice_line_item_table",
+        granite_task="tables_json",
+        target_schema="invoice",
+        expected_fields=("line_items", "total_amount"),
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+        reason="Qwen identified an invoice table.",
+        confidence=0.92,
+    )
+
+    result = GraniteVisionExtractionGateway(client=client).extract(
+        source,
+        schema_name="invoice",
+        route_profile="docling_plus_granite_structured",
+        semantic_task=task,
+    )
+
+    assert client.request is not None
+    assert "Semantic task from Qwen annotation" in client.request.prompt
+    assert "invoice_line_item_table" in client.request.prompt
+    assert result.raw_output_json["semanticTask"]["semanticRegionId"] == str(task.region_id)
 
 
 def _source_with_page_image() -> ExtractionSourceDocument:

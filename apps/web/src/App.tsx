@@ -19,6 +19,10 @@ import {
 } from "./organizationApi";
 import {getParseDebug} from "./parseDebugApi";
 import {createSavedSearch, runSearch} from "./searchApi";
+import {
+  getCurrentSemanticAnnotation,
+  queueHighQualitySemanticAnnotation,
+} from "./semanticAnnotationApi";
 import type {
   DocumentDetail,
   DocumentListResponse,
@@ -29,6 +33,7 @@ import type {
   ParseDebugView,
   SearchRequest,
   SearchResponse,
+  SemanticAnnotationManifest,
   SessionInfo,
   Tag,
   ViewMode,
@@ -47,6 +52,9 @@ export default function App() {
   const [parseDebug, setParseDebug] = useState<ParseDebugView | null>(null);
   const [parseDebugError, setParseDebugError] = useState<string | null>(null);
   const [isParseDebugLoading, setIsParseDebugLoading] = useState(false);
+  const [semanticAnnotation, setSemanticAnnotation] = useState<SemanticAnnotationManifest | null>(null);
+  const [semanticAnnotationError, setSemanticAnnotationError] = useState<string | null>(null);
+  const [isSemanticAnnotationLoading, setIsSemanticAnnotationLoading] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("inbox");
   const [activeFilter, setActiveFilter] = useState("All");
   const [query, setQuery] = useState("");
@@ -74,12 +82,16 @@ export default function App() {
       setDetail(null);
       setParseDebug(null);
       setParseDebugError(null);
+      setSemanticAnnotation(null);
+      setSemanticAnnotationError(null);
       return;
     }
     let cancelled = false;
     setDetail(null);
     setParseDebug(null);
     setParseDebugError(null);
+    setSemanticAnnotation(null);
+    setSemanticAnnotationError(null);
     void (async () => {
       try {
         const next = await fetchJson<DocumentDetail>(`/api/v1/documents/${selectedId}`);
@@ -107,6 +119,37 @@ export default function App() {
       setParseDebugError(exc instanceof Error ? exc.message : "Unable to load parse debug");
     } finally {
       setIsParseDebugLoading(false);
+    }
+  }
+
+  async function handleLoadSemanticAnnotation(documentId: string) {
+    setIsSemanticAnnotationLoading(true);
+    setSemanticAnnotationError(null);
+    try {
+      const response = await getCurrentSemanticAnnotation(documentId, "smart");
+      setSemanticAnnotation(response.current);
+      if (!response.current) {
+        setSemanticAnnotationError("No Smart Parse manifest has been persisted yet.");
+      }
+    } catch (exc) {
+      setSemanticAnnotation(null);
+      setSemanticAnnotationError(
+        exc instanceof Error ? exc.message : "Unable to load semantic annotation",
+      );
+    } finally {
+      setIsSemanticAnnotationLoading(false);
+    }
+  }
+
+  async function handleQueueHighQualityPass(documentId: string) {
+    setSemanticAnnotationError(null);
+    try {
+      const job = await queueHighQualitySemanticAnnotation(documentId);
+      setSemanticAnnotationError(`High Quality semantic pass queued as ${job.jobId}.`);
+    } catch (exc) {
+      setSemanticAnnotationError(
+        exc instanceof Error ? exc.message : "Unable to queue High Quality pass",
+      );
     }
   }
 
@@ -241,6 +284,8 @@ export default function App() {
     setEvidenceTarget(target ?? null);
     setParseDebug(null);
     setParseDebugError(null);
+    setSemanticAnnotation(null);
+    setSemanticAnnotationError(null);
     if (documentId === selectedId) {
       setDetail(null);
       void (async () => {
@@ -378,6 +423,11 @@ export default function App() {
             parseDebugError={parseDebugError}
             isParseDebugLoading={isParseDebugLoading}
             onLoadParseDebug={handleLoadParseDebug}
+            semanticAnnotation={semanticAnnotation}
+            semanticAnnotationError={semanticAnnotationError}
+            isSemanticAnnotationLoading={isSemanticAnnotationLoading}
+            onLoadSemanticAnnotation={handleLoadSemanticAnnotation}
+            onQueueHighQualityPass={handleQueueHighQualityPass}
           />
         ) : (
           <Inbox

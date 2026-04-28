@@ -46,6 +46,28 @@ test("Phase 8 difficult-document visual retrieval and review cues are visible", 
   });
 });
 
+test("Phase 8.5 Smart Parse manifest and High Quality pass are visible in viewer", async ({page}) => {
+  await page.goto("/");
+  await page.getByRole("button", {name: /Search/}).click();
+  await page.getByLabel("Corpus search query").fill("handwritten degraded intake");
+  await page.getByLabel("Search mode").selectOption("visual");
+  await page.getByRole("button", {name: "Search corpus"}).click();
+
+  await page
+    .locator(".search-result-card")
+    .filter({hasText: "Handwritten repair intake"})
+    .getByRole("button", {name: "Jump to evidence"})
+    .click();
+
+  await page.getByRole("button", {name: "Load Smart Parse"}).click();
+  await expect(page.locator(".semantic-annotation-panel")).toContainText("qwen3_vl_2b");
+  await expect(page.locator(".semantic-annotation-panel")).toContainText("receipt_line_item_table");
+  await expect(page.locator(".semantic-annotation-panel")).toContainText("tables_json");
+
+  await page.getByRole("button", {name: "High Quality Pass"}).click();
+  await expect(page.locator(".semantic-annotation-panel")).toContainText("High Quality semantic pass queued");
+});
+
 test("Phase 8 evidence viewer stays open when a stale visual search completes", async ({page}) => {
   await page.unroute(`${apiOrigin}/api/v1/**`);
   await mockStructuraApi(page, {searchDelayMs: 800});

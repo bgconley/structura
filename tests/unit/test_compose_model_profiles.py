@@ -18,6 +18,10 @@ def test_model_profiles_are_safe_and_gpu_placed() -> None:
     assert services["model-qwen"]["environment"]["NVIDIA_VISIBLE_DEVICES"].endswith(":-0}")
     assert services["model-granite"]["environment"]["NVIDIA_VISIBLE_DEVICES"].endswith(":-1}")
     assert services["model-vl-embed"]["profiles"] == ["visual-embed-live"]
+    semantic_worker = services["worker-semantic-annotations"]
+    assert "workers.semantic_annotations.worker" in semantic_worker["command"]
+    assert "semantic" in semantic_worker["profiles"]
+    assert semantic_worker["environment"]["STRUCTURA_MODEL_QWEN_URL"] == "http://model-qwen:8100"
     for name in (
         "model-qwen-placeholder",
         "model-granite-placeholder",

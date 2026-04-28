@@ -84,6 +84,8 @@ def process_next_extraction_job(
                 target_document_id,
                 schema_name=schema_name,
                 route_profile=route_profile,
+                semantic_region_id=_optional_uuid(claimed.payload.get("semantic_region_id")),
+                allow_rescue=not bool(claimed.payload.get("semantic_rescue")),
             )
             job_service.complete_job(
                 job_id=claimed.state.job_id,
@@ -127,6 +129,12 @@ def _document_id_for_job(document_id: UUID | None, payload: dict[str, object]) -
     if not payload_document_id:
         raise ExtractionWorkerError("Extraction job is missing document_id.")
     return UUID(str(payload_document_id))
+
+
+def _optional_uuid(value: object) -> UUID | None:
+    if not value:
+        return None
+    return UUID(str(value))
 
 
 def _enqueue_embedding_refresh(

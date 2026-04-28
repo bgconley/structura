@@ -68,6 +68,53 @@ export type DocumentDetail = DocumentSummary & {
   filingNotes?: string | null;
 };
 
+export type SemanticAnnotationManifest = {
+  qualityMode: "smart" | "high_quality" | "rescue";
+  profileName: string;
+  sourceEngine: string;
+  modelName: string;
+  modelVersion: string;
+  promptVersion: string;
+  reviewRequired: boolean;
+  escalationReason?: string | null;
+  confidence?: Record<string, unknown>;
+  pages: Array<{
+    pageId: string;
+    pageNumber: number;
+    pageRole: string;
+    documentTypeHint?: string | null;
+    extractionUsefulness?: string;
+    isBoilerplate?: boolean;
+    hasStructuredTargets?: boolean;
+    ambiguous?: boolean;
+    escalationRequired?: boolean;
+    reason?: string | null;
+    confidence?: number | null;
+  }>;
+  regions: Array<{
+    semanticType: string;
+    priority: string;
+    graniteTask?: string | null;
+    targetSchema?: string | null;
+    expectedFields: string[];
+    reviewRequired?: boolean;
+    reason?: string | null;
+    confidence?: number | null;
+    grounding: {
+      kind: string;
+      pageId?: string | null;
+      elementId?: string | null;
+      tableId?: string | null;
+    };
+  }>;
+};
+
+export type SemanticAnnotationResponse = {
+  documentId: string;
+  qualityMode: string;
+  current: SemanticAnnotationManifest | null;
+};
+
 export type DocumentListResponse = {
   items: DocumentSummary[];
   total: number;
