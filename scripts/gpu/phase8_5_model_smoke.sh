@@ -22,6 +22,12 @@ MODEL_SERVICES=(
   model-embed
   model-vl-embed
 )
+BLACKWELL_CORE_SERVICES=(
+  model-qwen-semantic
+  model-qwen
+  model-granite
+  model-vl-embed
+)
 
 echo "Phase 8.5 GPU model smoke"
 
@@ -71,36 +77,27 @@ compose_model() {
   docker compose "${COMPOSE_PROFILES[@]}" "$@"
 }
 
+remove_model_services() {
+  compose_model rm -sf "$@" >/dev/null || true
+}
+
 start_core_services() {
-  echo "Starting always-on Phase 8.5 core model services"
-  compose_model stop "${MODEL_SERVICES[@]}" >/dev/null || true
-  compose_model up -d --force-recreate model-qwen-semantic model-granite
+  echo "Starting co-resident Phase 8.5 Blackwell model services"
+  remove_model_services "${MODEL_SERVICES[@]}"
+  compose_model up -d --force-recreate "${BLACKWELL_CORE_SERVICES[@]}"
 }
 
 probe_core_services() {
   probe_health "model-qwen-semantic" "${QWEN_SEMANTIC_URL}"
-  probe_health "model-granite" "${GRANITE_URL}"
-  probe_live_models --skip-qwen --skip-text-embed --skip-visual-embed
-}
-
-probe_hq_qwen() {
-  echo "Validating on-demand HQ Qwen service"
-  compose_model stop model-qwen-semantic >/dev/null || true
-  compose_model up -d --force-recreate model-qwen
   probe_health "model-qwen" "${QWEN_URL}"
-  probe_live_models \
-    --skip-qwen-semantic \
-    --skip-granite \
-    --skip-text-embed \
-    --skip-visual-embed
-  compose_model stop model-qwen >/dev/null || true
-  compose_model up -d --force-recreate model-qwen-semantic
-  probe_health "model-qwen-semantic" "${QWEN_SEMANTIC_URL}"
+  probe_health "model-granite" "${GRANITE_URL}"
+  probe_health "model-vl-embed" "${VISUAL_EMBED_URL}"
+  probe_live_models --skip-text-embed
 }
 
 probe_text_embedding() {
   echo "Validating on-demand text embedding service"
-  compose_model stop model-granite >/dev/null || true
+  remove_model_services model-granite model-vl-embed
   compose_model up -d --force-recreate model-embed
   probe_health "model-embed" "${TEXT_EMBED_URL}"
   probe_live_models \
@@ -108,32 +105,16 @@ probe_text_embedding() {
     --skip-qwen-semantic \
     --skip-granite \
     --skip-visual-embed
-  compose_model stop model-embed >/dev/null || true
-  compose_model up -d --force-recreate model-granite
+  remove_model_services model-embed
+  compose_model up -d --force-recreate model-granite model-vl-embed
   probe_health "model-granite" "${GRANITE_URL}"
-}
-
-probe_visual_embedding() {
-  echo "Validating on-demand visual embedding service"
-  compose_model stop model-granite model-embed >/dev/null || true
-  compose_model up -d --force-recreate model-vl-embed
   probe_health "model-vl-embed" "${VISUAL_EMBED_URL}"
-  probe_live_models \
-    --skip-qwen \
-    --skip-qwen-semantic \
-    --skip-granite \
-    --skip-text-embed
-  compose_model stop model-vl-embed >/dev/null || true
-  compose_model up -d --force-recreate model-granite
-  probe_health "model-granite" "${GRANITE_URL}"
 }
 
 if [[ "$MANAGE_COMPOSE" == "1" || "$MANAGE_COMPOSE" == "true" ]]; then
   start_core_services
   probe_core_services
-  probe_hq_qwen
   probe_text_embedding
-  probe_visual_embedding
 else
   probe_health "model-qwen" "${QWEN_URL}"
   probe_health "model-qwen-semantic" "${QWEN_SEMANTIC_URL}"

@@ -65,8 +65,9 @@ docker compose --profile models-placeholder up model-qwen-placeholder model-gran
 ```
 
 Live Phase 8.5 model services are behind explicit profiles. Compose defaults use
-`voipmonitor/vllm:cu130` for Blackwell Qwen/Granite/visual services and TEI CUDA
-for text embeddings; release candidates still need digest-pinned image evidence:
+`voipmonitor/vllm:cu130` for co-resident Blackwell Qwen/Granite/visual services
+and TEI CUDA for on-demand/offload text embeddings; release candidates still need
+digest-pinned image evidence:
 
 ```bash
 STRUCTURA_MODEL_MODE=live \

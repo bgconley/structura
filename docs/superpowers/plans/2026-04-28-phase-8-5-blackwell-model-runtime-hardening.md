@@ -4,7 +4,7 @@
 
 **Goal:** Make Phase 8.5 live model serving deterministic on the 2x RTX PRO 4000 Blackwell GPU node by using source-backed vLLM/Compose configuration, real readiness waits, and inference probes.
 
-**Architecture:** Docker Compose owns physical GPU placement with explicit device reservations; each container sees exactly one GPU and uses inside-container `CUDA_VISIBLE_DEVICES=0`. Model launch scripts expose memory/context/concurrency knobs without hardcoding oversized defaults, and the GPU smoke waits for first-load readiness before forcing inference probes. Live GPU validation showed that Qwen3-VL 2B + Qwen3-VL 8B on one 24GB Blackwell card and Granite + text + visual embeddings on the second card do not all fit as always-on services with useful KV cache, so the runtime contract is now always-on Qwen2B semantic + Granite core plus sequential/on-demand HQ Qwen, text embeddings, and visual embeddings.
+**Architecture:** Docker Compose owns physical GPU placement with explicit device reservations; each container sees exactly one GPU and uses inside-container `CUDA_VISIBLE_DEVICES=0`. Model launch scripts expose memory/context/concurrency knobs without hardcoding oversized defaults, and the GPU smoke waits for first-load readiness before forcing inference probes. Live GPU validation showed that the initial profiles over-reserved KV cache. The runtime contract is now co-resident Blackwell VLM services: Qwen3-VL 2B semantic + Qwen3-VL 8B HQ/rescue on GPU0, Granite 4.0 3B Vision + Qwen3-VL-Embedding 2B on GPU1, with Qwen3-Embedding-4B text embeddings treated as RTX 3090/offload/on-demand until cross-node serving is wired.
 
 **Tech Stack:** Docker Compose GPU reservations, NVIDIA Container Toolkit, voipmonitor/vLLM cu130, vLLM OpenAI-compatible server, Qwen3-VL, Granite 4.0 Vision, Hugging Face TEI, pytest.
 
@@ -96,12 +96,13 @@ Do not accept container health alone. The script must still run `scripts/gpu/pro
 
 - [x] **Step 3: Keep model-backed corpus evidence explicit**
 
-- [x] **Step 4: Add sequential managed smoke mode**
+- [x] **Step 4: Add managed smoke mode**
 
 The smoke script now supports `STRUCTURA_MODEL_SMOKE_MANAGE_COMPOSE=1` to validate
-always-on core services first, Qwen3-VL 8B HQ/rescue second, and visual embeddings
-third. This preserves truthful validation without pretending all 24GB-card model
-surfaces are safely co-resident.
+co-resident Blackwell VLM services first, temporarily offload GPU1 VLM services
+for Qwen3-Embedding-4B text embedding validation, and then restore the VLM services.
+This preserves truthful validation without pretending all five model surfaces fit
+with hardened safety margins on two 24GB Blackwell cards.
 
 Do not fabricate a corpus manifest. Keep `scripts/run_model_corpus.py --require-model-backed`; if the private manifest is absent, the smoke gate must report that as a real remaining blocker.
 

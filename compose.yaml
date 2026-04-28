@@ -391,8 +391,8 @@ services:
       STRUCTURA_VLLM_PORT: "8104"
       STRUCTURA_VLLM_DTYPE: bfloat16
       STRUCTURA_VLLM_MAX_MODEL_LEN: "32768"
-      STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION: "0.55"
-      STRUCTURA_VLLM_MAX_NUM_SEQS: "8"
+      STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION: "0.46"
+      STRUCTURA_VLLM_MAX_NUM_SEQS: "4"
       STRUCTURA_VLLM_MM_PROCESSOR_CACHE_GB: "0"
       STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT: '{"image":4,"video":0}'
     deploy:
@@ -424,9 +424,9 @@ services:
       STRUCTURA_VLLM_SERVED_MODEL_NAME: Qwen/Qwen3-VL-8B-Instruct
       STRUCTURA_VLLM_PORT: "8100"
       STRUCTURA_VLLM_MAX_MODEL_LEN: "32768"
-      STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION: "0.65"
+      STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION: "0.54"
       STRUCTURA_VLLM_KV_CACHE_DTYPE: fp8
-      STRUCTURA_VLLM_MAX_NUM_SEQS: "8"
+      STRUCTURA_VLLM_MAX_NUM_SEQS: "4"
       STRUCTURA_VLLM_MM_PROCESSOR_CACHE_GB: "0"
       STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT: '{"image":1,"video":0}'
     deploy:
@@ -436,7 +436,7 @@ services:
             - driver: nvidia
               device_ids: ["${STRUCTURA_MODEL_QWEN_GPU:-0}"]
               capabilities: [gpu]
-    profiles: ["qwen-hq-live"]
+    profiles: ["models-live", "qwen-hq-live"]
 
   model-granite:
     <<: *live-model-runtime
@@ -458,8 +458,8 @@ services:
       STRUCTURA_GRANITE_ADAPTER_PATH: ibm-granite/granite-4.0-3b-vision
       STRUCTURA_GRANITE_PORT: "8101"
       STRUCTURA_GRANITE_MAX_MODEL_LEN: "32768"
-      STRUCTURA_GRANITE_GPU_MEMORY_UTILIZATION: "0.60"
-      STRUCTURA_GRANITE_MAX_NUM_SEQS: "8"
+      STRUCTURA_GRANITE_GPU_MEMORY_UTILIZATION: "0.50"
+      STRUCTURA_GRANITE_MAX_NUM_SEQS: "4"
       STRUCTURA_GRANITE_LIMIT_MM_PER_PROMPT: '{"image":1,"video":0}'
     deploy:
       resources:
@@ -519,8 +519,8 @@ services:
       STRUCTURA_VLLM_PORT: "8103"
       STRUCTURA_VLLM_DTYPE: bfloat16
       STRUCTURA_VLLM_MAX_MODEL_LEN: "4096"
-      STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION: "0.55"
-      STRUCTURA_VLLM_MAX_NUM_SEQS: "8"
+      STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION: "0.25"
+      STRUCTURA_VLLM_MAX_NUM_SEQS: "4"
       STRUCTURA_VLLM_MM_PROCESSOR_CACHE_GB: "0"
       STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT: '{"image":1,"video":0}'
     deploy:
@@ -530,7 +530,7 @@ services:
             - driver: nvidia
               device_ids: ["${STRUCTURA_MODEL_VISUAL_EMBED_GPU:-1}"]
               capabilities: [gpu]
-    profiles: ["visual-embed-live"]
+    profiles: ["models-live", "visual-embed-live"]
 
   redis:
     image: redis:7-alpine
