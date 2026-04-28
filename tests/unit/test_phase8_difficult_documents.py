@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+
 from lib.contracts import SearchRequest
 from lib.documents.quality import (
     PageQualityInput,
@@ -7,7 +9,11 @@ from lib.documents.quality import (
     summarize_document_quality,
 )
 from lib.search.benchmark import BenchmarkCase, evaluate_ranked_results, summarize_results
-from lib.search.embedding_gateway import default_visual_embedding_profile
+from lib.search.embedding_gateway import (
+    DeterministicVisualEmbeddingGateway,
+    VisualEmbeddingInput,
+    default_visual_embedding_profile,
+)
 from lib.search.hybrid import RankedCandidate, reciprocal_rank_fusion
 from lib.search.query import parse_search_request
 from workers.embeddings.worker import EmbeddingWorkerError, _modalities_for_job
@@ -101,9 +107,40 @@ def test_search_contract_supports_explicit_visual_retrieval_policy() -> None:
 def test_visual_embedding_profile_uses_phase8_dimension_and_modality() -> None:
     profile = default_visual_embedding_profile(1024)
 
-    assert profile.name == "structura-fixture-visual-embedding"
+    assert profile.name == "structura-local-visual-byte-embedding"
     assert profile.modality == "visual"
     assert profile.dimensions == 1024
+
+
+def test_visual_embedding_gateway_depends_on_image_bytes_not_metadata_only() -> None:
+    profile = default_visual_embedding_profile(32)
+    gateway = DeterministicVisualEmbeddingGateway(profile)
+    first_bytes = b"<svg><text>first visual content</text></svg>"
+    second_bytes = b"<svg><text>different visual content</text></svg>"
+
+    first = gateway.embed_assets(
+        [
+            VisualEmbeddingInput(
+                descriptor_text="handwritten degraded page",
+                image_bytes=first_bytes,
+                mime_type="image/svg+xml",
+                content_sha256=hashlib.sha256(first_bytes).hexdigest(),
+            )
+        ]
+    )[0]
+    second = gateway.embed_assets(
+        [
+            VisualEmbeddingInput(
+                descriptor_text="handwritten degraded page",
+                image_bytes=second_bytes,
+                mime_type="image/svg+xml",
+                content_sha256=hashlib.sha256(second_bytes).hexdigest(),
+            )
+        ]
+    )[0]
+
+    assert first.values != second.values
+    assert first.profile.name == "structura-local-visual-byte-embedding"
 
 
 def test_visual_embedding_jobs_reject_unknown_modalities() -> None:

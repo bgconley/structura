@@ -4,6 +4,7 @@ from typing import Any, TypeAlias, cast
 from uuid import UUID
 
 from lib.documents.access_policy import DocumentAccessContext, document_read_access_params
+from lib.relationships.visibility_sql import readable_counterpart_params
 
 Row: TypeAlias = dict[str, Any]
 
@@ -180,6 +181,15 @@ def smart_view_counts(cur: Any, *, access: DocumentAccessContext) -> dict[str, i
               SELECT 1 FROM document_relationships dr
               WHERE d.id IN (dr.from_document_id, dr.to_document_id)
                 AND dr.status = 'suggested'
+                AND document_is_readable(
+                  CASE
+                    WHEN dr.from_document_id = d.id THEN dr.to_document_id
+                    ELSE dr.from_document_id
+                  END,
+                  %s,
+                  %s,
+                  %s
+                )
             )
           )::int AS relationship_suggestions,
           COUNT(*) FILTER (WHERE d.review_status = 'needs_review')::int AS needs_review,
@@ -190,6 +200,15 @@ def smart_view_counts(cur: Any, *, access: DocumentAccessContext) -> dict[str, i
                 SELECT 1 FROM document_relationships dr
                 WHERE d.id IN (dr.from_document_id, dr.to_document_id)
                   AND dr.status IN ('suggested', 'confirmed')
+                  AND document_is_readable(
+                    CASE
+                      WHEN dr.from_document_id = d.id THEN dr.to_document_id
+                      ELSE dr.from_document_id
+                    END,
+                    %s,
+                    %s,
+                    %s
+                  )
               )
           )::int AS unmatched_medical_docs
         FROM documents d
@@ -197,7 +216,12 @@ def smart_view_counts(cur: Any, *, access: DocumentAccessContext) -> dict[str, i
           AND d.deleted_at IS NULL
           AND document_is_readable(d.id, %s, %s, %s)
         """,
-        (access.household_id, *params),
+        (
+            *readable_counterpart_params(access),
+            *readable_counterpart_params(access),
+            access.household_id,
+            *params,
+        ),
     )
     row = cur.fetchone() or {}
     return {key: int(row.get(key) or 0) for key in _SMART_VIEW_KEYS}

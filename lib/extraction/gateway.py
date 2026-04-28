@@ -29,15 +29,15 @@ class DoclingHeuristicGateway:
     ) -> GatewayExtraction:
         qwen_review_route = route_profile == "qwen_primary_review_required"
         route = ModelRoute(
-            source_engine="qwen3_vl_8b" if qwen_review_route else "docling",
+            source_engine="docling",
             model_name=(
-                "qwen3-vl-deterministic-handwriting-route"
+                "docling-heuristic-handwriting-review-route"
                 if qwen_review_route
                 else "docling-heuristic-extractor"
             ),
             model_version="phase8-v1" if qwen_review_route else "phase4-v1",
             prompt_version=(
-                "qwen-handwriting-review-required-v1"
+                "docling-handwriting-review-required-v1"
                 if qwen_review_route
                 else "no-prompt-deterministic-v1"
             ),
@@ -62,6 +62,8 @@ class DoclingHeuristicGateway:
                 "source": "docling_canonical_text",
                 "schema_name": schema_name,
                 "route_profile": route_profile,
+                "qwen_route_requested": qwen_review_route,
+                "qwen_model_invoked": False,
                 "normalized": normalized,
             },
         )
@@ -80,7 +82,9 @@ def _mark_qwen_review_required(payload: dict[str, object]) -> dict[str, object]:
         {
             "check": "phase8_handwriting_route",
             "status": "needs_review",
-            "message": "Qwen handwriting/degraded-document route defaults to human review.",
+            "message": (
+                "Qwen-eligible handwriting/degraded-document fallback defaults to human review."
+            ),
         }
     )
     normalized["validation"] = {**validation, "checks": checks}

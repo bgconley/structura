@@ -10,11 +10,8 @@ RUN useradd --create-home --uid 10001 structura \
     && mkdir -p /srv/structura \
     && chown -R structura:structura /app /srv/structura
 
-COPY apps/api/requirements.txt /tmp/api-requirements.txt
-COPY workers/docling/requirements.txt /tmp/docling-requirements.txt
-RUN pip install --no-cache-dir \
-    -r /tmp/api-requirements.txt \
-    -r /tmp/docling-requirements.txt
+COPY workers/docling/requirements.lock /tmp/docling-requirements.lock
+RUN pip install --no-cache-dir -r /tmp/docling-requirements.lock
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \

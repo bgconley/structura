@@ -67,7 +67,7 @@ def enqueue_visual_embed_document_job(
         force_reembed=force_reembed,
         modalities=("visual",),
         owner_types=("page", "asset"),
-        model_profile="structura-fixture-visual-embedding:v1",
+        model_profile="structura-local-visual-byte-embedding:v1",
         queue_name="visual-embeddings",
         priority=priority,
     )
@@ -75,7 +75,7 @@ def enqueue_visual_embed_document_job(
 
 def _model_profile_for_modalities(modalities: list[str]) -> str:
     if modalities == ["visual"]:
-        return "structura-fixture-visual-embedding:v1"
+        return "structura-local-visual-byte-embedding:v1"
     if "visual" in modalities:
-        return "structura-fixture-mixed-embedding:v1"
+        return "structura-local-mixed-text-visual-embedding:v1"
     return "structura-fixture-text-embedding:v1"

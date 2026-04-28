@@ -22,7 +22,14 @@ This directory contains the starting SQL baseline for the application.
 9. `065_pipeline_jobs_household_scope.sql`
 10. `066_folder_household_uniqueness.sql`
 11. `067_document_read_acl_function.sql`
-12. `070_query_examples.sql` (examples only; not required for boot)
+12. `068_phase4_extraction_review.sql`
+13. `069_phase5_search.sql`
+14. `071_phase5_search_guardrails.sql`
+15. `072_phase6_automation.sql`
+16. `073_phase7_relationships.sql`
+17. `074_phase7_deadline_status_waived.sql`
+
+`070_query_examples.sql` is examples only and is not required for boot.
 
 ## Important notes
 
@@ -33,6 +40,7 @@ This directory contains the starting SQL baseline for the application.
 - `066_folder_household_uniqueness.sql` intentionally replaces the original global folder-name index with household-scoped uniqueness for tenant isolation.
 - `067_document_read_acl_function.sql` centralizes document/asset read authorization for application queries.
 - JSON Schemas in `contracts/schemas/` and relational persistence in these SQL files are designed to coexist. The DB stores both normalized fields and the source JSON payload.
+- Keep this list synchronized with `lib/db/migrations.py`; the migration runner is the authoritative apply order.
 
 ## Source references
 

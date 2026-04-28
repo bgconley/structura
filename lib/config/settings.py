@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     session_cookie_secure: bool = False
     session_ttl_minutes: int = 60 * 24
     magic_link_ttl_minutes: int = 15
+    return_magic_link_tokens_for_tests: bool = False
     contracts_dir: Path = Path("contracts")
     database_dir: Path = Path("database")
     queue_transport: str = "pgmq"

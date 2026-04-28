@@ -8,11 +8,14 @@ from lib.config import get_settings
 from lib.db.connection import db_connection
 from lib.search.embedding_gateway import (
     DeterministicEmbeddingGateway,
+    DeterministicVisualEmbeddingGateway,
     EmbeddingProfile,
+    VisualEmbeddingInput,
     default_text_embedding_profile,
     default_visual_embedding_profile,
 )
 from lib.search.embedding_repository import (
+    EmbeddingSource,
     count_visual_eligible_pages_without_assets,
     list_text_embedding_sources,
     list_visual_embedding_sources,
@@ -20,6 +23,7 @@ from lib.search.embedding_repository import (
     persist_text_embedding,
     refresh_search_projection,
 )
+from lib.storage import ObjectStorage
 
 
 @dataclass(frozen=True)
@@ -41,7 +45,8 @@ class EmbeddingService:
         profile: EmbeddingProfile | None = None,
         gateway: DeterministicEmbeddingGateway | None = None,
         visual_profile: EmbeddingProfile | None = None,
-        visual_gateway: DeterministicEmbeddingGateway | None = None,
+        visual_gateway: DeterministicVisualEmbeddingGateway | None = None,
+        storage: ObjectStorage | None = None,
     ) -> None:
         settings = get_settings()
         self.profile = profile or default_text_embedding_profile(settings.embedding_text_dimensions)
@@ -49,8 +54,11 @@ class EmbeddingService:
         self.visual_profile = visual_profile or default_visual_embedding_profile(
             settings.embedding_visual_dimensions
         )
-        self.visual_gateway = visual_gateway or DeterministicEmbeddingGateway(self.visual_profile)
+        self.visual_gateway = visual_gateway or DeterministicVisualEmbeddingGateway(
+            self.visual_profile
+        )
         self.visual_enabled = settings.embedding_visual_enabled
+        self.storage = storage or ObjectStorage(settings=settings)
 
     def embed_document(
         self,
@@ -138,7 +146,9 @@ class EmbeddingService:
         if missing_assets:
             raise ValueError("Visual embedding requested before page image assets are available.")
         sources = list_visual_embedding_sources(cur, document_id)
-        embedded = self.visual_gateway.embed_texts([source.text for source in sources])
+        embedded = self.visual_gateway.embed_assets(
+            [_visual_embedding_input(self.storage, source) for source in sources]
+        )
         inserted_count = 0
         skipped_count = 0
         for source, embedding in zip(sources, embedded, strict=True):
@@ -152,3 +162,24 @@ class EmbeddingService:
             else:
                 skipped_count += 1
         return inserted_count, skipped_count, len(sources)
+
+
+def _visual_embedding_input(
+    storage: ObjectStorage, source: EmbeddingSource
+) -> VisualEmbeddingInput:
+    asset_uri = source.metadata.get("assetUri")
+    mime_type = source.metadata.get("assetMimeType")
+    if not isinstance(asset_uri, str) or not asset_uri:
+        raise ValueError("Visual embedding source is missing asset URI.")
+    if not isinstance(mime_type, str) or not mime_type.startswith("image/"):
+        raise ValueError("Visual embedding source must reference an image asset.")
+    image_path = storage.path_for_uri(asset_uri)
+    image_bytes = image_path.read_bytes()
+    if not image_bytes:
+        raise ValueError("Visual embedding source image asset is empty.")
+    return VisualEmbeddingInput(
+        descriptor_text=source.text,
+        image_bytes=image_bytes,
+        mime_type=mime_type,
+        content_sha256=source.content_sha256,
+    )

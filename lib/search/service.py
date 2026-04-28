@@ -9,6 +9,7 @@ from lib.documents.access_policy import DocumentAccessContext
 from lib.search import repository
 from lib.search.embedding_gateway import (
     DeterministicEmbeddingGateway,
+    DeterministicVisualEmbeddingGateway,
     EmbeddingProfile,
     default_text_embedding_profile,
     default_visual_embedding_profile,
@@ -52,7 +53,7 @@ class SearchService:
         embedding_profile: EmbeddingProfile | None = None,
         embedding_gateway: DeterministicEmbeddingGateway | None = None,
         visual_embedding_profile: EmbeddingProfile | None = None,
-        visual_embedding_gateway: DeterministicEmbeddingGateway | None = None,
+        visual_embedding_gateway: DeterministicVisualEmbeddingGateway | None = None,
     ) -> None:
         settings = get_settings()
         self.embedding_profile = embedding_profile or default_text_embedding_profile(
@@ -65,8 +66,9 @@ class SearchService:
             visual_embedding_profile
             or default_visual_embedding_profile(settings.embedding_visual_dimensions)
         )
-        self.visual_embedding_gateway = visual_embedding_gateway or DeterministicEmbeddingGateway(
-            self.visual_embedding_profile
+        self.visual_embedding_gateway = (
+            visual_embedding_gateway
+            or DeterministicVisualEmbeddingGateway(self.visual_embedding_profile)
         )
 
     def search(self, request: SearchRequest, *, access: DocumentAccessContext) -> SearchResponse:

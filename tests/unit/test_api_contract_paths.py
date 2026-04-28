@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
+from fastapi.testclient import TestClient
 
 from apps.api.structura_api.main import app
 
@@ -84,6 +85,26 @@ def test_deferred_placeholder_mutations_advertise_runtime_501_contract() -> None
         assert actual == expected, f"{method.upper()} {path} response status drift"
 
 
+def test_representative_contract_statuses_match_actual_http_behavior() -> None:
+    contract = yaml.safe_load(Path("contracts/api/openapi.yaml").read_text(encoding="utf-8"))
+    client = TestClient(app)
+    probes = [
+        ("get", "/api/v1/documents", None, "/api/v1/documents"),
+        ("get", "/api/v1/smart-views", None, "/api/v1/smart-views"),
+        ("post", "/api/v1/analysis-notes", {}, "/api/v1/analysis-notes"),
+        ("post", "/api/v1/exports", {}, "/api/v1/exports"),
+    ]
+
+    for method, actual_path, body, contract_path in probes:
+        response = (
+            getattr(client, method)(actual_path, json=body)
+            if body is not None
+            else getattr(client, method)(actual_path)
+        )
+        advertised = set(contract["paths"][contract_path][method].get("responses", {}))
+        assert str(response.status_code) in advertised
+
+
 def test_phase0_contract_skeleton_routes_are_protected() -> None:
     protected_paths = [
         "/api/v1/documents",
@@ -104,8 +125,6 @@ def test_phase0_contract_skeleton_routes_are_protected() -> None:
         "/api/v1/review-tasks",
         "/api/v1/admin/jobs",
     ]
-
-    from fastapi.testclient import TestClient
 
     client = TestClient(app)
     for path in protected_paths:

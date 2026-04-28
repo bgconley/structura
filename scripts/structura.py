@@ -48,9 +48,14 @@ def main() -> None:
     rebuild.add_argument("--no-force-reembed", action="store_true")
 
     subcommands.add_parser("evaluate", help="Run local benchmark guidance")
-    subcommands.add_parser(
+    backup_restore = subcommands.add_parser(
         "backup-restore-check",
         help="Non-destructive backup/restore readiness check",
+    )
+    backup_restore.add_argument(
+        "--rehearse",
+        action="store_true",
+        help="Run a disposable PostgreSQL migration and restore rehearsal.",
     )
 
     args = parser.parse_args()
@@ -72,6 +77,10 @@ def main() -> None:
     elif args.command == "evaluate":
         print("Run `python -m lib.search.benchmark` for the Phase 5/6 retrieval benchmark harness.")
     elif args.command == "backup-restore-check":
+        if args.rehearse:
+            from rehearse_backup_restore import main as rehearse_restore
+
+            raise SystemExit(rehearse_restore())
         _backup_restore_check()
 
 

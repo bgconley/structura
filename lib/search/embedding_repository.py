@@ -21,9 +21,12 @@ class EmbeddingSource:
     document_id: UUID
     text: str
     metadata: dict[str, object]
+    content_sha256_override: str | None = None
 
     @property
     def content_sha256(self) -> str:
+        if self.content_sha256_override:
+            return self.content_sha256_override.lower()
         return content_hash(self.text)
 
 
@@ -79,7 +82,9 @@ def list_visual_embedding_sources(cur: Any, document_id: UUID) -> list[Embedding
           d.original_filename,
           d.document_family::text AS document_family,
           a.sha256,
-          a.byte_size
+          a.byte_size,
+          a.uri,
+          a.mime_type
         FROM document_pages p
         JOIN documents d ON d.id = p.document_id
         JOIN document_assets a ON a.id = p.image_asset_id
@@ -105,8 +110,12 @@ def list_visual_embedding_sources(cur: Any, document_id: UUID) -> list[Embedding
                 "imageAssetId": str(row["image_asset_id"]),
                 "assetSha256": row["sha256"],
                 "assetByteSize": row["byte_size"],
+                "assetUri": row["uri"],
+                "assetMimeType": row["mime_type"],
                 "quality": row.get("quality_json") or {},
+                "embeddingAdapter": "deterministic_visual_byte_embedding",
             },
+            content_sha256_override=str(row["sha256"]),
         )
         for row in cur.fetchall()
     ]
@@ -220,7 +229,10 @@ def persist_embedding(
                 {
                     **source.metadata,
                     "contentSha256": source.content_sha256,
-                    "adapter": "deterministic_fixture",
+                    "adapter": source.metadata.get(
+                        "embeddingAdapter",
+                        "deterministic_text_fixture",
+                    ),
                 }
             ),
         ),

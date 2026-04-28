@@ -252,7 +252,7 @@ class AuthService:
                     )
             conn.commit()
         response: dict[str, Any] = {"accepted": True}
-        if settings.environment != "production" and user:
+        if settings.environment == "test" and settings.return_magic_link_tokens_for_tests and user:
             response["token"] = token
             response["expiresAt"] = expires_at.isoformat()
         return response

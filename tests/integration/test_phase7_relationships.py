@@ -128,6 +128,24 @@ def test_phase7_related_counts_do_not_reveal_hidden_counterparts(
     assert viewer_detail.json()["relatedCount"] == 0
     assert viewer_detail.json()["relationships"] == []
 
+    viewer_search = viewer.post(
+        "/api/v1/search",
+        json={"query": f"Visible Relationship Anchor {unique}", "mode": "lexical"},
+    )
+    assert viewer_search.status_code == 200
+    assert viewer_search.json()["items"]
+    assert viewer_search.json()["facets"]["relationshipTypes"].get("related_to", 0) == 0
+
+    _insert_suggested_relationship(
+        from_document_id=visible_id,
+        to_document_id=hidden_id,
+        relationship_type="attachment_to",
+    )
+    smart_views = viewer.get("/api/v1/smart-views")
+    assert smart_views.status_code == 200
+    counts = {item["key"]: item["count"] for item in smart_views.json()["items"]}
+    assert counts["relationship_suggestions"] == 0
+
 
 @pytest.mark.skipif(
     not os.environ.get("STRUCTURA_TEST_DATABASE_URL"),
@@ -344,6 +362,33 @@ def _relationship_count(left_id: str, right_id: str, relationship_type: str) -> 
             )
             row = cur.fetchone()
     return int(row["total"] if row else 0)
+
+
+def _insert_suggested_relationship(
+    *,
+    from_document_id: str,
+    to_document_id: str,
+    relationship_type: str,
+) -> None:
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO document_relationships
+                  (
+                    from_document_id,
+                    to_document_id,
+                    relationship_type,
+                    source_engine,
+                    confidence,
+                    evidence_json,
+                    status
+                  )
+                VALUES (%s, %s, %s, 'system', 0.72, '[]'::jsonb, 'suggested')
+                """,
+                (from_document_id, to_document_id, relationship_type),
+            )
+        conn.commit()
 
 
 def _enqueue_relate_job(document_id: str) -> None:

@@ -419,12 +419,12 @@ export function seededFieldCandidates(): FieldCandidate[] {
       fieldPath: "receipt.transaction.total",
       valueType: "money",
       value: {amount: 104.15, currency: "USD"},
-      sourceEngine: "qwen3_vl_8b",
+      sourceEngine: "docling",
       confidence: 0.68,
       status: "needs_review",
       evidence: [{
         pageNumber: 1,
-        sourceEngine: "qwen3_vl_8b",
+        sourceEngine: "docling",
         sourceText: "Handwritten total 104.15",
         bbox: [0.16, 0.2, 0.78, 0.34],
       }],
@@ -571,7 +571,7 @@ export function seededSearchResponse(
           sourceModalities: ["visual"],
           evidence: [{
             pageNumber: 1,
-            sourceEngine: "qwen3_vl_8b",
+            sourceEngine: "docling",
             sourceText: "Handwritten intake form requires review.",
             bbox: [0.16, 0.2, 0.78, 0.34],
           }],

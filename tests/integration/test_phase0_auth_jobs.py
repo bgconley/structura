@@ -72,7 +72,7 @@ def test_phase0_auth_session_protection_jobs_and_service_health(
     )
     assert magic.status_code == 202
     assert magic.json()["accepted"] is True
-    assert "token" in magic.json()
+    assert "token" not in magic.json()
 
     queue_name = f"phase0-{unique}"
     job_service = JobService()
@@ -130,6 +130,49 @@ def test_phase0_auth_session_protection_jobs_and_service_health(
     )
     assert logout.status_code == 204
     assert client.get("/api/v1/auth/session").status_code == 401
+
+
+@pytest.mark.skipif(
+    not os.environ.get("STRUCTURA_TEST_DATABASE_URL"),
+    reason="Set STRUCTURA_TEST_DATABASE_URL to run live Phase 0 auth/job tests.",
+)
+def test_phase0_magic_link_tokens_require_explicit_test_only_opt_in(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database_url = os.environ["STRUCTURA_TEST_DATABASE_URL"]
+    monkeypatch.setenv("STRUCTURA_DATABASE_URL", database_url)
+    monkeypatch.setenv("STRUCTURA_ENV", "development")
+    monkeypatch.delenv("STRUCTURA_RETURN_MAGIC_LINK_TOKENS_FOR_TESTS", raising=False)
+    get_settings.cache_clear()
+
+    unique = uuid.uuid4().hex[:12]
+    email = f"phase0-magic-{unique}@example.com"
+    AuthService().bootstrap_admin(
+        email=email,
+        password="minimum8",
+        display_name="Phase 0 Magic Admin",
+        household_name=f"Phase 0 Magic {unique}",
+        must_rotate=False,
+    )
+    client = TestClient(create_app())
+
+    default_response = client.post(
+        "/api/v1/auth/magic-links",
+        json={"email": email, "purpose": "bootstrap"},
+    )
+    assert default_response.status_code == 202
+    assert default_response.json() == {"accepted": True}
+
+    monkeypatch.setenv("STRUCTURA_ENV", "test")
+    monkeypatch.setenv("STRUCTURA_RETURN_MAGIC_LINK_TOKENS_FOR_TESTS", "true")
+    get_settings.cache_clear()
+    test_response = client.post(
+        "/api/v1/auth/magic-links",
+        json={"email": email, "purpose": "bootstrap"},
+    )
+    assert test_response.status_code == 202
+    assert test_response.json()["accepted"] is True
+    assert test_response.json()["token"]
 
 
 @pytest.mark.skipif(

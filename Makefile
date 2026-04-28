@@ -4,11 +4,11 @@ SEMGREP ?= $(shell $(PYTHON) -c 'import shutil, sysconfig; print(shutil.which("s
 PYRIGHT_PYTHON ?= $(shell command -v $(PYTHON) 2>/dev/null || printf '%s' '$(PYTHON)')
 export PYTHONPATH := $(CURDIR)
 
-.PHONY: bootstrap test integration-test lint format contracts sast migrate api-dev web-dev compose-up worker-placeholder
+.PHONY: bootstrap test integration-test lint format contracts sast migrate golden-corpus backup-restore-rehearsal release-readiness api-dev web-dev compose-up worker-placeholder
 
 bootstrap:
-	$(PYTHON) -m pip install -r apps/api/requirements.txt
-	$(PYTHON) -m pip install -e ".[dev]"
+	$(PYTHON) -m pip install -r requirements-dev.lock
+	$(PYTHON) -m pip install -e . --no-deps
 	$(NPM) install
 
 test:
@@ -33,6 +33,14 @@ format:
 
 contracts:
 	$(PYTHON) scripts/validate_contracts.py
+
+golden-corpus:
+	$(PYTHON) scripts/run_golden_corpus.py
+
+backup-restore-rehearsal:
+	$(PYTHON) scripts/rehearse_backup_restore.py
+
+release-readiness: contracts golden-corpus backup-restore-rehearsal
 
 migrate:
 	$(PYTHON) scripts/migrate.py

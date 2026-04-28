@@ -118,6 +118,10 @@ def test_phase8_low_text_handwriting_gets_review_task_visual_embedding_and_visua
         worker_name="phase8-visual-embedding-test",
     )
     assert _active_embedding_count(document_id, modality="visual") == 1
+    visual_metadata = _active_embedding_metadata(document_id, modality="visual")
+    assert visual_metadata["adapter"] == "deterministic_visual_byte_embedding"
+    assert visual_metadata["contentSha256"] == visual_metadata["assetSha256"]
+    assert visual_metadata["sourceBytesSha256"] == visual_metadata["assetSha256"]
 
     detail = client.get(f"/api/v1/documents/{document_id}")
     assert detail.status_code == 200
@@ -194,7 +198,7 @@ def test_phase8_handwriting_invoice_uses_qwen_route_and_stays_review_required(
     assert candidates.status_code == 200
     assert candidates.json()["items"]
     total_candidate = candidates.json()["items"][0]
-    assert total_candidate["sourceEngine"] == "qwen3_vl_8b"
+    assert total_candidate["sourceEngine"] == "docling"
     assert total_candidate["status"] == "needs_review"
 
     canonical = client.get(f"/api/v1/documents/{document_id}/canonical-fields")
@@ -326,6 +330,26 @@ def _active_embedding_count(document_id: uuid.UUID, *, modality: str) -> int:
             )
             row = cur.fetchone()
     return int(row["total"] if row else 0)
+
+
+def _active_embedding_metadata(document_id: uuid.UUID, *, modality: str) -> dict[str, object]:
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT metadata_json
+                FROM embeddings
+                WHERE document_id = %s
+                  AND modality = %s
+                  AND is_active
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                (document_id, modality),
+            )
+            row = cur.fetchone()
+    assert row
+    return dict(row["metadata_json"] or {})
 
 
 def _result_for_document(

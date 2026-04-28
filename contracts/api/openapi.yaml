@@ -1377,6 +1377,10 @@ paths:
       responses:
         '501':
           description: Analysis notes are implemented in Phase 9.
+        '401':
+          description: Not authenticated
+        '403':
+          description: CSRF token missing or invalid
         '422':
           description: Validation error
   /api/v1/exports:
@@ -1387,6 +1391,10 @@ paths:
       responses:
         '501':
           description: Exports are implemented in Phase 10.
+        '401':
+          description: Not authenticated
+        '403':
+          description: CSRF token missing or invalid
         '422':
           description: Validation error
   /api/v1/jobs/{jobId}:

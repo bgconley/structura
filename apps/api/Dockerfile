@@ -10,8 +10,8 @@ RUN useradd --create-home --uid 10001 structura \
     && mkdir -p /srv/structura \
     && chown -R structura:structura /app /srv/structura
 
-COPY apps/api/requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+COPY apps/api/requirements.lock /tmp/requirements.lock
+RUN pip install --no-cache-dir -r /tmp/requirements.lock
 
 COPY --chown=structura:structura . /app
 

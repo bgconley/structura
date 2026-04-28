@@ -22,7 +22,7 @@ This repository is now implemented through Phase 8:
 - Phase 5 lexical, semantic, and hybrid corpus search; search projection refresh; deterministic text embeddings; embedding worker; facets; saved searches; smart-folder execution; and Corpus Search UI
 - Phase 6 contacts, aliases, document-contact links, duplicate merge suggestions, watched-folder PDF intake, filing rules, dry-run explanations, reviewable filing suggestions, operator maintenance CLI commands, and Automation Workbench UI
 - Phase 7 document relationships, relationship suggestions, accept/reject review actions, relationship worker, related-document Viewer panel, timelines, deadlines, relationship/deadline search filters, smart views, and Relationships/Timelines UI
-- Phase 8 difficult-document quality detection, review-required uncertainty, selective visual embeddings, Qwen handwriting routing, visual/hybrid retrieval policy, and difficult-document Viewer/Search/Review cues
+- Phase 8 difficult-document quality detection, review-required uncertainty, selective local visual byte embeddings, Qwen-eligible handwriting fallback with honest Docling provenance until a real Qwen adapter is configured, visual/hybrid retrieval policy, and difficult-document Viewer/Search/Review cues
 
 ## Local Commands
 
@@ -31,6 +31,7 @@ make bootstrap
 make test
 make integration-test
 make contracts
+make golden-corpus
 make api-dev
 make web-dev
 ```
@@ -43,6 +44,8 @@ docker compose up postgres api web
 
 The default Postgres image is pinned to `paradedb/paradedb:0.21.5-pg17` to match the Phase 0 PostgreSQL 17 baseline. Do not use `latest` unless the mount strategy and extension compatibility have been reviewed.
 
+Python runtime and validation dependencies are locked for Linux in `apps/api/requirements.lock`, `workers/docling/requirements.lock`, and `requirements-dev.lock`. Regenerate them intentionally with `uv pip compile --python-platform linux ...` during dependency update work rather than allowing CI or Docker builds to resolve open-ended ranges.
+
 For phase gates, the GPU node is canonical. Push the repo, pull it at `/tank/repos/structura` on `bgconley@10.25.0.50`, use `/tank/venvs/structura` for Python validation, and use pinned container images for web lint/build rather than host Node/npm. Live Playwright tests should target the GPU-hosted web service with:
 
 ```bash
@@ -51,7 +54,9 @@ STRUCTURA_E2E_LIVE=1 npx playwright test tests/e2e/phase1-live.spec.ts tests/e2e
 
 Use `make integration-test` for DB-backed integration validation. It creates a disposable migrated database from `STRUCTURA_INTEGRATION_BASE_DATABASE_URL`, runs `tests/integration`, and drops the database afterward so test fixtures do not pollute the canonical runtime DB.
 
-Model placeholders are behind a profile:
+Use `make golden-corpus` for the sanitized deterministic benchmark manifest. Use `python scripts/run_golden_corpus.py --require-model-backed --manifest <path>` for model-backed release-candidate corpus evidence once real model adapters are configured. Use `make backup-restore-rehearsal` with `STRUCTURA_INTEGRATION_BASE_DATABASE_URL` to run a disposable PostgreSQL migration/restore rehearsal.
+
+Model placeholders are behind a profile. They are health placeholders only; they do not provide Qwen, Granite, or embedding inference:
 
 ```bash
 docker compose --profile models up model-qwen model-granite model-embed
@@ -117,6 +122,7 @@ The baseline migration runner applies:
 14. `database/071_phase5_search_guardrails.sql`
 15. `database/072_phase6_automation.sql`
 16. `database/073_phase7_relationships.sql`
+17. `database/074_phase7_deadline_status_waived.sql`
 
 `database/070_query_examples.sql` is intentionally excluded from default migration execution.
 

@@ -10,6 +10,7 @@ from psycopg import sql
 
 from lib.db.connection import db_connection
 from lib.documents.access_policy import DocumentAccessContext, document_read_access_params
+from lib.relationships.visibility_sql import READABLE_COUNTERPART_SQL, readable_counterpart_params
 from lib.search.embedding_gateway import vector_literal
 from lib.search.query import SearchFilters
 
@@ -45,9 +46,17 @@ def lexical_search(
         return _lexical_fallback_search(access=access, query=query, filters=filters, limit=limit)
 
 
-def _search_sql(template: LiteralString, *, where_sql: str) -> Any:
+def _search_sql(
+    template: LiteralString,
+    *,
+    where_sql: str,
+    readable_counterpart_sql: str = "",
+) -> Any:
     # where_sql is assembled only from fixed predicates in _document_filter_sql.
-    return sql.SQL(template).format(where_sql=sql.SQL(cast(LiteralString, where_sql)))
+    return sql.SQL(template).format(
+        where_sql=sql.SQL(cast(LiteralString, where_sql)),
+        readable_counterpart_sql=sql.SQL(cast(LiteralString, readable_counterpart_sql)),
+    )
 
 
 def semantic_search(
@@ -230,14 +239,16 @@ def facet_counts(
                 JOIN document_relationships dr ON d.id IN (dr.from_document_id, dr.to_document_id)
                 LEFT JOIN document_primary_amounts_v a ON a.document_id = d.id
                 WHERE dr.status <> 'rejected'
+                  {readable_counterpart_sql}
                   AND {where_sql}
                 GROUP BY dr.relationship_type::text
                 ORDER BY total DESC, value
                 LIMIT 20
                 """,
                     where_sql=where_sql,
+                    readable_counterpart_sql=READABLE_COUNTERPART_SQL,
                 ),
-                params,
+                [*readable_counterpart_params(access), *params],
             )
             relationship_rows = cur.fetchall()
             cur.execute(

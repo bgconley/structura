@@ -1,0 +1,33 @@
+{
+  "version": "phase8-sanitized-v1",
+  "fixtureType": "sanitized_deterministic",
+  "description": "Sanitized Phase 8 benchmark manifest for CI-safe low-text and handwriting retrieval checks.",
+  "thresholds": {
+    "hitRateAtK": 1.0,
+    "meanReciprocalRank": 0.75
+  },
+  "cases": [
+    {
+      "name": "phase8-handwriting-visual-retrieval",
+      "query": {
+        "query": "handwritten degraded warranty form",
+        "mode": "visual",
+        "includeVisual": true
+      },
+      "expectedDocumentIds": ["doc-handwritten"],
+      "returnedDocumentIds": ["doc-hidden-by-acl", "doc-handwritten", "doc-other"],
+      "k": 3
+    },
+    {
+      "name": "phase8-normal-text-hybrid-regression",
+      "query": {
+        "query": "invoice total balance due",
+        "mode": "hybrid",
+        "includeVisual": false
+      },
+      "expectedDocumentIds": ["doc-invoice"],
+      "returnedDocumentIds": ["doc-invoice", "doc-handwritten"],
+      "k": 3
+    }
+  ]
+}
