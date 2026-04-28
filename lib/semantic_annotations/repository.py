@@ -198,7 +198,6 @@ def load_semantic_extraction_task(region_id: UUID) -> SemanticExtractionTask:
                 JOIN document_semantic_annotations a ON a.id = r.annotation_id
                 WHERE r.id = %s
                   AND a.status = 'succeeded'
-                  AND a.is_current
                 """,
                 (region_id,),
             )

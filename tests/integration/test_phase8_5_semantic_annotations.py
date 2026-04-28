@@ -19,6 +19,7 @@ from lib.semantic_annotations.models import (
 from lib.semantic_annotations.policy import SemanticAnnotationValidationError
 from lib.semantic_annotations.repository import (
     load_current_manifest,
+    load_semantic_extraction_task,
     persist_semantic_manifest,
 )
 from lib.semantic_annotations.service import SemanticAnnotationService
@@ -73,6 +74,53 @@ def test_phase8_5_semantic_manifest_supersedes_current_and_persists_grounded_reg
             row = cur.fetchone()
             assert row["status"] == "superseded"
             assert row["is_current"] is False
+
+
+@pytest.mark.skipif(
+    not os.environ.get("STRUCTURA_TEST_DATABASE_URL"),
+    reason="Set STRUCTURA_TEST_DATABASE_URL to run live Phase 8.5 semantic annotation tests.",
+)
+def test_phase8_5_semantic_extraction_task_loads_superseded_annotation_region() -> None:
+    document_id, household_id, page_id, element_id, table_id = _create_parsed_document()
+    first = _manifest(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        element_id=element_id,
+        table_id=table_id,
+        model_version="v1",
+    )
+    second = _manifest(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        element_id=element_id,
+        table_id=table_id,
+        model_version="v2",
+    )
+
+    first_id = persist_semantic_manifest(first)
+    persist_semantic_manifest(second)
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id
+                FROM semantic_region_annotations
+                WHERE annotation_id = %s
+                  AND granite_task = 'tables_json'
+                ORDER BY created_at ASC
+                LIMIT 1
+                """,
+                (first_id,),
+            )
+            first_region_id = cur.fetchone()["id"]
+
+    task = load_semantic_extraction_task(first_region_id)
+
+    assert task.annotation_id == first_id
+    assert task.region_id == first_region_id
+    assert task.target_schema == "medical_eob"
 
 
 @pytest.mark.skipif(
