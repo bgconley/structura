@@ -26,6 +26,8 @@ CONTROLLED_WORKERS = (
     "worker-embeddings",
     "worker-visual-embeddings",
 )
+CORPUS_RUN_ID = "phase8_5_private_corpus"
+CORPUS_REQUESTED_BY = "agent"
 
 
 def main() -> int:
@@ -66,7 +68,7 @@ def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run private PDFs through Phase 8.5 live VLMs.")
     parser.add_argument("--pdf", action="append", type=Path, required=True)
     parser.add_argument("--title-prefix", default="Phase 8.5 Private Corpus")
-    parser.add_argument("--requested-by", default="phase8_5_private_corpus")
+    parser.add_argument("--requested-by", default=CORPUS_REQUESTED_BY)
     parser.add_argument("--household-id", type=UUID)
     parser.add_argument("--user-id", type=UUID)
     parser.add_argument("--docling-timeout-seconds", type=int, default=1800)
@@ -134,11 +136,11 @@ def _ingest_pdf(
         "        declared_mime_type='application/pdf',\n"
         "        supplied_title=f'{title_prefix}: {path.stem}',\n"
         "        hints={\n"
-        "            'phase': 'phase8_5_private_corpus',\n"
+        f"            'phase': {CORPUS_RUN_ID!r},\n"
         "            'textEmbedder': 'skipped_by_request',\n"
         "            'sourcePath': str(path),\n"
         "        },\n"
-        "        requested_by='phase8_5_private_corpus',\n"
+        f"        requested_by={CORPUS_REQUESTED_BY!r},\n"
         "    ),\n"
         ")\n"
         "print(json.dumps({\n"
@@ -419,7 +421,7 @@ def _cancel_text_embedding_jobs(document_id: UUID) -> None:
                     finished_at = now(),
                     error_json = jsonb_build_object(
                       'message', 'Text embedding skipped for private Phase 8.5 corpus run.',
-                      'requested_by', 'phase8_5_private_corpus'
+                      'requested_by', %s
                     ),
                     updated_at = now()
                 WHERE document_id = %s
@@ -427,7 +429,7 @@ def _cancel_text_embedding_jobs(document_id: UUID) -> None:
                   AND job_type = 'embed'
                   AND status IN ('queued', 'failed')
                 """,
-                (document_id,),
+                (CORPUS_RUN_ID, document_id),
             )
         conn.commit()
 
