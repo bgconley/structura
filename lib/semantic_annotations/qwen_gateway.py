@@ -133,6 +133,22 @@ def _prompt(source: ExtractionSourceDocument) -> str:
         "parse authority. Return JSON only with pages[] and regions[] grounded to "
         "Docling page_id, element_id, or table_id whenever possible. Do not extract "
         "canonical facts; identify semantic regions and Granite extraction tasks. "
+        "Prefer this exact response shape: "
+        '{"normalized":{"document_type":"string","pages":[{"page_id":"uuid",'
+        '"page_number":1,"page_role":"string","document_type_hint":"string",'
+        '"extraction_usefulness":"none|low|medium|high|unknown",'
+        '"is_boilerplate":false,"has_structured_targets":true,"ambiguous":false,'
+        '"escalation_required":false,"reason":"string","confidence":0.0}],'
+        '"regions":[{"semantic_type":"document_header|billing_summary|payment_summary|'
+        "patient_responsibility_summary|covered_services_line_item_table|"
+        "invoice_line_item_table|receipt_line_item_table|tax_summary|legal_clause|"
+        'contact_block|signature_block|chart|figure|boilerplate|unmatched_region|unknown",'
+        '"priority":"low|medium|high|critical","granite_task":"kvp|tables_json|'
+        'tables_html|tables_otsl|chart2csv|chart2summary|chart2code|ignore",'
+        '"target_schema":"receipt|invoice|medical_eob","expected_fields":["string"],'
+        '"grounding":{"kind":"page|element|table|unmatched_region","page_id":"uuid",'
+        '"element_id":null,"table_id":null},"review_required":false,'
+        '"reason":"string","confidence":0.0}]},"confidence":{"overall":0.0}}. '
         "Docling context: "
         f"{json.dumps(context, sort_keys=True)}"
     )

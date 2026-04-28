@@ -98,6 +98,33 @@ def test_qwen_client_rejects_malformed_model_content() -> None:
         client.generate(_request())
 
 
+def test_qwen_client_accepts_direct_normalized_object_for_live_model_tolerance() -> None:
+    client = QwenVLClient(
+        profile=get_model_profile(QWEN_VL_PROFILE),
+        http_client_base_url="http://model-qwen:8100",
+        transport=httpx.MockTransport(
+            lambda _request: httpx.Response(
+                200,
+                json={
+                    "model": "Qwen/Qwen3-VL-8B-Instruct",
+                    "choices": [
+                        {
+                            "message": {
+                                "content": json.dumps({"fields": [{"name": "total", "value": 42}]})
+                            }
+                        }
+                    ],
+                },
+            )
+        ),
+    )
+
+    response = client.generate(_request())
+
+    assert response.normalized_json == {"fields": [{"name": "total", "value": 42}]}
+    assert response.confidence_json == {}
+
+
 def _request() -> VisionGenerateRequest:
     image_sha256 = hashlib.sha256(b"image-bytes").hexdigest()
     return VisionGenerateRequest(

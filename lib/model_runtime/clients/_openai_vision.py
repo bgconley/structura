@@ -119,10 +119,14 @@ def _structured_content(raw_text: str) -> tuple[dict[str, object], dict[str, obj
         raise ModelProtocolError("Vision model content is not valid JSON.") from exc
     if not isinstance(parsed, dict):
         raise ModelProtocolError("Vision model JSON content must be an object.")
-    normalized = parsed.get("normalized")
-    if not isinstance(normalized, dict):
-        raise ModelProtocolError("Vision model JSON content is missing normalized object.")
     confidence = parsed.get("confidence")
     if not isinstance(confidence, dict):
         confidence = {}
-    return normalized, confidence
+    normalized = parsed.get("normalized")
+    if isinstance(normalized, dict):
+        return normalized, confidence
+    direct_payload = dict(parsed)
+    direct_payload.pop("confidence", None)
+    if direct_payload:
+        return direct_payload, confidence
+    raise ModelProtocolError("Vision model JSON content is missing normalized object.")

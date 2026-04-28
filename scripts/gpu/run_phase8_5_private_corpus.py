@@ -1,0 +1,504 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import subprocess
+import sys
+import time
+from pathlib import Path
+from typing import Any
+from uuid import UUID
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+
+from lib.config import get_settings  # noqa: E402
+from lib.db.connection import db_connection  # noqa: E402
+from lib.documents.ingestion import (  # noqa: E402
+    DocumentIngestionRequest,
+    ingest_document_path,
+)
+from lib.semantic_annotations.jobs import enqueue_semantic_annotation_job  # noqa: E402
+from workers.embeddings.worker import process_next_embedding_job  # noqa: E402
+from workers.extraction.worker import process_next_extraction_job  # noqa: E402
+from workers.semantic_annotations.worker import (  # noqa: E402
+    process_next_semantic_annotation_job,
+)
+
+CONTROLLED_WORKERS = (
+    "worker-docling",
+    "worker-extraction",
+    "worker-semantic-annotations",
+    "worker-embeddings",
+    "worker-visual-embeddings",
+)
+
+
+def main() -> int:
+    args = _parse_args()
+    settings = get_settings()
+    if settings.model_mode == "fixture":
+        raise SystemExit("Refusing private corpus run with STRUCTURA_MODEL_MODE=fixture.")
+    owner = _resolve_owner(args.household_id, args.user_id)
+    if args.stop_workers:
+        _stop_controlled_workers()
+
+    summaries = []
+    for pdf_path in args.pdf:
+        document_id = _ingest_pdf(pdf_path, owner=owner, title_prefix=args.title_prefix)
+        _run_docling(document_id, timeout_seconds=args.docling_timeout_seconds)
+        _cancel_text_embedding_jobs(document_id)
+        _drain_semantic(document_id, label="smart")
+        _enqueue_high_quality_semantic(document_id, requested_by=args.requested_by)
+        _drain_semantic(document_id, label="high_quality")
+        _drain_extraction_and_rescue(document_id)
+        _cancel_text_embedding_jobs(document_id)
+        _drain_visual_embedding(document_id)
+        _cancel_text_embedding_jobs(document_id)
+        summary = _summarize_document(document_id)
+        summaries.append(summary)
+        print(json.dumps({"document_summary": summary}, sort_keys=True), flush=True)
+
+    report = {
+        "corpus": "phase8_5_private_documents",
+        "text_embedder": "skipped_by_request",
+        "documents": summaries,
+    }
+    print(json.dumps(report, indent=2, sort_keys=True))
+    return 0
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run private PDFs through Phase 8.5 live VLMs.")
+    parser.add_argument("--pdf", action="append", type=Path, required=True)
+    parser.add_argument("--title-prefix", default="Phase 8.5 Private Corpus")
+    parser.add_argument("--requested-by", default="phase8_5_private_corpus")
+    parser.add_argument("--household-id", type=UUID)
+    parser.add_argument("--user-id", type=UUID)
+    parser.add_argument("--docling-timeout-seconds", type=int, default=1800)
+    parser.add_argument("--no-stop-workers", dest="stop_workers", action="store_false")
+    parser.set_defaults(stop_workers=True)
+    return parser.parse_args()
+
+
+def _resolve_owner(household_id: UUID | None, user_id: UUID | None) -> tuple[UUID, UUID]:
+    if household_id and user_id:
+        return household_id, user_id
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT hm.household_id, hm.user_id
+                FROM household_memberships hm
+                JOIN users u ON u.id = hm.user_id
+                WHERE (%s::uuid IS NULL OR hm.household_id = %s)
+                  AND (%s::uuid IS NULL OR hm.user_id = %s)
+                  AND hm.role IN ('owner', 'admin')
+                  AND NOT u.is_disabled
+                ORDER BY hm.role = 'owner' DESC, hm.created_at ASC
+                LIMIT 1
+                """,
+                (household_id, household_id, user_id, user_id),
+            )
+            row = cur.fetchone()
+    if not row:
+        raise SystemExit("No owner/admin household membership found for private corpus run.")
+    return UUID(str(row["household_id"])), UUID(str(row["user_id"]))
+
+
+def _stop_controlled_workers() -> None:
+    command = ["docker", "compose", "stop", *CONTROLLED_WORKERS]
+    subprocess.run(command, cwd=ROOT, check=False)
+
+
+def _ingest_pdf(
+    pdf_path: Path,
+    *,
+    owner: tuple[UUID, UUID],
+    title_prefix: str,
+) -> UUID:
+    if not pdf_path.exists():
+        raise SystemExit(f"PDF does not exist: {pdf_path}")
+    household_id, user_id = owner
+    result = ingest_document_path(
+        pdf_path,
+        request=DocumentIngestionRequest(
+            household_id=household_id,
+            owner_user_id=user_id,
+            source="bulk_import",
+            filename=pdf_path.name,
+            declared_mime_type="application/pdf",
+            supplied_title=f"{title_prefix}: {pdf_path.stem}",
+            hints={
+                "phase": "phase8_5_private_corpus",
+                "textEmbedder": "skipped_by_request",
+                "sourcePath": str(pdf_path),
+            },
+            requested_by="phase8_5_private_corpus",
+        ),
+    )
+    print(
+        json.dumps(
+            {
+                "stage": "ingested",
+                "document_id": str(result.document_id),
+                "filename": pdf_path.name,
+                "sha256": result.sha256,
+            },
+            sort_keys=True,
+        ),
+        flush=True,
+    )
+    return result.document_id
+
+
+def _run_docling(document_id: UUID, *, timeout_seconds: int) -> None:
+    code = (
+        "from uuid import UUID\n"
+        "import sys\n"
+        "from workers.docling.worker import process_next_docling_job\n"
+        "ok = process_next_docling_job("
+        "worker_name='phase8-5-private-docling', document_id=UUID(sys.argv[1]))\n"
+        "raise SystemExit(0 if ok else 2)\n"
+    )
+    subprocess.run(
+        [
+            "docker",
+            "compose",
+            "run",
+            "--rm",
+            "--no-deps",
+            "worker-docling",
+            "python",
+            "-c",
+            code,
+            str(document_id),
+        ],
+        cwd=ROOT,
+        check=True,
+        timeout=timeout_seconds,
+    )
+    _require_no_failed_jobs(document_id, queue_name="docling")
+
+
+def _drain_semantic(document_id: UUID, *, label: str) -> None:
+    processed = _drain(
+        lambda: process_next_semantic_annotation_job(
+            worker_name=f"phase8-5-private-semantic-{label}",
+            document_id=document_id,
+        ),
+        max_jobs=8,
+    )
+    print(
+        json.dumps(
+            {"stage": f"semantic_{label}", "document_id": str(document_id), "jobs": processed},
+            sort_keys=True,
+        ),
+        flush=True,
+    )
+    _require_no_failed_jobs(document_id, queue_name="semantic-annotations")
+
+
+def _enqueue_high_quality_semantic(document_id: UUID, *, requested_by: str) -> None:
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            job_id = enqueue_semantic_annotation_job(
+                cur,
+                document_id=document_id,
+                quality_mode="high_quality",
+                requested_by=requested_by,
+                reason="phase8_5.private_corpus_high_quality_pass",
+                dedupe_existing=True,
+                priority=27,
+            )
+        conn.commit()
+    print(
+        json.dumps(
+            {
+                "stage": "high_quality_enqueued",
+                "document_id": str(document_id),
+                "job_id": str(job_id),
+            },
+            sort_keys=True,
+        ),
+        flush=True,
+    )
+
+
+def _drain_extraction_and_rescue(document_id: UUID) -> None:
+    extraction_jobs = 0
+    semantic_jobs = 0
+    for _ in range(12):
+        extracted = _drain(
+            lambda: process_next_extraction_job(
+                worker_name="phase8-5-private-extraction",
+                document_id=document_id,
+            ),
+            max_jobs=24,
+        )
+        semantic = _drain(
+            lambda: process_next_semantic_annotation_job(
+                worker_name="phase8-5-private-semantic-rescue",
+                document_id=document_id,
+            ),
+            max_jobs=8,
+        )
+        extraction_jobs += extracted
+        semantic_jobs += semantic
+        if extracted == 0 and semantic == 0:
+            break
+    print(
+        json.dumps(
+            {
+                "stage": "extraction",
+                "document_id": str(document_id),
+                "extraction_jobs": extraction_jobs,
+                "rescue_semantic_jobs": semantic_jobs,
+            },
+            sort_keys=True,
+        ),
+        flush=True,
+    )
+    _require_no_failed_jobs(document_id, queue_name="extraction")
+    _require_no_failed_jobs(document_id, queue_name="semantic-annotations")
+
+
+def _drain_visual_embedding(document_id: UUID) -> None:
+    processed = _drain(
+        lambda: process_next_embedding_job(
+            worker_name="phase8-5-private-visual-embeddings",
+            queue_name="visual-embeddings",
+            document_id=document_id,
+        ),
+        max_jobs=4,
+    )
+    print(
+        json.dumps(
+            {"stage": "visual_embeddings", "document_id": str(document_id), "jobs": processed},
+            sort_keys=True,
+        ),
+        flush=True,
+    )
+    _require_no_failed_jobs(document_id, queue_name="visual-embeddings")
+
+
+def _drain(process_one: Any, *, max_jobs: int) -> int:
+    count = 0
+    for _ in range(max_jobs):
+        if not process_one():
+            return count
+        count += 1
+    return count
+
+
+def _cancel_text_embedding_jobs(document_id: UUID) -> None:
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE pipeline_jobs
+                SET status = 'cancelled',
+                    finished_at = now(),
+                    error_json = jsonb_build_object(
+                      'message', 'Text embedding skipped for private Phase 8.5 corpus run.',
+                      'requested_by', 'phase8_5_private_corpus'
+                    ),
+                    updated_at = now()
+                WHERE document_id = %s
+                  AND queue_name = 'embeddings'
+                  AND job_type = 'embed'
+                  AND status IN ('queued', 'failed')
+                """,
+                (document_id,),
+            )
+        conn.commit()
+
+
+def _require_no_failed_jobs(document_id: UUID, *, queue_name: str) -> None:
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, job_type, status::text AS status, error_json
+                FROM pipeline_jobs
+                WHERE document_id = %s
+                  AND queue_name = %s
+                  AND status IN ('failed', 'dead_letter')
+                ORDER BY updated_at DESC
+                """,
+                (document_id, queue_name),
+            )
+            rows = cur.fetchall()
+    if rows:
+        raise SystemExit(
+            json.dumps(
+                {
+                    "document_id": str(document_id),
+                    "failed_queue": queue_name,
+                    "jobs": _json_safe(rows),
+                },
+                default=str,
+            )
+        )
+
+
+def _summarize_document(document_id: UUID) -> dict[str, Any]:
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                  d.id,
+                  d.title,
+                  d.original_filename,
+                  d.parse_status::text AS parse_status,
+                  d.document_family::text AS document_family,
+                  count(DISTINCT p.id) AS page_count,
+                  count(DISTINCT e.id) AS element_count,
+                  count(DISTINCT t.id) AS table_count,
+                  count(DISTINCT c.id) AS chunk_count
+                FROM documents d
+                LEFT JOIN document_pages p ON p.document_id = d.id
+                LEFT JOIN document_elements e ON e.document_id = d.id
+                LEFT JOIN document_tables t ON t.document_id = d.id
+                LEFT JOIN document_chunks c ON c.document_id = d.id
+                WHERE d.id = %s
+                GROUP BY d.id
+                """,
+                (document_id,),
+            )
+            document = cur.fetchone()
+            cur.execute(
+                """
+                SELECT
+                  quality_mode,
+                  profile_name,
+                  source_engine::text AS source_engine,
+                  model_name,
+                  status,
+                  review_required,
+                  (
+                    SELECT count(*)
+                    FROM semantic_region_annotations r
+                    WHERE r.annotation_id = a.id
+                  ) AS region_count
+                FROM document_semantic_annotations a
+                WHERE document_id = %s
+                  AND is_current
+                ORDER BY quality_mode, profile_name
+                """,
+                (document_id,),
+            )
+            semantic = cur.fetchall()
+            cur.execute(
+                """
+                SELECT
+                  schema_name,
+                  source_engine::text AS source_engine,
+                  model_name,
+                  prompt_version,
+                  status::text AS status,
+                  review_status::text AS review_status,
+                  count(*) AS run_count
+                FROM document_extractions
+                WHERE document_id = %s
+                GROUP BY
+                  schema_name,
+                  source_engine,
+                  model_name,
+                  prompt_version,
+                  status,
+                  review_status
+                ORDER BY schema_name, source_engine, model_name
+                """,
+                (document_id,),
+            )
+            extractions = cur.fetchall()
+            cur.execute(
+                """
+                SELECT source_engine::text AS source_engine, count(*) AS total
+                FROM field_candidates
+                WHERE document_id = %s
+                GROUP BY source_engine
+                ORDER BY source_engine
+                """,
+                (document_id,),
+            )
+            field_candidates = cur.fetchall()
+            cur.execute(
+                """
+                SELECT source_engine::text AS source_engine, count(*) AS total
+                FROM line_item_candidates
+                WHERE document_id = %s
+                GROUP BY source_engine
+                ORDER BY source_engine
+                """,
+                (document_id,),
+            )
+            line_candidates = cur.fetchall()
+            cur.execute(
+                """
+                SELECT
+                  model_name,
+                  model_version,
+                  modality::text AS modality,
+                  embedding_dimensions,
+                  metadata_json ->> 'adapter' AS adapter,
+                  count(*) AS total
+                FROM embeddings
+                WHERE document_id = %s
+                  AND is_active
+                GROUP BY model_name, model_version, modality, embedding_dimensions, adapter
+                ORDER BY modality, model_name
+                """,
+                (document_id,),
+            )
+            embeddings = cur.fetchall()
+            cur.execute(
+                """
+                SELECT
+                  queue_name,
+                  job_type::text AS job_type,
+                  status::text AS status,
+                  count(*) AS total
+                FROM pipeline_jobs
+                WHERE document_id = %s
+                GROUP BY queue_name, job_type, status
+                ORDER BY queue_name, job_type, status
+                """,
+                (document_id,),
+            )
+            jobs = cur.fetchall()
+    return {
+        "document": _json_safe(document or {}),
+        "semanticAnnotations": _json_safe(semantic),
+        "extractions": _json_safe(extractions),
+        "fieldCandidates": _json_safe(field_candidates),
+        "lineItemCandidates": _json_safe(line_candidates),
+        "embeddings": _json_safe(embeddings),
+        "jobs": _json_safe(jobs),
+    }
+
+
+def _json_safe(value: Any) -> Any:
+    if isinstance(value, list):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, tuple):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    if isinstance(value, UUID):
+        return str(value)
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return value
+
+
+if __name__ == "__main__":
+    started = time.monotonic()
+    try:
+        raise SystemExit(main())
+    finally:
+        elapsed = int(time.monotonic() - started)
+        print(json.dumps({"stage": "finished", "elapsed_seconds": elapsed}), flush=True)

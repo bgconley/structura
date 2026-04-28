@@ -120,7 +120,10 @@ def _prompt(
     base = (
         "Extract evidence-backed structured fields from the provided document page images. "
         f"Target schema: {schema_name}. Route profile: {route_profile}. "
-        "Use Docling text only as context; image evidence is authoritative for visual fields."
+        "Use Docling text only as context; image evidence is authoritative for visual fields. "
+        "Return JSON only in this shape: "
+        '{"normalized":{...target schema JSON...},"confidence":{"overall":0.0,'
+        '"schema_fit":0.0}}. Do not include Markdown fences or explanatory text.'
     )
     if semantic_task is None:
         return base

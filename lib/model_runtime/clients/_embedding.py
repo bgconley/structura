@@ -47,6 +47,12 @@ class EmbeddingHttpClient:
         except ModelProtocolError as exc:
             if "HTTP 404" not in str(exc) and "HTTP 405" not in str(exc):
                 raise
+            if self.requires_image and len(request.inputs) > 1:
+                return self._embed_openai_visual_inputs_individually(
+                    request,
+                    start_monotonic=start,
+                    input_hashes=input_hashes,
+                )
             response = self._http.post_json(
                 "/v1/embeddings",
                 self._openai_embedding_payload(request),
@@ -65,6 +71,47 @@ class EmbeddingHttpClient:
             vectors=vectors,
             input_sha256=input_hashes,
             latency_ms=max(0, int((time.monotonic() - start) * 1000)),
+        )
+
+    def _embed_openai_visual_inputs_individually(
+        self,
+        request: EmbeddingRequest,
+        *,
+        start_monotonic: float,
+        input_hashes: tuple[str, ...],
+    ) -> EmbeddingResponse:
+        vectors: list[tuple[float, ...]] = []
+        model_name: str | None = None
+        model_version = ""
+        for item in request.inputs:
+            single_request = EmbeddingRequest(
+                profile_name=request.profile_name,
+                inputs=(item,),
+                output_dimensions=request.output_dimensions,
+                timeout_seconds=request.timeout_seconds,
+            )
+            response = self._http.post_json(
+                "/v1/embeddings",
+                self._openai_embedding_payload(single_request),
+                timeout_seconds=request.timeout_seconds,
+            )
+            vectors.extend(
+                _vectors(
+                    response,
+                    dimensions=request.output_dimensions,
+                    count=1,
+                )
+            )
+            model_name = model_name or str(response.get("model") or self.profile.base_model)
+            model_version = model_version or str(response.get("model_version") or "")
+        return EmbeddingResponse(
+            profile_name=self.profile.name,
+            model_name=model_name or self.profile.base_model,
+            model_version=model_version,
+            dimensions=request.output_dimensions,
+            vectors=tuple(vectors),
+            input_sha256=input_hashes,
+            latency_ms=max(0, int((time.monotonic() - start_monotonic) * 1000)),
         )
 
     def _payload(self, request: EmbeddingRequest) -> tuple[dict[str, Any], tuple[str, ...]]:
