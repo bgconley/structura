@@ -25,6 +25,7 @@ BASELINE_SQL_FILES = (
     "074_phase7_deadline_status_waived.sql",
     "075_phase8_5_semantic_annotations.sql",
     "076_phase8_5_visual_embedding_2048.sql",
+    "077_phase8_5_semantic_type_constraint.sql",
 )
 
 
