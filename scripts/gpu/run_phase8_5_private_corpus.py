@@ -151,6 +151,7 @@ def _ingest_pdf(
         str(household_id),
         str(user_id),
         title_prefix,
+        volumes=(f"{pdf_path.parent}:{pdf_path.parent}:ro",),
     )
     print(
         json.dumps(
@@ -353,6 +354,7 @@ def _compose_python_json(
     *args: str,
     live_model_env: bool = False,
     timeout_seconds: int = 300,
+    volumes: tuple[str, ...] = (),
 ) -> dict[str, object]:
     result = _compose_python(
         service,
@@ -360,6 +362,7 @@ def _compose_python_json(
         *args,
         live_model_env=live_model_env,
         timeout_seconds=timeout_seconds,
+        volumes=volumes,
     )
     lines = [line for line in result.stdout.splitlines() if line.strip()]
     if not lines:
@@ -377,8 +380,11 @@ def _compose_python(
     check: bool = True,
     live_model_env: bool = False,
     timeout_seconds: int = 300,
+    volumes: tuple[str, ...] = (),
 ) -> subprocess.CompletedProcess[str]:
     command = ["docker", "compose", "run", "--rm", "--no-deps"]
+    for volume in volumes:
+        command.extend(["--volume", volume])
     if live_model_env:
         command.extend(
             [
