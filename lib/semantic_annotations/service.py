@@ -29,6 +29,12 @@ from lib.semantic_annotations.repository import (
     persist_semantic_manifest_with_cursor,
 )
 
+MAX_GRANITE_TASKS_BY_QUALITY_MODE = {
+    "smart": 4,
+    "high_quality": 8,
+    "rescue": 1,
+}
+
 
 class SemanticAnnotationGateway(Protocol):
     def annotate(
@@ -136,14 +142,7 @@ class SemanticAnnotationService:
         requested_by: str,
     ) -> list[UUID]:
         queued: list[UUID] = []
-        region_pairs = _region_pairs(manifest_result, persisted)
-        for region, region_id in region_pairs:
-            if not _should_enqueue_granite(region):
-                continue
-            target_schema = _target_schema_for_region(region, source)
-            if not target_schema:
-                continue
-            priority = _priority_for_region(region)
+        for spec in _granite_job_specs(source, manifest_result, persisted):
             job_id = uuid4()
             created_job = self.jobs.create_job(
                 job_id=job_id,
@@ -153,19 +152,19 @@ class SemanticAnnotationService:
                 payload=build_extract_document_job_payload(
                     job_id=job_id,
                     document_id=source.document_id,
-                    target_schema_name=target_schema,
+                    target_schema_name=spec.target_schema,
                     target_schema_version="v1",
                     route_profile="docling_plus_granite_structured",
                     requested_by=requested_by,
-                    priority=priority,
+                    priority=spec.priority,
                     semantic_annotation_id=persisted.annotation_id,
-                    semantic_region_id=region_id,
-                    semantic_granite_task=region.granite_task,
-                    semantic_type=region.semantic_type,
-                    semantic_expected_fields=region.expected_fields,
+                    semantic_region_id=spec.region_id,
+                    semantic_granite_task=spec.region.granite_task,
+                    semantic_type=spec.region.semantic_type,
+                    semantic_expected_fields=spec.region.expected_fields,
                     semantic_rescue=manifest_result.manifest.quality_mode == "rescue",
                 ),
-                priority=priority,
+                priority=spec.priority,
                 queue_name="extraction",
             )
             created_job_id = getattr(created_job, "job_id", None)
@@ -183,13 +182,7 @@ class SemanticAnnotationService:
         requested_by: str,
     ) -> list[UUID]:
         queued: list[UUID] = []
-        for region, region_id in _region_pairs(manifest_result, persisted):
-            if not _should_enqueue_granite(region):
-                continue
-            target_schema = _target_schema_for_region(region, source)
-            if not target_schema:
-                continue
-            priority = _priority_for_region(region)
+        for spec in _granite_job_specs(source, manifest_result, persisted):
             job_id = uuid4()
             create_job_with_cursor(
                 cur,
@@ -200,19 +193,19 @@ class SemanticAnnotationService:
                 payload=build_extract_document_job_payload(
                     job_id=job_id,
                     document_id=source.document_id,
-                    target_schema_name=target_schema,
+                    target_schema_name=spec.target_schema,
                     target_schema_version="v1",
                     route_profile="docling_plus_granite_structured",
                     requested_by=requested_by,
-                    priority=priority,
+                    priority=spec.priority,
                     semantic_annotation_id=persisted.annotation_id,
-                    semantic_region_id=region_id,
-                    semantic_granite_task=region.granite_task,
-                    semantic_type=region.semantic_type,
-                    semantic_expected_fields=region.expected_fields,
+                    semantic_region_id=spec.region_id,
+                    semantic_granite_task=spec.region.granite_task,
+                    semantic_type=spec.region.semantic_type,
+                    semantic_expected_fields=spec.region.expected_fields,
                     semantic_rescue=manifest_result.manifest.quality_mode == "rescue",
                 ),
-                priority=priority,
+                priority=spec.priority,
                 queue_name="extraction",
             )
             queued.append(job_id)
@@ -221,6 +214,15 @@ class SemanticAnnotationService:
 
 class SemanticAnnotationServiceError(Exception):
     pass
+
+
+@dataclass(frozen=True)
+class GraniteJobSpec:
+    region: SemanticRegionAnnotation
+    region_id: UUID
+    target_schema: str
+    priority: int
+    ordinal: int
 
 
 def default_semantic_annotation_gateway() -> SemanticAnnotationGateway:
@@ -259,6 +261,39 @@ def _priority_for_region(region: SemanticRegionAnnotation) -> int:
     if region.priority == "medium":
         return 38
     return 44
+
+
+def _granite_job_specs(
+    source: ExtractionSourceDocument,
+    manifest_result: SemanticAnnotationResult,
+    persisted: PersistedSemanticManifest,
+) -> tuple[GraniteJobSpec, ...]:
+    specs: list[GraniteJobSpec] = []
+    for ordinal, (region, region_id) in enumerate(_region_pairs(manifest_result, persisted)):
+        if not _should_enqueue_granite(region):
+            continue
+        target_schema = _target_schema_for_region(region, source)
+        if not target_schema:
+            continue
+        specs.append(
+            GraniteJobSpec(
+                region=region,
+                region_id=region_id,
+                target_schema=target_schema,
+                priority=_priority_for_region(region),
+                ordinal=ordinal,
+            )
+        )
+    limit = MAX_GRANITE_TASKS_BY_QUALITY_MODE.get(
+        manifest_result.manifest.quality_mode,
+        MAX_GRANITE_TASKS_BY_QUALITY_MODE["smart"],
+    )
+    return tuple(sorted(specs, key=_granite_job_sort_key)[:limit])
+
+
+def _granite_job_sort_key(spec: GraniteJobSpec) -> tuple[object, ...]:
+    confidence = spec.region.confidence if spec.region.confidence is not None else 0.0
+    return (spec.priority, -confidence, spec.ordinal)
 
 
 def _region_pairs(

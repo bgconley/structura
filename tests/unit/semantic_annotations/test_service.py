@@ -85,6 +85,74 @@ def test_semantic_service_does_not_queue_ignored_or_unmatched_regions() -> None:
     assert jobs.created == []
 
 
+def test_semantic_service_caps_high_quality_granite_fanout() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    region_ids = tuple(uuid4() for _ in range(12))
+    source = _source(document_id=document_id, household_id=household_id, page_id=page_id)
+    manifest = _manifest(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        quality_mode="high_quality",
+        region_count=12,
+    )
+    jobs = RecordingJobs()
+
+    result = SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
+            annotation_id=annotation_id,
+            region_ids=region_ids,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="high_quality", requested_by="system")
+
+    assert len(jobs.created) == 8
+    assert len(result.queued_granite_job_ids) == 8
+    assert (
+        [
+            job["payload"]["semantic_region_id"]  # type: ignore[index]
+            for job in jobs.created
+        ]
+        == [str(region_id) for region_id in region_ids[:8]]
+    )
+
+
+def test_semantic_service_caps_rescue_granite_fanout_to_single_retry() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    region_ids = tuple(uuid4() for _ in range(6))
+    source = _source(document_id=document_id, household_id=household_id, page_id=page_id)
+    manifest = _manifest(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        quality_mode="rescue",
+        region_count=6,
+    )
+    jobs = RecordingJobs()
+
+    result = SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
+            annotation_id=annotation_id,
+            region_ids=region_ids,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="rescue", requested_by="system")
+
+    assert len(jobs.created) == 1
+    assert result.queued_granite_job_ids == (jobs.created_job_id,)
+    assert jobs.created[0]["payload"]["semantic_rescue"] is True  # type: ignore[index]
+
+
 class StaticGateway:
     def __init__(self, manifest: DocumentSemanticManifest) -> None:
         self.manifest = manifest
@@ -152,11 +220,30 @@ def _manifest(
     household_id: UUID,
     page_id: UUID,
     granite_task: str = "tables_json",
+    quality_mode: str = "smart",
+    region_count: int = 1,
 ) -> DocumentSemanticManifest:
+    def expected_fields(index: int) -> tuple[str, ...]:
+        if region_count == 1:
+            return ("line_items", "total_amount")
+        return ("line_items", "total_amount", f"field_{index}")
+
+    regions = [
+        SemanticRegionAnnotation(
+            semantic_type="invoice_line_item_table",
+            priority="high",
+            granite_task=granite_task,
+            target_schema="invoice",
+            expected_fields=expected_fields(index),
+            grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+            confidence=0.9,
+        )
+        for index in range(region_count)
+    ]
     return DocumentSemanticManifest(
         document_id=document_id,
         household_id=household_id,
-        quality_mode="smart",
+        quality_mode=quality_mode,  # type: ignore[arg-type]
         profile_name="qwen3-vl-2b-semantic:v1",
         source_engine="qwen3_vl_2b",
         model_name="Qwen/Qwen3-VL-2B-Instruct",
@@ -170,17 +257,7 @@ def _manifest(
                 has_structured_targets=True,
             )
         ],
-        regions=[
-            SemanticRegionAnnotation(
-                semantic_type="invoice_line_item_table",
-                priority="high",
-                granite_task=granite_task,
-                target_schema="invoice",
-                expected_fields=("line_items", "total_amount"),
-                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
-                confidence=0.9,
-            )
-        ],
+        regions=regions,
         confidence={"overall": 0.9},
         manifest={"document_type": "invoice"},
         input_page_hashes=("c" * 64,),
