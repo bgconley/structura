@@ -1,6 +1,7 @@
 SET search_path TO structura, public;
 
 ALTER TYPE model_source_enum ADD VALUE IF NOT EXISTS 'qwen3_vl_2b';
+ALTER TYPE job_type_enum ADD VALUE IF NOT EXISTS 'semantic_annotate';
 
 CREATE TABLE IF NOT EXISTS document_semantic_annotations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

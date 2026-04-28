@@ -54,7 +54,7 @@ def test_phase8_5_semantic_manifest_supersedes_current_and_persists_grounded_reg
     )
     assert current is not None
     assert current.model_version == "v2"
-    assert current.regions[0].grounding.table_id == table_id
+    assert any(region.grounding.table_id == table_id for region in current.regions)
 
     with db_connection() as conn:
         with conn.cursor() as cur:

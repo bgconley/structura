@@ -109,4 +109,5 @@ def test_phase8_5_semantic_annotation_migration_is_baseline_migration() -> None:
     assert "CREATE TABLE IF NOT EXISTS document_semantic_annotations" in sql
     assert "CREATE TABLE IF NOT EXISTS page_semantic_annotations" in sql
     assert "CREATE TABLE IF NOT EXISTS semantic_region_annotations" in sql
+    assert "ALTER TYPE job_type_enum ADD VALUE IF NOT EXISTS 'semantic_annotate'" in sql
     assert "document_semantic_annotations_current_uniq" in sql
