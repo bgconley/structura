@@ -145,7 +145,7 @@ class SemanticAnnotationService:
                 continue
             priority = _priority_for_region(region)
             job_id = uuid4()
-            job = self.jobs.create_job(
+            created_job = self.jobs.create_job(
                 job_id=job_id,
                 job_type="extract",
                 household_id=source.household_id,
@@ -168,9 +168,9 @@ class SemanticAnnotationService:
                 priority=priority,
                 queue_name="extraction",
             )
-            job_id = getattr(job, "job_id", None)
-            if isinstance(job_id, UUID):
-                queued.append(job_id)
+            created_job_id = getattr(created_job, "job_id", None)
+            if isinstance(created_job_id, UUID):
+                queued.append(created_job_id)
         return queued
 
     def _enqueue_granite_jobs_with_cursor(

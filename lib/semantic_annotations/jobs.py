@@ -39,7 +39,8 @@ def enqueue_semantic_annotation_job(
         )
         existing = cur.fetchone()
         if existing:
-            return existing["id"]
+            existing_id = existing["id"]
+            return existing_id if isinstance(existing_id, UUID) else UUID(str(existing_id))
     job_id = uuid4()
     create_job_with_cursor(
         cur,
