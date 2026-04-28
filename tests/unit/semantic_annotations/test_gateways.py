@@ -239,6 +239,46 @@ def test_live_qwen_high_quality_gateway_normalizes_single_page_wrapper_shape() -
     assert region.expected_fields == ("deadline_field_0",)
 
 
+def test_live_qwen_high_quality_gateway_normalizes_nested_pages_shape() -> None:
+    source = _source_with_page_image()
+    page = source.pages[0]
+    client = FakeSemanticVisionClient(
+        profile_name=QWEN_SEMANTIC_HQ_PROFILE,
+        source_engine="qwen3_vl_8b",
+        normalized_json={
+            "pages": [
+                {
+                    "page_id": str(page.page_id),
+                    "regions": [
+                        {
+                            "granite_task": "kvp",
+                            "target_schema": "medical_eob",
+                            "expected_fields": [],
+                            "confidence": 0.1,
+                            "reason": "low_text_density, no OCR text, no visible fields",
+                            "needs_high_quality_pass": True,
+                            "review_required": True,
+                            "unmatched_region": True,
+                        }
+                    ],
+                }
+            ]
+        },
+    )
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(
+        source,
+        quality_mode="high_quality",
+    )
+
+    assert result.manifest.pages[0].page_id == page.page_id
+    assert len(result.manifest.regions) == 1
+    region = result.manifest.regions[0]
+    assert region.semantic_type == "unmatched_region"
+    assert region.granite_task == "ignore"
+    assert region.review_required is True
+
+
 def test_live_qwen_smart_gateway_chunks_pages_for_one_image_semantic_service() -> None:
     source = _source_with_two_page_images()
     page_by_hash = {page.image_sha256: page.page_id for page in source.pages if page.image_sha256}

@@ -114,8 +114,19 @@ def _normalized_model_output_payload(
     *,
     source: ExtractionSourceDocument,
 ) -> dict[str, object]:
-    if isinstance(payload.get("pages"), list) and isinstance(payload.get("regions"), list):
+    pages = payload.get("pages")
+    regions = payload.get("regions")
+    if (
+        payload.get("schema_name") == "semantic_annotation_model_output"
+        and isinstance(pages, list)
+        and isinstance(regions, list)
+    ):
         return payload
+    if isinstance(pages, list):
+        return _payload_from_page_annotations(
+            {"page_annotations": [_page_annotation_from_page_wrapper(page) for page in pages]},
+            source=source,
+        )
     page_annotations = payload.get("page_annotations")
     if isinstance(page_annotations, list):
         return _payload_from_page_annotations(payload, source=source)
@@ -295,6 +306,11 @@ def _normalized_alternate_region(
         return _ignored_unmatched_region(
             page_id=page_id,
             reason="Model returned a non-object region.",
+        )
+    if bool(item.get("unmatched_region") or item.get("unmatchedRegion")):
+        return _ignored_unmatched_region(
+            page_id=page_id,
+            reason=_optional_string(item.get("reason")) or "Model returned an unmatched region.",
         )
     granite_task = _granite_task_or_none(item.get("granite_task") or item.get("graniteTask"))
     target_schema = _target_schema_or_none(item.get("target_schema") or item.get("targetSchema"))
