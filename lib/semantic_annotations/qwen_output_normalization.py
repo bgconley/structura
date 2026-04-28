@@ -230,6 +230,7 @@ def _payload_from_page_annotations(
             )
         )
         regions.extend(normalized_regions)
+    pages = _merge_duplicate_pages(pages)
     regions = _select_regions_for_contract(regions)
     return {
         "schema_name": "semantic_annotation_model_output",
@@ -245,6 +246,54 @@ def _payload_from_page_annotations(
             "reason": None,
         },
     }
+
+
+def _merge_duplicate_pages(pages: list[dict[str, object]]) -> list[dict[str, object]]:
+    merged: dict[str, dict[str, object]] = {}
+    order: list[str] = []
+    for page in pages:
+        page_id = str(page.get("page_id") or "")
+        if page_id not in merged:
+            merged[page_id] = dict(page)
+            order.append(page_id)
+            continue
+        merged[page_id] = _merge_page(merged[page_id], page)
+    return [merged[page_id] for page_id in order]
+
+
+def _merge_page(
+    existing: dict[str, object],
+    incoming: dict[str, object],
+) -> dict[str, object]:
+    merged = dict(existing)
+    merged["has_structured_targets"] = bool(existing.get("has_structured_targets")) or bool(
+        incoming.get("has_structured_targets")
+    )
+    merged["ambiguous"] = bool(existing.get("ambiguous")) or bool(incoming.get("ambiguous"))
+    merged["escalation_required"] = bool(existing.get("escalation_required")) or bool(
+        incoming.get("escalation_required")
+    )
+    merged["escalation_reasons"] = _merge_reasons(
+        existing.get("escalation_reasons"),
+        incoming.get("escalation_reasons"),
+    )
+    if existing.get("confidence") is None and incoming.get("confidence") is not None:
+        merged["confidence"] = incoming["confidence"]
+    if existing.get("reason") is None and incoming.get("reason") is not None:
+        merged["reason"] = incoming["reason"]
+    return merged
+
+
+def _merge_reasons(first: object, second: object) -> list[str]:
+    reasons: list[str] = []
+    for collection in (first, second):
+        if not isinstance(collection, list):
+            continue
+        for item in collection:
+            reason = _normalized_choice(item, _ESCALATION_REASONS)
+            if reason and reason not in reasons:
+                reasons.append(reason)
+    return reasons[:4]
 
 
 def _select_regions_for_contract(regions: list[dict[str, object]]) -> list[dict[str, object]]:
