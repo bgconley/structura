@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -27,6 +28,7 @@ class VisionGenerateRequest:
     max_output_tokens: int
     temperature: float
     timeout_seconds: int
+    response_json_schema: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)

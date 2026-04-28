@@ -7,8 +7,6 @@ import pytest
 
 pytest.importorskip("psycopg")
 
-from jsonschema import ValidationError
-
 from lib.db.connection import db_connection
 from lib.extraction.models import ExtractionSourceDocument, ParsedPageText
 from lib.semantic_annotations.models import (
@@ -18,6 +16,7 @@ from lib.semantic_annotations.models import (
     SemanticGroundingRef,
     SemanticRegionAnnotation,
 )
+from lib.semantic_annotations.policy import SemanticAnnotationValidationError
 from lib.semantic_annotations.repository import (
     load_current_manifest,
     persist_semantic_manifest,
@@ -118,7 +117,7 @@ def test_phase8_5_semantic_manifest_rolls_back_if_targeted_job_payload_is_invali
         tables=[],
     )
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(SemanticAnnotationValidationError):
         SemanticAnnotationService(
             source_loader=lambda _document_id: source,
             gateway=StaticSemanticGateway(manifest),
@@ -199,7 +198,15 @@ def _manifest(
             ),
         ],
         confidence={"overall": 0.86},
-        manifest={"document_type": "medical_eob"},
+        manifest={
+            "schema_name": "semantic_annotation_manifest",
+            "schema_version": "v1",
+            "document_type": "medical_eob",
+            "pages": [],
+            "regions": [],
+            "quality_flags": {"needs_high_quality_pass": False, "visual_degradation": False},
+            "confidence": {"overall": 0.86},
+        },
         input_page_hashes=("a" * 64,),
     )
 

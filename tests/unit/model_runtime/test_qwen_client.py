@@ -10,6 +10,7 @@ from lib.model_runtime.clients.qwen_vl import QwenVLClient
 from lib.model_runtime.contracts import ModelImageInput, VisionGenerateRequest
 from lib.model_runtime.http_client import ModelProtocolError
 from lib.model_runtime.profiles import QWEN_VL_PROFILE, get_model_profile
+from lib.semantic_annotations.schema import semantic_annotation_manifest_schema
 
 
 def test_qwen_client_builds_multimodal_payload_and_returns_truthful_provenance() -> None:
@@ -95,6 +96,99 @@ def test_qwen_client_rejects_malformed_model_content() -> None:
     )
 
     with pytest.raises(ModelProtocolError, match="JSON"):
+        client.generate(_request())
+
+
+def test_qwen_client_sends_json_schema_structured_output_payload() -> None:
+    seen: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["payload"] = json.loads(request.content)
+        return httpx.Response(
+            200,
+            json={
+                "model": "Qwen/Qwen3-VL-8B-Instruct",
+                "choices": [
+                    {
+                        "message": {
+                            "content": json.dumps(
+                                {
+                                    "schema_name": "semantic_annotation_manifest",
+                                    "schema_version": "v1",
+                                    "document_type": "medical_eob",
+                                    "pages": [],
+                                    "regions": [],
+                                    "quality_flags": {},
+                                    "confidence": {"overall": 0.74},
+                                }
+                            )
+                        }
+                    }
+                ],
+            },
+        )
+
+    client = QwenVLClient(
+        profile=get_model_profile(QWEN_VL_PROFILE),
+        http_client_base_url="http://model-qwen:8100",
+        transport=httpx.MockTransport(handler),
+    )
+
+    client.generate(
+        VisionGenerateRequest(
+            profile_name=QWEN_VL_PROFILE,
+            prompt_version="phase8_5-semantic-smart-v1",
+            prompt="Return JSON only",
+            image_inputs=_request().image_inputs,
+            response_schema_name="semantic_annotation_manifest",
+            response_json_schema=semantic_annotation_manifest_schema(),
+            max_output_tokens=4096,
+            temperature=0.0,
+            timeout_seconds=30,
+        )
+    )
+
+    payload = seen["payload"]
+    assert isinstance(payload, dict)
+    assert payload["response_format"] == {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "semantic_annotation_manifest",
+            "schema": semantic_annotation_manifest_schema(),
+            "strict": True,
+        },
+    }
+    assert payload["structured_outputs"] == {"json": semantic_annotation_manifest_schema()}
+
+
+def test_qwen_client_rejects_truncated_structured_content() -> None:
+    client = QwenVLClient(
+        profile=get_model_profile(QWEN_VL_PROFILE),
+        http_client_base_url="http://model-qwen:8100",
+        transport=httpx.MockTransport(
+            lambda _request: httpx.Response(
+                200,
+                json={
+                    "model": "Qwen/Qwen3-VL-8B-Instruct",
+                    "choices": [
+                        {
+                            "finish_reason": "length",
+                            "message": {
+                                "content": json.dumps(
+                                    {
+                                        "normalized": {"fields": []},
+                                        "confidence": {"overall": 0.4},
+                                    }
+                                )
+                            },
+                        }
+                    ],
+                },
+            )
+        ),
+    )
+
+    with pytest.raises(ModelProtocolError, match="truncated"):
         client.generate(_request())
 
 

@@ -82,18 +82,31 @@ def _openai_payload(*, request: VisionGenerateRequest, profile: ModelProfile) ->
                 "image_url": {"url": f"data:{image.mime_type};base64,{data_url}"},
             }
         )
-    return {
+    payload: dict[str, Any] = {
         "model": profile.base_model,
         "messages": [{"role": "user", "content": content}],
         "max_tokens": request.max_output_tokens,
         "temperature": request.temperature,
-        "response_format": {"type": "json_object"},
         "metadata": {
             "profile_name": request.profile_name,
             "prompt_version": request.prompt_version,
             "response_schema_name": request.response_schema_name,
         },
     }
+    if request.response_json_schema is not None:
+        schema_name = request.response_schema_name or "structured_response"
+        payload["response_format"] = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": schema_name,
+                "schema": request.response_json_schema,
+                "strict": True,
+            },
+        }
+        payload["structured_outputs"] = {"json": request.response_json_schema}
+    else:
+        payload["response_format"] = {"type": "json_object"}
+    return payload
 
 
 def _raw_message_content(response: dict[str, Any]) -> str:
@@ -103,6 +116,8 @@ def _raw_message_content(response: dict[str, Any]) -> str:
     first = choices[0]
     if not isinstance(first, dict):
         raise ModelProtocolError("Vision model response choice must be an object.")
+    if first.get("finish_reason") == "length":
+        raise ModelProtocolError("Vision model response was truncated before valid JSON completed.")
     message = first.get("message")
     if not isinstance(message, dict):
         raise ModelProtocolError("Vision model response choice is missing message.")

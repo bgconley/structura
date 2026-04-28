@@ -4,6 +4,8 @@ import json
 from typing import Protocol
 from uuid import UUID
 
+from jsonschema import Draft202012Validator, ValidationError
+
 from lib.config.settings import Settings
 from lib.extraction.models import ExtractionSourceDocument
 from lib.model_runtime.clients.qwen_vl import QwenVLClient
@@ -30,7 +32,10 @@ from lib.semantic_annotations.policy import (
     SemanticAnnotationValidationError,
     validate_manifest,
 )
+from lib.semantic_annotations.schema import semantic_annotation_manifest_schema
 from lib.storage import ObjectStorage
+
+MAX_SEMANTIC_MODEL_ATTEMPTS = 2
 
 
 class SemanticVisionClientProtocol(Protocol):
@@ -97,25 +102,13 @@ class QwenSemanticAnnotationGateway:
                 max_images=max_images,
             )
         else:
-            response = self._generate_for_source(
+            manifest = self._generate_manifest_for_source(
                 source,
+                quality_mode=quality_mode,
                 profile_name=profile_name,
                 prompt_version=prompt_version,
             )
-            manifest = _manifest_from_response(
-                source,
-                quality_mode=quality_mode,
-                response=response,
-            )
-        try:
-            validate_manifest(
-                manifest,
-                valid_page_ids={page.page_id for page in source.pages},
-                valid_element_ids={element.element_id for element in source.elements},
-                valid_table_ids={table.table_id for table in source.tables},
-            )
-        except SemanticAnnotationValidationError as exc:
-            raise ModelProtocolError(f"Invalid semantic annotation output: {exc}") from exc
+        self._validate_manifest_for_source(manifest, source)
         return SemanticAnnotationResult(manifest=manifest)
 
     def _annotate_in_page_windows(
@@ -130,16 +123,12 @@ class QwenSemanticAnnotationGateway:
         partials: list[DocumentSemanticManifest] = []
         for index in range(0, len(source.pages), max_images):
             chunk_source = _source_for_pages(source, source.pages[index : index + max_images])
-            response = self._generate_for_source(
-                chunk_source,
-                profile_name=profile_name,
-                prompt_version=prompt_version,
-            )
             partials.append(
-                _manifest_from_response(
+                self._generate_manifest_for_source(
                     chunk_source,
                     quality_mode=quality_mode,
-                    response=response,
+                    profile_name=profile_name,
+                    prompt_version=prompt_version,
                 )
             )
         if not partials:
@@ -151,6 +140,41 @@ class QwenSemanticAnnotationGateway:
             profile_name=profile_name,
             prompt_version=prompt_version,
         )
+
+    def _generate_manifest_for_source(
+        self,
+        source: ExtractionSourceDocument,
+        *,
+        quality_mode: str,
+        profile_name: str,
+        prompt_version: str,
+    ) -> DocumentSemanticManifest:
+        last_error: Exception | None = None
+        for attempt in range(MAX_SEMANTIC_MODEL_ATTEMPTS):
+            try:
+                response = self._generate_for_source(
+                    source,
+                    profile_name=profile_name,
+                    prompt_version=prompt_version,
+                )
+                manifest = _manifest_from_response(
+                    source,
+                    quality_mode=quality_mode,
+                    response=response,
+                )
+                self._validate_manifest_for_source(manifest, source)
+                return manifest
+            except (ModelProtocolError, SemanticAnnotationValidationError) as exc:
+                last_error = exc
+                if attempt + 1 >= MAX_SEMANTIC_MODEL_ATTEMPTS or not _is_retryable_error(exc):
+                    break
+        if last_error is None:
+            raise ModelProtocolError("Semantic annotation model failed without error details.")
+        if isinstance(last_error, SemanticAnnotationValidationError):
+            raise ModelProtocolError(
+                f"Invalid semantic annotation output: {last_error}"
+            ) from last_error
+        raise last_error
 
     def _generate_for_source(
         self,
@@ -166,10 +190,23 @@ class QwenSemanticAnnotationGateway:
                 prompt=_prompt(source),
                 image_inputs=_image_inputs(source, storage=self.storage),
                 response_schema_name="semantic_annotation_manifest",
-                max_output_tokens=4096,
+                response_json_schema=semantic_annotation_manifest_schema(),
+                max_output_tokens=_max_output_tokens_for_profile(profile_name),
                 temperature=0.0,
                 timeout_seconds=60,
             )
+        )
+
+    def _validate_manifest_for_source(
+        self,
+        manifest: DocumentSemanticManifest,
+        source: ExtractionSourceDocument,
+    ) -> None:
+        validate_manifest(
+            manifest,
+            valid_page_ids={page.page_id for page in source.pages},
+            valid_element_ids={element.element_id for element in source.elements},
+            valid_table_ids={table.table_id for table in source.tables},
         )
 
 
@@ -191,6 +228,12 @@ def _max_image_inputs_for_profile(profile_name: str) -> int:
     if profile_name == QWEN_SEMANTIC_PROFILE:
         return 1
     return 4
+
+
+def _max_output_tokens_for_profile(profile_name: str) -> int:
+    if profile_name == QWEN_SEMANTIC_PROFILE:
+        return 4096
+    return 8192
 
 
 def _source_for_pages(
@@ -260,9 +303,24 @@ def _merge_partial_manifests(
         regions=regions,
         confidence=confidence,
         manifest={
+            "schema_name": "semantic_annotation_manifest",
+            "schema_version": "v1",
             "document_type": document_type,
             "pages": [_page_manifest_json(page) for page in pages],
             "regions": [_region_manifest_json(region) for region in regions],
+            "quality_flags": {
+                "needs_high_quality_pass": any(
+                    bool(partial.manifest.get("quality_flags", {}).get("needs_high_quality_pass"))
+                    for partial in partials
+                    if isinstance(partial.manifest.get("quality_flags"), dict)
+                ),
+                "visual_degradation": any(
+                    bool(partial.manifest.get("quality_flags", {}).get("visual_degradation"))
+                    for partial in partials
+                    if isinstance(partial.manifest.get("quality_flags"), dict)
+                ),
+            },
+            "confidence": confidence,
         },
         review_required=any(region.review_required for region in regions),
         input_page_hashes=tuple(
@@ -311,26 +369,23 @@ def _region_manifest_json(region: SemanticRegionAnnotation) -> dict[str, object]
 def _prompt(source: ExtractionSourceDocument) -> str:
     context = build_docling_context(source)
     return (
-        "You are Structura's semantic annotation planner. Docling is the physical "
-        "parse authority. Return JSON only with pages[] and regions[] grounded to "
-        "Docling page_id, element_id, or table_id whenever possible. Do not extract "
-        "canonical facts; identify semantic regions and Granite extraction tasks. "
-        "Prefer this exact response shape: "
-        '{"normalized":{"document_type":"string","pages":[{"page_id":"uuid",'
-        '"page_number":1,"page_role":"string","document_type_hint":"string",'
-        '"extraction_usefulness":"none|low|medium|high|unknown",'
-        '"is_boilerplate":false,"has_structured_targets":true,"ambiguous":false,'
-        '"escalation_required":false,"reason":"string","confidence":0.0}],'
-        '"regions":[{"semantic_type":"document_header|billing_summary|payment_summary|'
-        "patient_responsibility_summary|covered_services_line_item_table|"
-        "invoice_line_item_table|receipt_line_item_table|tax_summary|legal_clause|"
-        'contact_block|signature_block|chart|figure|boilerplate|unmatched_region|unknown",'
-        '"priority":"low|medium|high|critical","granite_task":"kvp|tables_json|'
-        'tables_html|tables_otsl|chart2csv|chart2summary|chart2code|ignore",'
-        '"target_schema":"receipt|invoice|medical_eob","expected_fields":["string"],'
-        '"grounding":{"kind":"page|element|table|unmatched_region","page_id":"uuid",'
-        '"element_id":null,"table_id":null},"review_required":false,'
-        '"reason":"string","confidence":0.0}]},"confidence":{"overall":0.0}}. '
+        "You are Structura's semantic annotation planner. Return valid JSON only, "
+        "matching the provided semantic_annotation_manifest JSON Schema. Docling is "
+        "the physical parse authority: use Docling page_id, element_id, and table_id "
+        "from the context instead of inventing coordinates. This is semantic planning, "
+        "not extraction: do not output field values, money amounts, dates, names, or "
+        "canonical facts. expected_fields must contain field names only, using snake_case "
+        "names such as total_amount or patient_responsibility. Produce exactly one page "
+        "annotation for each input page image. Add region annotations only for useful "
+        "Granite extraction targets or no-op boilerplate. Use target_schema medical_eob "
+        "for EOB, insurance, denial, and medical billing documents; invoice for bills "
+        "and invoices; receipt for receipts and service records; otherwise null. Use "
+        "granite_task kvp for summary/key-value blocks, tables_json for line-item "
+        "tables, tables_html or tables_otsl only when table structure requires it, and "
+        "ignore for boilerplate. Mark unmatched_region, review_required=true, and low "
+        "confidence when a useful target cannot be grounded to Docling IDs. Set "
+        "needs_high_quality_pass for poor OCR, ambiguity, validation-sensitive medical, "
+        "legal, tax, or financial documents, or low confidence. "
         "Docling context: "
         f"{json.dumps(context, sort_keys=True)}"
     )
@@ -366,7 +421,7 @@ def _manifest_from_response(
     quality_mode: str,
     response: VisionGenerateResponse,
 ) -> DocumentSemanticManifest:
-    normalized = response.normalized_json
+    normalized = _validated_semantic_payload(response)
     pages_raw = normalized.get("pages")
     regions_raw = normalized.get("regions")
     if not isinstance(pages_raw, list) or not isinstance(regions_raw, list):
@@ -384,7 +439,7 @@ def _manifest_from_response(
         prompt_version=response.prompt_version,
         pages=pages,
         regions=regions,
-        confidence=dict(response.confidence_json),
+        confidence=_confidence_from_payload(normalized),
         manifest=dict(normalized),
         review_required=any(region.review_required for region in regions),
         input_page_hashes=tuple(response.input_sha256),
@@ -439,3 +494,37 @@ def _uuid_or_none(value: object) -> UUID | None:
     if not value:
         return None
     return UUID(str(value))
+
+
+def _validated_semantic_payload(response: VisionGenerateResponse) -> dict[str, object]:
+    payload = dict(response.normalized_json)
+    if "confidence" not in payload:
+        payload["confidence"] = dict(response.confidence_json)
+    try:
+        Draft202012Validator(semantic_annotation_manifest_schema()).validate(payload)
+    except ValidationError as exc:
+        raise ModelProtocolError(
+            f"semantic annotation output failed schema validation: {exc.message}"
+        ) from exc
+    return payload
+
+
+def _confidence_from_payload(payload: dict[str, object]) -> dict[str, object]:
+    confidence = payload.get("confidence")
+    if not isinstance(confidence, dict):
+        return {}
+    return {str(key): value for key, value in confidence.items()}
+
+
+def _is_retryable_error(exc: Exception) -> bool:
+    message = str(exc).lower()
+    return any(
+        fragment in message
+        for fragment in (
+            "truncated",
+            "not valid json",
+            "schema validation",
+            "semantic annotation output",
+            "invalid semantic annotation output",
+        )
+    )

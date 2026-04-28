@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable
 from uuid import UUID
 
@@ -14,9 +15,6 @@ ALLOWED_GRANITE_TASKS = {
     "tables_json",
     "tables_html",
     "tables_otsl",
-    "chart2csv",
-    "chart2summary",
-    "chart2code",
     "ignore",
 }
 
@@ -28,16 +26,21 @@ ALLOWED_SEMANTIC_TYPES = {
     "covered_services_line_item_table",
     "invoice_line_item_table",
     "receipt_line_item_table",
+    "service_record_line_item_table",
+    "denial_or_coverage_decision",
+    "appeal_or_next_steps",
     "tax_summary",
     "legal_clause",
     "contact_block",
+    "vehicle_or_asset_block",
     "signature_block",
-    "chart",
-    "figure",
     "boilerplate",
     "unmatched_region",
     "unknown",
 }
+
+ALLOWED_TARGET_SCHEMAS = {"receipt", "invoice", "medical_eob"}
+_EXPECTED_FIELD_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 
 HIGH_RISK_FAMILIES = {
     "medical_eob",
@@ -63,8 +66,22 @@ def validate_manifest(
     page_ids = set(valid_page_ids)
     element_ids = set(valid_element_ids)
     table_ids = set(valid_table_ids)
+    manifest_page_ids = {page.page_id for page in manifest.pages}
+    if len(manifest_page_ids) != len(manifest.pages):
+        raise SemanticAnnotationValidationError("Semantic page annotations contain duplicates.")
+    if manifest_page_ids != page_ids:
+        raise SemanticAnnotationValidationError(
+            "Semantic annotation page coverage must exactly match Docling pages."
+        )
+    seen_groundings: set[tuple[object, ...]] = set()
     for region in manifest.regions:
         _validate_region(region, page_ids=page_ids, element_ids=element_ids, table_ids=table_ids)
+        grounding_key = _grounding_key(region.grounding)
+        if grounding_key in seen_groundings:
+            raise SemanticAnnotationValidationError(
+                "Duplicate semantic region grounding reference."
+            )
+        seen_groundings.add(grounding_key)
 
 
 def high_quality_required(
@@ -101,6 +118,21 @@ def _validate_region(
         )
     if region.granite_task is not None and region.granite_task not in ALLOWED_GRANITE_TASKS:
         raise SemanticAnnotationValidationError(f"Unsupported granite task: {region.granite_task}")
+    if region.target_schema is not None and region.target_schema not in ALLOWED_TARGET_SCHEMAS:
+        raise SemanticAnnotationValidationError(
+            f"Unsupported target schema: {region.target_schema}"
+        )
+    if region.granite_task == "ignore" and region.target_schema is not None:
+        raise SemanticAnnotationValidationError(
+            "Ignored semantic regions must not target a schema."
+        )
+    if region.granite_task not in {None, "ignore"} and region.target_schema is None:
+        raise SemanticAnnotationValidationError("Granite extraction regions require target schema.")
+    for field_name in region.expected_fields:
+        if not _EXPECTED_FIELD_RE.fullmatch(field_name):
+            raise SemanticAnnotationValidationError(
+                f"Unsupported expected field name: {field_name}"
+            )
     _validate_grounding(region, page_ids=page_ids, element_ids=element_ids, table_ids=table_ids)
 
 
@@ -134,3 +166,12 @@ def _require_grounded_id(grounding: SemanticGroundingRef) -> None:
         raise SemanticAnnotationValidationError("Element grounding requires element_id.")
     if grounding.kind == "table" and grounding.table_id is None:
         raise SemanticAnnotationValidationError("Table grounding requires table_id.")
+
+
+def _grounding_key(grounding: SemanticGroundingRef) -> tuple[object, ...]:
+    return (
+        grounding.kind,
+        grounding.page_id,
+        grounding.element_id,
+        grounding.table_id,
+    )

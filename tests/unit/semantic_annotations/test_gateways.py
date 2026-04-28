@@ -14,6 +14,7 @@ from lib.model_runtime.profiles import QWEN_SEMANTIC_HQ_PROFILE, QWEN_SEMANTIC_P
 from lib.semantic_annotations import qwen_gateway
 from lib.semantic_annotations.fixture_gateway import FixtureSemanticAnnotationGateway
 from lib.semantic_annotations.qwen_gateway import QwenSemanticAnnotationGateway
+from lib.semantic_annotations.schema import semantic_annotation_manifest_schema
 
 
 @dataclass
@@ -66,6 +67,27 @@ def test_live_qwen_smart_gateway_builds_truthful_qwen2b_manifest() -> None:
     assert client.request is not None
     assert "Docling context" in client.request.prompt
     assert client.request.image_inputs[0].content == b"page-image"
+    assert client.request.response_json_schema == semantic_annotation_manifest_schema()
+
+
+def test_live_qwen_gateway_prompt_keeps_semantic_planning_but_not_tiny_region_limits() -> None:
+    source = _source_with_page_image()
+    client = FakeSemanticVisionClient(
+        profile_name=QWEN_SEMANTIC_PROFILE,
+        source_engine="qwen3_vl_2b",
+        normalized_json=_semantic_payload(source.pages[0].page_id),
+    )
+
+    QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
+
+    assert client.request is not None
+    prompt = client.request.prompt
+    assert "Return valid JSON only" in prompt
+    assert "Docling is the physical parse authority" in prompt
+    assert "semantic planning, not extraction" in prompt
+    assert "expected_fields must contain field names only" in prompt
+    assert "at most two regions total" not in prompt
+    assert "max_output_tokens" not in prompt
 
 
 def test_live_qwen_high_quality_gateway_uses_qwen8b_profile() -> None:
@@ -139,6 +161,58 @@ def test_live_qwen_gateway_rejects_malformed_model_output() -> None:
         QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
 
 
+def test_live_qwen_gateway_rejects_schema_invalid_value_bearing_output() -> None:
+    source = _source_with_page_image()
+    payload = _semantic_payload(source.pages[0].page_id)
+    regions = payload["regions"]
+    assert isinstance(regions, list)
+    region = regions[0]
+    assert isinstance(region, dict)
+    region["value"] = "$42.00"
+    client = FakeSemanticVisionClient(
+        profile_name=QWEN_SEMANTIC_PROFILE,
+        source_engine="qwen3_vl_2b",
+        normalized_json=payload,
+    )
+
+    with pytest.raises(ModelProtocolError, match="schema"):
+        QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
+
+
+def test_live_qwen_gateway_retries_once_after_truncated_model_output() -> None:
+    source = _source_with_page_image()
+
+    class FlakyClient:
+        requests: list[VisionGenerateRequest]
+
+        def __init__(self) -> None:
+            self.requests = []
+
+        def generate(self, request: VisionGenerateRequest) -> VisionGenerateResponse:
+            self.requests.append(request)
+            if len(self.requests) == 1:
+                raise ModelProtocolError("Vision model response was truncated.")
+            return VisionGenerateResponse(
+                profile_name=QWEN_SEMANTIC_PROFILE,
+                model_name="fake-qwen",
+                model_version="test",
+                source_engine="qwen3_vl_2b",
+                prompt_version=request.prompt_version,
+                raw_text="{}",
+                normalized_json=_semantic_payload(source.pages[0].page_id),
+                confidence_json={"overall": 0.8},
+                input_sha256=tuple(image.validated_sha256() for image in request.image_inputs),
+                latency_ms=1,
+            )
+
+    client = FlakyClient()
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
+
+    assert result.manifest.pages[0].page_id == source.pages[0].page_id
+    assert len(client.requests) == 2
+
+
 def test_qwen_semantic_client_uses_distinct_smart_and_high_quality_urls(
     monkeypatch,
 ) -> None:
@@ -164,15 +238,22 @@ def test_qwen_semantic_client_uses_distinct_smart_and_high_quality_urls(
 
 def _semantic_payload(page_id) -> dict[str, object]:
     return {
+        "schema_name": "semantic_annotation_manifest",
+        "schema_version": "v1",
         "document_type": "invoice",
         "pages": [
             {
                 "page_id": str(page_id),
                 "page_number": 1,
-                "page_role": "invoice_summary",
+                "page_role": "payment_summary",
                 "document_type_hint": "invoice",
                 "extraction_usefulness": "high",
+                "is_boilerplate": False,
                 "has_structured_targets": True,
+                "ambiguous": False,
+                "escalation_required": False,
+                "escalation_reasons": [],
+                "reason": "Invoice summary and totals are visible.",
                 "confidence": 0.91,
             }
         ],
@@ -182,12 +263,19 @@ def _semantic_payload(page_id) -> dict[str, object]:
                 "priority": "high",
                 "granite_task": "kvp",
                 "target_schema": "invoice",
-                "expected_fields": ["invoice.total_amount"],
-                "grounding": {"kind": "page", "page_id": str(page_id)},
+                "expected_fields": ["total_amount"],
+                "grounding": {
+                    "kind": "page",
+                    "page_id": str(page_id),
+                    "element_id": None,
+                    "table_id": None,
+                },
+                "review_required": False,
                 "reason": "Top of the page contains invoice totals.",
                 "confidence": 0.89,
             }
         ],
+        "quality_flags": {"needs_high_quality_pass": False, "visual_degradation": False},
     }
 
 

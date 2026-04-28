@@ -388,14 +388,16 @@ The client should try structured output in this order:
 }
 ```
 
-2. vLLM structured outputs extra body:
+2. vLLM structured outputs request parameter.
+
+When using the OpenAI Python SDK this is passed as `extra_body`, but Structura's
+model runtime posts raw JSON over HTTP. For the raw request body, send
+`structured_outputs` as a top-level vLLM parameter:
 
 ```json
 {
-  "extra_body": {
-    "structured_outputs": {
-      "json": {}
-    }
+  "structured_outputs": {
+    "json": {}
   }
 }
 ```
@@ -548,4 +550,3 @@ Live GPU smoke:
 5. Tests prove that Qwen output is routing metadata only.
 6. The private MRI/BMW corpus run can complete Qwen semantic annotation without JSON
    truncation failures before Granite extraction proceeds.
-

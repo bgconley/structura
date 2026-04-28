@@ -442,7 +442,7 @@ def test_qwen_client_sends_json_schema_structured_output_when_schema_is_present(
     assert payload["response_format"]["type"] == "json_schema"
     assert payload["response_format"]["json_schema"]["name"] == "semantic_annotation_manifest"
     assert payload["response_format"]["json_schema"]["schema"]["type"] == "object"
-    assert payload["extra_body"]["structured_outputs"]["json"]["type"] == "object"
+    assert payload["structured_outputs"]["json"]["type"] == "object"
 ```
 
 Run: `python -m pytest -q tests/unit/model_runtime/test_qwen_client.py::test_qwen_client_sends_json_schema_structured_output_when_schema_is_present`
@@ -470,11 +470,14 @@ class VisionGenerateRequest:
 - [ ] **Step 3: Update `_openai_payload`**
 
 In `lib/model_runtime/clients/_openai_vision.py`, replace the hard-coded
-`"response_format": {"type": "json_object"}` with:
+`"response_format": {"type": "json_object"}` with raw HTTP payload support for
+OpenAI-compatible `response_format` and vLLM's top-level `structured_outputs`
+request parameter. The OpenAI Python SDK calls this `extra_body`, but Structura
+does not use the SDK for model-runtime calls.
 
 ```python
 response_format: dict[str, object]
-extra_body: dict[str, object] | None = None
+structured_outputs: dict[str, object] | None = None
 if request.response_json_schema:
     schema_name = request.response_schema_name or "structured_response"
     response_format = {
@@ -484,7 +487,7 @@ if request.response_json_schema:
             "schema": request.response_json_schema,
         },
     }
-    extra_body = {"structured_outputs": {"json": request.response_json_schema}}
+    structured_outputs = {"json": request.response_json_schema}
 else:
     response_format = {"type": "json_object"}
 payload = {
@@ -499,8 +502,8 @@ payload = {
         "response_schema_name": request.response_schema_name,
     },
 }
-if extra_body is not None:
-    payload["extra_body"] = extra_body
+if structured_outputs is not None:
+    payload["structured_outputs"] = structured_outputs
 return payload
 ```
 

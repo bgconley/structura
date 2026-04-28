@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
+
+# GPU validation invokes fixed docker compose commands.
+import subprocess  # nosec B404
 import sys
 import time
 from pathlib import Path
@@ -100,7 +102,8 @@ def _resolve_owner(household_id: UUID | None, user_id: UUID | None) -> tuple[UUI
 
 def _stop_controlled_workers() -> None:
     command = ["docker", "compose", "stop", *CONTROLLED_WORKERS]
-    subprocess.run(command, cwd=ROOT, check=False)
+    # Fixed command, no shell, no untrusted executable.
+    subprocess.run(command, cwd=ROOT, check=False)  # nosec B603
 
 
 def _ingest_pdf(
@@ -395,7 +398,8 @@ def _compose_python(
             ]
         )
     command.extend([service, "python", "-c", code, *args])
-    return subprocess.run(
+    # Fixed docker compose argv, no shell, service names are caller-controlled internals.
+    return subprocess.run(  # nosec B603
         command,
         cwd=ROOT,
         check=check,

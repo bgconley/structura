@@ -3,6 +3,7 @@ from __future__ import annotations
 from uuid import uuid4
 
 import pytest
+from jsonschema import Draft202012Validator
 
 from lib.semantic_annotations.models import (
     DocumentSemanticManifest,
@@ -17,8 +18,99 @@ from lib.semantic_annotations.policy import (
 )
 
 
+def test_semantic_annotation_schema_accepts_minimal_valid_manifest() -> None:
+    from lib.semantic_annotations.schema import semantic_annotation_manifest_schema
+
+    schema = semantic_annotation_manifest_schema()
+    Draft202012Validator.check_schema(schema)
+    validator = Draft202012Validator(schema)
+    validator.validate(
+        {
+            "schema_name": "semantic_annotation_manifest",
+            "schema_version": "v1",
+            "document_type": "medical_eob",
+            "pages": [
+                {
+                    "page_id": "11111111-1111-4111-8111-111111111111",
+                    "page_number": 1,
+                    "page_role": "claim_summary",
+                    "document_type_hint": "medical_eob",
+                    "extraction_usefulness": "high",
+                    "is_boilerplate": False,
+                    "has_structured_targets": True,
+                    "ambiguous": False,
+                    "escalation_required": False,
+                    "escalation_reasons": [],
+                    "reason": "Claim summary and responsibility fields are visible.",
+                    "confidence": 0.91,
+                }
+            ],
+            "regions": [
+                {
+                    "semantic_type": "patient_responsibility_summary",
+                    "priority": "high",
+                    "granite_task": "kvp",
+                    "target_schema": "medical_eob",
+                    "expected_fields": ["patient_responsibility", "plan_paid"],
+                    "grounding": {
+                        "kind": "page",
+                        "page_id": "11111111-1111-4111-8111-111111111111",
+                        "element_id": None,
+                        "table_id": None,
+                    },
+                    "review_required": False,
+                    "reason": "Summary block is a high-value extraction target.",
+                    "confidence": 0.87,
+                }
+            ],
+            "quality_flags": {
+                "needs_high_quality_pass": False,
+                "visual_degradation": False,
+            },
+            "confidence": {"overall": 0.89},
+        }
+    )
+
+
+def test_semantic_annotation_schema_rejects_extracted_region_values() -> None:
+    from jsonschema import ValidationError
+
+    from lib.semantic_annotations.schema import semantic_annotation_manifest_schema
+
+    manifest = {
+        "schema_name": "semantic_annotation_manifest",
+        "schema_version": "v1",
+        "document_type": "invoice",
+        "pages": [],
+        "regions": [
+            {
+                "semantic_type": "billing_summary",
+                "priority": "high",
+                "granite_task": "kvp",
+                "target_schema": "invoice",
+                "expected_fields": ["total_amount"],
+                "grounding": {
+                    "kind": "unmatched_region",
+                    "page_id": None,
+                    "element_id": None,
+                    "table_id": None,
+                },
+                "review_required": True,
+                "reason": "Summary block may contain totals.",
+                "confidence": 0.4,
+                "value": "$42.00",
+            }
+        ],
+        "quality_flags": {},
+        "confidence": {"overall": 0.5},
+    }
+
+    with pytest.raises(ValidationError):
+        Draft202012Validator(semantic_annotation_manifest_schema()).validate(manifest)
+
+
 def _manifest_with_region(region: SemanticRegionAnnotation) -> DocumentSemanticManifest:
-    page_id = uuid4()
+    page_id = region.grounding.page_id or uuid4()
     return DocumentSemanticManifest(
         document_id=uuid4(),
         household_id=uuid4(),
@@ -45,6 +137,35 @@ def _manifest_with_region(region: SemanticRegionAnnotation) -> DocumentSemanticM
     )
 
 
+def _manifest_with_pages(
+    *,
+    page_ids: list,
+    regions: list[SemanticRegionAnnotation],
+) -> DocumentSemanticManifest:
+    return DocumentSemanticManifest(
+        document_id=uuid4(),
+        household_id=uuid4(),
+        quality_mode="smart",
+        profile_name="qwen3-vl-2b-semantic:v1",
+        source_engine="qwen3_vl_2b",
+        model_name="Qwen/Qwen3-VL-2B-Instruct",
+        model_version="test",
+        prompt_version="phase8_5-semantic-smart-v1",
+        pages=[
+            PageSemanticAnnotation(
+                page_id=page_id,
+                page_number=index + 1,
+                page_role="claim_summary",
+                document_type_hint="medical_eob",
+            )
+            for index, page_id in enumerate(page_ids)
+        ],
+        regions=regions,
+        confidence={"overall": 0.84},
+        manifest={"document_type": "medical_eob"},
+    )
+
+
 def test_validate_manifest_accepts_docling_grounded_region() -> None:
     element_id = uuid4()
     region = SemanticRegionAnnotation(
@@ -58,12 +179,73 @@ def test_validate_manifest_accepts_docling_grounded_region() -> None:
         confidence=0.91,
     )
 
+    manifest = _manifest_with_region(region)
     validate_manifest(
-        _manifest_with_region(region),
-        valid_page_ids={uuid4()},
+        manifest,
+        valid_page_ids={manifest.pages[0].page_id},
         valid_element_ids={element_id},
         valid_table_ids=set(),
     )
+
+
+def test_validate_manifest_requires_exact_page_coverage() -> None:
+    first_page = uuid4()
+    missing_page = uuid4()
+    manifest = _manifest_with_pages(page_ids=[first_page], regions=[])
+
+    with pytest.raises(SemanticAnnotationValidationError, match="page coverage"):
+        validate_manifest(
+            manifest,
+            valid_page_ids={first_page, missing_page},
+            valid_element_ids=set(),
+            valid_table_ids=set(),
+        )
+
+
+def test_validate_manifest_rejects_duplicate_region_grounding() -> None:
+    page_id = uuid4()
+    first = SemanticRegionAnnotation(
+        semantic_type="billing_summary",
+        priority="high",
+        granite_task="kvp",
+        target_schema="invoice",
+        grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+    )
+    second = SemanticRegionAnnotation(
+        semantic_type="payment_summary",
+        priority="medium",
+        granite_task="kvp",
+        target_schema="invoice",
+        grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+    )
+
+    with pytest.raises(SemanticAnnotationValidationError, match="Duplicate"):
+        validate_manifest(
+            _manifest_with_pages(page_ids=[page_id], regions=[first, second]),
+            valid_page_ids={page_id},
+            valid_element_ids=set(),
+            valid_table_ids=set(),
+        )
+
+
+def test_validate_manifest_rejects_value_like_expected_field_names() -> None:
+    page_id = uuid4()
+    region = SemanticRegionAnnotation(
+        semantic_type="billing_summary",
+        priority="high",
+        granite_task="kvp",
+        target_schema="invoice",
+        expected_fields=("invoice.total_amount",),
+        grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+    )
+
+    with pytest.raises(SemanticAnnotationValidationError, match="expected field"):
+        validate_manifest(
+            _manifest_with_pages(page_ids=[page_id], regions=[region]),
+            valid_page_ids={page_id},
+            valid_element_ids=set(),
+            valid_table_ids=set(),
+        )
 
 
 def test_validate_manifest_rejects_unknown_granite_task() -> None:
@@ -120,7 +302,7 @@ def test_validate_manifest_requires_unmatched_regions_to_be_review_required() ->
 
     with pytest.raises(SemanticAnnotationValidationError, match="review-required"):
         validate_manifest(
-            _manifest_with_region(region),
+            _manifest_with_pages(page_ids=[], regions=[region]),
             valid_page_ids=set(),
             valid_element_ids=set(),
             valid_table_ids=set(),

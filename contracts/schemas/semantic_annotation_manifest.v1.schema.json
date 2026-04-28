@@ -1,0 +1,239 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/schemas/semantic_annotation_manifest.v1.schema.json",
+  "title": "Semantic Annotation Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "document_type",
+    "pages",
+    "regions",
+    "quality_flags",
+    "confidence"
+  ],
+  "properties": {
+    "schema_name": { "const": "semantic_annotation_manifest" },
+    "schema_version": { "const": "v1" },
+    "document_type": {
+      "type": "string",
+      "enum": [
+        "medical_eob",
+        "insurance_denial",
+        "medical_bill",
+        "invoice",
+        "receipt",
+        "service_record",
+        "legal",
+        "tax",
+        "financial",
+        "other",
+        "unknown"
+      ]
+    },
+    "pages": {
+      "type": "array",
+      "maxItems": 8,
+      "items": { "$ref": "#/$defs/pageAnnotation" }
+    },
+    "regions": {
+      "type": "array",
+      "maxItems": 32,
+      "items": { "$ref": "#/$defs/regionAnnotation" }
+    },
+    "quality_flags": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "needs_high_quality_pass": { "type": "boolean" },
+        "visual_degradation": { "type": "boolean" },
+        "poor_ocr": { "type": "boolean" },
+        "ambiguous_document_type": { "type": "boolean" },
+        "reason": { "type": ["string", "null"], "maxLength": 240 }
+      }
+    },
+    "confidence": { "$ref": "#/$defs/confidenceObject" }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "confidence": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "confidenceObject": {
+      "type": "object",
+      "additionalProperties": {
+        "type": ["number", "string", "boolean", "array", "object", "null"]
+      },
+      "properties": {
+        "overall": { "$ref": "#/$defs/confidence" }
+      }
+    },
+    "pageAnnotation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "page_id",
+        "page_number",
+        "page_role",
+        "document_type_hint",
+        "extraction_usefulness",
+        "is_boilerplate",
+        "has_structured_targets",
+        "ambiguous",
+        "escalation_required",
+        "escalation_reasons",
+        "reason",
+        "confidence"
+      ],
+      "properties": {
+        "page_id": { "$ref": "#/$defs/uuid" },
+        "page_number": { "type": "integer", "minimum": 1 },
+        "page_role": {
+          "type": "string",
+          "enum": [
+            "document_header",
+            "claim_summary",
+            "payment_summary",
+            "line_items",
+            "denial_or_decision",
+            "instructions",
+            "contact_or_identity",
+            "terms_or_boilerplate",
+            "signature_or_authorization",
+            "image_or_figure",
+            "mixed",
+            "unknown"
+          ]
+        },
+        "document_type_hint": {
+          "type": ["string", "null"],
+          "enum": [
+            "medical_eob",
+            "insurance_denial",
+            "medical_bill",
+            "invoice",
+            "receipt",
+            "service_record",
+            "legal",
+            "tax",
+            "financial",
+            "other",
+            "unknown",
+            null
+          ]
+        },
+        "extraction_usefulness": {
+          "type": "string",
+          "enum": ["none", "low", "medium", "high", "unknown"]
+        },
+        "is_boilerplate": { "type": "boolean" },
+        "has_structured_targets": { "type": "boolean" },
+        "ambiguous": { "type": "boolean" },
+        "escalation_required": { "type": "boolean" },
+        "escalation_reasons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "poor_ocr",
+              "ambiguous_document_type",
+              "missing_docling_grounding",
+              "high_risk_domain",
+              "low_confidence",
+              "validation_sensitive",
+              "unsupported_schema",
+              "visual_degradation"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "reason": { "type": ["string", "null"], "maxLength": 240 },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      }
+    },
+    "regionAnnotation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "semantic_type",
+        "priority",
+        "granite_task",
+        "target_schema",
+        "expected_fields",
+        "grounding",
+        "review_required",
+        "reason",
+        "confidence"
+      ],
+      "properties": {
+        "semantic_type": {
+          "type": "string",
+          "enum": [
+            "document_header",
+            "billing_summary",
+            "payment_summary",
+            "patient_responsibility_summary",
+            "covered_services_line_item_table",
+            "invoice_line_item_table",
+            "receipt_line_item_table",
+            "service_record_line_item_table",
+            "denial_or_coverage_decision",
+            "appeal_or_next_steps",
+            "tax_summary",
+            "legal_clause",
+            "contact_block",
+            "vehicle_or_asset_block",
+            "signature_block",
+            "boilerplate",
+            "unmatched_region",
+            "unknown"
+          ]
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"]
+        },
+        "granite_task": {
+          "type": ["string", "null"],
+          "enum": ["kvp", "tables_json", "tables_html", "tables_otsl", "ignore", null]
+        },
+        "target_schema": {
+          "type": ["string", "null"],
+          "enum": ["receipt", "invoice", "medical_eob", null]
+        },
+        "expected_fields": {
+          "type": "array",
+          "maxItems": 24,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          }
+        },
+        "grounding": { "$ref": "#/$defs/grounding" },
+        "review_required": { "type": "boolean" },
+        "reason": { "type": ["string", "null"], "maxLength": 240 },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      }
+    },
+    "grounding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "page_id", "element_id", "table_id"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["page", "element", "table", "unmatched_region"]
+        },
+        "page_id": { "oneOf": [{ "$ref": "#/$defs/uuid" }, { "type": "null" }] },
+        "element_id": { "oneOf": [{ "$ref": "#/$defs/uuid" }, { "type": "null" }] },
+        "table_id": { "oneOf": [{ "$ref": "#/$defs/uuid" }, { "type": "null" }] }
+      }
+    }
+  }
+}
