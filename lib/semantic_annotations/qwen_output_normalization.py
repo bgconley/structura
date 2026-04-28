@@ -119,7 +119,58 @@ def _normalized_model_output_payload(
     page_annotations = payload.get("page_annotations")
     if isinstance(page_annotations, list):
         return _payload_from_page_annotations(payload, source=source)
+    page = payload.get("page")
+    if isinstance(page, dict):
+        return _payload_from_page_annotations(
+            {"page_annotations": [_page_annotation_from_page_wrapper(page)]},
+            source=source,
+        )
     return payload
+
+
+def _page_annotation_from_page_wrapper(page: dict[str, object]) -> dict[str, object]:
+    page_id = page.get("page_id") or page.get("pageId")
+    default_granite_task = page.get("granite_task") or page.get("graniteTask")
+    default_target_schema = page.get("target_schema") or page.get("targetSchema")
+    raw_regions = page.get("regions")
+    regions = raw_regions if isinstance(raw_regions, list) else []
+    return {
+        "page_id": page_id,
+        "page_role": page.get("page_role") or page.get("pageRole"),
+        "document_type_hint": page.get("document_type_hint") or page.get("documentTypeHint"),
+        "extraction_usefulness": page.get("extraction_usefulness")
+        or page.get("extractionUsefulness"),
+        "is_boilerplate": page.get("is_boilerplate") or page.get("isBoilerplate"),
+        "ambiguous": page.get("ambiguous"),
+        "escalation_required": page.get("escalation_required") or page.get("escalationRequired"),
+        "escalation_reasons": page.get("escalation_reasons") or page.get("escalationReasons"),
+        "reason": page.get("reason"),
+        "confidence": page.get("confidence"),
+        "regions": [
+            _region_with_page_defaults(
+                region,
+                default_granite_task=default_granite_task,
+                default_target_schema=default_target_schema,
+            )
+            for region in regions
+        ],
+    }
+
+
+def _region_with_page_defaults(
+    region: object,
+    *,
+    default_granite_task: object,
+    default_target_schema: object,
+) -> object:
+    if not isinstance(region, dict):
+        return region
+    enriched = dict(region)
+    if "granite_task" not in enriched and "graniteTask" not in enriched:
+        enriched["granite_task"] = default_granite_task
+    if "target_schema" not in enriched and "targetSchema" not in enriched:
+        enriched["target_schema"] = default_target_schema
+    return enriched
 
 
 def _payload_from_page_annotations(
@@ -245,12 +296,15 @@ def _normalized_alternate_region(
             page_id=page_id,
             reason="Model returned a non-object region.",
         )
-    granite_task = _granite_task_or_none(item.get("granite_task"))
-    target_schema = _target_schema_or_none(item.get("target_schema"))
+    granite_task = _granite_task_or_none(item.get("granite_task") or item.get("graniteTask"))
+    target_schema = _target_schema_or_none(item.get("target_schema") or item.get("targetSchema"))
     expected_fields = expected_fields_from_json(item.get("expected_fields"))
     confidence = _confidence_or_none(item.get("confidence"))
     return {
-        "semantic_type": _normalized_choice(item.get("semantic_type"), _SEMANTIC_TYPES)
+        "semantic_type": _normalized_choice(
+            item.get("semantic_type") or item.get("semanticType"),
+            _SEMANTIC_TYPES,
+        )
         or _inferred_semantic_type(
             granite_task=granite_task,
             target_schema=target_schema,
@@ -313,6 +367,20 @@ def _grounding_from_alternate_region(
             "kind": "element",
             "page_id": None,
             "element_id": str(item["element_id"]),
+            "table_id": None,
+        }
+    if item.get("tableId"):
+        return {
+            "kind": "table",
+            "page_id": None,
+            "element_id": None,
+            "table_id": str(item["tableId"]),
+        }
+    if item.get("elementId"):
+        return {
+            "kind": "element",
+            "page_id": None,
+            "element_id": str(item["elementId"]),
             "table_id": None,
         }
     return {

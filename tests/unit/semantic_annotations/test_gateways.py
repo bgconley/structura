@@ -200,6 +200,45 @@ def test_live_qwen_high_quality_gateway_caps_alternate_page_annotation_regions()
     assert result.manifest.regions[0].expected_fields == ("field_0",)
 
 
+def test_live_qwen_high_quality_gateway_normalizes_single_page_wrapper_shape() -> None:
+    source = _source_with_page_image_and_element()
+    page = source.pages[0]
+    element = source.elements[0]
+    client = FakeSemanticVisionClient(
+        profile_name=QWEN_SEMANTIC_HQ_PROFILE,
+        source_engine="qwen3_vl_8b",
+        normalized_json={
+            "page": {
+                "pageId": str(page.page_id),
+                "granite_task": "kvp",
+                "target_schema": "medical_eob",
+                "regions": [
+                    {
+                        "elementId": str(element.element_id),
+                        "expected_fields": [f"deadline_field_{index}"],
+                        "reason": "Contains the 180-day grievance deadline.",
+                        "confidence": 0.9,
+                    }
+                    for index in range(9)
+                ],
+            }
+        },
+    )
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(
+        source,
+        quality_mode="high_quality",
+    )
+
+    assert len(result.manifest.regions) == 6
+    region = result.manifest.regions[0]
+    assert region.grounding.kind == "element"
+    assert region.grounding.element_id == element.element_id
+    assert region.granite_task == "kvp"
+    assert region.target_schema == "medical_eob"
+    assert region.expected_fields == ("deadline_field_0",)
+
+
 def test_live_qwen_smart_gateway_chunks_pages_for_one_image_semantic_service() -> None:
     source = _source_with_two_page_images()
     page_by_hash = {page.image_sha256: page.page_id for page in source.pages if page.image_sha256}
