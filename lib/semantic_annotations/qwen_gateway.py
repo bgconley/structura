@@ -535,7 +535,9 @@ def _repair_region_grounding_for_source(
         )
         for region in regions
     ]
-    return _deduplicate_region_intents(repaired)
+    return _deduplicate_region_intents(
+        [_repair_region_target_schema(region, source=source) for region in repaired]
+    )
 
 
 def _repair_region_grounding(
@@ -584,6 +586,40 @@ def _low_confidence(confidence: float | None) -> float:
     if confidence is None:
         return 0.2
     return min(confidence, 0.2)
+
+
+def _repair_region_target_schema(
+    region: SemanticRegionAnnotation,
+    *,
+    source: ExtractionSourceDocument,
+) -> SemanticRegionAnnotation:
+    if region.granite_task in {None, "ignore"} or region.target_schema is not None:
+        return region
+    target_schema = _default_target_schema_for_source(source)
+    if target_schema:
+        return replace(
+            region,
+            target_schema=target_schema,
+            review_required=True,
+            confidence=_low_confidence(region.confidence),
+        )
+    return replace(
+        region,
+        granite_task="ignore",
+        review_required=True,
+        confidence=_low_confidence(region.confidence),
+    )
+
+
+def _default_target_schema_for_source(source: ExtractionSourceDocument) -> str | None:
+    family = source.family.strip().lower()
+    if family in {"medical_eob", "insurance_denial", "medical_bill"}:
+        return "medical_eob"
+    if family == "invoice":
+        return "invoice"
+    if family in {"receipt", "service_record"}:
+        return "receipt"
+    return None
 
 
 def _deduplicate_region_intents(

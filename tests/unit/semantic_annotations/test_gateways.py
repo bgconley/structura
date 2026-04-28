@@ -504,6 +504,30 @@ def test_live_qwen_gateway_drops_invalid_expected_field_names_from_model_output(
     assert persisted_region["expected_fields"] == ["total_amount"]
 
 
+def test_live_qwen_gateway_repairs_missing_target_schema_from_source_family() -> None:
+    source = _source_with_page_image_and_element()
+    payload = _semantic_payload(source.pages[0].page_id)
+    regions = payload["regions"]
+    assert isinstance(regions, list)
+    region = regions[0]
+    assert isinstance(region, dict)
+    region["target_schema"] = None
+    client = FakeSemanticVisionClient(
+        profile_name=QWEN_SEMANTIC_HQ_PROFILE,
+        source_engine="qwen3_vl_8b",
+        normalized_json=payload,
+    )
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(
+        source,
+        quality_mode="high_quality",
+    )
+
+    repaired_region = result.manifest.regions[0]
+    assert repaired_region.target_schema == "medical_eob"
+    assert repaired_region.review_required is True
+
+
 def test_live_qwen_gateway_marks_unknown_docling_grounding_review_required() -> None:
     source = _source_with_page_image()
     payload = _semantic_payload(source.pages[0].page_id)
