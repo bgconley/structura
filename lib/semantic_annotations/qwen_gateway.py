@@ -35,7 +35,10 @@ from lib.semantic_annotations.policy import (
     SemanticAnnotationValidationError,
     validate_manifest,
 )
-from lib.semantic_annotations.schema import semantic_annotation_manifest_schema
+from lib.semantic_annotations.schema import (
+    semantic_annotation_manifest_schema,
+    semantic_annotation_model_output_schema,
+)
 from lib.storage import ObjectStorage
 
 MAX_SEMANTIC_MODEL_ATTEMPTS = 2
@@ -193,8 +196,8 @@ class QwenSemanticAnnotationGateway:
                 prompt_version=prompt_version,
                 prompt=_prompt(source),
                 image_inputs=_image_inputs(source, storage=self.storage),
-                response_schema_name="semantic_annotation_manifest",
-                response_json_schema=semantic_annotation_manifest_schema(),
+                response_schema_name="semantic_annotation_model_output",
+                response_json_schema=semantic_annotation_model_output_schema(),
                 max_output_tokens=_max_output_tokens_for_profile(profile_name),
                 temperature=0.0,
                 timeout_seconds=60,
@@ -373,18 +376,19 @@ def _region_manifest_json(region: SemanticRegionAnnotation) -> dict[str, object]
 def _prompt(source: ExtractionSourceDocument) -> str:
     context = build_docling_context(source)
     return (
-        "You are Structura's semantic annotation planner. Return valid JSON only, "
-        "matching the provided semantic_annotation_manifest JSON Schema. Docling is "
-        "the physical parse authority: use Docling page_id, element_id, and table_id "
-        "from the context instead of inventing coordinates. This is semantic planning, "
-        "not extraction: do not output field values, money amounts, dates, names, or "
+        "You are Structura's semantic annotation planner. Return valid JSON only as compact "
+        "semantic scout JSON, matching the provided semantic_annotation_model_output JSON "
+        "Schema. Docling is the physical parse authority: use Docling page_id, element_id, "
+        "and table_id from the context instead of inventing coordinates. This is semantic "
+        "planning, not extraction: do not output field values, money amounts, dates, names, or "
         "canonical facts. expected_fields must contain field names only, using snake_case "
         "names such as total_amount or patient_responsibility. Produce exactly one page "
         "annotation for each input page image. Return no more than 6 regions total for "
         "this request, and no more than 8 expected_fields per region. Select only the "
         "highest-value Granite routing targets; do not enumerate every visible field. "
-        "Keep each reason to one short sentence and do not repeat equivalent regions. Add region "
-        "annotations only for useful Granite extraction targets or no-op boilerplate. "
+        "Keep each reason to one short sentence and do not repeat equivalent regions. "
+        "Do not add top-level confidence; page and region confidence values are sufficient. "
+        "Add region annotations only for useful Granite extraction targets or no-op boilerplate. "
         "Use target_schema medical_eob for EOB, insurance, denial, and medical billing "
         "documents; invoice for bills and invoices; receipt for receipts and service "
         "records; otherwise null. Use granite_task kvp for summary/key-value blocks, "
@@ -429,7 +433,8 @@ def _manifest_from_response(
     quality_mode: str,
     response: VisionGenerateResponse,
 ) -> DocumentSemanticManifest:
-    normalized = _validated_semantic_payload(response)
+    model_output = _validated_model_output_payload(response)
+    normalized = _canonical_payload_from_model_output(response=response, model_output=model_output)
     pages_raw = normalized.get("pages")
     regions_raw = normalized.get("regions")
     if not isinstance(pages_raw, list) or not isinstance(regions_raw, list):
@@ -624,16 +629,62 @@ def _expected_fields_from_json(value: object) -> tuple[str, ...]:
 
 
 def _validated_semantic_payload(response: VisionGenerateResponse) -> dict[str, object]:
+    model_output = _validated_model_output_payload(response)
+    return _canonical_payload_from_model_output(response=response, model_output=model_output)
+
+
+def _validated_model_output_payload(response: VisionGenerateResponse) -> dict[str, object]:
     payload = dict(response.normalized_json)
-    if "confidence" not in payload:
-        payload["confidence"] = dict(response.confidence_json)
+    try:
+        Draft202012Validator(semantic_annotation_model_output_schema()).validate(payload)
+    except ValidationError as exc:
+        raise ModelProtocolError(
+            f"semantic annotation model output failed schema validation: {exc.message}"
+        ) from exc
+    return payload
+
+
+def _canonical_payload_from_model_output(
+    *,
+    response: VisionGenerateResponse,
+    model_output: dict[str, object],
+) -> dict[str, object]:
+    payload = dict(model_output)
+    payload["schema_name"] = "semantic_annotation_manifest"
+    payload["confidence"] = _confidence_from_response_or_model_output(
+        response=response,
+        model_output=model_output,
+    )
     try:
         Draft202012Validator(semantic_annotation_manifest_schema()).validate(payload)
     except ValidationError as exc:
         raise ModelProtocolError(
-            f"semantic annotation output failed schema validation: {exc.message}"
+            f"semantic annotation canonical payload failed schema validation: {exc.message}"
         ) from exc
     return payload
+
+
+def _confidence_from_response_or_model_output(
+    *,
+    response: VisionGenerateResponse,
+    model_output: dict[str, object],
+) -> dict[str, object]:
+    if response.confidence_json:
+        return {str(key): value for key, value in response.confidence_json.items()}
+    confidences: list[float] = []
+    for collection_name in ("pages", "regions"):
+        collection = model_output.get(collection_name)
+        if not isinstance(collection, list):
+            continue
+        for item in collection:
+            if not isinstance(item, dict):
+                continue
+            confidence = item.get("confidence")
+            if isinstance(confidence, int | float):
+                confidences.append(float(confidence))
+    if confidences:
+        return {"overall": sum(confidences) / len(confidences)}
+    return {}
 
 
 def _confidence_from_payload(payload: dict[str, object]) -> dict[str, object]:

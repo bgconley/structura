@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://structura.local/contracts/schemas/semantic_annotation_manifest.v1.schema.json",
-  "title": "Semantic Annotation Manifest v1",
+  "$id": "https://structura.local/contracts/schemas/semantic_annotation_model_output.v1.schema.json",
+  "title": "Semantic Annotation Model Output v1",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -10,11 +10,10 @@
     "document_type",
     "pages",
     "regions",
-    "quality_flags",
-    "confidence"
+    "quality_flags"
   ],
   "properties": {
-    "schema_name": { "const": "semantic_annotation_manifest" },
+    "schema_name": { "const": "semantic_annotation_model_output" },
     "schema_version": { "const": "v1" },
     "document_type": {
       "type": "string",
@@ -34,10 +33,12 @@
     },
     "pages": {
       "type": "array",
+      "maxItems": 4,
       "items": { "$ref": "#/$defs/pageAnnotation" }
     },
     "regions": {
       "type": "array",
+      "maxItems": 6,
       "items": { "$ref": "#/$defs/regionAnnotation" }
     },
     "quality_flags": {
@@ -50,8 +51,7 @@
         "ambiguous_document_type": { "type": "boolean" },
         "reason": { "type": ["string", "null"] }
       }
-    },
-    "confidence": { "$ref": "#/$defs/confidenceObject" }
+    }
   },
   "$defs": {
     "uuid": {
@@ -59,15 +59,6 @@
     },
     "confidence": {
       "type": ["number", "null"]
-    },
-    "confidenceObject": {
-      "type": "object",
-      "additionalProperties": {
-        "type": ["number", "string", "boolean", "array", "object", "null"]
-      },
-      "properties": {
-        "overall": { "$ref": "#/$defs/confidence" }
-      }
     },
     "pageAnnotation": {
       "type": "object",

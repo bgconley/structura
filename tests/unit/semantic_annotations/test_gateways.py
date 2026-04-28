@@ -14,7 +14,7 @@ from lib.model_runtime.profiles import QWEN_SEMANTIC_HQ_PROFILE, QWEN_SEMANTIC_P
 from lib.semantic_annotations import qwen_gateway
 from lib.semantic_annotations.fixture_gateway import FixtureSemanticAnnotationGateway
 from lib.semantic_annotations.qwen_gateway import QwenSemanticAnnotationGateway
-from lib.semantic_annotations.schema import semantic_annotation_manifest_schema
+from lib.semantic_annotations.schema import semantic_annotation_model_output_schema
 
 
 @dataclass
@@ -67,7 +67,10 @@ def test_live_qwen_smart_gateway_builds_truthful_qwen2b_manifest() -> None:
     assert client.request is not None
     assert "Docling context" in client.request.prompt
     assert client.request.image_inputs[0].content == b"page-image"
-    assert client.request.response_json_schema == semantic_annotation_manifest_schema()
+    assert client.request.response_schema_name == "semantic_annotation_model_output"
+    assert client.request.response_json_schema == semantic_annotation_model_output_schema()
+    assert result.manifest.manifest["schema_name"] == "semantic_annotation_manifest"
+    assert result.manifest.confidence["overall"] == 0.88
 
 
 def test_live_qwen_gateway_prompt_keeps_semantic_planning_but_not_tiny_region_limits() -> None:
@@ -88,6 +91,8 @@ def test_live_qwen_gateway_prompt_keeps_semantic_planning_but_not_tiny_region_li
     assert "expected_fields must contain field names only" in prompt
     assert "Return no more than 6 regions total" in prompt
     assert "do not enumerate every visible field" in prompt
+    assert "compact semantic scout JSON" in prompt
+    assert "canonical semantic manifest" not in prompt
     assert "at most two regions total" not in prompt
     assert "max_output_tokens" not in prompt
 
@@ -340,7 +345,7 @@ def test_qwen_semantic_client_uses_distinct_smart_and_high_quality_urls(
 
 def _semantic_payload(page_id) -> dict[str, object]:
     return {
-        "schema_name": "semantic_annotation_manifest",
+        "schema_name": "semantic_annotation_model_output",
         "schema_version": "v1",
         "document_type": "invoice",
         "pages": [

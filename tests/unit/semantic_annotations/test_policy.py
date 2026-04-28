@@ -110,7 +110,10 @@ def test_semantic_annotation_schema_rejects_extracted_region_values() -> None:
 
 
 def test_semantic_annotation_schema_uses_vllm_supported_subset() -> None:
-    from lib.semantic_annotations.schema import semantic_annotation_manifest_schema
+    from lib.semantic_annotations.schema import (
+        semantic_annotation_manifest_schema,
+        semantic_annotation_model_output_schema,
+    )
 
     unsupported_keywords = {"uniqueItems", "oneOf", "anyOf", "allOf"}
     found: list[str] = []
@@ -125,22 +128,39 @@ def test_semantic_annotation_schema_uses_vllm_supported_subset() -> None:
                 visit(child)
 
     visit(semantic_annotation_manifest_schema())
+    visit(semantic_annotation_model_output_schema())
 
     assert found == []
 
 
-def test_semantic_annotation_schema_bounds_model_generated_arrays() -> None:
-    from lib.semantic_annotations.schema import semantic_annotation_manifest_schema
+def test_semantic_annotation_model_output_schema_bounds_model_generated_arrays() -> None:
+    from lib.semantic_annotations.schema import semantic_annotation_model_output_schema
 
-    schema = semantic_annotation_manifest_schema()
+    schema = semantic_annotation_model_output_schema()
     defs = schema["$defs"]
 
     assert schema["properties"]["pages"]["maxItems"] == 4
     assert schema["properties"]["regions"]["maxItems"] == 6
-    assert defs["confidenceObject"]["additionalProperties"] is False
-    assert defs["confidenceObject"]["required"] == ["overall"]
+    assert "confidence" not in schema["required"]
     assert defs["pageAnnotation"]["properties"]["escalation_reasons"]["maxItems"] == 4
     assert defs["regionAnnotation"]["properties"]["expected_fields"]["maxItems"] == 8
+
+
+def test_semantic_manifest_schema_is_not_the_model_generation_schema() -> None:
+    from lib.semantic_annotations.schema import (
+        semantic_annotation_manifest_schema,
+        semantic_annotation_model_output_schema,
+    )
+
+    manifest_schema = semantic_annotation_manifest_schema()
+    model_schema = semantic_annotation_model_output_schema()
+
+    assert manifest_schema["properties"]["schema_name"]["const"] == "semantic_annotation_manifest"
+    assert model_schema["properties"]["schema_name"]["const"] == "semantic_annotation_model_output"
+    assert "confidence" in manifest_schema["required"]
+    assert "confidence" not in model_schema["required"]
+    assert "maxItems" not in manifest_schema["properties"]["pages"]
+    assert "maxItems" not in manifest_schema["properties"]["regions"]
 
 
 def _manifest_with_region(region: SemanticRegionAnnotation) -> DocumentSemanticManifest:
