@@ -9,7 +9,12 @@ VISUAL_EMBED_URL="${STRUCTURA_MODEL_VISUAL_EMBED_URL:-http://127.0.0.1:8103}"
 HEALTH_TIMEOUT_SECONDS="${STRUCTURA_MODEL_SMOKE_HEALTH_TIMEOUT_SECONDS:-1200}"
 HEALTH_POLL_SECONDS="${STRUCTURA_MODEL_SMOKE_HEALTH_POLL_SECONDS:-5}"
 MANAGE_COMPOSE="${STRUCTURA_MODEL_SMOKE_MANAGE_COMPOSE:-0}"
-COMPOSE_PROFILES=(--profile models-live --profile qwen-hq-live --profile visual-embed-live)
+COMPOSE_PROFILES=(
+  --profile models-live
+  --profile qwen-hq-live
+  --profile text-embed-live
+  --profile visual-embed-live
+)
 MODEL_SERVICES=(
   model-qwen-semantic
   model-qwen
@@ -69,14 +74,13 @@ compose_model() {
 start_core_services() {
   echo "Starting always-on Phase 8.5 core model services"
   compose_model stop "${MODEL_SERVICES[@]}" >/dev/null || true
-  compose_model up -d --force-recreate model-qwen-semantic model-granite model-embed
+  compose_model up -d --force-recreate model-qwen-semantic model-granite
 }
 
 probe_core_services() {
   probe_health "model-qwen-semantic" "${QWEN_SEMANTIC_URL}"
   probe_health "model-granite" "${GRANITE_URL}"
-  probe_health "model-embed" "${TEXT_EMBED_URL}"
-  probe_live_models --skip-qwen --skip-visual-embed
+  probe_live_models --skip-qwen --skip-text-embed --skip-visual-embed
 }
 
 probe_hq_qwen() {
@@ -94,6 +98,21 @@ probe_hq_qwen() {
   probe_health "model-qwen-semantic" "${QWEN_SEMANTIC_URL}"
 }
 
+probe_text_embedding() {
+  echo "Validating on-demand text embedding service"
+  compose_model stop model-granite >/dev/null || true
+  compose_model up -d --force-recreate model-embed
+  probe_health "model-embed" "${TEXT_EMBED_URL}"
+  probe_live_models \
+    --skip-qwen \
+    --skip-qwen-semantic \
+    --skip-granite \
+    --skip-visual-embed
+  compose_model stop model-embed >/dev/null || true
+  compose_model up -d --force-recreate model-granite
+  probe_health "model-granite" "${GRANITE_URL}"
+}
+
 probe_visual_embedding() {
   echo "Validating on-demand visual embedding service"
   compose_model stop model-granite model-embed >/dev/null || true
@@ -105,15 +124,15 @@ probe_visual_embedding() {
     --skip-granite \
     --skip-text-embed
   compose_model stop model-vl-embed >/dev/null || true
-  compose_model up -d --force-recreate model-granite model-embed
+  compose_model up -d --force-recreate model-granite
   probe_health "model-granite" "${GRANITE_URL}"
-  probe_health "model-embed" "${TEXT_EMBED_URL}"
 }
 
 if [[ "$MANAGE_COMPOSE" == "1" || "$MANAGE_COMPOSE" == "true" ]]; then
   start_core_services
   probe_core_services
   probe_hq_qwen
+  probe_text_embedding
   probe_visual_embedding
 else
   probe_health "model-qwen" "${QWEN_URL}"

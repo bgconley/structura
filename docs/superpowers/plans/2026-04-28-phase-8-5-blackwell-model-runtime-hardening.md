@@ -4,7 +4,7 @@
 
 **Goal:** Make Phase 8.5 live model serving deterministic on the 2x RTX PRO 4000 Blackwell GPU node by using source-backed vLLM/Compose configuration, real readiness waits, and inference probes.
 
-**Architecture:** Docker Compose owns physical GPU placement with explicit device reservations; each container sees exactly one GPU and uses inside-container `CUDA_VISIBLE_DEVICES=0`. Model launch scripts expose memory/context/concurrency knobs without hardcoding oversized defaults, and the GPU smoke waits for first-load readiness before forcing inference probes. Live GPU validation showed that Qwen3-VL 2B + Qwen3-VL 8B on one 24GB Blackwell card and Granite + text + visual embeddings on the second card do not all fit as always-on services with useful KV cache, so the runtime contract is now always-on core plus sequential/on-demand HQ and visual services.
+**Architecture:** Docker Compose owns physical GPU placement with explicit device reservations; each container sees exactly one GPU and uses inside-container `CUDA_VISIBLE_DEVICES=0`. Model launch scripts expose memory/context/concurrency knobs without hardcoding oversized defaults, and the GPU smoke waits for first-load readiness before forcing inference probes. Live GPU validation showed that Qwen3-VL 2B + Qwen3-VL 8B on one 24GB Blackwell card and Granite + text + visual embeddings on the second card do not all fit as always-on services with useful KV cache, so the runtime contract is now always-on Qwen2B semantic + Granite core plus sequential/on-demand HQ Qwen, text embeddings, and visual embeddings.
 
 **Tech Stack:** Docker Compose GPU reservations, NVIDIA Container Toolkit, voipmonitor/vLLM cu130, vLLM OpenAI-compatible server, Qwen3-VL, Granite 4.0 Vision, Hugging Face TEI, pytest.
 

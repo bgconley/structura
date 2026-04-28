@@ -39,6 +39,7 @@ def test_model_profiles_are_safe_and_gpu_placed() -> None:
         assert any("/srv/structura/models" in volume for volume in service.get("volumes", []))
 
     assert services["model-qwen"]["profiles"] == ["qwen-hq-live"]
+    assert services["model-embed"]["profiles"] == ["text-embed-live"]
     assert services["model-vl-embed"]["profiles"] == ["visual-embed-live"]
     semantic_worker = services["worker-semantic-annotations"]
     assert "workers.semantic_annotations.worker" in semantic_worker["command"]
@@ -104,6 +105,7 @@ def test_phase8_5_smoke_supports_sequential_model_validation() -> None:
     assert "STRUCTURA_MODEL_SMOKE_MANAGE_COMPOSE" in smoke
     assert "start_core_services" in smoke
     assert "probe_hq_qwen" in smoke
+    assert "probe_text_embedding" in smoke
     assert "probe_visual_embedding" in smoke
     assert "--skip-qwen" in smoke
     assert "--skip-visual-embed" in smoke
