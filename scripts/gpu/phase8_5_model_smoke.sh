@@ -6,6 +6,8 @@ QWEN_SEMANTIC_URL="${STRUCTURA_MODEL_QWEN_SEMANTIC_URL:-http://127.0.0.1:8104}"
 GRANITE_URL="${STRUCTURA_MODEL_GRANITE_URL:-http://127.0.0.1:8101}"
 TEXT_EMBED_URL="${STRUCTURA_MODEL_TEXT_EMBED_URL:-http://127.0.0.1:8102}"
 VISUAL_EMBED_URL="${STRUCTURA_MODEL_VISUAL_EMBED_URL:-http://127.0.0.1:8103}"
+HEALTH_TIMEOUT_SECONDS="${STRUCTURA_MODEL_SMOKE_HEALTH_TIMEOUT_SECONDS:-1200}"
+HEALTH_POLL_SECONDS="${STRUCTURA_MODEL_SMOKE_HEALTH_POLL_SECONDS:-5}"
 
 echo "Phase 8.5 GPU model smoke"
 
@@ -19,15 +21,20 @@ fi
 probe_health() {
   local name="$1"
   local url="$2"
-  if curl -fsS "${url}/healthz" >/dev/null 2>&1; then
-    echo "${name}: healthz ok"
-    return
-  fi
-  if curl -fsS "${url}/health" >/dev/null 2>&1; then
-    echo "${name}: health ok"
-    return
-  fi
-  echo "${name}: no health endpoint responded at ${url}" >&2
+  local deadline=$((SECONDS + HEALTH_TIMEOUT_SECONDS))
+  echo "${name}: waiting for health at ${url} (${HEALTH_TIMEOUT_SECONDS}s timeout)"
+  while ((SECONDS < deadline)); do
+    if curl -fsS "${url}/healthz" >/dev/null 2>&1; then
+      echo "${name}: healthz ok"
+      return
+    fi
+    if curl -fsS "${url}/health" >/dev/null 2>&1; then
+      echo "${name}: health ok"
+      return
+    fi
+    sleep "${HEALTH_POLL_SECONDS}"
+  done
+  echo "${name}: no health endpoint responded at ${url} within ${HEALTH_TIMEOUT_SECONDS}s" >&2
   exit 1
 }
 

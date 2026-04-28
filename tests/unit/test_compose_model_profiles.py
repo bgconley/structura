@@ -9,22 +9,35 @@ def test_model_profiles_are_safe_and_gpu_placed() -> None:
     compose = yaml.safe_load(Path("compose.yaml").read_text())
     services = compose["services"]
 
-    for name in (
-        "model-qwen",
-        "model-qwen-semantic",
-        "model-granite",
-        "model-embed",
-        "model-vl-embed",
-    ):
+    expected_gpu_bindings = {
+        "model-qwen": "${STRUCTURA_MODEL_QWEN_GPU:-0}",
+        "model-qwen-semantic": "${STRUCTURA_MODEL_QWEN_SEMANTIC_GPU:-0}",
+        "model-granite": "${STRUCTURA_MODEL_GRANITE_GPU:-1}",
+        "model-embed": "${STRUCTURA_MODEL_EMBED_GPU:-1}",
+        "model-vl-embed": "${STRUCTURA_MODEL_VISUAL_EMBED_GPU:-1}",
+    }
+    for name, host_gpu in expected_gpu_bindings.items():
         service = services[name]
         rendered_ports = "\n".join(service.get("ports", []))
         assert "127.0.0.1" in rendered_ports
-        assert service["gpus"] == "all"
+        assert "gpus" not in service
+        assert service["ipc"] == "host"
+        assert service["shm_size"] == "${STRUCTURA_MODEL_SHM_SIZE:-8gb}"
+        assert service["ulimits"]["memlock"] == -1
+        assert service["ulimits"]["stack"] == 67108864
+        devices = service["deploy"]["resources"]["reservations"]["devices"]
+        assert devices == [
+            {
+                "driver": "nvidia",
+                "device_ids": [host_gpu],
+                "capabilities": ["gpu"],
+            }
+        ]
+        environment = service["environment"]
+        assert environment["CUDA_DEVICE_ORDER"] == "PCI_BUS_ID"
+        assert environment["STRUCTURA_CUDA_VISIBLE_DEVICES"] == "0"
         assert any("/srv/structura/models" in volume for volume in service.get("volumes", []))
 
-    assert services["model-qwen"]["environment"]["NVIDIA_VISIBLE_DEVICES"].endswith(":-0}")
-    assert services["model-qwen-semantic"]["environment"]["NVIDIA_VISIBLE_DEVICES"].endswith(":-0}")
-    assert services["model-granite"]["environment"]["NVIDIA_VISIBLE_DEVICES"].endswith(":-1}")
     assert services["model-vl-embed"]["profiles"] == ["visual-embed-live"]
     semantic_worker = services["worker-semantic-annotations"]
     assert "workers.semantic_annotations.worker" in semantic_worker["command"]

@@ -11,6 +11,18 @@ limit_mm="${STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT:-}"
 if [[ -z "$limit_mm" ]]; then
   limit_mm='{"image":8,"video":0}'
 fi
+args=(
+  --model "$model_id"
+  --served-model-name "$served_model_name"
+  --runner pooling
+  --host 0.0.0.0
+  --port "$port"
+  --trust-remote-code
+  --dtype "$dtype"
+  --max-model-len "$max_model_len"
+  --gpu-memory-utilization "$gpu_memory"
+  --limit-mm-per-prompt "$limit_mm"
+)
 
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
 export VLLM_SLEEP_WHEN_IDLE="${VLLM_SLEEP_WHEN_IDLE:-1}"
@@ -20,14 +32,12 @@ elif [[ ("${CUDA_VISIBLE_DEVICES:-}" == "" || "${CUDA_VISIBLE_DEVICES:-}" == "vo
   export CUDA_VISIBLE_DEVICES="$NVIDIA_VISIBLE_DEVICES"
 fi
 
-exec python -m vllm.entrypoints.openai.api_server \
-  --model "$model_id" \
-  --served-model-name "$served_model_name" \
-  --runner pooling \
-  --host 0.0.0.0 \
-  --port "$port" \
-  --trust-remote-code \
-  --dtype "$dtype" \
-  --max-model-len "$max_model_len" \
-  --gpu-memory-utilization "$gpu_memory" \
-  --limit-mm-per-prompt "$limit_mm"
+if [[ -n "${STRUCTURA_VLLM_MAX_NUM_SEQS:-}" ]]; then
+  args+=(--max-num-seqs "$STRUCTURA_VLLM_MAX_NUM_SEQS")
+fi
+
+if [[ -n "${STRUCTURA_VLLM_MM_PROCESSOR_CACHE_GB:-}" ]]; then
+  args+=(--mm-processor-cache-gb "$STRUCTURA_VLLM_MM_PROCESSOR_CACHE_GB")
+fi
+
+exec python -m vllm.entrypoints.openai.api_server "${args[@]}"

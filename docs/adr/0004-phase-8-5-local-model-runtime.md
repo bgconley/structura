@@ -16,10 +16,23 @@ outputs, fake provenance, or unverified structure extraction.
 
 - Phase 8.5 is mandatory before Phase 9 analysis.
 - Qwen3-VL-8B and Granite 4.0 3B Vision are equal priorities.
-- `model-qwen` runs on Blackwell GPU 0 and owns handwriting, degraded OCR rescue, visual fallback,
-  and later cited analysis support.
-- `model-granite` runs on Blackwell GPU 1 and owns structured bills, invoices, receipts, EOBs,
-  tables, charts, forms, and semantic KVP extraction.
+- Live Qwen/Granite/visual VLM services use the `voipmonitor/vllm:cu130` Blackwell-oriented vLLM
+  image family unless benchmark evidence proves a better pinned image. Firecrawl-backed research
+  found the voipmonitor RTX 6000 Pro docs describe that image as recommended for vLLM on SM120
+  with Blackwell patches and FlashInfer.
+- Docker Compose owns physical GPU placement through explicit GPU device reservations. Containers
+  use `CUDA_DEVICE_ORDER=PCI_BUS_ID` and inside-container `CUDA_VISIBLE_DEVICES=0`; model scripts
+  must not guess host GPU numbering after vLLM has started importing CUDA/PyTorch.
+- `gpu_memory_utilization`, `max_model_len`, `max_num_seqs`, video disabling, and multimodal
+  processor cache sizing are first-class runtime knobs. Lowering memory utilization can enable
+  co-residency, but it reduces KV-cache capacity and must be checked with inference probes and
+  preemption logs.
+- `model-qwen-semantic` runs the Qwen3-VL-2B semantic profile as the always-on semantic annotator.
+- `model-qwen` runs the Qwen3-VL-8B HQ/rescue profile and owns handwriting, degraded OCR rescue,
+  visual fallback, and later cited analysis support; it may be on-demand if co-residency does not
+  pass GPU validation.
+- `model-granite` owns structured bills, invoices, receipts, EOBs, tables, charts, forms, and
+  semantic KVP extraction.
 - `model-embed` runs on the RTX 3090 path and serves Qwen3-Embedding-4B at 1536 dimensions.
 - `model-vl-embed` serves Qwen3-VL-Embedding at 1024 dimensions as scheduled/offline work until
   concurrency with Granite is benchmarked.

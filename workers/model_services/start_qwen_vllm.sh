@@ -44,4 +44,8 @@ if [[ -n "${STRUCTURA_VLLM_MAX_NUM_SEQS:-}" ]]; then
   args+=(--max-num-seqs "$STRUCTURA_VLLM_MAX_NUM_SEQS")
 fi
 
+if [[ -n "${STRUCTURA_VLLM_MM_PROCESSOR_CACHE_GB:-}" ]]; then
+  args+=(--mm-processor-cache-gb "$STRUCTURA_VLLM_MM_PROCESSOR_CACHE_GB")
+fi
+
 exec python -m vllm.entrypoints.openai.api_server "${args[@]}"

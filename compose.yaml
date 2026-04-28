@@ -1,3 +1,10 @@
+x-live-model-runtime: &live-model-runtime
+  ipc: host
+  shm_size: ${STRUCTURA_MODEL_SHM_SIZE:-8gb}
+  ulimits:
+    memlock: -1
+    stack: 67108864
+
 services:
   postgres:
     image: ${STRUCTURA_POSTGRES_IMAGE:-paradedb/paradedb:0.21.5-pg17}
@@ -364,8 +371,8 @@ services:
     profiles: ["models-placeholder", "models"]
 
   model-qwen-semantic:
+    <<: *live-model-runtime
     image: ${STRUCTURA_MODEL_QWEN_SEMANTIC_IMAGE:-voipmonitor/vllm:cu130}
-    gpus: all
     entrypoint: ["/bin/bash"]
     command: ["/srv/structura/model_services/start_qwen_vllm.sh"]
     ports:
@@ -376,8 +383,8 @@ services:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/tmp/model-inputs:/srv/structura/tmp/model-inputs
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/models:/srv/structura/logs/models
     environment:
-      NVIDIA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_QWEN_SEMANTIC_GPU:-0}
-      STRUCTURA_CUDA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_QWEN_SEMANTIC_GPU:-0}
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      STRUCTURA_CUDA_VISIBLE_DEVICES: "0"
       STRUCTURA_MODEL_PROFILE: ${STRUCTURA_QWEN_SEMANTIC_PROFILE:-qwen3-vl-2b-semantic:v1}
       STRUCTURA_VLLM_MODEL_ID: Qwen/Qwen3-VL-2B-Instruct
       STRUCTURA_VLLM_SERVED_MODEL_NAME: Qwen/Qwen3-VL-2B-Instruct
@@ -385,12 +392,21 @@ services:
       STRUCTURA_VLLM_DTYPE: bfloat16
       STRUCTURA_VLLM_MAX_MODEL_LEN: "32768"
       STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION: "0.30"
+      STRUCTURA_VLLM_MAX_NUM_SEQS: "8"
+      STRUCTURA_VLLM_MM_PROCESSOR_CACHE_GB: "0"
       STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT: '{"image":4,"video":0}'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${STRUCTURA_MODEL_QWEN_SEMANTIC_GPU:-0}"]
+              capabilities: [gpu]
     profiles: ["models-live", "qwen-semantic-live"]
 
   model-qwen:
+    <<: *live-model-runtime
     image: ${STRUCTURA_MODEL_QWEN_IMAGE:-voipmonitor/vllm:cu130}
-    gpus: all
     entrypoint: ["/bin/bash"]
     command: ["/srv/structura/model_services/start_qwen_vllm.sh"]
     ports:
@@ -401,8 +417,8 @@ services:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/tmp/model-inputs:/srv/structura/tmp/model-inputs
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/models:/srv/structura/logs/models
     environment:
-      NVIDIA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_QWEN_GPU:-0}
-      STRUCTURA_CUDA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_QWEN_GPU:-0}
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      STRUCTURA_CUDA_VISIBLE_DEVICES: "0"
       STRUCTURA_MODEL_PROFILE: ${STRUCTURA_QWEN_PROFILE:-qwen3-vl-8b-instruct-nvfp4-local:v1}
       STRUCTURA_VLLM_MODEL_ID: ${STRUCTURA_VLLM_QWEN_MODEL_ID:-lhoang8500/Qwen3-VL-8B-Instruct-NVFP4}
       STRUCTURA_VLLM_SERVED_MODEL_NAME: Qwen/Qwen3-VL-8B-Instruct
@@ -410,13 +426,21 @@ services:
       STRUCTURA_VLLM_MAX_MODEL_LEN: "32768"
       STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION: "0.55"
       STRUCTURA_VLLM_KV_CACHE_DTYPE: fp8
-      STRUCTURA_VLLM_MAX_NUM_SEQS: "32"
+      STRUCTURA_VLLM_MAX_NUM_SEQS: "8"
+      STRUCTURA_VLLM_MM_PROCESSOR_CACHE_GB: "0"
       STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT: '{"image":1,"video":0}'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${STRUCTURA_MODEL_QWEN_GPU:-0}"]
+              capabilities: [gpu]
     profiles: ["models-live", "qwen-live"]
 
   model-granite:
+    <<: *live-model-runtime
     image: ${STRUCTURA_MODEL_GRANITE_IMAGE:-voipmonitor/vllm:cu130}
-    gpus: all
     entrypoint: ["/bin/bash"]
     command: ["/srv/structura/model_services/start_granite_vllm.sh"]
     ports:
@@ -427,17 +451,28 @@ services:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/tmp/model-inputs:/srv/structura/tmp/model-inputs
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/models:/srv/structura/logs/models
     environment:
-      NVIDIA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_GRANITE_GPU:-1}
-      STRUCTURA_CUDA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_GRANITE_GPU:-1}
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      STRUCTURA_CUDA_VISIBLE_DEVICES: "0"
       STRUCTURA_MODEL_PROFILE: ${STRUCTURA_GRANITE_PROFILE:-granite-4.0-3b-vision-bf16:v1}
       STRUCTURA_GRANITE_MODEL_ID: ibm-granite/granite-4.0-3b-vision
       STRUCTURA_GRANITE_ADAPTER_PATH: ibm-granite/granite-4.0-3b-vision
       STRUCTURA_GRANITE_PORT: "8101"
+      STRUCTURA_GRANITE_MAX_MODEL_LEN: "32768"
+      STRUCTURA_GRANITE_GPU_MEMORY_UTILIZATION: "0.45"
+      STRUCTURA_GRANITE_MAX_NUM_SEQS: "8"
+      STRUCTURA_GRANITE_LIMIT_MM_PER_PROMPT: '{"image":1,"video":0}'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${STRUCTURA_MODEL_GRANITE_GPU:-1}"]
+              capabilities: [gpu]
     profiles: ["models-live", "granite-live"]
 
   model-embed:
+    <<: *live-model-runtime
     image: ${STRUCTURA_MODEL_EMBED_IMAGE:-ghcr.io/huggingface/text-embeddings-inference:cuda-1.9}
-    gpus: all
     entrypoint: ["/bin/bash"]
     command: ["/srv/structura/model_services/start_text_embed.sh"]
     ports:
@@ -447,18 +482,25 @@ services:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/models:/srv/structura/models
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/models:/srv/structura/logs/models
     environment:
-      NVIDIA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_EMBED_GPU:-1}
-      STRUCTURA_CUDA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_EMBED_GPU:-1}
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      STRUCTURA_CUDA_VISIBLE_DEVICES: "0"
       STRUCTURA_MODEL_PROFILE: ${STRUCTURA_TEXT_EMBED_PROFILE:-qwen3-embedding-4b-1536:v1}
       MODEL_ID: Qwen/Qwen3-Embedding-4B
       SERVED_MODEL_NAME: Qwen/Qwen3-Embedding-4B
       PORT: "8102"
       DTYPE: float16
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${STRUCTURA_MODEL_EMBED_GPU:-1}"]
+              capabilities: [gpu]
     profiles: ["models-live", "text-embed-live"]
 
   model-vl-embed:
+    <<: *live-model-runtime
     image: ${STRUCTURA_MODEL_VISUAL_EMBED_IMAGE:-voipmonitor/vllm:cu130}
-    gpus: all
     entrypoint: ["/bin/bash"]
     command: ["/srv/structura/model_services/start_visual_embed_vllm.sh"]
     ports:
@@ -469,8 +511,8 @@ services:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/tmp/model-inputs:/srv/structura/tmp/model-inputs
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/models:/srv/structura/logs/models
     environment:
-      NVIDIA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_VISUAL_EMBED_GPU:-1}
-      STRUCTURA_CUDA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_VISUAL_EMBED_GPU:-1}
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      STRUCTURA_CUDA_VISIBLE_DEVICES: "0"
       STRUCTURA_MODEL_PROFILE: ${STRUCTURA_VISUAL_EMBED_PROFILE:-qwen3-vl-embedding-2b-1024:v1}
       STRUCTURA_VLLM_MODEL_ID: Qwen/Qwen3-VL-Embedding-2B
       STRUCTURA_VLLM_SERVED_MODEL_NAME: Qwen/Qwen3-VL-Embedding-2B
@@ -478,7 +520,16 @@ services:
       STRUCTURA_VLLM_DTYPE: bfloat16
       STRUCTURA_VLLM_MAX_MODEL_LEN: "8192"
       STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION: "0.30"
+      STRUCTURA_VLLM_MAX_NUM_SEQS: "8"
+      STRUCTURA_VLLM_MM_PROCESSOR_CACHE_GB: "0"
       STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT: '{"image":1,"video":0}'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${STRUCTURA_MODEL_VISUAL_EMBED_GPU:-1}"]
+              capabilities: [gpu]
     profiles: ["visual-embed-live"]
 
   redis:
