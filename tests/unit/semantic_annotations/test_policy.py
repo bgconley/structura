@@ -234,7 +234,7 @@ def test_validate_manifest_requires_exact_page_coverage() -> None:
         )
 
 
-def test_validate_manifest_rejects_duplicate_region_grounding() -> None:
+def test_validate_manifest_accepts_distinct_regions_on_same_grounding() -> None:
     page_id = uuid4()
     first = SemanticRegionAnnotation(
         semantic_type="billing_summary",
@@ -248,6 +248,33 @@ def test_validate_manifest_rejects_duplicate_region_grounding() -> None:
         priority="medium",
         granite_task="kvp",
         target_schema="invoice",
+        grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+    )
+
+    validate_manifest(
+        _manifest_with_pages(page_ids=[page_id], regions=[first, second]),
+        valid_page_ids={page_id},
+        valid_element_ids=set(),
+        valid_table_ids=set(),
+    )
+
+
+def test_validate_manifest_rejects_exact_duplicate_region_intent() -> None:
+    page_id = uuid4()
+    first = SemanticRegionAnnotation(
+        semantic_type="billing_summary",
+        priority="high",
+        granite_task="kvp",
+        target_schema="invoice",
+        expected_fields=("total_amount",),
+        grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+    )
+    second = SemanticRegionAnnotation(
+        semantic_type="billing_summary",
+        priority="medium",
+        granite_task="kvp",
+        target_schema="invoice",
+        expected_fields=("total_amount",),
         grounding=SemanticGroundingRef(kind="page", page_id=page_id),
     )
 

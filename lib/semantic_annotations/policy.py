@@ -73,15 +73,13 @@ def validate_manifest(
         raise SemanticAnnotationValidationError(
             "Semantic annotation page coverage must exactly match Docling pages."
         )
-    seen_groundings: set[tuple[object, ...]] = set()
+    seen_region_intents: set[tuple[object, ...]] = set()
     for region in manifest.regions:
         _validate_region(region, page_ids=page_ids, element_ids=element_ids, table_ids=table_ids)
-        grounding_key = _grounding_key(region.grounding)
-        if grounding_key in seen_groundings:
-            raise SemanticAnnotationValidationError(
-                "Duplicate semantic region grounding reference."
-            )
-        seen_groundings.add(grounding_key)
+        region_intent_key = _region_intent_key(region)
+        if region_intent_key in seen_region_intents:
+            raise SemanticAnnotationValidationError("Duplicate semantic region extraction intent.")
+        seen_region_intents.add(region_intent_key)
 
 
 def high_quality_required(
@@ -166,6 +164,16 @@ def _require_grounded_id(grounding: SemanticGroundingRef) -> None:
         raise SemanticAnnotationValidationError("Element grounding requires element_id.")
     if grounding.kind == "table" and grounding.table_id is None:
         raise SemanticAnnotationValidationError("Table grounding requires table_id.")
+
+
+def _region_intent_key(region: SemanticRegionAnnotation) -> tuple[object, ...]:
+    return (
+        region.semantic_type,
+        region.granite_task,
+        region.target_schema,
+        tuple(sorted(region.expected_fields)),
+        _grounding_key(region.grounding),
+    )
 
 
 def _grounding_key(grounding: SemanticGroundingRef) -> tuple[object, ...]:
