@@ -86,6 +86,8 @@ def test_live_qwen_gateway_prompt_keeps_semantic_planning_but_not_tiny_region_li
     assert "Docling is the physical parse authority" in prompt
     assert "semantic planning, not extraction" in prompt
     assert "expected_fields must contain field names only" in prompt
+    assert "Return no more than 6 regions total" in prompt
+    assert "do not enumerate every visible field" in prompt
     assert "at most two regions total" not in prompt
     assert "max_output_tokens" not in prompt
 
