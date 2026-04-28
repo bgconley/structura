@@ -10,8 +10,11 @@ port="${STRUCTURA_VLLM_PORT:-8000}"
 served_model_name="${STRUCTURA_VLLM_SERVED_MODEL_NAME:-$STRUCTURA_VLLM_MODEL_ID}"
 max_model_len="${STRUCTURA_VLLM_MAX_MODEL_LEN:-32768}"
 gpu_memory="${STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION:-0.85}"
-limit_mm="${STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT:-{\"image\":4,\"video\":0}}"
 dtype="${STRUCTURA_VLLM_DTYPE:-auto}"
+limit_mm="${STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT:-}"
+if [[ -z "$limit_mm" ]]; then
+  limit_mm='{"image":4,"video":0}'
+fi
 
 args=(
   --model "$STRUCTURA_VLLM_MODEL_ID"
