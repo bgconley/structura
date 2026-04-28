@@ -421,7 +421,7 @@ def _cancel_text_embedding_jobs(document_id: UUID) -> None:
                     finished_at = now(),
                     error_json = jsonb_build_object(
                       'message', 'Text embedding skipped for private Phase 8.5 corpus run.',
-                      'requested_by', %s
+                      'requested_by', %s::text
                     ),
                     updated_at = now()
                 WHERE document_id = %s

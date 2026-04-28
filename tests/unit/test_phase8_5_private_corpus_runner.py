@@ -45,3 +45,43 @@ def test_private_corpus_default_actor_matches_semantic_job_contract(
         reason="phase8_5.private_corpus_high_quality_pass",
     )
     assert payload["requested_by"] == args.requested_by
+
+
+def test_cancel_text_embedding_jobs_types_corpus_actor_for_postgres(
+    monkeypatch,
+) -> None:
+    runner = _load_private_corpus_runner()
+    executed: dict[str, object] = {}
+
+    class FakeCursor:
+        def __enter__(self) -> FakeCursor:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def execute(self, sql: str, params: tuple[object, ...]) -> None:
+            executed["sql"] = sql
+            executed["params"] = params
+
+    class FakeConnection:
+        def __enter__(self) -> FakeConnection:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def cursor(self) -> FakeCursor:
+            return FakeCursor()
+
+        def commit(self) -> None:
+            executed["committed"] = True
+
+    monkeypatch.setattr(runner, "db_connection", lambda: FakeConnection())
+    document_id = uuid4()
+
+    runner._cancel_text_embedding_jobs(document_id)
+
+    assert "'requested_by', %s::text" in str(executed["sql"])
+    assert executed["params"] == (runner.CORPUS_RUN_ID, document_id)
+    assert executed["committed"] is True
