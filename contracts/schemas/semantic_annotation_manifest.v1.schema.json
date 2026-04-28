@@ -64,9 +64,8 @@
     },
     "confidenceObject": {
       "type": "object",
-      "additionalProperties": {
-        "type": ["number", "string", "boolean", "array", "object", "null"]
-      },
+      "additionalProperties": false,
+      "required": ["overall"],
       "properties": {
         "overall": { "$ref": "#/$defs/confidence" }
       }

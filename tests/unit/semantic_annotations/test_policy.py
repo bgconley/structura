@@ -137,6 +137,8 @@ def test_semantic_annotation_schema_bounds_model_generated_arrays() -> None:
 
     assert schema["properties"]["pages"]["maxItems"] == 4
     assert schema["properties"]["regions"]["maxItems"] == 6
+    assert defs["confidenceObject"]["additionalProperties"] is False
+    assert defs["confidenceObject"]["required"] == ["overall"]
     assert defs["pageAnnotation"]["properties"]["escalation_reasons"]["maxItems"] == 4
     assert defs["regionAnnotation"]["properties"]["expected_fields"]["maxItems"] == 8
 
