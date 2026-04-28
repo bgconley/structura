@@ -29,24 +29,22 @@ outputs, fake provenance, or unverified structure extraction.
   preemption logs.
 - `model-qwen-semantic` runs the Qwen3-VL-2B semantic profile as the always-on semantic annotator.
 - `model-qwen` runs the Qwen3-VL-8B HQ/rescue profile and owns handwriting, degraded OCR rescue,
-  visual fallback, and later cited analysis support. It is co-resident with the always-on 2B
-  semantic service on GPU0 through ordered startup: the 8B service starts first, then the 2B
-  service starts with a higher utilization ceiling so vLLM can reserve KV cache after the 8B
-  process is already resident. The service pair must still prove a 32K-context health/inference
-  smoke on the target GPU before Phase 9 starts.
+  visual fallback, and later cited analysis support. It is the highest-context GPU0 service at
+  32K; Qwen3-VL-2B semantic is co-resident at 16K.
 - `model-granite` owns structured bills, invoices, receipts, EOBs, tables, charts, forms, and
-  semantic KVP extraction.
+  semantic KVP extraction. It is the highest-priority GPU1 VLM at 16K because it receives targeted
+  Docling-grounded crops/regions, not whole-document prompts.
 - `model-embed` serves Qwen3-Embedding-4B at 1536 dimensions as an on-demand service on the current
   single-node Blackwell Compose deployment. GPU validation showed it consumes roughly 8GB; co-running
   it with both Granite and visual embeddings on one 24GB Blackwell card leaves no hardened safety
   margin, so the RTX 3090 path remains the preferred always-available text embedding placement once
   cross-node serving is wired.
-- `model-vl-embed` serves Qwen3-VL-Embedding at its native 2048 dimensions and is co-resident with
-  Granite on GPU1 through the same ordered-start pattern: Granite first, visual embeddings second.
-- The Phase 8.5 GPU smoke script supports managed validation: co-resident Blackwell VLM services
-  first, then temporary GPU1 offload to validate text embeddings, then restoration of the VLM
-  services. This reflects the hardware envelope while still requiring every model endpoint to prove
-  live inference before Phase 9.
+- `model-vl-embed` serves Qwen3-VL-Embedding at its native 2048 dimensions with a short 2K context
+  budget co-resident with Granite on GPU1.
+- The Phase 8.5 GPU smoke script supports managed validation: start Qwen8B and Granite first,
+  then Qwen2B semantic and visual embeddings, then temporarily offload GPU1 services to validate
+  text embeddings, restoring the co-resident VLM layout afterward. This reflects the hardware
+  envelope while still requiring every model endpoint to prove live inference before Phase 9.
 - Fixture mode is explicitly named and test-only. Live/required mode must call configured model
   services and must fail safely when unavailable.
 - `source_engine = qwen3_vl_8b` or `source_engine = granite_vision_3b` may be persisted only after

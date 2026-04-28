@@ -68,6 +68,8 @@ def test_live_model_profiles_have_concrete_blackwell_commands() -> None:
     assert "start_qwen_vllm.sh" in " ".join(qwen_semantic["command"])
     assert qwen_semantic["environment"]["STRUCTURA_VLLM_MODEL_ID"] == ("Qwen/Qwen3-VL-2B-Instruct")
     assert qwen_semantic["environment"]["STRUCTURA_VLLM_PORT"] == "8104"
+    assert qwen_semantic["environment"]["STRUCTURA_VLLM_MAX_MODEL_LEN"] == "16384"
+    assert qwen_semantic["environment"]["STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION"] == "0.50"
 
     qwen_hq = services["model-qwen"]
     assert "voipmonitor/vllm:cu130" in qwen_hq["image"]
@@ -79,6 +81,8 @@ def test_live_model_profiles_have_concrete_blackwell_commands() -> None:
         "Qwen/Qwen3-VL-8B-Instruct"
     )
     assert qwen_hq["environment"]["STRUCTURA_VLLM_PORT"] == "8100"
+    assert qwen_hq["environment"]["STRUCTURA_VLLM_MAX_MODEL_LEN"] == "32768"
+    assert qwen_hq["environment"]["STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION"] == "0.54"
 
     granite = services["model-granite"]
     assert "voipmonitor/vllm:cu130" in granite["image"]
@@ -86,6 +90,8 @@ def test_live_model_profiles_have_concrete_blackwell_commands() -> None:
     assert granite["environment"]["STRUCTURA_GRANITE_MODEL_ID"] == (
         "ibm-granite/granite-4.0-3b-vision"
     )
+    assert granite["environment"]["STRUCTURA_GRANITE_MAX_MODEL_LEN"] == "16384"
+    assert granite["environment"]["STRUCTURA_GRANITE_GPU_MEMORY_UTILIZATION"] == "0.50"
 
     text_embed = services["model-embed"]
     assert "text-embeddings-inference:cuda-1.9" in text_embed["image"]
@@ -96,6 +102,8 @@ def test_live_model_profiles_have_concrete_blackwell_commands() -> None:
     assert "voipmonitor/vllm:cu130" in visual_embed["image"]
     assert "start_visual_embed_vllm.sh" in " ".join(visual_embed["command"])
     assert visual_embed["environment"]["STRUCTURA_VLLM_MODEL_ID"] == ("Qwen/Qwen3-VL-Embedding-2B")
+    assert visual_embed["environment"]["STRUCTURA_VLLM_MAX_MODEL_LEN"] == "2048"
+    assert visual_embed["environment"]["STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION"] == "0.45"
 
 
 def test_phase8_5_smoke_supports_managed_model_validation() -> None:
@@ -105,6 +113,8 @@ def test_phase8_5_smoke_supports_managed_model_validation() -> None:
     assert "STRUCTURA_MODEL_SMOKE_MANAGE_COMPOSE" in smoke
     assert "start_core_services" in smoke
     assert "BLACKWELL_CORE_SERVICES" in smoke
+    assert "BLACKWELL_BASE_SERVICES" in smoke
+    assert "BLACKWELL_COMPANION_SERVICES" in smoke
     assert "model-qwen" in smoke
     assert "model-vl-embed" in smoke
     assert "probe_text_embedding" in smoke
