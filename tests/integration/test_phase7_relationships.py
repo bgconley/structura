@@ -94,6 +94,10 @@ def test_phase7_related_counts_do_not_reveal_hidden_counterparts(
     )
     _file_document(owner, owner_csrf, visible_id, visible_folder_id)
     _file_document(owner, owner_csrf, hidden_id, private_folder_id)
+    _index_document_for_search(
+        visible_id,
+        f"Visible Relationship Anchor {unique} visible relationship search fixture",
+    )
 
     created = owner.post(
         "/api/v1/relationships",
@@ -388,6 +392,24 @@ def _insert_suggested_relationship(
                 """,
                 (from_document_id, to_document_id, relationship_type),
             )
+        conn.commit()
+
+
+def _index_document_for_search(document_id: str, text: str) -> None:
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO document_chunks
+                  (document_id, chunk_index, text_content, markdown_content)
+                VALUES (%s, 1, %s, %s)
+                ON CONFLICT (document_id, chunk_index)
+                DO UPDATE SET text_content = EXCLUDED.text_content,
+                              markdown_content = EXCLUDED.markdown_content
+                """,
+                (document_id, text, text),
+            )
+            cur.execute("SELECT refresh_document_chunk_projection(%s)", (document_id,))
         conn.commit()
 
 

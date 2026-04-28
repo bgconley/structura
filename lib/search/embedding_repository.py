@@ -112,6 +112,7 @@ def list_visual_embedding_sources(cur: Any, document_id: UUID) -> list[Embedding
                 "assetByteSize": row["byte_size"],
                 "assetUri": row["uri"],
                 "assetMimeType": row["mime_type"],
+                "sourceBytesSha256": row["sha256"],
                 "quality": row.get("quality_json") or {},
                 "embeddingAdapter": "deterministic_visual_byte_embedding",
             },
