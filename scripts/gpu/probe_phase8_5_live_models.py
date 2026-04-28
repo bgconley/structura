@@ -4,10 +4,10 @@ from __future__ import annotations
 import argparse
 import base64
 import json
-import urllib.error
-import urllib.request
 from dataclasses import dataclass
 from typing import Any
+
+import httpx
 
 PNG_1X1 = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII="
@@ -155,21 +155,23 @@ def post_json(
     timeout: float,
 ) -> dict[str, Any]:
     url = base_url.rstrip("/") + path
-    request = urllib.request.Request(
-        url,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"content-type": "application/json"},
-        method="POST",
-    )
+    if not url.startswith(("http://", "https://")):
+        raise SystemExit(f"{url}: model probe URL must use http or https")
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            raw = response.read()
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")
-        raise SystemExit(f"{url}: HTTP {exc.code}: {body[:300]}") from exc
-    except urllib.error.URLError as exc:
+        response = httpx.post(
+            url,
+            content=json.dumps(payload).encode("utf-8"),
+            headers={"content-type": "application/json"},
+            timeout=timeout,
+            follow_redirects=False,
+        )
+    except httpx.HTTPError as exc:
         raise SystemExit(f"{url}: request failed: {exc}") from exc
-    parsed = json.loads(raw.decode("utf-8"))
+    if 300 <= response.status_code < 400:
+        raise SystemExit(f"{url}: redirect responses are not allowed")
+    if response.status_code >= 400:
+        raise SystemExit(f"{url}: HTTP {response.status_code}: {response.text[:300]}")
+    parsed = response.json()
     if not isinstance(parsed, dict):
         raise SystemExit(f"{url}: response is not a JSON object")
     return parsed
