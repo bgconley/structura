@@ -86,6 +86,47 @@ def test_live_qwen_high_quality_gateway_uses_qwen8b_profile() -> None:
     assert result.manifest.prompt_version == "phase8_5-semantic-high-quality-v1"
 
 
+def test_live_qwen_smart_gateway_chunks_pages_for_one_image_semantic_service() -> None:
+    source = _source_with_two_page_images()
+    page_by_hash = {page.image_sha256: page.page_id for page in source.pages if page.image_sha256}
+
+    class ChunkingClient:
+        requests: list[VisionGenerateRequest]
+
+        def __init__(self) -> None:
+            self.requests = []
+
+        def generate(self, request: VisionGenerateRequest) -> VisionGenerateResponse:
+            self.requests.append(request)
+            image_hash = request.image_inputs[0].validated_sha256()
+            page_id = page_by_hash[image_hash]
+            return VisionGenerateResponse(
+                profile_name=QWEN_SEMANTIC_PROFILE,
+                model_name="fake-qwen",
+                model_version="test",
+                source_engine="qwen3_vl_2b",
+                prompt_version=request.prompt_version,
+                raw_text="{}",
+                normalized_json=_semantic_payload(page_id),
+                confidence_json={"overall": 0.8},
+                input_sha256=(image_hash,),
+                latency_ms=1,
+            )
+
+    client = ChunkingClient()
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(
+        source,
+        quality_mode="smart",
+    )
+
+    assert len(client.requests) == 2
+    assert [len(request.image_inputs) for request in client.requests] == [1, 1]
+    assert len(result.manifest.pages) == 2
+    assert len(result.manifest.regions) == 2
+    assert result.manifest.confidence["chunk_count"] == 2
+
+
 def test_live_qwen_gateway_rejects_malformed_model_output() -> None:
     source = _source_with_page_image()
     client = FakeSemanticVisionClient(
@@ -174,6 +215,47 @@ def _source_with_page_image() -> ExtractionSourceDocument:
                 image_mime_type="image/png",
                 image_sha256=image_sha256,
             )
+        ],
+        elements=[],
+        tables=[],
+    )
+
+
+def _source_with_two_page_images() -> ExtractionSourceDocument:
+    first_page = uuid4()
+    second_page = uuid4()
+    first_sha = hashlib.sha256(b"page-one").hexdigest()
+    second_sha = hashlib.sha256(b"page-two").hexdigest()
+    return ExtractionSourceDocument(
+        document_id=uuid4(),
+        household_id=uuid4(),
+        title="Two page invoice",
+        original_filename="invoice.pdf",
+        mime_type="application/pdf",
+        family="invoice",
+        subtype=None,
+        sensitivity="normal",
+        document_date=None,
+        counterparty_display=None,
+        primary_folder_id=None,
+        metadata={},
+        pages=[
+            ParsedPageText(
+                page_id=first_page,
+                page_number=1,
+                text="Invoice cover",
+                image_bytes=b"page-one",
+                image_mime_type="image/png",
+                image_sha256=first_sha,
+            ),
+            ParsedPageText(
+                page_id=second_page,
+                page_number=2,
+                text="Invoice total $42",
+                image_bytes=b"page-two",
+                image_mime_type="image/png",
+                image_sha256=second_sha,
+            ),
         ],
         elements=[],
         tables=[],

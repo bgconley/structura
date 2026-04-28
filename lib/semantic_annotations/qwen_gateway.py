@@ -87,7 +87,79 @@ class QwenSemanticAnnotationGateway:
     ) -> SemanticAnnotationResult:
         profile_name = _profile_for_mode(quality_mode)
         prompt_version = _prompt_version_for_mode(quality_mode)
-        response = self.client.generate(
+        max_images = _max_image_inputs_for_profile(profile_name)
+        if len(source.pages) > max_images:
+            manifest = self._annotate_in_page_windows(
+                source,
+                quality_mode=quality_mode,
+                profile_name=profile_name,
+                prompt_version=prompt_version,
+                max_images=max_images,
+            )
+        else:
+            response = self._generate_for_source(
+                source,
+                profile_name=profile_name,
+                prompt_version=prompt_version,
+            )
+            manifest = _manifest_from_response(
+                source,
+                quality_mode=quality_mode,
+                response=response,
+            )
+        try:
+            validate_manifest(
+                manifest,
+                valid_page_ids={page.page_id for page in source.pages},
+                valid_element_ids={element.element_id for element in source.elements},
+                valid_table_ids={table.table_id for table in source.tables},
+            )
+        except SemanticAnnotationValidationError as exc:
+            raise ModelProtocolError(f"Invalid semantic annotation output: {exc}") from exc
+        return SemanticAnnotationResult(manifest=manifest)
+
+    def _annotate_in_page_windows(
+        self,
+        source: ExtractionSourceDocument,
+        *,
+        quality_mode: str,
+        profile_name: str,
+        prompt_version: str,
+        max_images: int,
+    ) -> DocumentSemanticManifest:
+        partials: list[DocumentSemanticManifest] = []
+        for index in range(0, len(source.pages), max_images):
+            chunk_source = _source_for_pages(source, source.pages[index : index + max_images])
+            response = self._generate_for_source(
+                chunk_source,
+                profile_name=profile_name,
+                prompt_version=prompt_version,
+            )
+            partials.append(
+                _manifest_from_response(
+                    chunk_source,
+                    quality_mode=quality_mode,
+                    response=response,
+                )
+            )
+        if not partials:
+            raise ModelProtocolError("Semantic annotation requires page image assets.")
+        return _merge_partial_manifests(
+            source,
+            partials,
+            quality_mode=quality_mode,
+            profile_name=profile_name,
+            prompt_version=prompt_version,
+        )
+
+    def _generate_for_source(
+        self,
+        source: ExtractionSourceDocument,
+        *,
+        profile_name: str,
+        prompt_version: str,
+    ) -> VisionGenerateResponse:
+        return self.client.generate(
             VisionGenerateRequest(
                 profile_name=profile_name,
                 prompt_version=prompt_version,
@@ -99,17 +171,6 @@ class QwenSemanticAnnotationGateway:
                 timeout_seconds=60,
             )
         )
-        manifest = _manifest_from_response(source, quality_mode=quality_mode, response=response)
-        try:
-            validate_manifest(
-                manifest,
-                valid_page_ids={page.page_id for page in source.pages},
-                valid_element_ids={element.element_id for element in source.elements},
-                valid_table_ids={table.table_id for table in source.tables},
-            )
-        except SemanticAnnotationValidationError as exc:
-            raise ModelProtocolError(f"Invalid semantic annotation output: {exc}") from exc
-        return SemanticAnnotationResult(manifest=manifest)
 
 
 def _profile_for_mode(quality_mode: str) -> str:
@@ -124,6 +185,127 @@ def _prompt_version_for_mode(quality_mode: str) -> str:
     if quality_mode == "rescue":
         return "phase8_5-semantic-rescue-v1"
     return "phase8_5-semantic-smart-v1"
+
+
+def _max_image_inputs_for_profile(profile_name: str) -> int:
+    if profile_name == QWEN_SEMANTIC_PROFILE:
+        return 1
+    return 4
+
+
+def _source_for_pages(
+    source: ExtractionSourceDocument,
+    pages: list,
+) -> ExtractionSourceDocument:
+    page_numbers = {page.page_number for page in pages}
+    return ExtractionSourceDocument(
+        document_id=source.document_id,
+        household_id=source.household_id,
+        title=source.title,
+        original_filename=source.original_filename,
+        mime_type=source.mime_type,
+        family=source.family,
+        subtype=source.subtype,
+        sensitivity=source.sensitivity,
+        document_date=source.document_date,
+        counterparty_display=source.counterparty_display,
+        primary_folder_id=source.primary_folder_id,
+        metadata=source.metadata,
+        pages=list(pages),
+        elements=[element for element in source.elements if element.page_number in page_numbers],
+        tables=[table for table in source.tables if table.page_number in page_numbers],
+    )
+
+
+def _merge_partial_manifests(
+    source: ExtractionSourceDocument,
+    partials: list[DocumentSemanticManifest],
+    *,
+    quality_mode: str,
+    profile_name: str,
+    prompt_version: str,
+) -> DocumentSemanticManifest:
+    pages = [page for partial in partials for page in partial.pages]
+    regions = [region for partial in partials for region in partial.regions]
+    confidence_parts = [partial.confidence for partial in partials if partial.confidence]
+    overall_values = [
+        float(confidence["overall"])
+        for confidence in confidence_parts
+        if isinstance(confidence.get("overall"), int | float)
+    ]
+    confidence: dict[str, object] = {
+        "chunk_count": len(partials),
+        "chunks": confidence_parts,
+    }
+    if overall_values:
+        confidence["overall"] = sum(overall_values) / len(overall_values)
+    document_type = next(
+        (
+            partial.manifest.get("document_type")
+            for partial in partials
+            if partial.manifest.get("document_type")
+        ),
+        source.family,
+    )
+    return DocumentSemanticManifest(
+        document_id=source.document_id,
+        household_id=source.household_id,
+        quality_mode=quality_mode,  # type: ignore[arg-type]
+        profile_name=profile_name,
+        source_engine=partials[0].source_engine,
+        model_name=partials[0].model_name,
+        model_version=partials[0].model_version,
+        prompt_version=prompt_version,
+        pages=pages,
+        regions=regions,
+        confidence=confidence,
+        manifest={
+            "document_type": document_type,
+            "pages": [_page_manifest_json(page) for page in pages],
+            "regions": [_region_manifest_json(region) for region in regions],
+        },
+        review_required=any(region.review_required for region in regions),
+        input_page_hashes=tuple(
+            page_hash for partial in partials for page_hash in partial.input_page_hashes
+        ),
+    )
+
+
+def _page_manifest_json(page: PageSemanticAnnotation) -> dict[str, object]:
+    return {
+        "page_id": str(page.page_id),
+        "page_number": page.page_number,
+        "page_role": page.page_role,
+        "document_type_hint": page.document_type_hint,
+        "extraction_usefulness": page.extraction_usefulness,
+        "is_boilerplate": page.is_boilerplate,
+        "has_structured_targets": page.has_structured_targets,
+        "ambiguous": page.ambiguous,
+        "escalation_required": page.escalation_required,
+        "reason": page.reason,
+        "confidence": page.confidence,
+    }
+
+
+def _region_manifest_json(region: SemanticRegionAnnotation) -> dict[str, object]:
+    return {
+        "semantic_type": region.semantic_type,
+        "priority": region.priority,
+        "granite_task": region.granite_task,
+        "target_schema": region.target_schema,
+        "expected_fields": list(region.expected_fields),
+        "grounding": {
+            "kind": region.grounding.kind,
+            "page_id": str(region.grounding.page_id) if region.grounding.page_id else None,
+            "element_id": (
+                str(region.grounding.element_id) if region.grounding.element_id else None
+            ),
+            "table_id": str(region.grounding.table_id) if region.grounding.table_id else None,
+        },
+        "review_required": region.review_required,
+        "reason": region.reason,
+        "confidence": region.confidence,
+    }
 
 
 def _prompt(source: ExtractionSourceDocument) -> str:

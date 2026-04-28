@@ -105,6 +105,35 @@ def test_granite_gateway_prompt_includes_grounded_semantic_task() -> None:
     assert result.raw_output_json["semanticTask"]["semanticRegionId"] == str(task.region_id)
 
 
+def test_granite_gateway_sends_only_semantic_grounded_page() -> None:
+    client = FakeVisionClient(
+        source_engine="granite_vision_3b",
+        profile_name=GRANITE_VISION_PROFILE,
+    )
+    source = _source_with_two_page_images()
+    task = SemanticExtractionTask(
+        region_id=uuid4(),
+        annotation_id=uuid4(),
+        document_id=source.document_id,
+        semantic_type="invoice_line_item_table",
+        granite_task="tables_json",
+        target_schema="invoice",
+        expected_fields=("line_items",),
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[1].page_id),
+    )
+
+    GraniteVisionExtractionGateway(client=client).extract(
+        source,
+        schema_name="invoice",
+        route_profile="docling_plus_granite_structured",
+        semantic_task=task,
+    )
+
+    assert client.request is not None
+    assert len(client.request.image_inputs) == 1
+    assert client.request.image_inputs[0].content == b"page-two"
+
+
 def _source_with_page_image() -> ExtractionSourceDocument:
     page_id = uuid4()
     image_sha256 = hashlib.sha256(b"page-image").hexdigest()
@@ -135,6 +164,52 @@ def _source_with_page_image() -> ExtractionSourceDocument:
             ParsedElementText(
                 element_id=uuid4(),
                 page_number=1,
+                ordinal=1,
+                text="Invoice total $42",
+            )
+        ],
+        tables=[],
+    )
+
+
+def _source_with_two_page_images() -> ExtractionSourceDocument:
+    first_page_id = uuid4()
+    second_page_id = uuid4()
+    return ExtractionSourceDocument(
+        document_id=uuid4(),
+        household_id=uuid4(),
+        title="Invoice",
+        original_filename="invoice.pdf",
+        mime_type="application/pdf",
+        family="invoice",
+        subtype=None,
+        sensitivity="normal",
+        document_date=None,
+        counterparty_display=None,
+        primary_folder_id=None,
+        metadata={},
+        pages=[
+            ParsedPageText(
+                page_id=first_page_id,
+                page_number=1,
+                text="Invoice cover",
+                image_bytes=b"page-one",
+                image_mime_type="image/png",
+                image_sha256=hashlib.sha256(b"page-one").hexdigest(),
+            ),
+            ParsedPageText(
+                page_id=second_page_id,
+                page_number=2,
+                text="Invoice total $42",
+                image_bytes=b"page-two",
+                image_mime_type="image/png",
+                image_sha256=hashlib.sha256(b"page-two").hexdigest(),
+            ),
+        ],
+        elements=[
+            ParsedElementText(
+                element_id=uuid4(),
+                page_number=2,
                 ordinal=1,
                 text="Invoice total $42",
             )

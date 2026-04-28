@@ -24,6 +24,7 @@ class VisionClientProtocol(Protocol):
 class VisionExtractionGateway:
     prompt_version: str
     profile_name: str
+    max_image_inputs = 4
 
     def __init__(
         self,
@@ -52,7 +53,12 @@ class VisionExtractionGateway:
                     route_profile=route_profile,
                     semantic_task=semantic_task,
                 ),
-                image_inputs=_image_inputs(source, storage=self.storage),
+                image_inputs=_image_inputs(
+                    source,
+                    storage=self.storage,
+                    semantic_task=semantic_task,
+                    max_images=self.max_image_inputs,
+                ),
                 response_schema_name=schema_name,
                 max_output_tokens=2048,
                 temperature=0.0,
@@ -90,9 +96,11 @@ def _image_inputs(
     source: ExtractionSourceDocument,
     *,
     storage: ObjectStorage,
+    semantic_task: SemanticExtractionTask | None = None,
+    max_images: int = 4,
 ) -> tuple[ModelImageInput, ...]:
     inputs: list[ModelImageInput] = []
-    for page in source.pages:
+    for page in _candidate_pages(source, semantic_task=semantic_task):
         image_bytes = page.image_bytes
         if image_bytes is None and page.image_asset_uri:
             image_bytes = storage.path_for_uri(page.image_asset_uri).read_bytes()
@@ -105,9 +113,62 @@ def _image_inputs(
                 sha256=page.image_sha256 or "",
             )
         )
+        if len(inputs) >= max_images:
+            break
     if not inputs:
         raise ModelProtocolError("Vision extraction requires page image assets.")
     return tuple(inputs)
+
+
+def _candidate_pages(
+    source: ExtractionSourceDocument,
+    *,
+    semantic_task: SemanticExtractionTask | None,
+) -> list:
+    if semantic_task is None:
+        return source.pages
+    page_id = _page_id_for_semantic_task(source, semantic_task)
+    if page_id is None:
+        return source.pages
+    return [page for page in source.pages if page.page_id == page_id] or source.pages
+
+
+def _page_id_for_semantic_task(
+    source: ExtractionSourceDocument,
+    task: SemanticExtractionTask,
+) -> object | None:
+    if task.grounding.page_id:
+        return task.grounding.page_id
+    if task.grounding.element_id:
+        page_number = next(
+            (
+                element.page_number
+                for element in source.elements
+                if element.element_id == task.grounding.element_id
+            ),
+            None,
+        )
+        return _page_id_for_number(source, page_number)
+    if task.grounding.table_id:
+        page_number = next(
+            (
+                table.page_number
+                for table in source.tables
+                if table.table_id == task.grounding.table_id
+            ),
+            None,
+        )
+        return _page_id_for_number(source, page_number)
+    return None
+
+
+def _page_id_for_number(
+    source: ExtractionSourceDocument,
+    page_number: int | None,
+) -> object | None:
+    if page_number is None:
+        return None
+    return next((page.page_id for page in source.pages if page.page_number == page_number), None)
 
 
 def _prompt(
