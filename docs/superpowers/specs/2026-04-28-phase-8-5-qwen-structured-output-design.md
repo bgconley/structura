@@ -113,7 +113,9 @@ The schema uses JSON Schema draft 2020-12, `additionalProperties: false` at ever
 object level, and required fields for stable downstream parsing. The model-facing
 schema must stay within vLLM/xgrammar's supported structured-output subset; do not
 use keywords such as `uniqueItems`, `oneOf`, `anyOf`, or `allOf`. Enforce those
-deeper constraints in Structura's local schema/policy validators instead.
+deeper constraints in Structura's local schema/policy validators instead. Keep
+vLLM-supported `maxItems` bounds on generated arrays so constrained decoding cannot
+run unbounded region or field lists until `finish_reason=length`.
 
 Top-level required fields:
 

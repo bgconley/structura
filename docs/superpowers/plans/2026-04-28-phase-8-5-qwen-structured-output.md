@@ -165,10 +165,12 @@ Create a draft 2020-12 schema with:
     },
     "pages": {
       "type": "array",
+      "maxItems": 4,
       "items": { "$ref": "#/$defs/pageAnnotation" }
     },
     "regions": {
       "type": "array",
+      "maxItems": 12,
       "items": { "$ref": "#/$defs/regionAnnotation" }
     },
     "quality_flags": {
@@ -250,6 +252,7 @@ Create a draft 2020-12 schema with:
         "escalation_required": { "type": "boolean" },
         "escalation_reasons": {
           "type": "array",
+          "maxItems": 4,
           "items": {
             "type": "string",
             "enum": [
@@ -325,6 +328,7 @@ Create a draft 2020-12 schema with:
         },
         "expected_fields": {
           "type": "array",
+          "maxItems": 8,
           "items": { "type": "string" }
         },
         "grounding": { "$ref": "#/$defs/grounding" },

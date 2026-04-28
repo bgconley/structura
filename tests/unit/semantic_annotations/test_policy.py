@@ -129,6 +129,18 @@ def test_semantic_annotation_schema_uses_vllm_supported_subset() -> None:
     assert found == []
 
 
+def test_semantic_annotation_schema_bounds_model_generated_arrays() -> None:
+    from lib.semantic_annotations.schema import semantic_annotation_manifest_schema
+
+    schema = semantic_annotation_manifest_schema()
+    defs = schema["$defs"]
+
+    assert schema["properties"]["pages"]["maxItems"] == 4
+    assert schema["properties"]["regions"]["maxItems"] == 12
+    assert defs["pageAnnotation"]["properties"]["escalation_reasons"]["maxItems"] == 4
+    assert defs["regionAnnotation"]["properties"]["expected_fields"]["maxItems"] == 8
+
+
 def _manifest_with_region(region: SemanticRegionAnnotation) -> DocumentSemanticManifest:
     page_id = region.grounding.page_id or uuid4()
     return DocumentSemanticManifest(
