@@ -259,6 +259,26 @@ def test_live_qwen_gateway_clears_extraneous_grounding_ids() -> None:
     assert repaired_grounding.table_id is None
 
 
+def test_live_qwen_gateway_deduplicates_duplicate_model_regions() -> None:
+    source = _source_with_page_image()
+    payload = _semantic_payload(source.pages[0].page_id)
+    regions = payload["regions"]
+    assert isinstance(regions, list)
+    regions.append(dict(regions[0]))
+    client = FakeSemanticVisionClient(
+        profile_name=QWEN_SEMANTIC_PROFILE,
+        source_engine="qwen3_vl_2b",
+        normalized_json=payload,
+    )
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
+
+    assert len(result.manifest.regions) == 1
+    persisted_regions = result.manifest.manifest["regions"]
+    assert isinstance(persisted_regions, list)
+    assert len(persisted_regions) == 1
+
+
 def test_live_qwen_gateway_retries_once_after_truncated_model_output() -> None:
     source = _source_with_page_image()
 

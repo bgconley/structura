@@ -509,7 +509,7 @@ def _repair_region_grounding_for_source(
     valid_page_ids = {page.page_id for page in source.pages}
     valid_element_ids = {element.element_id for element in source.elements}
     valid_table_ids = {table.table_id for table in source.tables}
-    return [
+    repaired = [
         _repair_region_grounding(
             region,
             valid_page_ids=valid_page_ids,
@@ -518,6 +518,7 @@ def _repair_region_grounding_for_source(
         )
         for region in regions
     ]
+    return _deduplicate_region_intents(repaired)
 
 
 def _repair_region_grounding(
@@ -566,6 +567,34 @@ def _low_confidence(confidence: float | None) -> float:
     if confidence is None:
         return 0.2
     return min(confidence, 0.2)
+
+
+def _deduplicate_region_intents(
+    regions: list[SemanticRegionAnnotation],
+) -> list[SemanticRegionAnnotation]:
+    deduplicated: list[SemanticRegionAnnotation] = []
+    seen: set[tuple[object, ...]] = set()
+    for region in regions:
+        key = _region_intent_key(region)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduplicated.append(region)
+    return deduplicated
+
+
+def _region_intent_key(region: SemanticRegionAnnotation) -> tuple[object, ...]:
+    grounding = region.grounding
+    return (
+        region.semantic_type,
+        region.granite_task,
+        region.target_schema,
+        tuple(sorted(region.expected_fields)),
+        grounding.kind,
+        grounding.page_id,
+        grounding.element_id,
+        grounding.table_id,
+    )
 
 
 def _uuid_or_none(value: object) -> UUID | None:
