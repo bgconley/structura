@@ -7,6 +7,9 @@ server_dir="${STRUCTURA_GRANITE_SERVER_DIR:-/srv/structura/models/granite-vllm-s
 port="${STRUCTURA_GRANITE_PORT:-8101}"
 
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
+if [[ -z "${CUDA_VISIBLE_DEVICES:-}" && -n "${NVIDIA_VISIBLE_DEVICES:-}" && "$NVIDIA_VISIBLE_DEVICES" != "all" ]]; then
+  export CUDA_VISIBLE_DEVICES="$NVIDIA_VISIBLE_DEVICES"
+fi
 
 mkdir -p "$server_dir"
 cd "$server_dir"
