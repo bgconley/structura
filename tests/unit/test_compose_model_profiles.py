@@ -19,6 +19,7 @@ def test_model_profiles_are_safe_and_gpu_placed() -> None:
         service = services[name]
         rendered_ports = "\n".join(service.get("ports", []))
         assert "127.0.0.1" in rendered_ports
+        assert service["gpus"] == "all"
         assert any("/srv/structura/models" in volume for volume in service.get("volumes", []))
 
     assert services["model-qwen"]["environment"]["NVIDIA_VISIBLE_DEVICES"].endswith(":-0}")

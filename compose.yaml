@@ -365,6 +365,7 @@ services:
 
   model-qwen-semantic:
     image: ${STRUCTURA_MODEL_QWEN_SEMANTIC_IMAGE:-voipmonitor/vllm:cu130}
+    gpus: all
     entrypoint: ["/bin/bash"]
     command: ["/srv/structura/model_services/start_qwen_vllm.sh"]
     ports:
@@ -388,6 +389,7 @@ services:
 
   model-qwen:
     image: ${STRUCTURA_MODEL_QWEN_IMAGE:-voipmonitor/vllm:cu130}
+    gpus: all
     entrypoint: ["/bin/bash"]
     command: ["/srv/structura/model_services/start_qwen_vllm.sh"]
     ports:
@@ -412,6 +414,7 @@ services:
 
   model-granite:
     image: ${STRUCTURA_MODEL_GRANITE_IMAGE:-voipmonitor/vllm:cu130}
+    gpus: all
     entrypoint: ["/bin/bash"]
     command: ["/srv/structura/model_services/start_granite_vllm.sh"]
     ports:
@@ -431,6 +434,7 @@ services:
 
   model-embed:
     image: ${STRUCTURA_MODEL_EMBED_IMAGE:-ghcr.io/huggingface/text-embeddings-inference:cuda-1.9}
+    gpus: all
     entrypoint: ["/bin/bash"]
     command: ["/srv/structura/model_services/start_text_embed.sh"]
     ports:
@@ -450,6 +454,7 @@ services:
 
   model-vl-embed:
     image: ${STRUCTURA_MODEL_VISUAL_EMBED_IMAGE:-voipmonitor/vllm:cu130}
+    gpus: all
     entrypoint: ["/bin/bash"]
     command: ["/srv/structura/model_services/start_visual_embed_vllm.sh"]
     ports:
