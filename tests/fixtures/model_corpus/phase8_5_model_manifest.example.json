@@ -1,0 +1,39 @@
+{
+  "fixtureType": "deterministic_fixture",
+  "evidence": {
+    "qwen": {
+      "profile": "qwen3-vl-8b-instruct-nvfp4-local:v1",
+      "notes": "Example only. Replace with live GPU evidence for release."
+    },
+    "granite": {
+      "profile": "granite-4.0-3b-vision-bf16:v1",
+      "notes": "Example only. Replace with live GPU evidence for release."
+    },
+    "textEmbedding": {
+      "profile": "qwen3-embedding-4b-1536:v1"
+    },
+    "visualEmbedding": {
+      "profile": "qwen3-vl-embedding-2b-1024:v1"
+    }
+  },
+  "metrics": {
+    "qwen_handwriting_route_success_rate": 1.0,
+    "qwen_review_required_rate": 1.0,
+    "granite_table_structure_score": 1.0,
+    "granite_kvp_exact_match": 1.0,
+    "text_embedding_hit_rate_at_k": 1.0,
+    "visual_embedding_hit_rate_at_k": 1.0,
+    "hybrid_hit_rate_at_k": 1.0,
+    "provenance_truth_rate": 1.0
+  },
+  "thresholds": {
+    "qwen_handwriting_route_success_rate": 0.8,
+    "qwen_review_required_rate": 0.9,
+    "granite_table_structure_score": 0.75,
+    "granite_kvp_exact_match": 0.75,
+    "text_embedding_hit_rate_at_k": 0.8,
+    "visual_embedding_hit_rate_at_k": 0.75,
+    "hybrid_hit_rate_at_k": 0.85,
+    "provenance_truth_rate": 1.0
+  }
+}

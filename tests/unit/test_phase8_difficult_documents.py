@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+from uuid import uuid4
 
 from lib.contracts import SearchRequest
 from lib.documents.quality import (
@@ -8,6 +9,8 @@ from lib.documents.quality import (
     classify_page_quality,
     summarize_document_quality,
 )
+from lib.extraction.gateway import DoclingHeuristicGateway
+from lib.extraction.models import ExtractionSourceDocument, ParsedElementText, ParsedPageText
 from lib.search.benchmark import BenchmarkCase, evaluate_ranked_results, summarize_results
 from lib.search.embedding_gateway import (
     DeterministicVisualEmbeddingGateway,
@@ -107,7 +110,7 @@ def test_search_contract_supports_explicit_visual_retrieval_policy() -> None:
 def test_visual_embedding_profile_uses_phase8_dimension_and_modality() -> None:
     profile = default_visual_embedding_profile(1024)
 
-    assert profile.name == "structura-local-visual-byte-embedding"
+    assert profile.name == "structura-fixture-visual-byte-embedding"
     assert profile.modality == "visual"
     assert profile.dimensions == 1024
 
@@ -140,7 +143,24 @@ def test_visual_embedding_gateway_depends_on_image_bytes_not_metadata_only() -> 
     )[0]
 
     assert first.values != second.values
-    assert first.profile.name == "structura-local-visual-byte-embedding"
+    assert first.profile.name == "structura-fixture-visual-byte-embedding"
+
+
+def test_fixture_qwen_route_does_not_claim_qwen_or_granite_provenance() -> None:
+    source = _extraction_source(
+        "Invoice Number INV-88\nSeller: Ink Clinic\nTotal: $88.00\nBalance due: $88.00\n"
+    )
+    result = DoclingHeuristicGateway().extract(
+        source,
+        schema_name="invoice",
+        route_profile="qwen_primary_review_required",
+    )
+
+    assert result.route.source_engine == "docling"
+    assert "qwen" not in result.route.source_engine
+    assert "granite" not in result.route.source_engine
+    assert result.raw_output_json["qwen_model_invoked"] is False
+    assert result.normalized_json["metadata"]["phase8Route"] == "qwen_primary_review_required"
 
 
 def test_visual_embedding_jobs_reject_unknown_modalities() -> None:
@@ -207,3 +227,32 @@ def test_phase8_benchmark_cases_cover_difficult_docs_without_hiding_text_regress
     assert text_result.reciprocal_rank == 1.0
     assert summary["hitRateAtK"] == 1.0
     assert summary["meanReciprocalRank"] == 0.75
+
+
+def _extraction_source(text: str) -> ExtractionSourceDocument:
+    page_id = uuid4()
+    return ExtractionSourceDocument(
+        document_id=uuid4(),
+        household_id=uuid4(),
+        title="Fixture",
+        original_filename="fixture.pdf",
+        mime_type="application/pdf",
+        family="generic",
+        subtype=None,
+        sensitivity="normal",
+        document_date=None,
+        counterparty_display=None,
+        primary_folder_id=None,
+        metadata={"phase3": {"parseStatus": "succeeded"}},
+        pages=[ParsedPageText(page_id=page_id, page_number=1, text=text)],
+        elements=[
+            ParsedElementText(
+                element_id=uuid4(),
+                page_number=1,
+                ordinal=1,
+                text=text,
+                bbox={"l": 10, "t": 20, "r": 400, "b": 120},
+            )
+        ],
+        tables=[],
+    )

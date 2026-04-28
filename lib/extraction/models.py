@@ -13,6 +13,10 @@ class ParsedPageText:
     page_id: UUID
     page_number: int
     text: str
+    image_asset_uri: str | None = None
+    image_bytes: bytes | None = None
+    image_mime_type: str | None = None
+    image_sha256: str | None = None
 
 
 @dataclass(frozen=True)

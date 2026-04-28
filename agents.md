@@ -82,7 +82,7 @@ Older artifact-pack docs may group the same work differently. Treat the root pla
 
 ## Current Baseline And Next Phase
 
-As of 2026-04-27, the repo is implemented through Phase 8 on `master`; local, `origin/master`, and the GPU checkout at `/tank/repos/structura` must stay synced before any milestone validation. Phase 9 is the next implementation phase and must start from `STRUCTURA_PHASE_9_IMPLEMENTATION_PLAN.md` plus its Fresh Context artifacts.
+As of 2026-04-28, the repo is implemented through Phase 8 on `master`; local, `origin/master`, and the GPU checkout at `/tank/repos/structura` must stay synced before any milestone validation. Phase 8.5 is the next implementation phase and must start from `STRUCTURA_PHASE_8_5_IMPLEMENTATION_PLAN.md` plus its Fresh Context artifacts. Do not start Phase 9 analysis until Phase 8.5 model-service gates pass or the user explicitly accepts documented blockers.
 
 Phase 4 implementation code landed in commit `d04a762` (`Implement Phase 4 extraction review`). It adds the extraction/review foundation; before calling the phase complete, current HEAD must be pushed, pulled on the GPU node, migrated through `068_phase4_extraction_review.sql`, rebuilt with the extraction profile, and validated on the GPU node.
 
@@ -122,7 +122,27 @@ Phase 8 hardening landed in commits `27cc3b0` and `4a83690`. It closed two live 
 
 Phase 8 was canonically validated on the GPU node at commit `4a83690`: `web` was rebuilt/restarted from the current image; `ruff`, format check, contract validation, `pyright`, `mypy`, `pytest` with live Postgres (`113 passed`), `make sast`, pinned `node:20-alpine` web lint/build, Compose health, and the full live Playwright suite for phases 1-8 against `http://10.25.0.50:13000` all passed.
 
-Phase 9 integration seams after Phase 8:
+Phase 8.5 is a mandatory model-runtime foundation before Phase 9. It exists to close the release-readiness gaps where Phase 8 seams were present but model behavior was still fixture-backed: visual embeddings must be generated from real image inputs, Qwen provenance must only be recorded when Qwen is actually invoked, Granite 4.0 3B Vision must be implemented for structured table/KVP/form extraction, and model-backed golden evidence must exist before analysis uses those outputs.
+
+Phase 8.5 final model priority decision:
+
+1. `model-qwen` on Blackwell GPU 0: Qwen3-VL-8B for handwriting-heavy pages, degraded OCR rescue, ambiguous visual fallback, and later cited analysis support.
+2. `model-granite` on Blackwell GPU 1: Granite 4.0 3B Vision for bills, invoices, receipts, EOBs, forms, tables, charts, semantic KVPs, and layout-sensitive extraction.
+3. `model-embed` on the RTX 3090: Qwen3-Embedding text retrieval, preserving the 1536-dimensional pgvector index.
+4. `model-vl-embed` as a scheduled/offline Blackwell profile: Qwen3-VL-Embedding visual retrieval, preserving the 1024-dimensional visual pgvector index. Do not make this always-on ahead of Granite unless concurrency and quality are benchmarked.
+
+Deterministic model gateways are test fixtures only. In live or required model mode they must not silently replace Qwen, Granite, text embedding, or visual embedding services, and they must never claim Qwen or Granite provenance.
+
+Current Phase 8.5 implementation work has established these seams:
+
+1. `lib/model_runtime/` owns model profiles, settings resolution, bounded HTTP, scratch-media staging, payload redaction, health snapshots, and typed model request/response contracts.
+2. `lib/model_runtime/clients/` owns Qwen, Granite, text embedding, and visual embedding HTTP adapters. These adapters validate response shapes and dimensions before returning data to extraction/search layers.
+3. `lib/extraction/gateways/` owns live Qwen/Granite extraction adapters and routing. `lib/extraction/gateway.py` remains the deterministic Docling-text fixture path and must not claim Qwen/Granite provenance.
+4. `lib/search/embeddings/` owns live text/visual embedding adapters. `EmbeddingService` selects fixture gateways only when `STRUCTURA_MODEL_MODE=fixture`; `live`/`required` use configured model service URLs.
+5. Compose now separates `models-placeholder`, `models-live`, and `visual-embed-live`; `model-qwen` defaults to Blackwell GPU 0, `model-granite` to Blackwell GPU 1, and `model-vl-embed` is scheduled/offline rather than always-on with Granite.
+6. Model-corpus release evidence is represented by `scripts/run_model_corpus.py` and `tests/fixtures/model_corpus/`. The committed example manifest is deterministic; release validation requires a private model-backed manifest with `fixtureType = "model_backed"`.
+
+Phase 9 integration seams after Phase 8 and planned Phase 8.5:
 
 1. Analysis context must consume `qualitySummary`, page `qualitySignals`, `sourceModalities`, accepted canonical facts, relationship/deadline context, and ACL-safe evidence refs rather than raw storage paths or hidden assets.
 2. Unreviewed handwriting/Qwen/visual-derived candidates are assistive only; Phase 9 prompts and notes must label them uncertain and must not treat them as canonical facts unless accepted through review.

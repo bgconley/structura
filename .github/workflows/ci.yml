@@ -35,6 +35,8 @@ jobs:
         run: python -m pytest -q tests/unit
       - name: Golden corpus checks
         run: python scripts/run_golden_corpus.py
+      - name: Model corpus shape checks
+        run: python scripts/run_model_corpus.py --manifest tests/fixtures/model_corpus/phase8_5_model_manifest.example.json
       - name: Static security checks
         run: |
           python -m bandit -r apps lib workers scripts
@@ -101,4 +103,6 @@ jobs:
       - name: Validate compose profiles
         run: |
           docker compose config -q
-          docker compose --profile extraction --profile search --profile relationships --profile automation --profile visual config -q
+          docker compose --profile extraction --profile search --profile relationships --profile automation --profile visual --profile models-placeholder config -q
+          docker compose --profile models-live config -q
+          docker compose --profile visual-embed-live config -q

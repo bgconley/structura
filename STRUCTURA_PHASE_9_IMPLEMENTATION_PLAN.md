@@ -1,6 +1,6 @@
 # Structura Phase 9 Implementation Plan
 
-Phase 9 adds the optional analysis workspace after the filing, extraction, review, search, relationship, and difficult-document foundations are strong. Analysis is useful only if it is bounded, citation-backed, disabled without breaking core workflows, and clearly separate from canonical accepted facts.
+Phase 9 adds the optional analysis workspace after the filing, extraction, review, search, relationship, difficult-document, and Phase 8.5 live model-service foundations are strong. Analysis is useful only if it is bounded, citation-backed, disabled without breaking core workflows, and clearly separate from canonical accepted facts.
 
 This plan expands Phase 9 from `STRUCTURA_IMPLEMENTATION_PLAN.md`. It does not replace the root plan. Use the root plan for phase boundaries and this document for Phase 9 execution detail.
 
@@ -12,6 +12,7 @@ This plan expands Phase 9 from `STRUCTURA_IMPLEMENTATION_PLAN.md`. It does not r
 - Keep generated FastAPI OpenAPI paths aligned with `contracts/api/openapi.yaml`. If implementation and contract differ, stop and resolve the contract question explicitly.
 - Preserve Phase 1-8 invariants: original bytes are immutable, canonical facts remain the default read model, candidates and model outputs remain reviewable, search indexes are assistive, relationship suggestions remain distinct from confirmed relationships, visual/handwriting uncertainty is explicit, browser-mutating routes require CSRF, and access control is enforced before returning document-derived content.
 - Analysis is opt-in. The app must stay useful when analysis is disabled, when the analysis worker is offline, or when `model-qwen` is unavailable.
+- Phase 8.5 is a prerequisite for release-quality Phase 9 work. Do not enable user-facing analysis on top of fixture visual embeddings, fake Qwen provenance, or placeholder Granite/Qwen services.
 - Analysis notes are persisted separately from extraction, canonical facts, relationships, folders, tags, deadlines, and exports. They must never silently mutate accepted data.
 - Every analysis answer must cite source documents and pages. Do not present uncited model assertions as trusted analysis.
 - Do not log raw document text, model prompts, model responses, analysis answers, citations excerpts, object-storage paths, or presigned asset URLs.
@@ -59,6 +60,7 @@ Fresh Context:
 - `STRUCTURA_PHASE_5_IMPLEMENTATION_PLAN.md`, search, retrieval context, hybrid ranking, and benchmark commitments.
 - `STRUCTURA_PHASE_7_IMPLEMENTATION_PLAN.md`, related documents and timeline commitments.
 - `STRUCTURA_PHASE_8_IMPLEMENTATION_PLAN.md`, visual retrieval and difficult-document uncertainty commitments.
+- `STRUCTURA_PHASE_8_5_IMPLEMENTATION_PLAN.md`, live Qwen, Granite, text embedding, visual embedding, and model-backed corpus commitments.
 - `agents.md`.
 - `.wolf/cerebrum.md`.
 - `pro-merged-master-v1.2/docs/01_App_Specification.md`, optional analysis workspace.
@@ -72,7 +74,7 @@ Fresh Context:
 
 Work:
 
-- Confirm Gate D retrieval baseline and Phase 8 difficult-document gate are implemented or explicitly accepted as prerequisites before user-facing analysis is enabled.
+- Confirm Gate D retrieval baseline, Phase 8 difficult-document gate, and Phase 8.5 live model-service gate are implemented or explicitly accepted as prerequisites before user-facing analysis is enabled.
 - Confirm structured viewing of receipt, invoice, and EOB extractions, manual correction flows, related-document navigation, and search are strong enough that analysis is additive rather than a workaround.
 - Inventory the active Phase 9 baseline: `analysis_notes` table, `job_type = analyze`, `POST /api/v1/analysis-notes`, `analyze_documents_job.v1`, `analysis_note.v1`, `worker-analysis`, and `model-qwen`.
 - Decide whether Phase 9 needs only the existing POST route plus job lookup, or whether additional analysis-note read/list/delete routes are required. Any public API extension must update OpenAPI and route parity tests in the same change.

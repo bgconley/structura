@@ -373,8 +373,8 @@ Tasks:
 - Redis only under explicit fallback profile.
 - Model placeholders:
   - `model-qwen` on port `8100`, GPU 0 default.
-  - `model-granite` on port `8101`, GPU 0 default.
-  - `model-embed` on port `8102`, GPU 1 default.
+  - `model-granite` on port `8101`, GPU 0 default for the initial placeholder only; Phase 8.5 supersedes live placement to Blackwell GPU 1.
+  - `model-embed` on port `8102`, GPU 1 default for the initial placeholder only; Phase 8.5 supersedes live placement to the RTX 3090 text-embedding node.
   - `worker-analysis` remains optional and must not be required for normal filing/search.
 - Bind mounts aligned to:
   - `/srv/structura/postgres`
@@ -1070,6 +1070,36 @@ Done:
 Phase 8 gate:
 
 - Low-text and handwriting samples have explicit review behavior and benchmark coverage.
+
+## Phase 8.5 - Model And Embedding Services
+
+Objective: replace Phase 8 fixture/fake model behavior with real local model services before Phase 9 analysis is allowed.
+
+Required phase artifact to review:
+
+```text
+/Users/brennanconley/vibecode/structura/STRUCTURA_PHASE_8_5_IMPLEMENTATION_PLAN.md
+```
+
+Tasks:
+
+- Quarantine deterministic embedding/extraction gateways as fixture-only test adapters.
+- Implement live Qwen3-VL-8B service invocation for handwriting, degraded OCR rescue, and visual fallback.
+- Implement live Granite 4.0 3B Vision service invocation for table, chart, form, KVP, invoice, bill, receipt, and EOB structure extraction.
+- Implement live text embedding service on the RTX 3090 with 1536-dimensional vectors.
+- Implement true visual embedding service for page/image bytes with 1024-dimensional vectors.
+- Add model profile registry, model health, redacted observability, pinned Compose profiles, and model-backed corpus gates.
+
+Done:
+
+- Qwen and Granite provenance is truthful and tied to actual adapter invocation.
+- Visual embeddings are generated from image content, not descriptor-text or byte-hash fixtures.
+- Phase 9 analysis has real model-backed retrieval and extraction foundations.
+
+Phase 8.5 gate:
+
+- Qwen3-VL, Granite Vision, text embeddings, and visual embeddings pass deterministic tests plus GPU live model validation.
+- Model-backed golden corpus evidence exists for handwriting, structured extraction, text retrieval, visual retrieval, and hybrid retrieval.
 
 ## Phase 9 - Analysis Workspace
 

@@ -68,6 +68,11 @@ def load_extraction_source(document_id: UUID) -> ExtractionSourceDocument:
                 page_id=cast(UUID, row["id"]),
                 page_number=_row_int(row["page_number"], "page_number"),
                 text=str(row["text_content"] or ""),
+                image_asset_uri=str(row["image_uri"]) if row.get("image_uri") else None,
+                image_mime_type=(
+                    str(row["image_mime_type"]) if row.get("image_mime_type") else None
+                ),
+                image_sha256=str(row["image_sha256"]) if row.get("image_sha256") else None,
             )
             for row in pages
         ],
@@ -124,10 +129,17 @@ def _row_int(value: object, column: str) -> int:
 def _page_rows(cur: Any, document_id: UUID) -> list[dict[str, object]]:
     cur.execute(
         """
-        SELECT id, page_number, text_content
-        FROM document_pages
-        WHERE document_id = %s
-        ORDER BY page_number
+        SELECT
+          p.id,
+          p.page_number,
+          p.text_content,
+          a.uri AS image_uri,
+          a.mime_type AS image_mime_type,
+          a.sha256 AS image_sha256
+        FROM document_pages p
+        LEFT JOIN document_assets a ON a.id = p.image_asset_id
+        WHERE p.document_id = %s
+        ORDER BY p.page_number
         """,
         (document_id,),
     )

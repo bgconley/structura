@@ -6,6 +6,7 @@ annotated-types==0.7.0
     # via pydantic
 anyio==4.13.0
     # via
+    #   httpx
     #   starlette
     #   watchfiles
 argon2-cffi==25.1.0
@@ -16,6 +17,10 @@ attrs==26.1.0
     # via
     #   jsonschema
     #   referencing
+certifi==2026.4.22
+    # via
+    #   httpcore
+    #   httpx
 cffi==2.0.0
     # via argon2-cffi-bindings
 click==8.3.3
@@ -27,13 +32,20 @@ email-validator==2.3.0
 fastapi==0.136.1
     # via -r apps/api/requirements.txt
 h11==0.16.0
-    # via uvicorn
+    # via
+    #   httpcore
+    #   uvicorn
+httpcore==1.0.9
+    # via httpx
 httptools==0.7.1
     # via uvicorn
+httpx==0.28.1
+    # via -r apps/api/requirements.txt
 idna==3.13
     # via
     #   anyio
     #   email-validator
+    #   httpx
 jsonschema==4.26.0
     # via -r apps/api/requirements.txt
 jsonschema-specifications==2025.9.1

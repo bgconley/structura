@@ -66,7 +66,7 @@ class DeterministicEmbeddingGateway:
 
 
 class DeterministicVisualEmbeddingGateway(DeterministicEmbeddingGateway):
-    """Deterministic local visual adapter that uses protected image bytes plus page context."""
+    """Fixture visual adapter that hashes protected image bytes plus page context."""
 
     def embed_assets(self, assets: list[VisualEmbeddingInput]) -> list[EmbeddedText]:
         return [
@@ -91,7 +91,7 @@ def default_text_embedding_profile(dimensions: int = 1536) -> EmbeddingProfile:
 
 def default_visual_embedding_profile(dimensions: int = 1024) -> EmbeddingProfile:
     return EmbeddingProfile(
-        name="structura-local-visual-byte-embedding",
+        name="structura-fixture-visual-byte-embedding",
         version="v1",
         modality="visual",
         dimensions=dimensions,

@@ -143,6 +143,9 @@ services:
     environment:
       STRUCTURA_DATABASE_URL: postgresql://${POSTGRES_USER:-structura}:${POSTGRES_PASSWORD:-structura}@postgres:5432/${POSTGRES_DB:-structura}
       STRUCTURA_RUNTIME_ROOT: /srv/structura
+      STRUCTURA_MODEL_MODE: ${STRUCTURA_MODEL_MODE:-fixture}
+      STRUCTURA_MODEL_QWEN_URL: http://model-qwen:8100
+      STRUCTURA_MODEL_GRANITE_URL: http://model-granite:8101
     volumes:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/derived:/srv/structura/objects/derived
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/workers:/srv/structura/logs/workers
@@ -164,6 +167,9 @@ services:
     environment:
       STRUCTURA_DATABASE_URL: postgresql://${POSTGRES_USER:-structura}:${POSTGRES_PASSWORD:-structura}@postgres:5432/${POSTGRES_DB:-structura}
       STRUCTURA_RUNTIME_ROOT: /srv/structura
+      STRUCTURA_MODEL_MODE: ${STRUCTURA_MODEL_MODE:-fixture}
+      STRUCTURA_MODEL_TEXT_EMBED_URL: http://model-embed:8102
+      STRUCTURA_MODEL_VISUAL_EMBED_URL: http://model-vl-embed:8103
     volumes:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/derived:/srv/structura/objects/derived
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/workers:/srv/structura/logs/workers
@@ -186,6 +192,9 @@ services:
       STRUCTURA_DATABASE_URL: postgresql://${POSTGRES_USER:-structura}:${POSTGRES_PASSWORD:-structura}@postgres:5432/${POSTGRES_DB:-structura}
       STRUCTURA_RUNTIME_ROOT: /srv/structura
       STRUCTURA_EMBEDDING_VISUAL_ENABLED: ${STRUCTURA_EMBEDDING_VISUAL_ENABLED:-true}
+      STRUCTURA_MODEL_MODE: ${STRUCTURA_MODEL_MODE:-fixture}
+      STRUCTURA_MODEL_TEXT_EMBED_URL: http://model-embed:8102
+      STRUCTURA_MODEL_VISUAL_EMBED_URL: http://model-vl-embed:8103
     volumes:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/derived:/srv/structura/objects/derived
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/workers:/srv/structura/logs/workers
@@ -264,47 +273,116 @@ services:
       timeout: 5s
       retries: 10
 
-  model-qwen:
+  model-qwen-placeholder:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    command: ["python", "-m", "workers.model_placeholder", "--name", "model-qwen", "--host", "0.0.0.0", "--port", "8100"]
+    command: ["python", "-m", "workers.model_placeholder", "--name", "model-qwen-placeholder", "--host", "0.0.0.0", "--port", "8100"]
     ports:
-      - "${STRUCTURA_MODEL_BIND_HOST:-127.0.0.1}:${STRUCTURA_MODEL_QWEN_PORT:-8100}:8100"
+      - "${STRUCTURA_MODEL_PLACEHOLDER_BIND_HOST:-127.0.0.1}:${STRUCTURA_MODEL_QWEN_PORT:-8100}:8100"
     volumes:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/models:/srv/structura/models
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/models:/srv/structura/logs/models
     environment:
       NVIDIA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_QWEN_GPU:-0}
-    profiles: ["models"]
+    profiles: ["models-placeholder", "models"]
 
-  model-granite:
+  model-granite-placeholder:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    command: ["python", "-m", "workers.model_placeholder", "--name", "model-granite", "--host", "0.0.0.0", "--port", "8101"]
+    command: ["python", "-m", "workers.model_placeholder", "--name", "model-granite-placeholder", "--host", "0.0.0.0", "--port", "8101"]
     ports:
-      - "${STRUCTURA_MODEL_BIND_HOST:-127.0.0.1}:${STRUCTURA_MODEL_GRANITE_PORT:-8101}:8101"
+      - "${STRUCTURA_MODEL_PLACEHOLDER_BIND_HOST:-127.0.0.1}:${STRUCTURA_MODEL_GRANITE_PORT:-8101}:8101"
     volumes:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/models:/srv/structura/models
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/models:/srv/structura/logs/models
     environment:
-      NVIDIA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_GRANITE_GPU:-0}
-    profiles: ["models"]
+      NVIDIA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_GRANITE_GPU:-1}
+    profiles: ["models-placeholder", "models"]
 
-  model-embed:
+  model-embed-placeholder:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    command: ["python", "-m", "workers.model_placeholder", "--name", "model-embed", "--host", "0.0.0.0", "--port", "8102"]
+    command: ["python", "-m", "workers.model_placeholder", "--name", "model-embed-placeholder", "--host", "0.0.0.0", "--port", "8102"]
+    ports:
+      - "${STRUCTURA_MODEL_PLACEHOLDER_BIND_HOST:-127.0.0.1}:${STRUCTURA_MODEL_EMBED_PORT:-8102}:8102"
+    volumes:
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/models:/srv/structura/models
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/models:/srv/structura/logs/models
+    environment:
+      NVIDIA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_EMBED_GPU:-1}
+    profiles: ["models-placeholder", "models"]
+
+  model-vl-embed-placeholder:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["python", "-m", "workers.model_placeholder", "--name", "model-vl-embed-placeholder", "--host", "0.0.0.0", "--port", "8103"]
+    ports:
+      - "${STRUCTURA_MODEL_PLACEHOLDER_BIND_HOST:-127.0.0.1}:${STRUCTURA_MODEL_VISUAL_EMBED_PORT:-8103}:8103"
+    volumes:
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/models:/srv/structura/models
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/models:/srv/structura/logs/models
+    environment:
+      NVIDIA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_VISUAL_EMBED_GPU:-1}
+    profiles: ["models-placeholder", "models"]
+
+  model-qwen:
+    image: ${STRUCTURA_MODEL_QWEN_IMAGE:-ghcr.io/bgconley/structura-model-qwen:qwen3-vl-8b-nvfp4-phase8.5}
+    command: ${STRUCTURA_MODEL_QWEN_COMMAND:-}
+    ports:
+      - "${STRUCTURA_MODEL_BIND_HOST:-127.0.0.1}:${STRUCTURA_MODEL_QWEN_PORT:-8100}:8100"
+    volumes:
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/models:/srv/structura/models
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/tmp/model-inputs:/srv/structura/tmp/model-inputs
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/models:/srv/structura/logs/models
+    environment:
+      NVIDIA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_QWEN_GPU:-0}
+      STRUCTURA_MODEL_PROFILE: ${STRUCTURA_QWEN_PROFILE:-qwen3-vl-8b-instruct-nvfp4-local:v1}
+    profiles: ["models-live", "qwen-live"]
+
+  model-granite:
+    image: ${STRUCTURA_MODEL_GRANITE_IMAGE:-ghcr.io/bgconley/structura-model-granite:granite-4.0-3b-vision-bf16-phase8.5}
+    command: ${STRUCTURA_MODEL_GRANITE_COMMAND:-}
+    ports:
+      - "${STRUCTURA_MODEL_BIND_HOST:-127.0.0.1}:${STRUCTURA_MODEL_GRANITE_PORT:-8101}:8101"
+    volumes:
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/models:/srv/structura/models
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/tmp/model-inputs:/srv/structura/tmp/model-inputs
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/models:/srv/structura/logs/models
+    environment:
+      NVIDIA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_GRANITE_GPU:-1}
+      STRUCTURA_MODEL_PROFILE: ${STRUCTURA_GRANITE_PROFILE:-granite-4.0-3b-vision-bf16:v1}
+    profiles: ["models-live", "granite-live"]
+
+  model-embed:
+    image: ${STRUCTURA_MODEL_EMBED_IMAGE:-ghcr.io/bgconley/structura-model-embed:qwen3-embedding-4b-1536-phase8.5}
+    command: ${STRUCTURA_MODEL_EMBED_COMMAND:-}
     ports:
       - "${STRUCTURA_MODEL_BIND_HOST:-127.0.0.1}:${STRUCTURA_MODEL_EMBED_PORT:-8102}:8102"
     volumes:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/models:/srv/structura/models
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/models:/srv/structura/logs/models
     environment:
-      NVIDIA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_EMBED_GPU:-1}
-    profiles: ["models"]
+      NVIDIA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_EMBED_GPU:-0}
+      STRUCTURA_MODEL_PROFILE: ${STRUCTURA_TEXT_EMBED_PROFILE:-qwen3-embedding-4b-1536:v1}
+    profiles: ["models-live", "text-embed-live"]
+
+  model-vl-embed:
+    image: ${STRUCTURA_MODEL_VISUAL_EMBED_IMAGE:-ghcr.io/bgconley/structura-model-vl-embed:qwen3-vl-embedding-2b-1024-phase8.5}
+    command: ${STRUCTURA_MODEL_VISUAL_EMBED_COMMAND:-}
+    ports:
+      - "${STRUCTURA_MODEL_BIND_HOST:-127.0.0.1}:${STRUCTURA_MODEL_VISUAL_EMBED_PORT:-8103}:8103"
+    volumes:
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/models:/srv/structura/models
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/tmp/model-inputs:/srv/structura/tmp/model-inputs
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/models:/srv/structura/logs/models
+    environment:
+      NVIDIA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_VISUAL_EMBED_GPU:-1}
+      STRUCTURA_MODEL_PROFILE: ${STRUCTURA_VISUAL_EMBED_PROFILE:-qwen3-vl-embedding-2b-1024:v1}
+    profiles: ["visual-embed-live"]
 
   redis:
     image: redis:7-alpine

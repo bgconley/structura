@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -47,6 +48,18 @@ class Settings(BaseSettings):
     embedding_visual_batch_size: int = 8
     embedding_visual_max_image_bytes: int = 10 * 1024 * 1024
     embedding_visual_timeout_seconds: int = 60
+    model_mode: Literal["fixture", "live", "required"] = "fixture"
+    model_qwen_url: str = "http://127.0.0.1:8100"
+    model_granite_url: str = "http://127.0.0.1:8101"
+    model_text_embed_url: str = "http://127.0.0.1:8102"
+    model_visual_embed_url: str = "http://127.0.0.1:8103"
+    qwen_profile: str = "qwen3-vl-8b-instruct-nvfp4-local:v1"
+    granite_profile: str = "granite-4.0-3b-vision-bf16:v1"
+    text_embed_profile: str = "qwen3-embedding-4b-1536:v1"
+    visual_embed_profile: str = "qwen3-vl-embedding-2b-1024:v1"
+    model_input_scratch_root: Path = Path("/srv/structura/tmp/model-inputs")
+    model_http_timeout_seconds: int = 60
+    model_max_image_bytes: int = 10 * 1024 * 1024
 
     @property
     def canonical_objects_root(self) -> Path:

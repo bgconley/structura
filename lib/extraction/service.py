@@ -4,7 +4,8 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from lib.extraction.classification import TARGET_EXTRACTION_SCHEMAS, classify_document
-from lib.extraction.gateway import DoclingHeuristicGateway, ExtractionGateway
+from lib.extraction.gateway import ExtractionGateway
+from lib.extraction.gateways.routing import default_extraction_gateway
 from lib.extraction.models import ClassificationDecision, PersistedExtraction
 from lib.extraction.normalization import (
     field_candidates_from_extraction,
@@ -40,7 +41,7 @@ class ExtractionService:
         jobs: JobService | None = None,
     ) -> None:
         self.registry = registry or ExtractionSchemaRegistry()
-        self.gateway = gateway or DoclingHeuristicGateway()
+        self.gateway = gateway or default_extraction_gateway()
         self.jobs = jobs or JobService()
 
     def classify_document(

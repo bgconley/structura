@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends
 
 from apps.api.structura_api.dependencies import require_admin
 from lib.db.connection import db_connection
+from lib.model_runtime.health import configured_model_health_snapshots
 
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin"])
 
@@ -26,4 +27,7 @@ def service_health(_principal: Annotated[object, Depends(require_admin)]) -> dic
                 """
             )
             rows = cur.fetchall()
-    return {"items": rows}
+    by_name = {row["service_name"]: row for row in rows}
+    for snapshot in configured_model_health_snapshots():
+        by_name.setdefault(snapshot["service_name"], snapshot)
+    return {"items": list(by_name.values())}

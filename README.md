@@ -2,7 +2,8 @@
 
 Structura is a local-first document workbench for preserving original document bytes, deriving structural artifacts, extracting evidence-backed facts, and making a private corpus searchable and reviewable.
 
-This repository is now implemented through Phase 8:
+This repository is now implemented through Phase 8 with the Phase 8.5 model-runtime
+foundation in progress:
 
 - React + Vite web app in `apps/web`
 - FastAPI API in `apps/api` with health, contract, auth/session, protected document/asset, job, admin health, and organization routes
@@ -22,7 +23,8 @@ This repository is now implemented through Phase 8:
 - Phase 5 lexical, semantic, and hybrid corpus search; search projection refresh; deterministic text embeddings; embedding worker; facets; saved searches; smart-folder execution; and Corpus Search UI
 - Phase 6 contacts, aliases, document-contact links, duplicate merge suggestions, watched-folder PDF intake, filing rules, dry-run explanations, reviewable filing suggestions, operator maintenance CLI commands, and Automation Workbench UI
 - Phase 7 document relationships, relationship suggestions, accept/reject review actions, relationship worker, related-document Viewer panel, timelines, deadlines, relationship/deadline search filters, smart views, and Relationships/Timelines UI
-- Phase 8 difficult-document quality detection, review-required uncertainty, selective local visual byte embeddings, Qwen-eligible handwriting fallback with honest Docling provenance until a real Qwen adapter is configured, visual/hybrid retrieval policy, and difficult-document Viewer/Search/Review cues
+- Phase 8 difficult-document quality detection, review-required uncertainty, selective fixture visual byte embeddings, Qwen-eligible handwriting fallback with honest Docling provenance until live mode is enabled, visual/hybrid retrieval policy, and difficult-document Viewer/Search/Review cues
+- Phase 8.5 model runtime profiles, bounded internal model HTTP clients, Qwen/Granite/text/visual model adapters, fixture-vs-live mode separation, model service health snapshots, and model-corpus gate scaffolding
 
 ## Local Commands
 
@@ -56,10 +58,29 @@ Use `make integration-test` for DB-backed integration validation. It creates a d
 
 Use `make golden-corpus` for the sanitized deterministic benchmark manifest. Use `python scripts/run_golden_corpus.py --require-model-backed --manifest <path>` for model-backed release-candidate corpus evidence once real model adapters are configured. Use `make backup-restore-rehearsal` with `STRUCTURA_INTEGRATION_BASE_DATABASE_URL` to run a disposable PostgreSQL migration/restore rehearsal.
 
-Model placeholders are behind a profile. They are health placeholders only; they do not provide Qwen, Granite, or embedding inference:
+Model placeholders are behind a separate profile. They are health placeholders only; they do not provide Qwen, Granite, or embedding inference:
 
 ```bash
-docker compose --profile models up model-qwen model-granite model-embed
+docker compose --profile models-placeholder up model-qwen-placeholder model-granite-placeholder model-embed-placeholder model-vl-embed-placeholder
+```
+
+Live Phase 8.5 model services are behind explicit profiles and require approved pinned images plus `STRUCTURA_MODEL_MODE=live`:
+
+```bash
+docker compose --profile models-live up model-qwen model-granite model-embed
+docker compose --profile visual-embed-live up model-vl-embed
+```
+
+Run deterministic model-corpus shape validation with:
+
+```bash
+make model-corpus
+```
+
+Release-candidate model evidence must use a private model-backed manifest:
+
+```bash
+python scripts/run_model_corpus.py --require-model-backed --manifest tests/fixtures/model_corpus/phase8_5_model_manifest.json
 ```
 
 Search indexing workers are behind the search profile:

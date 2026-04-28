@@ -1,6 +1,6 @@
 # Structura Canonical Planning Index
 
-Last updated: 2026-04-24
+Last updated: 2026-04-28
 
 This workspace contains the original artifact pack at `pro-merged-master-v1.2/` plus the implementation planning documents below. Treat these root-level plans as the working implementation layer derived from the artifact pack and the user's clarified UI direction.
 
@@ -15,6 +15,11 @@ This workspace contains the original artifact pack at `pro-merged-master-v1.2/` 
    - Pixel-for-pixel UI implementation and QA process.
    - Uses the Figma mockups as the UI visual source of truth.
    - Defines Playwright screenshot and workflow validation expectations.
+
+3. `STRUCTURA_PHASE_8_5_IMPLEMENTATION_PLAN.md`
+   - Mandatory model-runtime and embedding-service foundation between Phase 8 and Phase 9.
+   - Captures the researched decision to make Qwen3-VL-8B and Granite 4.0 3B Vision equal priorities.
+   - Defines live model-service profiles, fixture quarantine rules, GPU placement, model-backed corpus gates, and Phase 9 prerequisites.
 
 ## Source Artifact Pack
 

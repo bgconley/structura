@@ -1,5 +1,6 @@
 archive/
 .runtime/
+.firecrawl/
 .venv/
 __pycache__/
 .pytest_cache/
