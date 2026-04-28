@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
+from typing import Any
 from uuid import uuid4
 
 import pytest
@@ -10,6 +11,7 @@ from lib.extraction.models import ExtractionSourceDocument, ParsedPageText
 from lib.model_runtime.contracts import VisionGenerateRequest, VisionGenerateResponse
 from lib.model_runtime.http_client import ModelProtocolError
 from lib.model_runtime.profiles import QWEN_SEMANTIC_HQ_PROFILE, QWEN_SEMANTIC_PROFILE
+from lib.semantic_annotations import qwen_gateway
 from lib.semantic_annotations.fixture_gateway import FixtureSemanticAnnotationGateway
 from lib.semantic_annotations.qwen_gateway import QwenSemanticAnnotationGateway
 
@@ -94,6 +96,29 @@ def test_live_qwen_gateway_rejects_malformed_model_output() -> None:
 
     with pytest.raises(ModelProtocolError, match="semantic"):
         QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
+
+
+def test_qwen_semantic_client_uses_distinct_smart_and_high_quality_urls(
+    monkeypatch,
+) -> None:
+    captured: list[tuple[str, str]] = []
+
+    class RecordingClient:
+        def __init__(self, *, profile: Any, http_client_base_url: str) -> None:
+            captured.append((profile.name, http_client_base_url))
+
+    monkeypatch.setattr(qwen_gateway, "QwenVLClient", RecordingClient)
+    settings = qwen_gateway.Settings(
+        model_qwen_semantic_url="http://model-qwen-semantic:8104",
+        model_qwen_hq_url="http://model-qwen:8100",
+    )
+
+    qwen_gateway.QwenSemanticVisionClient.from_settings(settings)
+
+    assert captured == [
+        ("qwen3-vl-2b-semantic:v1", "http://model-qwen-semantic:8104"),
+        ("qwen3-vl-8b-semantic-hq:v1", "http://model-qwen:8100"),
+    ]
 
 
 def _semantic_payload(page_id) -> dict[str, object]:

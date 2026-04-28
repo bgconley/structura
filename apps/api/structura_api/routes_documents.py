@@ -20,7 +20,7 @@ from lib.documents.list_repository import DocumentListFilters, list_document_sum
 from lib.documents.read_model import get_document_detail
 from lib.extraction.repository import ExtractionRepositoryError, require_document_readable
 from lib.semantic_annotations.jobs import enqueue_semantic_annotation_job
-from lib.semantic_annotations.models import DocumentSemanticManifest
+from lib.semantic_annotations.models import DocumentSemanticManifest, QualityMode
 from lib.semantic_annotations.repository import load_current_manifest_by_mode
 
 router = APIRouter(prefix="/api/v1", tags=["Documents"])
@@ -110,7 +110,7 @@ def get_document(
 def get_current_semantic_annotation(
     documentId: UUID,
     principal: Annotated[AuthPrincipal, Depends(current_principal)],
-    qualityMode: Annotated[str, Query(alias="qualityMode")] = "smart",
+    qualityMode: Annotated[QualityMode, Query(alias="qualityMode")] = "smart",
 ) -> dict[str, object]:
     if not principal.household_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
@@ -160,6 +160,7 @@ def create_high_quality_semantic_annotation(
                 requested_by="user",
                 priority=26,
                 reason="phase8_5.user_high_quality_pass",
+                dedupe_existing=True,
             )
         conn.commit()
     return AcceptedJob.model_validate({"jobId": job_id, "status": "queued"})

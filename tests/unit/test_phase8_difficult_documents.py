@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 from uuid import uuid4
 
+from lib.config import get_settings
 from lib.contracts import SearchRequest
 from lib.documents.quality import (
     PageQualityInput,
@@ -11,6 +12,8 @@ from lib.documents.quality import (
 )
 from lib.extraction.gateway import DoclingHeuristicGateway
 from lib.extraction.models import ExtractionSourceDocument, ParsedElementText, ParsedPageText
+from lib.model_runtime.profiles import VISUAL_EMBED_PROFILE
+from lib.search import jobs as search_jobs
 from lib.search.benchmark import BenchmarkCase, evaluate_ranked_results, summarize_results
 from lib.search.embedding_gateway import (
     DeterministicVisualEmbeddingGateway,
@@ -172,6 +175,31 @@ def test_visual_embedding_jobs_reject_unknown_modalities() -> None:
         assert "untrusted" in str(exc)
     else:
         raise AssertionError("Expected unsupported modality to fail.")
+
+
+def test_visual_embedding_job_uses_live_visual_profile_when_model_mode_is_live(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("STRUCTURA_MODEL_MODE", "live")
+    get_settings.cache_clear()
+    captured: dict[str, object] = {}
+
+    def capture_job(_cur: object, **kwargs: object) -> None:
+        captured.update(kwargs)
+
+    monkeypatch.setattr(search_jobs, "create_job_with_cursor", capture_job)
+    try:
+        search_jobs.enqueue_visual_embed_document_job(
+            object(),
+            document_id=uuid4(),
+            household_id=uuid4(),
+        )
+    finally:
+        get_settings.cache_clear()
+
+    payload = captured["payload"]
+    assert isinstance(payload, dict)
+    assert payload["model_profile"] == VISUAL_EMBED_PROFILE
 
 
 def test_reciprocal_rank_fusion_can_blend_visual_candidates() -> None:

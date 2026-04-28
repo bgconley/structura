@@ -2,8 +2,11 @@
 
 Structura Phase 8.5 expects model services to expose small internal HTTP APIs:
 
-- Qwen and Granite expose OpenAI-compatible `/v1/chat/completions`.
-- Text and visual embedding services expose `/embed`.
+- Qwen semantic, Qwen high-quality/rescue, and Granite expose OpenAI-compatible
+  `/v1/chat/completions`.
+- Text and visual embedding services should expose OpenAI-compatible
+  `/v1/embeddings`; Structura also supports the older internal `/embed` adapter
+  shape for fixture and custom gateway deployments.
 - Services must be bound to Docker-internal networking or `127.0.0.1` host ports.
 - Services must not fetch user-provided URLs.
 - Operators must pin image references before live release gates.

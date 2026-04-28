@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import lib.review.repository as repository
 from lib.contracts import (
@@ -12,6 +11,7 @@ from lib.contracts import (
 )
 from lib.documents.access_policy import DocumentAccessContext
 from lib.jobs import JobService
+from lib.jobs.event_payloads import build_extract_document_job_payload
 from lib.relationships.errors import RelationshipServiceError
 from lib.relationships.service import RelationshipService
 from lib.search.projection import refresh_projection_and_enqueue_embedding
@@ -169,21 +169,23 @@ class ReviewService:
             target_schema_name=target_schema,
             reason=action.comment,
         )
+        priority = 45
+        job_id = uuid4()
         job = JobService().create_job(
+            job_id=job_id,
             job_type="extract",
             household_id=access.household_id,
             document_id=action.document_id,
-            payload={
-                "schema_name": "extract_document_job",
-                "schema_version": "v1",
-                "created_at": datetime.now(UTC).isoformat(),
-                "document_id": str(action.document_id),
-                "target_schema_name": target_schema,
-                "target_schema_version": "v1",
-                "requested_by": "user",
-                "force_reextract": True,
-            },
-            priority=45,
+            payload=build_extract_document_job_payload(
+                job_id=job_id,
+                document_id=action.document_id,
+                target_schema_name=target_schema,
+                target_schema_version="v1",
+                requested_by="user",
+                priority=priority,
+                force_reextract=True,
+            ),
+            priority=priority,
             queue_name="extraction",
         )
         return {"ok": True, "reviewEventId": str(event_id), "jobId": str(job.job_id)}

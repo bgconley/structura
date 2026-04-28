@@ -47,7 +47,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/SemanticAnnotationCurrentResponse'
                 additionalProperties: false
                 required:
                 - status
@@ -321,7 +321,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/SemanticAnnotationCurrentResponse'
         '401':
           description: Not authenticated
         '404':
@@ -1595,6 +1595,187 @@ components:
           enum:
           - queued
           - running
+    SemanticAnnotationCurrentResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - documentId
+      - qualityMode
+      - current
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        qualityMode:
+          type: string
+          enum:
+          - smart
+          - high_quality
+          - rescue
+        current:
+          anyOf:
+          - $ref: '#/components/schemas/SemanticAnnotationManifest'
+          - type: 'null'
+    SemanticAnnotationManifest:
+      type: object
+      additionalProperties: false
+      required:
+      - qualityMode
+      - profileName
+      - sourceEngine
+      - modelName
+      - modelVersion
+      - promptVersion
+      - reviewRequired
+      - confidence
+      - pages
+      - regions
+      properties:
+        qualityMode:
+          type: string
+          enum:
+          - smart
+          - high_quality
+          - rescue
+        profileName:
+          type: string
+        sourceEngine:
+          type: string
+          enum:
+          - docling
+          - qwen3_vl_2b
+          - qwen3_vl_4b
+          - qwen3_vl_8b
+          - granite_vision_3b
+          - validator
+          - human
+          - system
+        modelName:
+          type: string
+        modelVersion:
+          type: string
+        promptVersion:
+          type: string
+        reviewRequired:
+          type: boolean
+        escalationReason:
+          type: string
+          nullable: true
+        confidence:
+          type: object
+          additionalProperties: true
+        pages:
+          type: array
+          items:
+            $ref: '#/components/schemas/SemanticPageAnnotation'
+        regions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SemanticRegionAnnotation'
+    SemanticPageAnnotation:
+      type: object
+      additionalProperties: false
+      required:
+      - pageId
+      - pageNumber
+      - pageRole
+      - extractionUsefulness
+      - isBoilerplate
+      - hasStructuredTargets
+      - ambiguous
+      - escalationRequired
+      properties:
+        pageId:
+          type: string
+          format: uuid
+        pageNumber:
+          type: integer
+          minimum: 1
+        pageRole:
+          type: string
+        documentTypeHint:
+          type: string
+          nullable: true
+        extractionUsefulness:
+          type: string
+        isBoilerplate:
+          type: boolean
+        hasStructuredTargets:
+          type: boolean
+        ambiguous:
+          type: boolean
+        escalationRequired:
+          type: boolean
+        reason:
+          type: string
+          nullable: true
+        confidence:
+          type: number
+          nullable: true
+    SemanticRegionAnnotation:
+      type: object
+      additionalProperties: false
+      required:
+      - semanticType
+      - priority
+      - expectedFields
+      - reviewRequired
+      - grounding
+      properties:
+        semanticType:
+          type: string
+        priority:
+          type: string
+          enum:
+          - low
+          - medium
+          - high
+          - critical
+        graniteTask:
+          type: string
+          nullable: true
+        targetSchema:
+          type: string
+          nullable: true
+        expectedFields:
+          type: array
+          items:
+            type: string
+        reviewRequired:
+          type: boolean
+        reason:
+          type: string
+          nullable: true
+        confidence:
+          type: number
+          nullable: true
+        grounding:
+          $ref: '#/components/schemas/SemanticGroundingRef'
+    SemanticGroundingRef:
+      type: object
+      additionalProperties: false
+      required:
+      - kind
+      properties:
+        kind:
+          type: string
+          enum:
+          - page
+          - element
+          - table
+          - unmatched_region
+        pageId:
+          type: string
+          format: uuid
+          nullable: true
+        elementId:
+          type: string
+          format: uuid
+          nullable: true
+        tableId:
+          type: string
+          format: uuid
+          nullable: true
     DocumentSummary:
       type: object
       additionalProperties: false
@@ -2128,6 +2309,7 @@ components:
           type: string
           enum:
           - docling
+          - qwen3_vl_2b
           - qwen3_vl_4b
           - qwen3_vl_8b
           - granite_vision_3b
@@ -2819,6 +3001,7 @@ components:
           type: string
           enum:
           - docling
+          - qwen3_vl_2b
           - qwen3_vl_4b
           - qwen3_vl_8b
           - granite_vision_3b

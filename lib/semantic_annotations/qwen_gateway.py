@@ -54,11 +54,11 @@ class QwenSemanticVisionClient:
         return cls(
             smart=QwenVLClient(
                 profile=get_model_profile(QWEN_SEMANTIC_PROFILE),
-                http_client_base_url=str(settings.model_qwen_url),
+                http_client_base_url=str(settings.model_qwen_semantic_url),
             ),
             high_quality=QwenVLClient(
                 profile=get_model_profile(QWEN_SEMANTIC_HQ_PROFILE),
-                http_client_base_url=str(settings.model_qwen_url),
+                http_client_base_url=str(settings.model_qwen_hq_url),
             ),
         )
 

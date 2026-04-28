@@ -340,6 +340,18 @@ def test_all_job_event_schemas_validate_representative_payloads() -> None:
         registry.validate_event_instance(schema_name, payload)
 
 
+def test_phase8_5_semantic_annotation_contract_has_qwen2b_and_response_schema() -> None:
+    registry = ContractRegistry.load("contracts")
+    common_defs = registry.schemas["common_defs.schema.json"]
+    source_engines = common_defs["$defs"]["evidenceRef"]["properties"]["source_engine"]["enum"]
+    assert "qwen3_vl_2b" in source_engines
+
+    response_schema = registry.openapi["paths"][
+        "/api/v1/documents/{documentId}/semantic-annotations/current"
+    ]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
+    assert response_schema == {"$ref": "#/components/schemas/SemanticAnnotationCurrentResponse"}
+
+
 def test_phase_0_contract_models_accept_openapi_shapes_and_reject_loose_evidence() -> None:
     evidence = {"pageNumber": 1, "sourceEngine": "docling", "bbox": [0, 0, 1, 1]}
 

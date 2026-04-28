@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 SourceEngine = Literal[
     "docling",
+    "qwen3_vl_2b",
     "qwen3_vl_4b",
     "qwen3_vl_8b",
     "granite_vision_3b",

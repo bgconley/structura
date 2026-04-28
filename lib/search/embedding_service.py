@@ -173,7 +173,7 @@ class EmbeddingService:
         for source, embedding in zip(sources, embedded, strict=True):
             if persist_embedding(
                 cur,
-                source=source,
+                source=_with_embedding_provenance(source, self.visual_profile),
                 embedding=embedding,
                 force_reembed=force_reembed,
             ):
@@ -202,6 +202,32 @@ def _visual_embedding_input(
         mime_type=mime_type,
         content_sha256=source.content_sha256,
     )
+
+
+def _with_embedding_provenance(
+    source: EmbeddingSource,
+    profile: EmbeddingProfile,
+) -> EmbeddingSource:
+    metadata = {
+        **source.metadata,
+        "embeddingAdapter": _embedding_adapter_name(profile),
+        "embeddingModelVersion": profile.version,
+        "embeddingModality": profile.modality,
+    }
+    return EmbeddingSource(
+        owner_type=source.owner_type,
+        owner_id=source.owner_id,
+        document_id=source.document_id,
+        text=source.text,
+        metadata=metadata,
+        content_sha256_override=source.content_sha256_override,
+    )
+
+
+def _embedding_adapter_name(profile: EmbeddingProfile) -> str:
+    if profile.name == "structura-fixture-visual-byte-embedding":
+        return "deterministic_visual_byte_embedding"
+    return profile.name
 
 
 def _default_text_gateway(

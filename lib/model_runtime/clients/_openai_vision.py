@@ -87,6 +87,7 @@ def _openai_payload(*, request: VisionGenerateRequest, profile: ModelProfile) ->
         "messages": [{"role": "user", "content": content}],
         "max_tokens": request.max_output_tokens,
         "temperature": request.temperature,
+        "response_format": {"type": "json_object"},
         "metadata": {
             "profile_name": request.profile_name,
             "prompt_version": request.prompt_version,

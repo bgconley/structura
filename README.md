@@ -64,11 +64,14 @@ Model placeholders are behind a separate profile. They are health placeholders o
 docker compose --profile models-placeholder up model-qwen-placeholder model-granite-placeholder model-embed-placeholder model-vl-embed-placeholder
 ```
 
-Live Phase 8.5 model services are behind explicit profiles and require approved pinned images plus `STRUCTURA_MODEL_MODE=live`:
+Live Phase 8.5 model services are behind explicit profiles. Compose defaults use
+`voipmonitor/vllm:cu130` for Blackwell Qwen/Granite/visual services and TEI CUDA
+for text embeddings; release candidates still need digest-pinned image evidence:
 
 ```bash
-docker compose --profile models-live up model-qwen model-granite model-embed
-docker compose --profile visual-embed-live up model-vl-embed
+docker compose --profile models-live up -d model-qwen-semantic model-qwen model-granite model-embed
+docker compose --profile visual-embed-live up -d model-vl-embed
+STRUCTURA_MODEL_MODE=live bash scripts/gpu/phase8_5_model_smoke.sh
 ```
 
 Semantic annotation workers are behind the semantic/extraction profile. They consume

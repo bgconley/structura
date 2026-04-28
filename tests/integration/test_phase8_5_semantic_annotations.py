@@ -7,10 +7,14 @@ import pytest
 
 pytest.importorskip("psycopg")
 
+from jsonschema import ValidationError
+
 from lib.db.connection import db_connection
+from lib.extraction.models import ExtractionSourceDocument, ParsedPageText
 from lib.semantic_annotations.models import (
     DocumentSemanticManifest,
     PageSemanticAnnotation,
+    SemanticAnnotationResult,
     SemanticGroundingRef,
     SemanticRegionAnnotation,
 )
@@ -18,6 +22,7 @@ from lib.semantic_annotations.repository import (
     load_current_manifest,
     persist_semantic_manifest,
 )
+from lib.semantic_annotations.service import SemanticAnnotationService
 
 
 @pytest.mark.skipif(
@@ -71,6 +76,76 @@ def test_phase8_5_semantic_manifest_supersedes_current_and_persists_grounded_reg
             assert row["is_current"] is False
 
 
+@pytest.mark.skipif(
+    not os.environ.get("STRUCTURA_TEST_DATABASE_URL"),
+    reason="Set STRUCTURA_TEST_DATABASE_URL to run live Phase 8.5 semantic annotation tests.",
+)
+def test_phase8_5_semantic_manifest_rolls_back_if_targeted_job_payload_is_invalid() -> None:
+    document_id, household_id, page_id, element_id, table_id = _create_parsed_document()
+    manifest = _manifest(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        element_id=element_id,
+        table_id=table_id,
+        model_version="v1",
+        first_region_target_schema="unsupported_schema",
+    )
+    source = ExtractionSourceDocument(
+        document_id=document_id,
+        household_id=household_id,
+        title="Phase 8.5 invalid target",
+        original_filename="invalid.pdf",
+        mime_type="application/pdf",
+        family="medical_eob",
+        subtype=None,
+        sensitivity="standard",
+        document_date=None,
+        counterparty_display=None,
+        primary_folder_id=None,
+        metadata={},
+        pages=[
+            ParsedPageText(
+                page_id=page_id,
+                page_number=1,
+                text="Explanation of benefits line items",
+                image_bytes=b"image",
+                image_mime_type="image/png",
+                image_sha256="a" * 64,
+            )
+        ],
+        elements=[],
+        tables=[],
+    )
+
+    with pytest.raises(ValidationError):
+        SemanticAnnotationService(
+            source_loader=lambda _document_id: source,
+            gateway=StaticSemanticGateway(manifest),
+        ).annotate_document(document_id)
+
+    assert (
+        load_current_manifest(
+            document_id=document_id,
+            profile_name="qwen3-vl-2b-semantic:v1",
+            quality_mode="smart",
+        )
+        is None
+    )
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT count(*) AS total
+                FROM pipeline_jobs
+                WHERE document_id = %s
+                  AND job_type = 'extract'
+                """,
+                (document_id,),
+            )
+            assert cur.fetchone()["total"] == 0
+
+
 def _manifest(
     *,
     document_id: uuid.UUID,
@@ -79,6 +154,7 @@ def _manifest(
     element_id: uuid.UUID,
     table_id: uuid.UUID,
     model_version: str,
+    first_region_target_schema: str = "medical_eob",
 ) -> DocumentSemanticManifest:
     return DocumentSemanticManifest(
         document_id=document_id,
@@ -105,7 +181,7 @@ def _manifest(
                 semantic_type="covered_services_line_item_table",
                 priority="high",
                 granite_task="tables_json",
-                target_schema="medical_eob",
+                target_schema=first_region_target_schema,
                 expected_fields=("service_date", "allowed_amount"),
                 grounding=SemanticGroundingRef(kind="table", table_id=table_id),
                 reason="Table includes EOB line items.",
@@ -126,6 +202,20 @@ def _manifest(
         manifest={"document_type": "medical_eob"},
         input_page_hashes=("a" * 64,),
     )
+
+
+class StaticSemanticGateway:
+    def __init__(self, manifest: DocumentSemanticManifest) -> None:
+        self.manifest = manifest
+
+    def annotate(
+        self,
+        source: ExtractionSourceDocument,
+        *,
+        quality_mode: str,
+    ) -> SemanticAnnotationResult:
+        del source, quality_mode
+        return SemanticAnnotationResult(manifest=self.manifest)
 
 
 def _create_parsed_document() -> tuple[uuid.UUID, uuid.UUID, uuid.UUID, uuid.UUID, uuid.UUID]:

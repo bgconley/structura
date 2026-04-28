@@ -38,11 +38,20 @@ class EmbeddingHttpClient:
             raise ModelProtocolError("Embedding request dimension does not match client profile.")
         start = time.monotonic()
         payload, input_hashes = self._payload(request)
-        response = self._http.post_json(
-            "/embed",
-            payload,
-            timeout_seconds=request.timeout_seconds,
-        )
+        try:
+            response = self._http.post_json(
+                "/embed",
+                payload,
+                timeout_seconds=request.timeout_seconds,
+            )
+        except ModelProtocolError as exc:
+            if "HTTP 404" not in str(exc) and "HTTP 405" not in str(exc):
+                raise
+            response = self._http.post_json(
+                "/v1/embeddings",
+                self._openai_embedding_payload(request),
+                timeout_seconds=request.timeout_seconds,
+            )
         vectors = _vectors(
             response,
             dimensions=request.output_dimensions,
@@ -90,6 +99,43 @@ class EmbeddingHttpClient:
         if not item.text.strip():
             raise ModelProtocolError("Text embedding input must not be empty.")
         return item.text
+
+    def _openai_embedding_payload(self, request: EmbeddingRequest) -> dict[str, Any]:
+        if not self.requires_image:
+            return {
+                "model": self.profile.base_model,
+                "input": [item.text for item in request.inputs],
+                "dimensions": request.output_dimensions,
+                "metadata": {"profile_name": request.profile_name},
+            }
+        if len(request.inputs) != 1:
+            raise ModelProtocolError(
+                "OpenAI-compatible visual embedding fallback supports one image at a time."
+            )
+        item = request.inputs[0]
+        if not item.image_bytes or not item.mime_type or not item.mime_type.startswith("image/"):
+            raise ModelProtocolError("Visual embedding input requires image bytes.")
+        data_url = base64.b64encode(item.image_bytes).decode("ascii")
+        content: list[dict[str, object]] = [
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:{item.mime_type};base64,{data_url}"},
+            }
+        ]
+        if item.text.strip():
+            content.append({"type": "text", "text": item.text})
+        return {
+            "model": self.profile.base_model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": [{"type": "text", "text": "Represent the user's input."}],
+                },
+                {"role": "user", "content": content},
+            ],
+            "dimensions": request.output_dimensions,
+            "metadata": {"profile_name": request.profile_name},
+        }
 
 
 def _vectors(

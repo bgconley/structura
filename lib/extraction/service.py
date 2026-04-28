@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from typing import Protocol
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from lib.extraction.classification import TARGET_EXTRACTION_SCHEMAS, classify_document
 from lib.extraction.gateway import ExtractionGateway
@@ -26,6 +25,10 @@ from lib.extraction.repository import (
 from lib.extraction.schema_registry import ExtractionSchemaRegistry
 from lib.extraction.validators import validate_extraction_payload
 from lib.jobs import JobService
+from lib.jobs.event_payloads import (
+    build_extract_document_job_payload,
+    build_semantic_annotate_document_job_payload,
+)
 from lib.semantic_annotations.models import SemanticExtractionTask
 from lib.semantic_annotations.repository import load_semantic_extraction_task
 
@@ -81,20 +84,23 @@ class ExtractionService:
         extraction_id = persist_classification(decision, source=source)
         queued_job_id = None
         if decision.family in TARGET_EXTRACTION_SCHEMAS:
+            priority = 35
+            job_id = uuid4()
             job = self.jobs.create_job(
+                job_id=job_id,
                 job_type="extract",
                 household_id=source.household_id,
                 document_id=document_id,
-                payload={
-                    "schema_name": "extract_document_job",
-                    "schema_version": "v1",
-                    "document_id": str(document_id),
-                    "target_schema_name": decision.family,
-                    "target_schema_version": "v1",
-                    "route_profile": decision.route_profile,
-                    "requested_by": "system",
-                },
-                priority=35,
+                payload=build_extract_document_job_payload(
+                    job_id=job_id,
+                    document_id=document_id,
+                    target_schema_name=decision.family,
+                    target_schema_version="v1",
+                    route_profile=decision.route_profile,
+                    requested_by="system",
+                    priority=priority,
+                ),
+                priority=priority,
                 queue_name="extraction",
             )
             queued_job_id = job.job_id
@@ -133,8 +139,6 @@ class ExtractionService:
             registry=self.registry,
         )
         gateway_result.normalized_json["validation"] = validation.as_json()
-        if allow_rescue and semantic_task is not None and validation.needs_review:
-            self._enqueue_rescue_semantic_pass(source, semantic_task)
         field_candidates = field_candidates_from_extraction(
             document_id=document_id,
             schema_name=schema_name,
@@ -148,13 +152,16 @@ class ExtractionService:
             validation=validation,
             source_engine=gateway_result.route.source_engine,
         )
-        return self.persister(
+        persisted = self.persister(
             gateway_result,
             source=source,
             validation=validation,
             field_candidates=field_candidates,
             line_item_candidates=line_item_candidates,
         )
+        if allow_rescue and semantic_task is not None and validation.needs_review:
+            self._enqueue_rescue_semantic_pass(source, semantic_task)
+        return persisted
 
     def _semantic_task_for_document(
         self,
@@ -177,20 +184,20 @@ class ExtractionService:
         source: ExtractionSourceDocument,
         semantic_task: SemanticExtractionTask,
     ) -> None:
+        job_id = uuid4()
         self.jobs.create_job(
+            job_id=job_id,
             job_type="semantic_annotate",
             household_id=source.household_id,
             document_id=source.document_id,
-            payload={
-                "schema_name": "semantic_annotate_document_job",
-                "schema_version": "v1",
-                "document_id": str(source.document_id),
-                "quality_mode": "rescue",
-                "requested_by": "system",
-                "reason": "phase8_5.validation_failed_rescue",
-                "source_semantic_region_id": str(semantic_task.region_id),
-                "created_at": datetime.now(UTC).isoformat(),
-            },
+            payload=build_semantic_annotate_document_job_payload(
+                job_id=job_id,
+                document_id=source.document_id,
+                quality_mode="rescue",
+                requested_by="system",
+                reason="phase8_5.validation_failed_rescue",
+                source_semantic_region_id=semantic_task.region_id,
+            ),
             priority=26,
             queue_name="semantic-annotations",
         )

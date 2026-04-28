@@ -75,6 +75,7 @@ def test_qwen_client_builds_multimodal_payload_and_returns_truthful_provenance()
     assert payload["model"] == "Qwen/Qwen3-VL-8B-Instruct"
     content = payload["messages"][0]["content"]
     assert any(part["type"] == "image_url" for part in content)
+    assert payload["response_format"] == {"type": "json_object"}
     assert payload["metadata"]["profile_name"] == QWEN_VL_PROFILE
 
 

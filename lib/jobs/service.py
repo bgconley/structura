@@ -187,6 +187,7 @@ class JobService:
     def create_job(
         self,
         *,
+        job_id: UUID | None = None,
         job_type: str,
         household_id: UUID | None = None,
         document_id: UUID | None = None,
@@ -200,7 +201,7 @@ class JobService:
             with conn.cursor() as cur:
                 job = create_job_with_cursor(
                     cur,
-                    job_id=uuid4(),
+                    job_id=job_id or uuid4(),
                     job_type=job_type,
                     household_id=household_id,
                     document_id=document_id,

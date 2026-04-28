@@ -26,6 +26,13 @@ services:
       STRUCTURA_WATCHED_FOLDER_ROOT: /srv/structura/imports
       STRUCTURA_CONTRACTS_DIR: /app/contracts
       STRUCTURA_DATABASE_DIR: /app/database
+      STRUCTURA_MODEL_MODE: ${STRUCTURA_MODEL_MODE:-fixture}
+      STRUCTURA_MODEL_QWEN_URL: http://model-qwen:8100
+      STRUCTURA_MODEL_QWEN_HQ_URL: http://model-qwen:8100
+      STRUCTURA_MODEL_QWEN_SEMANTIC_URL: http://model-qwen-semantic:8104
+      STRUCTURA_MODEL_GRANITE_URL: http://model-granite:8101
+      STRUCTURA_MODEL_TEXT_EMBED_URL: http://model-embed:8102
+      STRUCTURA_MODEL_VISUAL_EMBED_URL: http://model-vl-embed:8103
     ports:
       - "${STRUCTURA_API_BIND_HOST:-127.0.0.1}:${STRUCTURA_API_PORT:-8000}:8000"
     volumes:
@@ -145,6 +152,8 @@ services:
       STRUCTURA_RUNTIME_ROOT: /srv/structura
       STRUCTURA_MODEL_MODE: ${STRUCTURA_MODEL_MODE:-fixture}
       STRUCTURA_MODEL_QWEN_URL: http://model-qwen:8100
+      STRUCTURA_MODEL_QWEN_HQ_URL: http://model-qwen:8100
+      STRUCTURA_MODEL_QWEN_SEMANTIC_URL: http://model-qwen-semantic:8104
       STRUCTURA_MODEL_GRANITE_URL: http://model-granite:8101
     volumes:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/derived:/srv/structura/objects/derived
@@ -169,6 +178,8 @@ services:
       STRUCTURA_RUNTIME_ROOT: /srv/structura
       STRUCTURA_MODEL_MODE: ${STRUCTURA_MODEL_MODE:-fixture}
       STRUCTURA_MODEL_QWEN_URL: http://model-qwen:8100
+      STRUCTURA_MODEL_QWEN_HQ_URL: http://model-qwen:8100
+      STRUCTURA_MODEL_QWEN_SEMANTIC_URL: http://model-qwen-semantic:8104
     volumes:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/derived:/srv/structura/objects/derived
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/workers:/srv/structura/logs/workers
@@ -352,59 +363,112 @@ services:
       NVIDIA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_VISUAL_EMBED_GPU:-1}
     profiles: ["models-placeholder", "models"]
 
+  model-qwen-semantic:
+    image: ${STRUCTURA_MODEL_QWEN_SEMANTIC_IMAGE:-voipmonitor/vllm:cu130}
+    entrypoint: ["/bin/bash"]
+    command: ["/srv/structura/model_services/start_qwen_vllm.sh"]
+    ports:
+      - "${STRUCTURA_MODEL_BIND_HOST:-127.0.0.1}:${STRUCTURA_MODEL_QWEN_SEMANTIC_PORT:-8104}:8104"
+    volumes:
+      - ./workers/model_services:/srv/structura/model_services:ro
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/models:/srv/structura/models
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/tmp/model-inputs:/srv/structura/tmp/model-inputs
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/models:/srv/structura/logs/models
+    environment:
+      NVIDIA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_QWEN_SEMANTIC_GPU:-0}
+      STRUCTURA_MODEL_PROFILE: ${STRUCTURA_QWEN_SEMANTIC_PROFILE:-qwen3-vl-2b-semantic:v1}
+      STRUCTURA_VLLM_MODEL_ID: Qwen/Qwen3-VL-2B-Instruct
+      STRUCTURA_VLLM_SERVED_MODEL_NAME: Qwen/Qwen3-VL-2B-Instruct
+      STRUCTURA_VLLM_PORT: "8104"
+      STRUCTURA_VLLM_DTYPE: bfloat16
+      STRUCTURA_VLLM_MAX_MODEL_LEN: "32768"
+      STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION: "0.30"
+      STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT: '{"image":4,"video":0}'
+    profiles: ["models-live", "qwen-semantic-live"]
+
   model-qwen:
-    image: ${STRUCTURA_MODEL_QWEN_IMAGE:-ghcr.io/bgconley/structura-model-qwen:qwen3-vl-8b-nvfp4-phase8.5}
-    command: ${STRUCTURA_MODEL_QWEN_COMMAND:-}
+    image: ${STRUCTURA_MODEL_QWEN_IMAGE:-voipmonitor/vllm:cu130}
+    entrypoint: ["/bin/bash"]
+    command: ["/srv/structura/model_services/start_qwen_vllm.sh"]
     ports:
       - "${STRUCTURA_MODEL_BIND_HOST:-127.0.0.1}:${STRUCTURA_MODEL_QWEN_PORT:-8100}:8100"
     volumes:
+      - ./workers/model_services:/srv/structura/model_services:ro
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/models:/srv/structura/models
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/tmp/model-inputs:/srv/structura/tmp/model-inputs
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/models:/srv/structura/logs/models
     environment:
       NVIDIA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_QWEN_GPU:-0}
       STRUCTURA_MODEL_PROFILE: ${STRUCTURA_QWEN_PROFILE:-qwen3-vl-8b-instruct-nvfp4-local:v1}
+      STRUCTURA_VLLM_MODEL_ID: ${STRUCTURA_VLLM_QWEN_MODEL_ID:-lhoang8500/Qwen3-VL-8B-Instruct-NVFP4}
+      STRUCTURA_VLLM_SERVED_MODEL_NAME: Qwen/Qwen3-VL-8B-Instruct
+      STRUCTURA_VLLM_PORT: "8100"
+      STRUCTURA_VLLM_MAX_MODEL_LEN: "32768"
+      STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION: "0.62"
+      STRUCTURA_VLLM_KV_CACHE_DTYPE: fp8
+      STRUCTURA_VLLM_MAX_NUM_SEQS: "32"
+      STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT: '{"image":1,"video":0}'
     profiles: ["models-live", "qwen-live"]
 
   model-granite:
-    image: ${STRUCTURA_MODEL_GRANITE_IMAGE:-ghcr.io/bgconley/structura-model-granite:granite-4.0-3b-vision-bf16-phase8.5}
-    command: ${STRUCTURA_MODEL_GRANITE_COMMAND:-}
+    image: ${STRUCTURA_MODEL_GRANITE_IMAGE:-voipmonitor/vllm:cu130}
+    entrypoint: ["/bin/bash"]
+    command: ["/srv/structura/model_services/start_granite_vllm.sh"]
     ports:
       - "${STRUCTURA_MODEL_BIND_HOST:-127.0.0.1}:${STRUCTURA_MODEL_GRANITE_PORT:-8101}:8101"
     volumes:
+      - ./workers/model_services:/srv/structura/model_services:ro
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/models:/srv/structura/models
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/tmp/model-inputs:/srv/structura/tmp/model-inputs
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/models:/srv/structura/logs/models
     environment:
       NVIDIA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_GRANITE_GPU:-1}
       STRUCTURA_MODEL_PROFILE: ${STRUCTURA_GRANITE_PROFILE:-granite-4.0-3b-vision-bf16:v1}
+      STRUCTURA_GRANITE_MODEL_ID: ibm-granite/granite-4.0-3b-vision
+      STRUCTURA_GRANITE_ADAPTER_PATH: ibm-granite/granite-4.0-3b-vision
+      STRUCTURA_GRANITE_PORT: "8101"
     profiles: ["models-live", "granite-live"]
 
   model-embed:
-    image: ${STRUCTURA_MODEL_EMBED_IMAGE:-ghcr.io/bgconley/structura-model-embed:qwen3-embedding-4b-1536-phase8.5}
-    command: ${STRUCTURA_MODEL_EMBED_COMMAND:-}
+    image: ${STRUCTURA_MODEL_EMBED_IMAGE:-ghcr.io/huggingface/text-embeddings-inference:cuda-1.9}
+    entrypoint: ["/bin/bash"]
+    command: ["/srv/structura/model_services/start_text_embed.sh"]
     ports:
       - "${STRUCTURA_MODEL_BIND_HOST:-127.0.0.1}:${STRUCTURA_MODEL_EMBED_PORT:-8102}:8102"
     volumes:
+      - ./workers/model_services:/srv/structura/model_services:ro
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/models:/srv/structura/models
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/models:/srv/structura/logs/models
     environment:
-      NVIDIA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_EMBED_GPU:-0}
+      NVIDIA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_EMBED_GPU:-1}
       STRUCTURA_MODEL_PROFILE: ${STRUCTURA_TEXT_EMBED_PROFILE:-qwen3-embedding-4b-1536:v1}
+      MODEL_ID: Qwen/Qwen3-Embedding-4B
+      SERVED_MODEL_NAME: Qwen/Qwen3-Embedding-4B
+      PORT: "8102"
+      DTYPE: float16
     profiles: ["models-live", "text-embed-live"]
 
   model-vl-embed:
-    image: ${STRUCTURA_MODEL_VISUAL_EMBED_IMAGE:-ghcr.io/bgconley/structura-model-vl-embed:qwen3-vl-embedding-2b-1024-phase8.5}
-    command: ${STRUCTURA_MODEL_VISUAL_EMBED_COMMAND:-}
+    image: ${STRUCTURA_MODEL_VISUAL_EMBED_IMAGE:-voipmonitor/vllm:cu130}
+    entrypoint: ["/bin/bash"]
+    command: ["/srv/structura/model_services/start_visual_embed_vllm.sh"]
     ports:
       - "${STRUCTURA_MODEL_BIND_HOST:-127.0.0.1}:${STRUCTURA_MODEL_VISUAL_EMBED_PORT:-8103}:8103"
     volumes:
+      - ./workers/model_services:/srv/structura/model_services:ro
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/models:/srv/structura/models
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/tmp/model-inputs:/srv/structura/tmp/model-inputs
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/models:/srv/structura/logs/models
     environment:
       NVIDIA_VISIBLE_DEVICES: ${STRUCTURA_MODEL_VISUAL_EMBED_GPU:-1}
       STRUCTURA_MODEL_PROFILE: ${STRUCTURA_VISUAL_EMBED_PROFILE:-qwen3-vl-embedding-2b-1024:v1}
+      STRUCTURA_VLLM_MODEL_ID: Qwen/Qwen3-VL-Embedding-2B
+      STRUCTURA_VLLM_SERVED_MODEL_NAME: Qwen/Qwen3-VL-Embedding-2B
+      STRUCTURA_VLLM_PORT: "8103"
+      STRUCTURA_VLLM_DTYPE: bfloat16
+      STRUCTURA_VLLM_MAX_MODEL_LEN: "32768"
+      STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION: "0.70"
+      STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT: '{"image":8,"video":0}'
     profiles: ["visual-embed-live"]
 
   redis:

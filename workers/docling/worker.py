@@ -4,11 +4,11 @@ import argparse
 import signal
 import sys
 import time
-from datetime import UTC, datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from lib.documents.quality import evaluate_document_quality
 from lib.jobs import JobService, record_service_health
+from lib.jobs.event_payloads import build_classify_document_job_payload
 from lib.search.jobs import enqueue_embed_document_job, enqueue_visual_embed_document_job
 from lib.semantic_annotations.jobs import enqueue_semantic_annotation_job
 from workers.docling.converter import DoclingConverter
@@ -72,30 +72,6 @@ def process_next_docling_job(
                 },
             },
         )
-        job_service.create_job(
-            job_type="classify",
-            household_id=claimed.household_id,
-            document_id=target_document_id,
-            payload={
-                "schema_name": "classify_document_job",
-                "schema_version": "v1",
-                "document_id": str(target_document_id),
-                "requested_by": "system",
-                "created_at": datetime.now(UTC).isoformat(),
-                "stage": "phase4.classify",
-            },
-            priority=38,
-            queue_name="extraction",
-        )
-        _enqueue_embedding_refresh(
-            target_document_id,
-            household_id=claimed.household_id,
-            include_visual=quality.visual_embedding_eligible,
-        )
-        _enqueue_semantic_annotation(
-            target_document_id,
-            household_id=claimed.household_id,
-        )
     except Exception as exc:
         if target_document_id:
             mark_document_parse_failed(
@@ -110,6 +86,51 @@ def process_next_docling_job(
             message="Docling canonical conversion failed",
             retryable=True,
             suppress=False,
+        )
+        return True
+
+    downstream_failures: list[str] = []
+    try:
+        classify_priority = 38
+        classify_job_id = uuid4()
+        job_service.create_job(
+            job_id=classify_job_id,
+            job_type="classify",
+            household_id=claimed.household_id,
+            document_id=target_document_id,
+            payload=build_classify_document_job_payload(
+                job_id=classify_job_id,
+                document_id=target_document_id,
+                requested_by="system",
+                priority=classify_priority,
+                metadata={"stage": "phase4.classify"},
+            ),
+            priority=classify_priority,
+            queue_name="extraction",
+        )
+    except Exception as exc:
+        downstream_failures.append(f"classify:{exc.__class__.__name__}")
+    try:
+        _enqueue_embedding_refresh(
+            target_document_id,
+            household_id=claimed.household_id,
+            include_visual=quality.visual_embedding_eligible,
+        )
+    except Exception as exc:
+        downstream_failures.append(f"embeddings:{exc.__class__.__name__}")
+    try:
+        _enqueue_semantic_annotation(
+            target_document_id,
+            household_id=claimed.household_id,
+        )
+    except Exception as exc:
+        downstream_failures.append(f"semantic:{exc.__class__.__name__}")
+    if downstream_failures:
+        _record_downstream_enqueue_failure(
+            worker_name=worker_name,
+            document_id=target_document_id,
+            job_id=claimed.state.job_id,
+            failures=downstream_failures,
         )
     return True
 
@@ -200,6 +221,28 @@ def _record_health(worker_name: str, queue_name: str, heartbeat_seconds: float) 
         )
     except Exception as exc:
         print(f"{worker_name}: health snapshot skipped: {exc}", flush=True)
+
+
+def _record_downstream_enqueue_failure(
+    *,
+    worker_name: str,
+    document_id: UUID,
+    job_id: UUID,
+    failures: list[str],
+) -> None:
+    try:
+        record_service_health(
+            service_name=worker_name,
+            status="degraded",
+            metrics={
+                "document_id": str(document_id),
+                "job_id": str(job_id),
+                "stage": "post_parse_enqueue",
+                "failures": failures,
+            },
+        )
+    except Exception as exc:
+        print(f"{worker_name}: downstream enqueue failure snapshot skipped: {exc}", flush=True)
 
 
 if __name__ == "__main__":

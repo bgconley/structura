@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from typing import Any
 from uuid import UUID, uuid4
 
+from lib.contracts.registry import ContractRegistry
 from lib.extraction.models import ExtractionSourceDocument, ParsedPageText
 from lib.semantic_annotations.models import (
     DocumentSemanticManifest,
@@ -41,6 +42,13 @@ def test_semantic_service_persists_manifest_and_queues_grounded_granite_jobs() -
     assert jobs.created[0]["job_type"] == "extract"
     assert jobs.created[0]["queue_name"] == "extraction"
     payload = jobs.created[0]["payload"]
+    ContractRegistry.load("contracts").validate_event_instance(
+        "extract_document_job.v1.schema.json",
+        payload,
+    )
+    assert payload["job_id"] == str(jobs.created_job_id)
+    assert payload["attempt"] == 1
+    assert 1 <= payload["priority"] <= 10
     assert payload["route_profile"] == "docling_plus_granite_structured"
     assert payload["target_schema_name"] == "invoice"
     assert payload["semantic_annotation_id"] == str(annotation_id)
@@ -98,6 +106,8 @@ class RecordingJobs:
         self.created_job_id = uuid4()
 
     def create_job(self, **kwargs: object) -> SimpleNamespace:
+        if "job_id" in kwargs:
+            self.created_job_id = kwargs["job_id"]  # type: ignore[assignment]
         self.created.append(kwargs)
         return SimpleNamespace(job_id=self.created_job_id)
 

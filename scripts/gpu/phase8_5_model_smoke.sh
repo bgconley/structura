@@ -2,6 +2,7 @@
 set -euo pipefail
 
 QWEN_URL="${STRUCTURA_MODEL_QWEN_URL:-http://127.0.0.1:8100}"
+QWEN_SEMANTIC_URL="${STRUCTURA_MODEL_QWEN_SEMANTIC_URL:-http://127.0.0.1:8104}"
 GRANITE_URL="${STRUCTURA_MODEL_GRANITE_URL:-http://127.0.0.1:8101}"
 TEXT_EMBED_URL="${STRUCTURA_MODEL_TEXT_EMBED_URL:-http://127.0.0.1:8102}"
 VISUAL_EMBED_URL="${STRUCTURA_MODEL_VISUAL_EMBED_URL:-http://127.0.0.1:8103}"
@@ -31,9 +32,22 @@ probe_health() {
 }
 
 probe_health "model-qwen" "${QWEN_URL}"
+probe_health "model-qwen-semantic" "${QWEN_SEMANTIC_URL}"
 probe_health "model-granite" "${GRANITE_URL}"
 probe_health "model-embed" "${TEXT_EMBED_URL}"
 probe_health "model-vl-embed" "${VISUAL_EMBED_URL}"
+
+"${PYTHON:-python3}" scripts/gpu/probe_phase8_5_live_models.py \
+  --qwen-url "${QWEN_URL}" \
+  --qwen-model "${STRUCTURA_MODEL_QWEN_MODEL:-Qwen/Qwen3-VL-8B-Instruct}" \
+  --qwen-semantic-url "${QWEN_SEMANTIC_URL}" \
+  --qwen-semantic-model "${STRUCTURA_MODEL_QWEN_SEMANTIC_MODEL:-Qwen/Qwen3-VL-2B-Instruct}" \
+  --granite-url "${GRANITE_URL}" \
+  --granite-model "${STRUCTURA_MODEL_GRANITE_MODEL:-ibm-granite/granite-4.0-3b-vision}" \
+  --text-embed-url "${TEXT_EMBED_URL}" \
+  --text-embed-model "${STRUCTURA_MODEL_TEXT_EMBED_MODEL:-Qwen/Qwen3-Embedding-4B}" \
+  --visual-embed-url "${VISUAL_EMBED_URL}" \
+  --visual-embed-model "${STRUCTURA_MODEL_VISUAL_EMBED_MODEL:-Qwen/Qwen3-VL-Embedding-2B}"
 
 "${PYTHON:-python3}" scripts/run_model_corpus.py \
   --require-model-backed \

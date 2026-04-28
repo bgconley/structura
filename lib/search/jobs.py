@@ -4,7 +4,9 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
+from lib.config import get_settings
 from lib.jobs import create_job_with_cursor
+from lib.model_runtime.profiles import TEXT_EMBED_PROFILE, VISUAL_EMBED_PROFILE
 
 
 def enqueue_embed_document_job(
@@ -67,13 +69,20 @@ def enqueue_visual_embed_document_job(
         force_reembed=force_reembed,
         modalities=("visual",),
         owner_types=("page", "asset"),
-        model_profile="structura-fixture-visual-byte-embedding:v1",
+        model_profile=None,
         queue_name="visual-embeddings",
         priority=priority,
     )
 
 
 def _model_profile_for_modalities(modalities: list[str]) -> str:
+    settings = get_settings()
+    if settings.model_mode != "fixture":
+        if modalities == ["visual"]:
+            return settings.visual_embed_profile or VISUAL_EMBED_PROFILE
+        if "visual" in modalities:
+            return settings.visual_embed_profile or VISUAL_EMBED_PROFILE
+        return settings.text_embed_profile or TEXT_EMBED_PROFILE
     if modalities == ["visual"]:
         return "structura-fixture-visual-byte-embedding:v1"
     if "visual" in modalities:
