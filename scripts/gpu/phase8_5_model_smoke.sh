@@ -28,6 +28,14 @@ BLACKWELL_CORE_SERVICES=(
   model-granite
   model-vl-embed
 )
+BLACKWELL_BASE_SERVICES=(
+  model-qwen
+  model-granite
+)
+BLACKWELL_COMPANION_SERVICES=(
+  model-qwen-semantic
+  model-vl-embed
+)
 
 echo "Phase 8.5 GPU model smoke"
 
@@ -84,7 +92,10 @@ remove_model_services() {
 start_core_services() {
   echo "Starting co-resident Phase 8.5 Blackwell model services"
   remove_model_services "${MODEL_SERVICES[@]}"
-  compose_model up -d --force-recreate "${BLACKWELL_CORE_SERVICES[@]}"
+  compose_model up -d --force-recreate "${BLACKWELL_BASE_SERVICES[@]}"
+  probe_health "model-qwen" "${QWEN_URL}"
+  probe_health "model-granite" "${GRANITE_URL}"
+  compose_model up -d --force-recreate "${BLACKWELL_COMPANION_SERVICES[@]}"
 }
 
 probe_core_services() {

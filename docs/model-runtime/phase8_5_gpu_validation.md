@@ -8,8 +8,6 @@ passes thresholds.
 ssh -i /Users/brennanconley/vibecode/infx/ubuntu24_ed25519 bgconley@10.25.0.50
 cd /tank/repos/structura
 git pull --ff-only
-docker compose --profile models-live up -d \
-  model-qwen-semantic model-qwen model-granite model-vl-embed
 docker compose --profile text-embed-live up -d model-embed
 STRUCTURA_MODEL_MODE=live PYTHON=/tank/venvs/structura/bin/python bash scripts/gpu/phase8_5_model_smoke.sh
 ```
@@ -17,9 +15,11 @@ STRUCTURA_MODEL_MODE=live PYTHON=/tank/venvs/structura/bin/python bash scripts/g
 On the current 2x 24GB Blackwell node, `models-live` is the co-resident VLM
 profile: Qwen3-VL 2B semantic and Qwen3-VL 8B HQ/rescue on GPU0, plus Granite
 4.0 3B Vision and Qwen3-VL-Embedding 2B visual embeddings on GPU1. These
-services use reduced vLLM `gpu_memory_utilization` settings so the KV cache is
-large enough for the configured context without each process attempting to
-reserve most of a 24GB card.
+services use ordered startup and explicit vLLM `gpu_memory_utilization` settings
+so the first model on each card reserves a bounded KV cache and the second model
+can still reserve enough KV cache after the first process is resident. Do not
+start the four Blackwell VLM services with a blind all-at-once `docker compose up`
+until that path has its own benchmark; use the managed smoke/start sequence.
 
 Qwen3-Embedding-4B text embeddings remain an offload/on-demand profile on the
 two-Blackwell node. Validation showed the TEI process uses roughly 8GB of GPU
@@ -53,14 +53,16 @@ The default memory/context settings are intentionally conservative:
 
 - Qwen3-VL 2B semantic: always-on, image-only, 32K context, low concurrency.
 - Qwen3-VL 8B HQ/rescue: always-on in `models-live`; it shares the first
-  Blackwell card with the 2B semantic service and uses reduced KV over-reservation
-  rather than on-demand unload/reload.
+  Blackwell card with the 2B semantic service. Start the 8B service first, then
+  the 2B service; the 2B service's higher utilization setting is intentional
+  because vLLM subtracts already-resident GPU memory before allocating KV cache.
 - Granite 4.0 3B Vision: high-priority structured extraction, image-only, 32K
   context rather than the much larger upstream default.
 - Visual embeddings: always-on in `models-live` on GPU1 with native
   2048-dimensional Qwen3-VL-Embedding output. It rejects the OpenAI `dimensions`
   override, so do not configure Structura visual embeddings as 1024-dimensional
-  unless a different backend is explicitly selected.
+  unless a different backend is explicitly selected. Start Granite first, then
+  visual embeddings for the same vLLM co-residency reason.
 - Text embeddings: offload/on-demand on the two-Blackwell node; prefer the RTX
   3090 node for always-available text embeddings.
 
