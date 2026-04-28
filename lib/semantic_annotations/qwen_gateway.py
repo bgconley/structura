@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import re
+import unicodedata
 from typing import Protocol
 from uuid import UUID
 
@@ -36,6 +38,7 @@ from lib.semantic_annotations.schema import semantic_annotation_manifest_schema
 from lib.storage import ObjectStorage
 
 MAX_SEMANTIC_MODEL_ATTEMPTS = 2
+_EXPECTED_FIELD_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 
 
 class SemanticVisionClientProtocol(Protocol):
@@ -430,6 +433,8 @@ def _manifest_from_response(
         raise ModelProtocolError("Semantic annotation output must include pages and regions.")
     pages = [_page_from_json(item) for item in pages_raw]
     regions = [_region_from_json(item) for item in regions_raw]
+    sanitized_payload = dict(normalized)
+    sanitized_payload["regions"] = [_region_manifest_json(region) for region in regions]
     return DocumentSemanticManifest(
         document_id=source.document_id,
         household_id=source.household_id,
@@ -442,7 +447,7 @@ def _manifest_from_response(
         pages=pages,
         regions=regions,
         confidence=_confidence_from_payload(normalized),
-        manifest=dict(normalized),
+        manifest=sanitized_payload,
         review_required=any(region.review_required for region in regions),
         input_page_hashes=tuple(response.input_sha256),
     )
@@ -479,7 +484,7 @@ def _region_from_json(item: object) -> SemanticRegionAnnotation:
         priority=str(item.get("priority") or "medium"),  # type: ignore[arg-type]
         granite_task=str(item["granite_task"]) if item.get("granite_task") else None,
         target_schema=str(item["target_schema"]) if item.get("target_schema") else None,
-        expected_fields=tuple(str(value) for value in item.get("expected_fields") or ()),
+        expected_fields=_expected_fields_from_json(item.get("expected_fields")),
         grounding=SemanticGroundingRef(
             kind=str(grounding_raw.get("kind") or "unmatched_region"),  # type: ignore[arg-type]
             page_id=_uuid_or_none(grounding_raw.get("page_id")),
@@ -496,6 +501,24 @@ def _uuid_or_none(value: object) -> UUID | None:
     if not value:
         return None
     return UUID(str(value))
+
+
+def _expected_fields_from_json(value: object) -> tuple[str, ...]:
+    if not isinstance(value, list):
+        return ()
+    fields: list[str] = []
+    seen: set[str] = set()
+    for item in value:
+        if not isinstance(item, str):
+            continue
+        field_name = unicodedata.normalize("NFKC", item).strip().lower()
+        field_name = field_name.replace(" ", "_").replace("-", "_")
+        if not field_name.isascii() or not _EXPECTED_FIELD_NAME_RE.fullmatch(field_name):
+            continue
+        if field_name not in seen:
+            fields.append(field_name)
+            seen.add(field_name)
+    return tuple(fields)
 
 
 def _validated_semantic_payload(response: VisionGenerateResponse) -> dict[str, object]:
