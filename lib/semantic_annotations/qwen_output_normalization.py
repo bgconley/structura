@@ -196,10 +196,17 @@ def _payload_from_page_annotations(
     for item in payload["page_annotations"]:
         if not isinstance(item, dict):
             continue
-        page_id = str(item.get("page_id") or "")
+        page_id = str(item.get("page_id") or item.get("pageId") or "")
         page = page_by_id.get(page_id)
+        page_grounding_repaired = False
         if page is None:
-            raise ModelProtocolError("semantic page_annotations output referenced unknown page_id.")
+            if len(source.pages) != 1:
+                raise ModelProtocolError(
+                    f"semantic page_annotations output referenced unknown page_id: {page_id}"
+                )
+            page = source.pages[0]
+            page_id = str(page.page_id)
+            page_grounding_repaired = True
         raw_regions = item.get("regions")
         page_regions = raw_regions if isinstance(raw_regions, list) else []
         page_needs_high_quality = any(
@@ -219,6 +226,7 @@ def _payload_from_page_annotations(
                 source=source,
                 page_regions=normalized_regions,
                 page_needs_high_quality=page_needs_high_quality,
+                page_grounding_repaired=page_grounding_repaired,
             )
         )
         regions.extend(normalized_regions)
@@ -266,6 +274,7 @@ def _normalized_alternate_page(
     source: ExtractionSourceDocument,
     page_regions: list[dict[str, object]],
     page_needs_high_quality: bool,
+    page_grounding_repaired: bool,
 ) -> dict[str, object]:
     has_structured_targets = any(
         region.get("granite_task") not in {None, "ignore"} for region in page_regions
@@ -273,6 +282,8 @@ def _normalized_alternate_page(
     escalation_reasons = _normalized_escalation_reasons(item.get("escalation_reasons"))
     if page_needs_high_quality:
         escalation_reasons = _append_unique(escalation_reasons, "validation_sensitive")
+    if page_grounding_repaired:
+        escalation_reasons = _append_unique(escalation_reasons, "missing_docling_grounding")
     confidence = _average_confidence(page_regions)
     return {
         "page_id": page_id,
