@@ -164,6 +164,42 @@ def test_live_qwen_high_quality_gateway_normalizes_page_annotations_shape() -> N
     assert region.expected_fields == ("request_status",)
 
 
+def test_live_qwen_high_quality_gateway_caps_alternate_page_annotation_regions() -> None:
+    source = _source_with_page_image_and_element()
+    page = source.pages[0]
+    element = source.elements[0]
+    client = FakeSemanticVisionClient(
+        profile_name=QWEN_SEMANTIC_HQ_PROFILE,
+        source_engine="qwen3_vl_8b",
+        normalized_json={
+            "page_annotations": [
+                {
+                    "page_id": str(page.page_id),
+                    "regions": [
+                        {
+                            "element_id": str(element.element_id),
+                            "granite_task": "kvp",
+                            "target_schema": "medical_eob",
+                            "expected_fields": [f"field_{index}"],
+                            "reason": f"Region {index}.",
+                            "confidence": 0.9 - (index * 0.01),
+                        }
+                        for index in range(8)
+                    ],
+                }
+            ]
+        },
+    )
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(
+        source,
+        quality_mode="high_quality",
+    )
+
+    assert len(result.manifest.regions) == 6
+    assert result.manifest.regions[0].expected_fields == ("field_0",)
+
+
 def test_live_qwen_smart_gateway_chunks_pages_for_one_image_semantic_service() -> None:
     source = _source_with_two_page_images()
     page_by_hash = {page.image_sha256: page.page_id for page in source.pages if page.image_sha256}

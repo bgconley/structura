@@ -72,6 +72,8 @@ _SEMANTIC_TYPES = {
 _PRIORITIES = {"low", "medium", "high", "critical"}
 _GRANITE_TASKS = {"kvp", "tables_json", "tables_html", "tables_otsl", "ignore"}
 _TARGET_SCHEMAS = {"receipt", "invoice", "medical_eob"}
+_MAX_MODEL_OUTPUT_REGIONS = 6
+_PRIORITY_RANK = {"critical": 3, "high": 2, "medium": 1, "low": 0}
 
 
 def validated_model_output_payload(
@@ -158,6 +160,7 @@ def _payload_from_page_annotations(
             )
         )
         regions.extend(normalized_regions)
+    regions = _select_regions_for_contract(regions)
     return {
         "schema_name": "semantic_annotation_model_output",
         "schema_version": "v1",
@@ -172,6 +175,25 @@ def _payload_from_page_annotations(
             "reason": None,
         },
     }
+
+
+def _select_regions_for_contract(regions: list[dict[str, object]]) -> list[dict[str, object]]:
+    ranked = sorted(
+        enumerate(regions),
+        key=lambda item: _region_rank(item[1], item[0]),
+    )
+    return [region for _, region in ranked[:_MAX_MODEL_OUTPUT_REGIONS]]
+
+
+def _region_rank(region: dict[str, object], original_index: int) -> tuple[object, ...]:
+    priority = str(region.get("priority") or "medium")
+    confidence = region.get("confidence")
+    return (
+        -_PRIORITY_RANK.get(priority, 1),
+        1 if region.get("granite_task") == "ignore" else 0,
+        -float(confidence) if isinstance(confidence, int | float) else 0.0,
+        original_index,
+    )
 
 
 def _normalized_alternate_page(
