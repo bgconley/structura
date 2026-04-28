@@ -7,7 +7,7 @@ from uuid import uuid4
 
 import pytest
 
-from lib.extraction.models import ExtractionSourceDocument, ParsedPageText
+from lib.extraction.models import ExtractionSourceDocument, ParsedElementText, ParsedPageText
 from lib.model_runtime.contracts import VisionGenerateRequest, VisionGenerateResponse
 from lib.model_runtime.http_client import ModelProtocolError
 from lib.model_runtime.profiles import QWEN_SEMANTIC_HQ_PROFILE, QWEN_SEMANTIC_PROFILE
@@ -118,6 +118,50 @@ def test_live_qwen_high_quality_gateway_uses_qwen8b_profile() -> None:
     assert client.request.max_output_tokens == 4096
     assert client.request.response_schema_name == "semantic_annotation_model_output"
     assert client.request.response_json_schema is None
+
+
+def test_live_qwen_high_quality_gateway_normalizes_page_annotations_shape() -> None:
+    source = _source_with_page_image_and_element()
+    page = source.pages[0]
+    element = source.elements[0]
+    client = FakeSemanticVisionClient(
+        profile_name=QWEN_SEMANTIC_HQ_PROFILE,
+        source_engine="qwen3_vl_8b",
+        normalized_json={
+            "page_annotations": [
+                {
+                    "page_id": str(page.page_id),
+                    "regions": [
+                        {
+                            "element_id": str(element.element_id),
+                            "granite_task": "kvp",
+                            "target_schema": "medical_eob",
+                            "expected_fields": ["request_status"],
+                            "reason": "This block identifies the denial decision.",
+                            "confidence": 0.95,
+                            "needs_high_quality_pass": False,
+                        }
+                    ],
+                }
+            ]
+        },
+    )
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(
+        source,
+        quality_mode="high_quality",
+    )
+
+    assert len(result.manifest.pages) == 1
+    assert result.manifest.pages[0].page_id == page.page_id
+    assert result.manifest.pages[0].page_number == page.page_number
+    assert len(result.manifest.regions) == 1
+    region = result.manifest.regions[0]
+    assert region.grounding.kind == "element"
+    assert region.grounding.element_id == element.element_id
+    assert region.granite_task == "kvp"
+    assert region.target_schema == "medical_eob"
+    assert region.expected_fields == ("request_status",)
 
 
 def test_live_qwen_smart_gateway_chunks_pages_for_one_image_semantic_service() -> None:
@@ -459,6 +503,35 @@ def _source_with_page_image() -> ExtractionSourceDocument:
         ],
         elements=[],
         tables=[],
+    )
+
+
+def _source_with_page_image_and_element() -> ExtractionSourceDocument:
+    source = _source_with_page_image()
+    return ExtractionSourceDocument(
+        document_id=source.document_id,
+        household_id=source.household_id,
+        title=source.title,
+        original_filename=source.original_filename,
+        mime_type=source.mime_type,
+        family="medical_eob",
+        subtype=source.subtype,
+        sensitivity=source.sensitivity,
+        document_date=source.document_date,
+        counterparty_display=source.counterparty_display,
+        primary_folder_id=source.primary_folder_id,
+        metadata=source.metadata,
+        pages=source.pages,
+        elements=[
+            ParsedElementText(
+                element_id=uuid4(),
+                page_number=source.pages[0].page_number,
+                ordinal=1,
+                text="Denied outpatient request",
+                bbox=None,
+            )
+        ],
+        tables=source.tables,
     )
 
 

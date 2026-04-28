@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import json
-import re
-import unicodedata
 from dataclasses import replace
 from typing import Protocol
 from uuid import UUID
@@ -35,6 +33,10 @@ from lib.semantic_annotations.policy import (
     SemanticAnnotationValidationError,
     validate_manifest,
 )
+from lib.semantic_annotations.qwen_output_normalization import (
+    expected_fields_from_json,
+    validated_model_output_payload,
+)
 from lib.semantic_annotations.schema import (
     semantic_annotation_manifest_schema,
     semantic_annotation_model_output_schema,
@@ -42,7 +44,6 @@ from lib.semantic_annotations.schema import (
 from lib.storage import ObjectStorage
 
 MAX_SEMANTIC_MODEL_ATTEMPTS = 2
-_EXPECTED_FIELD_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 
 
 class SemanticVisionClientProtocol(Protocol):
@@ -442,7 +443,7 @@ def _manifest_from_response(
     quality_mode: str,
     response: VisionGenerateResponse,
 ) -> DocumentSemanticManifest:
-    model_output = _validated_model_output_payload(response)
+    model_output = validated_model_output_payload(response, source=source)
     normalized = _canonical_payload_from_model_output(response=response, model_output=model_output)
     pages_raw = normalized.get("pages")
     regions_raw = normalized.get("regions")
@@ -504,7 +505,7 @@ def _region_from_json(item: object) -> SemanticRegionAnnotation:
         priority=str(item.get("priority") or "medium"),  # type: ignore[arg-type]
         granite_task=str(item["granite_task"]) if item.get("granite_task") else None,
         target_schema=str(item["target_schema"]) if item.get("target_schema") else None,
-        expected_fields=_expected_fields_from_json(item.get("expected_fields")),
+        expected_fields=expected_fields_from_json(item.get("expected_fields")),
         grounding=SemanticGroundingRef(
             kind=str(grounding_raw.get("kind") or "unmatched_region"),  # type: ignore[arg-type]
             page_id=_uuid_or_none(grounding_raw.get("page_id")),
@@ -617,40 +618,6 @@ def _uuid_or_none(value: object) -> UUID | None:
     if not value:
         return None
     return UUID(str(value))
-
-
-def _expected_fields_from_json(value: object) -> tuple[str, ...]:
-    if not isinstance(value, list):
-        return ()
-    fields: list[str] = []
-    seen: set[str] = set()
-    for item in value:
-        if not isinstance(item, str):
-            continue
-        field_name = unicodedata.normalize("NFKC", item).strip().lower()
-        field_name = field_name.replace(" ", "_").replace("-", "_")
-        if not field_name.isascii() or not _EXPECTED_FIELD_NAME_RE.fullmatch(field_name):
-            continue
-        if field_name not in seen:
-            fields.append(field_name)
-            seen.add(field_name)
-    return tuple(fields)
-
-
-def _validated_semantic_payload(response: VisionGenerateResponse) -> dict[str, object]:
-    model_output = _validated_model_output_payload(response)
-    return _canonical_payload_from_model_output(response=response, model_output=model_output)
-
-
-def _validated_model_output_payload(response: VisionGenerateResponse) -> dict[str, object]:
-    payload = dict(response.normalized_json)
-    try:
-        Draft202012Validator(semantic_annotation_model_output_schema()).validate(payload)
-    except ValidationError as exc:
-        raise ModelProtocolError(
-            f"semantic annotation model output failed schema validation: {exc.message}"
-        ) from exc
-    return payload
 
 
 def _canonical_payload_from_model_output(
