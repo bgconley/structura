@@ -160,6 +160,10 @@ Primary source URLs:
 8. Run standard private corpus, Qwen3-VL-4B semantic JSON, Granite targeted extraction,
    optional HQ, optional permitted-rescue, visual embedding, and CI gates as
    separate evidence streams.
+9. Before full corpus reruns after semantic changes, run the semantic-only canary
+   (`scripts/gpu/run_phase8_5_semantic_canary.py`) to inspect Docling audit
+   anchors, Qwen document-family votes, image fan-in/fallback telemetry, and
+   target-schema fit decisions without enqueuing Granite.
 
 ## Required Artifact Set
 
@@ -265,10 +269,16 @@ qwen3-vl-4b-semantic:v1
   base_model: Qwen/Qwen3-VL-4B-Instruct
   backend: vllm-openai
   default_gpu: blackwell-0
-  max_images_per_request: 1
+  max_images_per_request: 4
   max_image_bytes: 10485760
   max_model_len: 16384
   source_engine: qwen3_vl_4b
+
+Qwen3-VL-4B Smart Parse should first attempt the same four-page semantic image
+fan-in shape used by the historical 2B path. Exact Docling page coverage remains
+mandatory. If the model returns valid JSON that omits a Docling page, retry that
+window as one-page requests, keep whole-document Docling context in each prompt,
+merge page votes/evidence, and record fallback telemetry in manifest confidence.
 
 qwen3-vl-8b-semantic-hq:v1
   engine: qwen
@@ -751,7 +761,7 @@ Validation rules:
 
   Client responsibilities:
 
-  - send page images plus minimal Docling context;
+  - send page/crop images plus Docling table/page context;
   - request schema-constrained JSON for `receipt`, `invoice`, and `medical_eob`;
   - return normalized table/KVP evidence with page number and stronger locator fields when present.
 

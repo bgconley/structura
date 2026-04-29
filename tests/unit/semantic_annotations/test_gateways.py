@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import dataclass, replace
 from typing import Any
 from uuid import uuid4
@@ -384,7 +385,7 @@ def test_live_qwen_high_quality_gateway_merges_duplicate_page_annotations() -> N
     }
 
 
-def test_live_qwen_smart_gateway_chunks_pages_for_one_image_qwen3_vl_4b_service() -> None:
+def test_live_qwen_smart_gateway_uses_four_image_qwen3_vl_4b_fan_in() -> None:
     source = _source_with_two_page_images()
     page_by_hash = {page.image_sha256: page.page_id for page in source.pages if page.image_sha256}
 
@@ -417,12 +418,112 @@ def test_live_qwen_smart_gateway_chunks_pages_for_one_image_qwen3_vl_4b_service(
         quality_mode="smart",
     )
 
-    assert len(client.requests) == 2
-    assert [len(request.image_inputs) for request in client.requests] == [1, 1]
+    assert len(client.requests) == 1
+    assert [len(request.image_inputs) for request in client.requests] == [2]
     assert len(result.manifest.pages) == 2
     assert len(result.manifest.regions) == 2
     assert result.manifest.profile_name == QWEN_SEMANTIC_PROFILE
+    assert "chunk_count" not in result.manifest.confidence
+    prompt_contexts = [_docling_context_from_prompt(request.prompt) for request in client.requests]
+    assert [context["document"]["pageCount"] for context in prompt_contexts] == [2]
+    assert [
+        [page["pageNumber"] for page in context["focusPages"]] for context in prompt_contexts
+    ] == [[1, 2]]
+    assert all("Invoice cover" in request.prompt for request in client.requests)
+    assert all("Invoice total $42" in request.prompt for request in client.requests)
+
+
+def test_live_qwen_smart_gateway_falls_back_to_one_page_windows_after_coverage_failure() -> None:
+    source = _source_with_two_page_images()
+    page_by_hash = {page.image_sha256: page.page_id for page in source.pages if page.image_sha256}
+
+    class CoverageFallbackClient:
+        requests: list[VisionGenerateRequest]
+
+        def __init__(self) -> None:
+            self.requests = []
+
+        def generate(self, request: VisionGenerateRequest) -> VisionGenerateResponse:
+            self.requests.append(request)
+            page_ids = [page_by_hash[image.validated_sha256()] for image in request.image_inputs]
+            if len(request.image_inputs) > 1:
+                page_ids = page_ids[:1]
+            return VisionGenerateResponse(
+                profile_name=QWEN_SEMANTIC_PROFILE,
+                model_name="fake-qwen",
+                model_version="test",
+                source_engine="qwen3_vl_4b",
+                prompt_version=request.prompt_version,
+                raw_text="{}",
+                normalized_json=_semantic_payload_for_pages(page_ids),
+                confidence_json={"overall": 0.8},
+                input_sha256=tuple(image.validated_sha256() for image in request.image_inputs),
+                latency_ms=1,
+            )
+
+    client = CoverageFallbackClient()
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(
+        source,
+        quality_mode="smart",
+    )
+
+    assert [len(request.image_inputs) for request in client.requests] == [2, 1, 1]
+    assert len(result.manifest.pages) == 2
+    assert len(result.manifest.regions) == 2
     assert result.manifest.confidence["chunk_count"] == 2
+    assert result.manifest.confidence["fallback_reason"] == "multi_image_page_coverage"
+    assert result.manifest.confidence["fallback_max_images"] == 1
+    prompt_contexts = [_docling_context_from_prompt(request.prompt) for request in client.requests]
+    fallback_contexts = prompt_contexts[1:]
+    assert [context["document"]["pageCount"] for context in fallback_contexts] == [2, 2]
+    assert [
+        [page["pageNumber"] for page in context["focusPages"]] for context in fallback_contexts
+    ] == [[1], [2]]
+    assert all("Invoice cover" in request.prompt for request in client.requests)
+    assert all("Invoice total $42" in request.prompt for request in client.requests)
+
+
+def test_live_qwen_smart_gateway_falls_back_per_failed_four_page_window() -> None:
+    source = _source_with_many_page_images(5)
+    page_by_hash = {page.image_sha256: page.page_id for page in source.pages if page.image_sha256}
+
+    class WindowFallbackClient:
+        requests: list[VisionGenerateRequest]
+
+        def __init__(self) -> None:
+            self.requests = []
+
+        def generate(self, request: VisionGenerateRequest) -> VisionGenerateResponse:
+            self.requests.append(request)
+            page_ids = [page_by_hash[image.validated_sha256()] for image in request.image_inputs]
+            if len(request.image_inputs) > 1:
+                page_ids = page_ids[:1]
+            return VisionGenerateResponse(
+                profile_name=QWEN_SEMANTIC_PROFILE,
+                model_name="fake-qwen",
+                model_version="test",
+                source_engine="qwen3_vl_4b",
+                prompt_version=request.prompt_version,
+                raw_text="{}",
+                normalized_json=_semantic_payload_for_pages(page_ids),
+                confidence_json={"overall": 0.8},
+                input_sha256=tuple(image.validated_sha256() for image in request.image_inputs),
+                latency_ms=1,
+            )
+
+    client = WindowFallbackClient()
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(
+        source,
+        quality_mode="smart",
+    )
+
+    assert [len(request.image_inputs) for request in client.requests] == [4, 1, 1, 1, 1, 1]
+    assert len(result.manifest.pages) == 5
+    assert result.manifest.confidence["fallback_reason"] == "multi_image_page_coverage"
+    assert result.manifest.confidence["fallback_max_images"] == 1
+    assert result.manifest.confidence["primary_max_images"] == 4
 
 
 def test_live_qwen_high_quality_gateway_chunks_pages_for_one_image_hq_service() -> None:
@@ -812,6 +913,13 @@ def _semantic_payload(page_id) -> dict[str, object]:
     return _semantic_payload_for_pages([page_id])
 
 
+def _docling_context_from_prompt(prompt: str) -> dict[str, object]:
+    _, context_json = prompt.split("Docling context: ", 1)
+    context = json.loads(context_json)
+    assert isinstance(context, dict)
+    return context
+
+
 def _semantic_payload_for_pages(page_ids) -> dict[str, object]:
     pages = []
     regions = []
@@ -920,10 +1028,31 @@ def _source_with_page_image_and_element() -> ExtractionSourceDocument:
 
 
 def _source_with_two_page_images() -> ExtractionSourceDocument:
+    return _source_with_many_page_images(2)
+
+
+def _source_with_many_page_images(page_count: int) -> ExtractionSourceDocument:
     first_page = uuid4()
-    second_page = uuid4()
-    first_sha = hashlib.sha256(b"page-one").hexdigest()
-    second_sha = hashlib.sha256(b"page-two").hexdigest()
+    pages = []
+    for index in range(page_count):
+        content = f"page-{index + 1}".encode()
+        text = (
+            "Invoice cover"
+            if index == 0
+            else "Invoice total $42"
+            if index == 1
+            else f"Invoice continuation page {index + 1}"
+        )
+        pages.append(
+            ParsedPageText(
+                page_id=first_page if index == 0 else uuid4(),
+                page_number=index + 1,
+                text=text,
+                image_bytes=content,
+                image_mime_type="image/png",
+                image_sha256=hashlib.sha256(content).hexdigest(),
+            )
+        )
     return ExtractionSourceDocument(
         document_id=uuid4(),
         household_id=uuid4(),
@@ -937,24 +1066,7 @@ def _source_with_two_page_images() -> ExtractionSourceDocument:
         counterparty_display=None,
         primary_folder_id=None,
         metadata={},
-        pages=[
-            ParsedPageText(
-                page_id=first_page,
-                page_number=1,
-                text="Invoice cover",
-                image_bytes=b"page-one",
-                image_mime_type="image/png",
-                image_sha256=first_sha,
-            ),
-            ParsedPageText(
-                page_id=second_page,
-                page_number=2,
-                text="Invoice total $42",
-                image_bytes=b"page-two",
-                image_mime_type="image/png",
-                image_sha256=second_sha,
-            ),
-        ],
+        pages=pages,
         elements=[],
         tables=[],
     )

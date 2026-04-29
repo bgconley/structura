@@ -29,6 +29,7 @@ def build_extract_document_job_payload(
     requested_by_user_id: UUID | None = None,
     user_intent_reason: str | None = None,
     semantic_rescue: bool = False,
+    metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload = _without_none(
         {
@@ -58,6 +59,7 @@ def build_extract_document_job_payload(
             "requested_by_user_id": (str(requested_by_user_id) if requested_by_user_id else None),
             "user_intent_reason": user_intent_reason,
             "semantic_rescue": semantic_rescue or None,
+            "metadata": metadata,
         }
     )
     _registry().validate_event_instance("extract_document_job.v1.schema.json", payload)

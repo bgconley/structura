@@ -65,18 +65,18 @@ base model: Qwen/Qwen3-VL-4B-Instruct
 source_engine: qwen3_vl_4b
 dtype: bfloat16
 max_model_len: 16384
-max_num_seqs: 2 initially
-limit_mm_per_prompt: {"image": 1, "video": 0} initially
+max_num_seqs: 2
+limit_mm_per_prompt: {"image": 4, "video": 0}
 gpu: Blackwell GPU 0
 ```
 
 The implementation may probe `kv_cache_dtype=fp8`, but it must fall back cleanly
 if the installed vLLM/Qwen path rejects it. Smart Parse must use the same
-Docling-grounded page-window harness and semantic manifest contract that the 2B
-path used. Live canary validation showed Qwen3-VL-4B can omit page annotations
-when multiple page images are supplied in one semantic request, so the default
-profile uses one image per request and relies on the existing manifest merge
-path to preserve exact Docling page coverage.
+Docling-grounded semantic manifest contract that the 2B path used. Smart Parse
+now attempts four page images per request to match the historical 2B fan-in
+shape. Exact Docling page coverage remains mandatory; if a multi-image response
+omits a page annotation, the adapter retries that window as one-page requests
+with whole-document Docling context and records fallback telemetry.
 
 Granite remains on Blackwell GPU 1. Visual embedding may remain on GPU 1 only if
 it continues to fit with Granite under live load. The 3090 is not required for

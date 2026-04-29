@@ -47,7 +47,8 @@ def granite_prompt(
     schema_text = json.dumps(model_output_schema.schema, indent=2, sort_keys=True)
     if _is_table_region(semantic_task):
         return (
-            f"{base}<tables_json>\n"
+            "<tables_json>\n"
+            f"{base}"
             f"{task_context}"
             "Extract only the line/service rows visible in the grounded table or region. "
             "Use the JSON Schema below as the output contract. "

@@ -62,18 +62,19 @@ def test_build_docling_context_includes_grounding_ids_and_bounded_snippets() -> 
 
     context = build_docling_context(source)
 
-    assert context["documentId"] == str(document_id)
-    assert context["family"] == "invoice"
-    assert context["pages"][0]["pageId"] == str(page_id)
-    assert context["pages"][0]["imageSha256"] == "a" * 64
+    assert context["document"]["documentId"] == str(document_id)
+    assert context["document"]["family"] == "invoice"
+    assert context["focusPages"][0]["pageId"] == str(page_id)
+    assert context["focusPages"][0]["imageSha256"] == "a" * 64
     assert "image_asset_uri" not in str(context)
     assert "file:///srv/structura" not in str(context)
-    assert len(context["pages"][0]["textSnippet"]) <= 320
-    assert context["pages"][0]["elements"][0]["elementId"] == str(element_id)
-    assert context["pages"][0]["elements"][0]["bbox"] == {"l": 1, "t": 2, "r": 3, "b": 4}
-    assert len(context["pages"][0]["elements"][0]["textSnippet"]) <= 240
-    assert context["pages"][0]["tables"][0]["tableId"] == str(table_id)
-    assert context["pages"][0]["tables"][0]["tableIndex"] == 2
+    assert len(context["focusPages"][0]["textSnippet"]) <= 320
+    assert context["focusPages"][0]["elements"][0]["elementId"] == str(element_id)
+    assert context["focusPages"][0]["elements"][0]["bbox"] == {"l": 1, "t": 2, "r": 3, "b": 4}
+    assert len(context["focusPages"][0]["elements"][0]["textSnippet"]) <= 240
+    assert context["focusPages"][0]["tables"][0]["tableId"] == str(table_id)
+    assert context["focusPages"][0]["tables"][0]["tableIndex"] == 2
+    assert context["pages"] == context["focusPages"]
 
 
 def test_build_docling_context_caps_element_context_per_page() -> None:
@@ -122,3 +123,67 @@ def test_build_docling_context_caps_element_context_per_page() -> None:
     assert len(page_context["elements"]) == MAX_ELEMENTS_PER_PAGE
     assert page_context["elements"][0]["ordinal"] == 1
     assert page_context["elements"][-1]["ordinal"] == MAX_ELEMENTS_PER_PAGE
+
+
+def test_docling_context_keeps_document_outline_for_focus_page() -> None:
+    source = _multi_page_source(
+        page_texts=[
+            "Seller Information Form Phenix Title",
+            "Escrow Statement UWM mortgage escrow shortage",
+            "Signature instructions",
+        ]
+    )
+
+    context = build_docling_context(source, focus_page_numbers={2})
+
+    assert context["document"]["pageCount"] == 3
+    assert context["document"]["lexicalAnchors"] == [
+        "escrow",
+        "mortgage",
+        "seller",
+        "shortage",
+        "title",
+        "uwm",
+    ]
+    assert [page["pageNumber"] for page in context["document"]["pageOutline"]] == [1, 2, 3]
+    assert [page["pageNumber"] for page in context["focusPages"]] == [2]
+    assert "Seller Information" in context["document"]["pageOutline"][0]["textSnippet"]
+
+
+def _multi_page_source(page_texts: list[str]) -> ExtractionSourceDocument:
+    pages = [
+        ParsedPageText(
+            page_id=uuid4(),
+            page_number=index,
+            text=text,
+            image_mime_type="image/png",
+            image_sha256=f"{index:064d}"[-64:],
+        )
+        for index, text in enumerate(page_texts, start=1)
+    ]
+    return ExtractionSourceDocument(
+        document_id=uuid4(),
+        household_id=uuid4(),
+        title="Phase 8.5 Context Canary",
+        original_filename="context.pdf",
+        mime_type="application/pdf",
+        family="generic",
+        subtype=None,
+        sensitivity="normal",
+        document_date=None,
+        counterparty_display=None,
+        primary_folder_id=None,
+        metadata={},
+        pages=pages,
+        elements=[
+            ParsedElementText(
+                element_id=uuid4(),
+                page_number=page.page_number,
+                ordinal=1,
+                text=page.text,
+                bbox=None,
+            )
+            for page in pages
+        ],
+        tables=[],
+    )

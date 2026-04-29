@@ -78,7 +78,7 @@ def main() -> None:
         print("Run `python -m lib.search.benchmark` for the Phase 5/6 retrieval benchmark harness.")
     elif args.command == "backup-restore-check":
         if args.rehearse:
-            from rehearse_backup_restore import main as rehearse_restore
+            from scripts.rehearse_backup_restore import main as rehearse_restore
 
             raise SystemExit(rehearse_restore())
         _backup_restore_check()

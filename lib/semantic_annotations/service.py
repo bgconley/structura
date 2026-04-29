@@ -27,7 +27,7 @@ from lib.semantic_annotations.repository import (
     persist_semantic_manifest_record,
     persist_semantic_manifest_with_cursor,
 )
-from lib.semantic_annotations.target_schema_policy import preferred_target_schema
+from lib.semantic_annotations.schema_fit import SchemaFitDecision, schema_fit_for_region
 
 MAX_GRANITE_TASKS_BY_QUALITY_MODE = {
     "smart": 4,
@@ -197,6 +197,7 @@ class SemanticAnnotationService:
                     requested_by_user_id=requested_by_user_id,
                     user_intent_reason=user_intent_reason,
                     semantic_rescue=manifest_result.manifest.quality_mode == "rescue",
+                    metadata={"schema_fit": spec.schema_fit.to_json()},
                 ),
                 priority=spec.priority,
                 queue_name="extraction",
@@ -247,6 +248,7 @@ class SemanticAnnotationService:
                     requested_by_user_id=requested_by_user_id,
                     user_intent_reason=user_intent_reason,
                     semantic_rescue=manifest_result.manifest.quality_mode == "rescue",
+                    metadata={"schema_fit": spec.schema_fit.to_json()},
                 ),
                 priority=spec.priority,
                 queue_name="extraction",
@@ -287,6 +289,7 @@ class GraniteJobSpec:
     target_schema: str
     priority: int
     ordinal: int
+    schema_fit: SchemaFitDecision
 
 
 def default_semantic_annotation_gateway() -> SemanticAnnotationGateway:
@@ -315,13 +318,17 @@ def _semantic_quality_mode(quality_mode: str) -> str:
 def _target_schema_for_region(
     region: SemanticRegionAnnotation,
     source: ExtractionSourceDocument,
-) -> str | None:
-    return preferred_target_schema(
-        document_family=source.family,
-        document_metadata=source.metadata,
-        document_type_hint=None,
-        semantic_type=region.semantic_type,
-        model_target_schema=region.target_schema,
+    manifest: DocumentSemanticManifest,
+) -> SchemaFitDecision:
+    document_type_hint = (
+        str(manifest.manifest["document_type"])
+        if isinstance(manifest.manifest.get("document_type"), str)
+        else None
+    )
+    return schema_fit_for_region(
+        source=source,
+        region=region,
+        document_type_hint=document_type_hint,
     )
 
 
@@ -344,16 +351,17 @@ def _granite_job_specs(
     for ordinal, (region, region_id) in enumerate(_region_pairs(manifest_result, persisted)):
         if not _should_enqueue_granite(region):
             continue
-        target_schema = _target_schema_for_region(region, source)
-        if not target_schema:
+        schema_fit = _target_schema_for_region(region, source, manifest_result.manifest)
+        if not schema_fit.target_schema:
             continue
         specs.append(
             GraniteJobSpec(
                 region=region,
                 region_id=region_id,
-                target_schema=target_schema,
+                target_schema=schema_fit.target_schema,
                 priority=_priority_for_region(region),
                 ordinal=ordinal,
+                schema_fit=schema_fit,
             )
         )
     limit = MAX_GRANITE_TASKS_BY_QUALITY_MODE.get(

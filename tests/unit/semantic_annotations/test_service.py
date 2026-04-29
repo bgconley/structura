@@ -195,6 +195,46 @@ def test_semantic_service_uses_semantic_type_before_unclassified_family() -> Non
     assert payload["target_schema_name"] == "invoice"
 
 
+def test_semantic_service_downgrades_unanchored_eob_region_to_observation() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    region_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="unknown",
+        text="UWM escrow shortage statement and mortgage escrow account analysis",
+    )
+    manifest = _manifest(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        semantic_type="covered_services_line_item_table",
+        target_schema="medical_eob",
+        document_type="medical_eob",
+    )
+    jobs = RecordingJobs()
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
+            annotation_id=annotation_id,
+            region_ids=(region_id,),
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    payload = jobs.created[0]["payload"]
+    assert payload["target_schema_name"] == "document_observation"
+    assert payload["metadata"]["schema_fit"]["requested_target_schema"] == "medical_eob"
+    assert payload["metadata"]["schema_fit"]["reason"] == "missing_required_docling_anchors"
+    assert payload["metadata"]["schema_fit"]["downgraded"] is True
+
+
 def test_semantic_service_does_not_queue_ignored_or_unmatched_regions() -> None:
     document_id = uuid4()
     household_id = uuid4()
@@ -375,6 +415,7 @@ def _source(
     household_id: UUID,
     page_id: UUID,
     family: str = "invoice",
+    text: str = "Invoice line items",
 ) -> ExtractionSourceDocument:
     return ExtractionSourceDocument(
         document_id=document_id,
@@ -393,7 +434,7 @@ def _source(
             ParsedPageText(
                 page_id=page_id,
                 page_number=1,
-                text="Invoice line items",
+                text=text,
                 image_bytes=b"fake-image",
                 image_mime_type="image/png",
                 image_sha256="c" * 64,
@@ -413,6 +454,8 @@ def _manifest(
     quality_mode: str = "smart",
     region_count: int = 1,
     target_schema: str = "invoice",
+    semantic_type: str = "invoice_line_item_table",
+    document_type: str = "invoice",
 ) -> DocumentSemanticManifest:
     def expected_fields(index: int) -> tuple[str, ...]:
         if region_count == 1:
@@ -421,7 +464,7 @@ def _manifest(
 
     regions = [
         SemanticRegionAnnotation(
-            semantic_type="invoice_line_item_table",
+            semantic_type=semantic_type,
             priority="high",
             granite_task=granite_task,
             target_schema=target_schema,
@@ -450,6 +493,6 @@ def _manifest(
         ],
         regions=regions,
         confidence={"overall": 0.9},
-        manifest={"document_type": "invoice"},
+        manifest={"document_type": document_type},
         input_page_hashes=("c" * 64,),
     )

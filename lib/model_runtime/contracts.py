@@ -30,6 +30,7 @@ class VisionGenerateRequest:
     timeout_seconds: int
     response_json_schema: dict[str, Any] | None = None
     allow_structured_output_fallback: bool = True
+    structured_output_mode: str = "response_format_json_schema"
 
 
 @dataclass(frozen=True)

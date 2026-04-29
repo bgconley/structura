@@ -22,6 +22,10 @@ from lib.model_runtime.profiles import (
     get_model_profile,
 )
 from lib.semantic_annotations.docling_context import build_docling_context
+from lib.semantic_annotations.manifest_merge import (
+    merge_partial_manifests,
+    region_manifest_json,
+)
 from lib.semantic_annotations.models import (
     DocumentSemanticManifest,
     PageSemanticAnnotation,
@@ -48,6 +52,8 @@ from lib.semantic_annotations.target_schema_policy import (
 from lib.storage import ObjectStorage
 
 MAX_SEMANTIC_MODEL_ATTEMPTS = 2
+SEMANTIC_PAGE_COVERAGE_FRAGMENT = "page coverage must exactly match docling pages"
+SINGLE_PAGE_FALLBACK_MAX_IMAGES = 1
 
 
 class SemanticVisionClientProtocol(Protocol):
@@ -108,20 +114,33 @@ class QwenSemanticAnnotationGateway:
         profile_name = _profile_for_mode(quality_mode)
         prompt_version = _prompt_version_for_mode(quality_mode)
         max_images = _max_image_inputs_for_profile(profile_name)
-        if len(source.pages) > max_images:
+        if len(source.pages) <= max_images:
+            try:
+                manifest = self._generate_manifest_for_source(
+                    source,
+                    quality_mode=quality_mode,
+                    profile_name=profile_name,
+                    prompt_version=prompt_version,
+                )
+            except ModelProtocolError as exc:
+                if not _should_fallback_to_single_page_windows(exc, source, max_images=max_images):
+                    raise
+                manifest = self._annotate_in_page_windows(
+                    source,
+                    quality_mode=quality_mode,
+                    profile_name=profile_name,
+                    prompt_version=prompt_version,
+                    max_images=SINGLE_PAGE_FALLBACK_MAX_IMAGES,
+                    fallback_reason="multi_image_page_coverage",
+                    primary_max_images=max_images,
+                )
+        else:
             manifest = self._annotate_in_page_windows(
                 source,
                 quality_mode=quality_mode,
                 profile_name=profile_name,
                 prompt_version=prompt_version,
                 max_images=max_images,
-            )
-        else:
-            manifest = self._generate_manifest_for_source(
-                source,
-                quality_mode=quality_mode,
-                profile_name=profile_name,
-                prompt_version=prompt_version,
             )
         self._validate_manifest_for_source(manifest, source)
         return SemanticAnnotationResult(manifest=manifest)
@@ -134,27 +153,62 @@ class QwenSemanticAnnotationGateway:
         profile_name: str,
         prompt_version: str,
         max_images: int,
+        fallback_reason: str | None = None,
+        primary_max_images: int | None = None,
     ) -> DocumentSemanticManifest:
         partials: list[DocumentSemanticManifest] = []
+        fallback_reasons: list[str] = []
         for index in range(0, len(source.pages), max_images):
             chunk_source = _source_for_pages(source, source.pages[index : index + max_images])
-            partials.append(
-                self._generate_manifest_for_source(
-                    chunk_source,
-                    quality_mode=quality_mode,
-                    profile_name=profile_name,
-                    prompt_version=prompt_version,
+            try:
+                partials.append(
+                    self._generate_manifest_for_source(
+                        chunk_source,
+                        quality_mode=quality_mode,
+                        profile_name=profile_name,
+                        prompt_version=prompt_version,
+                        context_source=source,
+                        focus_page_numbers={page.page_number for page in chunk_source.pages},
+                    )
                 )
-            )
+            except ModelProtocolError as exc:
+                if not _should_fallback_to_single_page_windows(
+                    exc,
+                    chunk_source,
+                    max_images=max_images,
+                ):
+                    raise
+                fallback_reasons.append("multi_image_page_coverage")
+                for page in chunk_source.pages:
+                    page_source = _source_for_pages(source, [page])
+                    partials.append(
+                        self._generate_manifest_for_source(
+                            page_source,
+                            quality_mode=quality_mode,
+                            profile_name=profile_name,
+                            prompt_version=prompt_version,
+                            context_source=source,
+                            focus_page_numbers={page.page_number},
+                        )
+                    )
         if not partials:
             raise ModelProtocolError("Semantic annotation requires page image assets.")
-        return _merge_partial_manifests(
+        manifest = merge_partial_manifests(
             source,
             partials,
             quality_mode=quality_mode,
             profile_name=profile_name,
             prompt_version=prompt_version,
         )
+        resolved_fallback_reason = fallback_reason or (
+            fallback_reasons[0] if fallback_reasons else None
+        )
+        if resolved_fallback_reason:
+            manifest.confidence["fallback_reason"] = resolved_fallback_reason
+            manifest.confidence["fallback_max_images"] = SINGLE_PAGE_FALLBACK_MAX_IMAGES
+            manifest.confidence["primary_max_images"] = primary_max_images or max_images
+            manifest.manifest["confidence"] = manifest.confidence
+        return manifest
 
     def _generate_manifest_for_source(
         self,
@@ -163,6 +217,8 @@ class QwenSemanticAnnotationGateway:
         quality_mode: str,
         profile_name: str,
         prompt_version: str,
+        context_source: ExtractionSourceDocument | None = None,
+        focus_page_numbers: set[int] | None = None,
     ) -> DocumentSemanticManifest:
         last_error: Exception | None = None
         for attempt in range(MAX_SEMANTIC_MODEL_ATTEMPTS):
@@ -171,6 +227,8 @@ class QwenSemanticAnnotationGateway:
                     source,
                     profile_name=profile_name,
                     prompt_version=prompt_version,
+                    context_source=context_source,
+                    focus_page_numbers=focus_page_numbers,
                 )
                 manifest = _manifest_from_response(
                     source,
@@ -197,12 +255,14 @@ class QwenSemanticAnnotationGateway:
         *,
         profile_name: str,
         prompt_version: str,
+        context_source: ExtractionSourceDocument | None = None,
+        focus_page_numbers: set[int] | None = None,
     ) -> VisionGenerateResponse:
         return self.client.generate(
             VisionGenerateRequest(
                 profile_name=profile_name,
                 prompt_version=prompt_version,
-                prompt=_prompt(source),
+                prompt=_prompt(context_source or source, focus_page_numbers=focus_page_numbers),
                 image_inputs=_image_inputs(source, storage=self.storage),
                 response_schema_name="semantic_annotation_model_output",
                 response_json_schema=_response_json_schema_for_profile(profile_name),
@@ -285,114 +345,12 @@ def _source_for_pages(
     )
 
 
-def _merge_partial_manifests(
+def _prompt(
     source: ExtractionSourceDocument,
-    partials: list[DocumentSemanticManifest],
     *,
-    quality_mode: str,
-    profile_name: str,
-    prompt_version: str,
-) -> DocumentSemanticManifest:
-    pages = [page for partial in partials for page in partial.pages]
-    regions = [region for partial in partials for region in partial.regions]
-    confidence_parts = [partial.confidence for partial in partials if partial.confidence]
-    overall_values = [
-        float(confidence["overall"])
-        for confidence in confidence_parts
-        if isinstance(confidence.get("overall"), int | float)
-    ]
-    confidence: dict[str, object] = {
-        "chunk_count": len(partials),
-        "chunks": confidence_parts,
-    }
-    if overall_values:
-        confidence["overall"] = sum(overall_values) / len(overall_values)
-    document_type = next(
-        (
-            partial.manifest.get("document_type")
-            for partial in partials
-            if partial.manifest.get("document_type")
-        ),
-        source.family,
-    )
-    return DocumentSemanticManifest(
-        document_id=source.document_id,
-        household_id=source.household_id,
-        quality_mode=quality_mode,  # type: ignore[arg-type]
-        profile_name=profile_name,
-        source_engine=partials[0].source_engine,
-        model_name=partials[0].model_name,
-        model_version=partials[0].model_version,
-        prompt_version=prompt_version,
-        pages=pages,
-        regions=regions,
-        confidence=confidence,
-        manifest={
-            "schema_name": "semantic_annotation_manifest",
-            "schema_version": "v1",
-            "document_type": document_type,
-            "pages": [_page_manifest_json(page) for page in pages],
-            "regions": [_region_manifest_json(region) for region in regions],
-            "quality_flags": {
-                "needs_high_quality_pass": any(
-                    bool(partial.manifest.get("quality_flags", {}).get("needs_high_quality_pass"))
-                    for partial in partials
-                    if isinstance(partial.manifest.get("quality_flags"), dict)
-                ),
-                "visual_degradation": any(
-                    bool(partial.manifest.get("quality_flags", {}).get("visual_degradation"))
-                    for partial in partials
-                    if isinstance(partial.manifest.get("quality_flags"), dict)
-                ),
-            },
-            "confidence": confidence,
-        },
-        review_required=any(region.review_required for region in regions),
-        input_page_hashes=tuple(
-            page_hash for partial in partials for page_hash in partial.input_page_hashes
-        ),
-    )
-
-
-def _page_manifest_json(page: PageSemanticAnnotation) -> dict[str, object]:
-    return {
-        "page_id": str(page.page_id),
-        "page_number": page.page_number,
-        "page_role": page.page_role,
-        "document_type_hint": page.document_type_hint,
-        "extraction_usefulness": page.extraction_usefulness,
-        "is_boilerplate": page.is_boilerplate,
-        "has_structured_targets": page.has_structured_targets,
-        "ambiguous": page.ambiguous,
-        "escalation_required": page.escalation_required,
-        "reason": page.reason,
-        "confidence": page.confidence,
-    }
-
-
-def _region_manifest_json(region: SemanticRegionAnnotation) -> dict[str, object]:
-    return {
-        "semantic_type": region.semantic_type,
-        "priority": region.priority,
-        "granite_task": region.granite_task,
-        "target_schema": region.target_schema,
-        "expected_fields": list(region.expected_fields),
-        "grounding": {
-            "kind": region.grounding.kind,
-            "page_id": str(region.grounding.page_id) if region.grounding.page_id else None,
-            "element_id": (
-                str(region.grounding.element_id) if region.grounding.element_id else None
-            ),
-            "table_id": str(region.grounding.table_id) if region.grounding.table_id else None,
-        },
-        "review_required": region.review_required,
-        "reason": region.reason,
-        "confidence": region.confidence,
-    }
-
-
-def _prompt(source: ExtractionSourceDocument) -> str:
-    context = build_docling_context(source)
+    focus_page_numbers: set[int] | None = None,
+) -> str:
+    context = build_docling_context(source, focus_page_numbers=focus_page_numbers)
     return (
         "You are Structura's semantic annotation planner. Return valid JSON only as compact "
         "semantic scout JSON, matching the provided semantic_annotation_model_output JSON "
@@ -472,7 +430,7 @@ def _manifest_from_response(
         document_type_hint=document_type_hint,
     )
     sanitized_payload = dict(normalized)
-    sanitized_payload["regions"] = [_region_manifest_json(region) for region in regions]
+    sanitized_payload["regions"] = [region_manifest_json(region) for region in regions]
     confidence = _confidence_from_payload(normalized)
     if model_output.normalization:
         confidence["normalization"] = model_output.normalization
@@ -793,4 +751,17 @@ def _is_retryable_error(exc: Exception) -> bool:
             "semantic annotation output",
             "invalid semantic annotation output",
         )
+    )
+
+
+def _should_fallback_to_single_page_windows(
+    exc: Exception,
+    source: ExtractionSourceDocument,
+    *,
+    max_images: int,
+) -> bool:
+    return (
+        max_images > SINGLE_PAGE_FALLBACK_MAX_IMAGES
+        and len(source.pages) > SINGLE_PAGE_FALLBACK_MAX_IMAGES
+        and SEMANTIC_PAGE_COVERAGE_FRAGMENT in str(exc).lower()
     )

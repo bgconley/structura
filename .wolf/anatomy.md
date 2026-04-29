@@ -123,8 +123,12 @@
 - `lib/extraction/reconciliation_repository.py` — DB orchestration for terminal-region aggregate persistence; loads current region rows and document-level fallback, then persists aggregate extraction/candidates (~1700 tok)
 - `docs/superpowers/plans/2026-04-29-phase85-critical-extraction-closure.md` — Executed closure plan and verification checklist for scoped persistence, Granite contracts, normalization, reconciliation, and GPU proof (~1200 tok)
 - `docs/superpowers/plans/2026-04-29-phase-8-5-qwen3-vl-4b-smart-parse-canary.md` — Qwen3-VL-4B Smart Parse implementation plan, Qwen8 disabled/deferred behavior, canary corpus gate, and runtime profile notes (~1500 tok)
-- `docs/superpowers/specs/2026-04-29-phase-8-5-qwen3-vl-4b-smart-parse-canary-spec.md` — Qwen3-VL-4B Smart Parse spec, contract preservation rules, one-image page-window profile, and validation criteria (~1500 tok)
+- `docs/superpowers/specs/2026-04-29-phase-8-5-qwen3-vl-4b-smart-parse-canary-spec.md` — Qwen3-VL-4B Smart Parse spec, contract preservation rules, historical notes, and validation criteria; current runtime now uses four-image adaptive fan-in with one-page fallback (~1500 tok)
 - `tests/unit/extraction/test_reconciliation.py` — Regression coverage for aggregate invoice merge, line-item/payment preservation, heading filtering, and document fallback fields (~800 tok)
+- `lib/semantic_annotations/docling_audit.py` — Builds Docling-only audit summaries for page/table counts, page snippets, table inventory, lexical anchors, and family hints used by semantic canary and schema-fit checks (~700 tok)
+- `lib/semantic_annotations/manifest_merge.py` — Merges Qwen page/window semantic manifests with weighted page votes, Docling anchor hints, conflict downgrade, and document-type resolution telemetry (~1200 tok)
+- `lib/semantic_annotations/schema_fit.py` — Gates Granite target schema selection with Docling lexical family evidence so unanchored invoice/receipt/EOB guesses become `document_observation` (~700 tok)
+- `scripts/gpu/run_phase8_5_semantic_canary.py` — Semantic-only GPU canary harness for existing document IDs or PDFs; runs Docling audit plus Qwen semantic annotation and emits fan-in/fallback/schema-fit telemetry without Granite (~1000 tok)
 
 ## ./
 

@@ -37,6 +37,8 @@ def model_output_schema_for_task(
         return load_model_output_schema("granite_dispute_form.v1")
     if semantic_type in {"generic_form_kvp", "unsupported_document_region"}:
         return load_model_output_schema("granite_generic_kvp.v1")
+    if schema_name == "document_observation":
+        return load_model_output_schema("granite_generic_kvp.v1")
     if schema_name == "invoice" and semantic_task.semantic_type == "invoice_line_item_table":
         return load_model_output_schema("granite_invoice_line_items.v1")
     if (

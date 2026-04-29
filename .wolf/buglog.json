@@ -955,11 +955,23 @@
       "error_message": "Qwen3-VL-4B semantic annotation failed live BH Photo canary with ModelProtocolError: Invalid semantic annotation output: Semantic annotation page coverage must exactly match Docling pages.",
       "file": "lib/model_runtime/profiles.py",
       "root_cause": "The Qwen3-VL-4B smart profile allowed two page images per semantic request. The model returned valid JSON for only one of the two Docling pages, so the existing page-coverage policy correctly rejected the manifest.",
-      "fix": "Kept the same semantic manifest contract and page-coverage validation, capped Qwen3-VL-4B Smart Parse to one image per request in the runtime profile and Compose vLLM limit, and updated regression tests to require page-window chunking through the existing merge path.",
+      "fix": "Kept the same semantic manifest contract and page-coverage validation. The initial mitigation capped Qwen3-VL-4B Smart Parse to one image per request; the later realignment restored four-image smart fan-in to match the historical 2B path and added one-page fallback only when multi-image output fails Docling page coverage.",
       "tags": ["phase-8.5", "qwen3-vl-4b", "semantic-annotations", "page-coverage", "gpu-node"],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-29T03:15:26-04:00"
+    },
+    {
+      "id": "bug-081",
+      "timestamp": "2026-04-29T04:20:00-04:00",
+      "error_message": "Qwen3-VL-4B one-page semantic fallback risked worse document-family routing because each request saw only the current Docling page and merge used the first non-empty document_type.",
+      "file": "lib/semantic_annotations/qwen_gateway.py",
+      "root_cause": "The page-window fallback filtered Docling pages/elements/tables down to the current image chunk, then _merge_partial_manifests selected the first non-empty document_type. Multi-page title, escrow, order, and form documents could be routed by whichever page completed first rather than whole-document evidence.",
+      "fix": "Added whole-document Docling audit/context with focused page sections, restored Qwen3-VL-4B four-image fan-in with one-page fallback only for page-coverage failures, replaced first-page merge with weighted page votes plus Docling anchors, and added schema-fit gates before Granite.",
+      "tags": ["phase-8.5", "qwen3-vl-4b", "docling", "semantic-routing", "granite"],
+      "related_bugs": ["bug-080"],
+      "occurrences": 1,
+      "last_seen": "2026-04-29T04:20:00-04:00"
     }
   ]
 }

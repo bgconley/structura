@@ -158,7 +158,7 @@ def test_qwen_client_sends_json_schema_structured_output_payload() -> None:
             "strict": True,
         },
     }
-    assert payload["structured_outputs"] == {"json": semantic_annotation_manifest_schema()}
+    assert "structured_outputs" not in payload
     assert response.finish_reason is None
     assert response.structured_output_used is True
     assert response.structured_output_fallback_reason is None
@@ -215,6 +215,46 @@ def test_qwen_client_falls_back_when_structured_output_request_is_rejected() -> 
     assert response.usage_json == {"completion_tokens": 8}
     assert response.structured_output_used is False
     assert response.structured_output_fallback_reason == "Model service returned HTTP 400."
+
+
+def test_qwen_client_can_use_legacy_structured_outputs_payload_when_requested() -> None:
+    seen: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["payload"] = json.loads(request.content)
+        return httpx.Response(
+            200,
+            json={
+                "model": "Qwen/Qwen3-VL-8B-Instruct",
+                "choices": [{"message": {"content": json.dumps({"normalized": {"ok": True}})}}],
+            },
+        )
+
+    client = QwenVLClient(
+        profile=get_model_profile(QWEN_VL_PROFILE),
+        http_client_base_url="http://model-qwen:8100",
+        transport=httpx.MockTransport(handler),
+    )
+
+    client.generate(
+        VisionGenerateRequest(
+            profile_name=QWEN_VL_PROFILE,
+            prompt_version="phase8_5-semantic-smart-v2",
+            prompt="Return JSON only",
+            image_inputs=_request().image_inputs,
+            response_schema_name="semantic_annotation_manifest",
+            response_json_schema=semantic_annotation_manifest_schema(),
+            max_output_tokens=4096,
+            temperature=0.0,
+            timeout_seconds=30,
+            structured_output_mode="structured_outputs_json",
+        )
+    )
+
+    payload = seen["payload"]
+    assert isinstance(payload, dict)
+    assert payload["structured_outputs"] == {"json": semantic_annotation_manifest_schema()}
+    assert "response_format" not in payload
 
 
 def test_qwen_client_rejects_truncated_structured_content() -> None:

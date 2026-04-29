@@ -230,7 +230,7 @@ def test_granite_gateway_routes_retail_order_tables_to_receipt_line_schema() -> 
     )
 
     assert client.request is not None
-    assert "<tables_json>" in client.request.prompt
+    assert client.request.prompt.startswith("<tables_json>")
     assert client.request.response_schema_name == "granite_receipt_line_items.v1"
 
 
