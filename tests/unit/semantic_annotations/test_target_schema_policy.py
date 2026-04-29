@@ -37,3 +37,29 @@ def test_title_and_escrow_semantic_regions_do_not_masquerade_as_invoice_or_eob()
         )
         == "document_observation"
     )
+
+
+def test_qwen_document_type_hint_beats_phase4_classifier_hint() -> None:
+    assert (
+        preferred_target_schema(
+            document_family="medical_eob",
+            document_metadata={"phase4": {"classification": {"family": "medical_eob"}}},
+            document_type_hint="receipt",
+            semantic_type=None,
+            model_target_schema=None,
+        )
+        == "receipt"
+    )
+
+
+def test_qwen_observation_document_type_beats_bad_region_schema_hint() -> None:
+    assert (
+        preferred_target_schema(
+            document_family="receipt",
+            document_metadata={"phase4": {"classification": {"family": "receipt"}}},
+            document_type_hint="real_estate_title",
+            semantic_type="receipt_line_item_table",
+            model_target_schema="receipt",
+        )
+        == "document_observation"
+    )

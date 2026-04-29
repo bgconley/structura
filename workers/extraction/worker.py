@@ -4,6 +4,7 @@ import argparse
 import signal
 import sys
 import time
+import traceback
 from uuid import UUID
 
 from lib.extraction import ExtractionService
@@ -133,9 +134,14 @@ def process_next_extraction_job(
         job_service.fail_job(
             job_id=claimed.state.job_id,
             error_class=exc.__class__.__name__,
-            message="Phase 4 extraction job failed",
+            message=_failure_message(exc),
             retryable=True,
             suppress=False,
+            details={
+                "exception_class": exc.__class__.__name__,
+                "exception_message": str(exc),
+                "traceback": traceback.format_exc(limit=8),
+            },
         )
     return True
 
@@ -153,6 +159,13 @@ def _optional_uuid(value: object) -> UUID | None:
     if not value:
         return None
     return UUID(str(value))
+
+
+def _failure_message(exc: Exception) -> str:
+    detail = str(exc).strip()
+    if detail:
+        return f"Extraction job failed: {detail}"
+    return "Extraction job failed."
 
 
 def _enqueue_embedding_refresh(

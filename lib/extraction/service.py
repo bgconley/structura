@@ -36,6 +36,7 @@ from lib.jobs.event_payloads import (
 from lib.semantic_annotations.jobs import enqueue_semantic_annotation_job
 from lib.semantic_annotations.models import SemanticExtractionTask
 from lib.semantic_annotations.repository import load_semantic_extraction_task
+from lib.semantic_annotations.task_routing import corrected_granite_task_for_semantic_type
 
 
 class ExtractionServiceError(Exception):
@@ -220,12 +221,22 @@ class ExtractionService:
         task = self.semantic_task_loader(semantic_region_id)
         if task.document_id != document_id:
             raise ExtractionServiceError("Semantic extraction task document mismatch.")
+        repaired_task = task
+        metadata = dict(task.metadata)
         if task.target_schema and task.target_schema != schema_name:
-            metadata = dict(task.metadata)
             metadata["original_target_schema"] = task.target_schema
             metadata["target_schema_repaired"] = True
-            return replace(task, target_schema=schema_name, metadata=metadata)
-        return task
+            repaired_task = replace(repaired_task, target_schema=schema_name)
+        granite_task, repair = corrected_granite_task_for_semantic_type(
+            semantic_type=task.semantic_type,
+            granite_task=task.granite_task,
+        )
+        if repair is not None:
+            metadata["semantic_task_repair"] = repair
+            repaired_task = replace(repaired_task, granite_task=granite_task or task.granite_task)
+        if metadata != task.metadata:
+            repaired_task = replace(repaired_task, metadata=metadata)
+        return repaired_task
 
     def _enqueue_rescue_semantic_pass(
         self,

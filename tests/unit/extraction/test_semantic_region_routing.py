@@ -92,6 +92,47 @@ def test_extraction_service_realizes_semantic_task_schema_to_requested_schema() 
     assert gateway.semantic_task.metadata["target_schema_repaired"] is True
 
 
+def test_extraction_service_corrects_line_item_task_before_gateway() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    region_id = uuid4()
+    source = _source(document_id=document_id, household_id=household_id)
+    task = SemanticExtractionTask(
+        region_id=region_id,
+        annotation_id=uuid4(),
+        document_id=document_id,
+        semantic_type="receipt_line_item_table",
+        granite_task="kvp",
+        target_schema="receipt",
+        expected_fields=("line_items", "total_amount"),
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+        reason="Qwen mislabeled a receipt table as kvp.",
+        confidence=0.91,
+    )
+    gateway = RecordingGateway()
+
+    ExtractionService(
+        gateway=gateway,
+        source_loader=lambda loaded_document_id: source,
+        semantic_task_loader=lambda loaded_region_id: task,
+        persister=lambda *args, **kwargs: _persisted(),
+    ).extract_document(
+        document_id,
+        schema_name="receipt",
+        route_profile="docling_plus_granite_structured",
+        semantic_region_id=region_id,
+        allow_8b_rescue=False,
+    )
+
+    assert gateway.semantic_task is not None
+    assert gateway.semantic_task.granite_task == "tables_json"
+    assert gateway.semantic_task.metadata["semantic_task_repair"] == {
+        "original_granite_task": "kvp",
+        "repaired_granite_task": "tables_json",
+        "reason": "line_item_semantic_type_requires_table_task",
+    }
+
+
 def test_extraction_service_passes_semantic_region_scope_to_persister() -> None:
     document_id = uuid4()
     household_id = uuid4()

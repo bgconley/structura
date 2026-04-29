@@ -41,6 +41,7 @@ def main() -> int:
         _stop_controlled_workers()
 
     summaries = []
+    had_extraction_failures = False
     for pdf_path in args.pdf:
         document_id = _ingest_pdf(pdf_path, owner=owner, title_prefix=args.title_prefix)
         _run_docling(document_id, timeout_seconds=args.docling_timeout_seconds)
@@ -61,21 +62,26 @@ def main() -> int:
         if args.rescue_stress:
             _enqueue_rescue_stress_semantic(document_id, requested_by=args.requested_by)
             _drain_semantic(document_id, label="rescue_stress")
-        _drain_extraction_and_rescue(document_id)
+        extraction_failures = _drain_extraction_and_rescue(document_id)
+        if extraction_failures:
+            had_extraction_failures = True
         _cancel_text_embedding_jobs(document_id)
         _drain_visual_embedding(document_id)
         _cancel_text_embedding_jobs(document_id)
         summary = _summarize_document(document_id)
+        if extraction_failures:
+            summary["extractionFailures"] = extraction_failures
         summaries.append(summary)
         print(json.dumps({"document_summary": summary}, sort_keys=True), flush=True)
 
     report = {
         "corpus": "phase8_5_private_documents",
         "text_embedder": "skipped_by_request",
+        "has_extraction_failures": had_extraction_failures,
         "documents": summaries,
     }
     print(json.dumps(report, indent=2, sort_keys=True))
-    return 0
+    return 1 if had_extraction_failures else 0
 
 
 def _parse_args() -> argparse.Namespace:
@@ -404,7 +410,7 @@ def _enqueue_rescue_stress_semantic(document_id: UUID, *, requested_by: str) -> 
     )
 
 
-def _drain_extraction_and_rescue(document_id: UUID) -> None:
+def _drain_extraction_and_rescue(document_id: UUID) -> list[dict[str, Any]]:
     extraction_jobs = 0
     semantic_jobs = 0
     for _ in range(12):
@@ -446,8 +452,22 @@ def _drain_extraction_and_rescue(document_id: UUID) -> None:
         ),
         flush=True,
     )
-    _require_no_failed_jobs(document_id, queue_name="extraction")
+    extraction_failures = _failed_jobs(document_id, queue_name="extraction")
+    if extraction_failures:
+        print(
+            json.dumps(
+                {
+                    "stage": "extraction_failures",
+                    "document_id": str(document_id),
+                    "jobs": extraction_failures,
+                },
+                sort_keys=True,
+                default=str,
+            ),
+            flush=True,
+        )
     _require_no_failed_jobs(document_id, queue_name="semantic-annotations")
+    return extraction_failures
 
 
 def _drain_visual_embedding(document_id: UUID) -> None:
@@ -600,6 +620,21 @@ def _cancel_text_embedding_jobs(document_id: UUID) -> None:
 
 
 def _require_no_failed_jobs(document_id: UUID, *, queue_name: str) -> None:
+    rows = _failed_jobs(document_id, queue_name=queue_name)
+    if rows:
+        raise SystemExit(
+            json.dumps(
+                {
+                    "document_id": str(document_id),
+                    "failed_queue": queue_name,
+                    "jobs": rows,
+                },
+                default=str,
+            )
+        )
+
+
+def _failed_jobs(document_id: UUID, *, queue_name: str) -> list[dict[str, Any]]:
     with db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -614,17 +649,7 @@ def _require_no_failed_jobs(document_id: UUID, *, queue_name: str) -> None:
                 (document_id, queue_name),
             )
             rows = cur.fetchall()
-    if rows:
-        raise SystemExit(
-            json.dumps(
-                {
-                    "document_id": str(document_id),
-                    "failed_queue": queue_name,
-                    "jobs": _json_safe(rows),
-                },
-                default=str,
-            )
-        )
+    return _json_safe(rows)
 
 
 def _summarize_document(document_id: UUID) -> dict[str, Any]:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Protocol
 from uuid import UUID, uuid4
 
@@ -28,6 +28,7 @@ from lib.semantic_annotations.repository import (
     persist_semantic_manifest_with_cursor,
 )
 from lib.semantic_annotations.schema_fit import SchemaFitDecision, schema_fit_for_region
+from lib.semantic_annotations.task_routing import corrected_granite_task_for_semantic_type
 
 MAX_GRANITE_TASKS_BY_QUALITY_MODE = {
     "smart": 4,
@@ -197,7 +198,10 @@ class SemanticAnnotationService:
                     requested_by_user_id=requested_by_user_id,
                     user_intent_reason=user_intent_reason,
                     semantic_rescue=manifest_result.manifest.quality_mode == "rescue",
-                    metadata={"schema_fit": spec.schema_fit.to_json()},
+                    metadata={
+                        "schema_fit": spec.schema_fit.to_json(),
+                        **spec.metadata,
+                    },
                 ),
                 priority=spec.priority,
                 queue_name="extraction",
@@ -248,7 +252,10 @@ class SemanticAnnotationService:
                     requested_by_user_id=requested_by_user_id,
                     user_intent_reason=user_intent_reason,
                     semantic_rescue=manifest_result.manifest.quality_mode == "rescue",
-                    metadata={"schema_fit": spec.schema_fit.to_json()},
+                    metadata={
+                        "schema_fit": spec.schema_fit.to_json(),
+                        **spec.metadata,
+                    },
                 ),
                 priority=spec.priority,
                 queue_name="extraction",
@@ -290,6 +297,7 @@ class GraniteJobSpec:
     priority: int
     ordinal: int
     schema_fit: SchemaFitDecision
+    metadata: dict[str, object]
 
 
 def default_semantic_annotation_gateway() -> SemanticAnnotationGateway:
@@ -349,19 +357,23 @@ def _granite_job_specs(
 ) -> tuple[GraniteJobSpec, ...]:
     specs: list[GraniteJobSpec] = []
     for ordinal, (region, region_id) in enumerate(_region_pairs(manifest_result, persisted)):
-        if not _should_enqueue_granite(region):
+        repaired_region, repair_metadata = _region_for_granite_job(region)
+        if not _should_enqueue_granite(repaired_region):
             continue
-        schema_fit = _target_schema_for_region(region, source, manifest_result.manifest)
+        schema_fit = _target_schema_for_region(
+            repaired_region, source, manifest_result.manifest
+        )
         if not schema_fit.target_schema:
             continue
         specs.append(
             GraniteJobSpec(
-                region=region,
+                region=repaired_region,
                 region_id=region_id,
                 target_schema=schema_fit.target_schema,
-                priority=_priority_for_region(region),
+                priority=_priority_for_region(repaired_region),
                 ordinal=ordinal,
                 schema_fit=schema_fit,
+                metadata=repair_metadata,
             )
         )
     limit = MAX_GRANITE_TASKS_BY_QUALITY_MODE.get(
@@ -374,6 +386,21 @@ def _granite_job_specs(
 def _granite_job_sort_key(spec: GraniteJobSpec) -> tuple[object, ...]:
     confidence = spec.region.confidence if spec.region.confidence is not None else 0.0
     return (spec.priority, -confidence, spec.ordinal)
+
+
+def _region_for_granite_job(
+    region: SemanticRegionAnnotation,
+) -> tuple[SemanticRegionAnnotation, dict[str, object]]:
+    granite_task, repair = corrected_granite_task_for_semantic_type(
+        semantic_type=region.semantic_type,
+        granite_task=region.granite_task,
+    )
+    if repair is None:
+        return region, {}
+    metadata = {**region.metadata, "semantic_task_repair": repair}
+    return replace(region, granite_task=granite_task, metadata=metadata), {
+        "semantic_task_repair": repair
+    }
 
 
 def _region_pairs(

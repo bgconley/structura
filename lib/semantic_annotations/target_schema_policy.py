@@ -15,11 +15,11 @@ def preferred_target_schema(
     model_target_schema: str | None,
 ) -> str | None:
     return (
-        target_schema_from_semantic_type(semantic_type)
-        or classified_document_target_schema(document_family, document_metadata)
-        or target_schema_from_document_hint(document_type_hint)
-        or target_schema_from_document_hint(document_family)
+        target_schema_from_document_hint(document_type_hint)
+        or target_schema_from_semantic_type(semantic_type)
         or target_schema_from_document_hint(model_target_schema)
+        or classified_document_target_schema(document_family, document_metadata)
+        or target_schema_from_document_hint(document_family)
     )
 
 

@@ -370,6 +370,7 @@ class JobService:
         message: str,
         retryable: bool = True,
         suppress: bool = False,
+        details: Mapping[str, Any] | None = None,
     ) -> JobState:
         with db_connection() as conn:
             with conn.cursor() as cur:
@@ -395,6 +396,8 @@ class JobService:
                     "dismissed_at": None,
                     "suppressed": suppress,
                 }
+                if details:
+                    error_json["details"] = dict(details)
                 cur.execute(
                     """
                     UPDATE pipeline_jobs

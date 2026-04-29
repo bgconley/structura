@@ -185,3 +185,33 @@ def test_cancel_text_embedding_jobs_types_corpus_actor_for_postgres(
     assert "'requested_by', %s::text" in str(executed["sql"])
     assert executed["params"] == (runner.CORPUS_RUN_ID, document_id)
     assert executed["committed"] is True
+
+
+def test_private_corpus_extraction_drain_reports_failed_region_jobs_without_stopping(
+    monkeypatch,
+    capsys,
+) -> None:
+    runner = _load_private_corpus_runner()
+    document_id = uuid4()
+    failed_jobs = [
+        {
+            "id": str(uuid4()),
+            "job_type": "extract",
+            "status": "failed",
+            "error_json": {"error_class": "ModelTimeoutError"},
+        }
+    ]
+
+    monkeypatch.setattr(runner, "_drain", lambda *_args, **_kwargs: 0)
+    monkeypatch.setattr(
+        runner,
+        "_failed_jobs",
+        lambda doc_id, *, queue_name: failed_jobs if queue_name == "extraction" else [],
+    )
+
+    failures = runner._drain_extraction_and_rescue(document_id)
+
+    assert failures == failed_jobs
+    output = capsys.readouterr().out
+    assert '"stage": "extraction_failures"' in output
+    assert '"error_class": "ModelTimeoutError"' in output

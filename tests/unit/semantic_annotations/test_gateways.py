@@ -675,12 +675,45 @@ def test_live_qwen_gateway_drops_invalid_expected_field_names_from_model_output(
     assert persisted_region["expected_fields"] == ["total_amount"]
 
 
-def test_live_qwen_gateway_repairs_missing_target_schema_from_source_family() -> None:
+def test_live_qwen_gateway_repairs_missing_target_schema_from_qwen_document_type() -> None:
     source = replace(
         _source_with_page_image_and_element(),
         metadata={"phase4": {"classification": {"family": "medical_eob"}}},
     )
     payload = _semantic_payload(source.pages[0].page_id)
+    regions = payload["regions"]
+    assert isinstance(regions, list)
+    region = regions[0]
+    assert isinstance(region, dict)
+    region["target_schema"] = None
+    client = FakeSemanticVisionClient(
+        profile_name=QWEN_SEMANTIC_HQ_PROFILE,
+        source_engine="qwen3_vl_8b",
+        normalized_json=payload,
+    )
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(
+        source,
+        quality_mode="high_quality",
+    )
+
+    repaired_region = result.manifest.regions[0]
+    assert repaired_region.target_schema == "invoice"
+    assert repaired_region.review_required is True
+
+
+def test_live_qwen_gateway_falls_back_to_phase4_when_qwen_document_type_is_absent() -> None:
+    source = replace(
+        _source_with_page_image_and_element(),
+        metadata={"phase4": {"classification": {"family": "medical_eob"}}},
+    )
+    payload = _semantic_payload(source.pages[0].page_id)
+    payload["document_type"] = "unknown"
+    pages = payload["pages"]
+    assert isinstance(pages, list)
+    page = pages[0]
+    assert isinstance(page, dict)
+    page["document_type_hint"] = None
     regions = payload["regions"]
     assert isinstance(regions, list)
     region = regions[0]

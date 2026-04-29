@@ -161,6 +161,81 @@ def test_semantic_service_prefers_document_family_over_region_target_schema() ->
     assert payload["target_schema_name"] == "invoice"
 
 
+def test_semantic_service_corrects_line_item_table_task_before_enqueue() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    region_id = uuid4()
+    source = _source(document_id=document_id, household_id=household_id, page_id=page_id)
+    manifest = _manifest(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        granite_task="kvp",
+        semantic_type="invoice_line_item_table",
+        target_schema="invoice",
+    )
+    jobs = RecordingJobs()
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
+            annotation_id=annotation_id,
+            region_ids=(region_id,),
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    payload = jobs.created[0]["payload"]
+    assert payload["semantic_granite_task"] == "tables_json"
+    assert payload["metadata"]["semantic_task_repair"] == {
+        "original_granite_task": "kvp",
+        "repaired_granite_task": "tables_json",
+        "reason": "line_item_semantic_type_requires_table_task",
+    }
+
+
+def test_semantic_service_uses_qwen_document_type_before_phase4_family() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    region_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="medical_eob",
+        text="Receipt subtotal tax paid amount paid",
+        metadata={"phase4": {"classification": {"family": "medical_eob"}}},
+    )
+    manifest = _manifest(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        semantic_type="payment_summary",
+        target_schema="medical_eob",
+        document_type="receipt",
+    )
+    jobs = RecordingJobs()
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
+            annotation_id=annotation_id,
+            region_ids=(region_id,),
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    payload = jobs.created[0]["payload"]
+    assert payload["target_schema_name"] == "receipt"
+    assert payload["metadata"]["schema_fit"]["requested_target_schema"] == "receipt"
+
+
 def test_semantic_service_uses_semantic_type_before_unclassified_family() -> None:
     document_id = uuid4()
     household_id = uuid4()
@@ -231,7 +306,57 @@ def test_semantic_service_downgrades_unanchored_eob_region_to_observation() -> N
     payload = jobs.created[0]["payload"]
     assert payload["target_schema_name"] == "document_observation"
     assert payload["metadata"]["schema_fit"]["requested_target_schema"] == "medical_eob"
-    assert payload["metadata"]["schema_fit"]["reason"] == "missing_required_docling_anchors"
+    assert (
+        payload["metadata"]["schema_fit"]["reason"]
+        == "conflicting_docling_observation_anchors"
+    )
+    assert payload["metadata"]["schema_fit"]["downgraded"] is True
+
+
+def test_semantic_service_downgrades_weak_receipt_guess_when_title_anchors_dominate() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    region_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="receipt",
+        text=(
+            "Phenix Title Seller Information Form seller proceeds payment "
+            "instructions and title company wiring details"
+        ),
+    )
+    manifest = _manifest(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        granite_task="kvp",
+        semantic_type="receipt_line_item_table",
+        target_schema="receipt",
+        document_type="receipt",
+    )
+    jobs = RecordingJobs()
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
+            annotation_id=annotation_id,
+            region_ids=(region_id,),
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    payload = jobs.created[0]["payload"]
+    assert payload["target_schema_name"] == "document_observation"
+    assert payload["metadata"]["schema_fit"]["requested_target_schema"] == "receipt"
+    assert (
+        payload["metadata"]["schema_fit"]["reason"]
+        == "conflicting_docling_observation_anchors"
+    )
     assert payload["metadata"]["schema_fit"]["downgraded"] is True
 
 
@@ -416,6 +541,7 @@ def _source(
     page_id: UUID,
     family: str = "invoice",
     text: str = "Invoice line items",
+    metadata: dict[str, Any] | None = None,
 ) -> ExtractionSourceDocument:
     return ExtractionSourceDocument(
         document_id=document_id,
@@ -429,7 +555,7 @@ def _source(
         document_date=None,
         counterparty_display=None,
         primary_folder_id=None,
-        metadata={},
+        metadata=metadata or {},
         pages=[
             ParsedPageText(
                 page_id=page_id,

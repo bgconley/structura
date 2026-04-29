@@ -13,6 +13,19 @@ _TARGET_SCHEMA_EVIDENCE_FAMILIES = {
     "receipt": frozenset({"receipt", "retail_order"}),
     "medical_eob": frozenset({"medical_eob"}),
 }
+_TARGET_SCHEMA_REQUIRED_ANCHOR_COUNTS = {
+    "invoice": 1,
+    "receipt": 2,
+    "medical_eob": 2,
+}
+_OBSERVATION_CONFLICT_FAMILIES = frozenset(
+    {"real_estate_title", "mortgage_escrow_statement", "financial_dispute_form"}
+)
+_OBSERVATION_CONFLICT_REQUIRED_ANCHOR_COUNTS = {
+    "real_estate_title": 1,
+    "mortgage_escrow_statement": 1,
+    "financial_dispute_form": 2,
+}
 _OBSERVATION_DOCUMENT_TYPES = {
     "document_observation",
     "real_estate_title",
@@ -83,7 +96,8 @@ def schema_fit_for_region(
             reason="observation_schema",
         )
 
-    evidence_families = _evidence_families(source)
+    anchor_hits = family_anchor_hits(source)
+    evidence_families = _evidence_families_from_hits(anchor_hits)
     allowed_evidence_families = _TARGET_SCHEMA_EVIDENCE_FAMILIES[requested]
     document_type = _normalized(document_type_hint)
     if (
@@ -98,7 +112,20 @@ def schema_fit_for_region(
             reason="observation_document_or_region_type",
             downgraded=True,
         )
-    if allowed_evidence_families.intersection(evidence_families):
+    if _conflicting_observation_families(anchor_hits) and not _has_required_anchor_fit(
+        requested, anchor_hits
+    ):
+        return SchemaFitDecision(
+            target_schema="document_observation",
+            requested_target_schema=requested,
+            evidence_families=evidence_families,
+            document_type_hint=document_type,
+            reason="conflicting_docling_observation_anchors",
+            downgraded=True,
+        )
+    if allowed_evidence_families.intersection(evidence_families) and _has_required_anchor_fit(
+        requested, anchor_hits
+    ):
         return SchemaFitDecision(
             target_schema=requested,
             requested_target_schema=requested,
@@ -117,9 +144,32 @@ def schema_fit_for_region(
 
 
 def _evidence_families(source: ExtractionSourceDocument) -> tuple[str, ...]:
-    return tuple(
-        sorted(family for family, anchors in family_anchor_hits(source).items() if anchors)
-    )
+    return _evidence_families_from_hits(family_anchor_hits(source))
+
+
+def _evidence_families_from_hits(anchor_hits: dict[str, tuple[str, ...]]) -> tuple[str, ...]:
+    return tuple(sorted(family for family, anchors in anchor_hits.items() if anchors))
+
+
+def _has_required_anchor_fit(
+    requested: str,
+    anchor_hits: dict[str, tuple[str, ...]],
+) -> bool:
+    allowed = _TARGET_SCHEMA_EVIDENCE_FAMILIES[requested]
+    required_count = _TARGET_SCHEMA_REQUIRED_ANCHOR_COUNTS[requested]
+    return any(len(anchor_hits.get(family, ())) >= required_count for family in allowed)
+
+
+def _conflicting_observation_families(
+    anchor_hits: dict[str, tuple[str, ...]],
+) -> tuple[str, ...]:
+    conflicts = [
+        family
+        for family in _OBSERVATION_CONFLICT_FAMILIES
+        if len(anchor_hits.get(family, ()))
+        >= _OBSERVATION_CONFLICT_REQUIRED_ANCHOR_COUNTS[family]
+    ]
+    return tuple(sorted(conflicts))
 
 
 def _normalized(value: str | None) -> str | None:
