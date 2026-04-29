@@ -63,3 +63,16 @@ def test_qwen_observation_document_type_beats_bad_region_schema_hint() -> None:
         )
         == "document_observation"
     )
+
+
+def test_service_record_semantic_regions_route_to_receipt_schema() -> None:
+    assert (
+        preferred_target_schema(
+            document_family="invoice",
+            document_metadata={},
+            document_type_hint=None,
+            semantic_type="service_record_line_item_table",
+            model_target_schema=None,
+        )
+        == "receipt"
+    )

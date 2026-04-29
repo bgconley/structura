@@ -24,7 +24,7 @@ def test_docling_audit_finds_real_estate_and_escrow_anchors() -> None:
     assert audit.page_count == 2
     assert "seller" in audit.lexical_anchors
     assert "escrow" in audit.lexical_anchors
-    assert audit.anchor_counts["real_estate_title"] >= 1
+    assert audit.anchor_counts["real_estate_title"] >= 2
     assert audit.anchor_counts["mortgage_escrow_statement"] >= 1
     assert audit.suggested_family_hints == (
         "real_estate_title",
@@ -34,6 +34,23 @@ def test_docling_audit_finds_real_estate_and_escrow_anchors() -> None:
         "real_estate_title",
         "mortgage_escrow_statement",
     )
+
+
+def test_docling_audit_finds_service_record_anchors_without_title_false_hint() -> None:
+    source = _source_with_pages(
+        [
+            "MAX BMW Motorcycles R/O Open Date Mileage In VIN service labor invoice",
+            "Parts part number tire service repair order amount paid",
+        ]
+    )
+
+    audit = build_docling_audit(source)
+
+    assert audit.anchor_counts["service_record"] >= 4
+    assert "service_record" in audit.suggested_family_hints
+    assert "real_estate_title" not in audit.suggested_family_hints
+    assert "service" in audit.lexical_anchors
+    assert "parts" in audit.lexical_anchors
 
 
 def test_docling_audit_preserves_table_inventory() -> None:

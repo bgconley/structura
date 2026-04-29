@@ -67,6 +67,7 @@ def target_schema_from_semantic_type(value: str | None) -> str | None:
     if (
         normalized.startswith("receipt_")
         or normalized.startswith("retail_order_")
+        or normalized.startswith("service_record_")
         or normalized == "receipt"
     ):
         return "receipt"

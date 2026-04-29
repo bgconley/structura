@@ -10,7 +10,7 @@ from lib.semantic_annotations.target_schema_policy import preferred_target_schem
 
 _TARGET_SCHEMA_EVIDENCE_FAMILIES = {
     "invoice": frozenset({"invoice"}),
-    "receipt": frozenset({"receipt", "retail_order"}),
+    "receipt": frozenset({"receipt", "retail_order", "service_record"}),
     "medical_eob": frozenset({"medical_eob"}),
 }
 _TARGET_SCHEMA_REQUIRED_ANCHOR_COUNTS = {
@@ -22,7 +22,7 @@ _OBSERVATION_CONFLICT_FAMILIES = frozenset(
     {"real_estate_title", "mortgage_escrow_statement", "financial_dispute_form"}
 )
 _OBSERVATION_CONFLICT_REQUIRED_ANCHOR_COUNTS = {
-    "real_estate_title": 1,
+    "real_estate_title": 2,
     "mortgage_escrow_statement": 1,
     "financial_dispute_form": 2,
 }

@@ -29,6 +29,13 @@ FAMILY_ANCHORS: dict[str, dict[str, tuple[str, ...]]] = {
         "paid": ("paid", "amount paid"),
         "payment": ("payment",),
     },
+    "service_record": {
+        "repair_order": ("repair order", "r/o", "ro open date", "rio open date"),
+        "service": ("service", "services", "labor"),
+        "parts": ("parts", "part number"),
+        "vehicle": ("vin", "mileage", "mileage in", "vehicle"),
+        "motorcycle": ("motorcycle", "motorcycles"),
+    },
     "retail_order": {
         "order": ("order", "order number"),
         "ship_to": ("ship to", "shipping address"),
@@ -232,7 +239,7 @@ def _anchor_hits(text: str) -> dict[str, tuple[str, ...]]:
 
 
 def _hint_threshold(family: str) -> int:
-    if family in {"real_estate_title", "mortgage_escrow_statement"}:
+    if family == "mortgage_escrow_statement":
         return 1
     return 2
 

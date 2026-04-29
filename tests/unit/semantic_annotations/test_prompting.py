@@ -36,6 +36,8 @@ def test_semantic_planner_prompt_includes_compact_hard_class_examples() -> None:
     assert "generic low-signal scan" in prompt
     assert "service_record_line_item_table" in prompt
     assert "receipt_payment_summary" in prompt
+    assert "Vehicle or motorcycle repair orders" in prompt
+    assert "route their service and parts rows as service_record_line_item_table" in prompt
 
 
 def _source() -> ExtractionSourceDocument:
