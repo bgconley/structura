@@ -92,8 +92,12 @@ _SEMANTIC_TYPES = {
 _PRIORITIES = {"low", "medium", "high", "critical"}
 _GRANITE_TASKS = {"kvp", "tables_json", "tables_html", "tables_otsl", "ignore"}
 _TARGET_SCHEMAS = {"receipt", "invoice", "medical_eob", "document_observation"}
-_MAX_MODEL_OUTPUT_REGIONS = 6
+_MAX_MODEL_OUTPUT_REGIONS = 12
 _PRIORITY_RANK = {"critical": 3, "high": 2, "medium": 1, "low": 0}
+_DOCLING_TABLE_SIGNALS = {"none", "weak", "strong", "unknown"}
+_SOURCE_SIGNALS = {"text", "table", "visual", "mixed"}
+_COVERAGE_ROLES = {"primary", "continuation", "summary", "supporting", "boilerplate", "unknown"}
+_EXTRACTION_SCOPES = {"table", "element", "page", "multi_page_group"}
 
 
 @dataclass(frozen=True)
@@ -200,6 +204,19 @@ def _page_annotation_from_page_wrapper(page: dict[str, object]) -> dict[str, obj
         "escalation_reasons": page.get("escalation_reasons") or page.get("escalationReasons"),
         "reason": page.get("reason"),
         "confidence": page.get("confidence"),
+        "page_family_hints": _first_present(page, "page_family_hints", "pageFamilyHints"),
+        "continuation_group": _first_present(page, "continuation_group", "continuationGroup"),
+        "docling_table_signal": _first_present(page, "docling_table_signal", "doclingTableSignal"),
+        "requires_cross_page_context": _first_present(
+            page,
+            "requires_cross_page_context",
+            "requiresCrossPageContext",
+        ),
+        "material_region_count_hint": _first_present(
+            page,
+            "material_region_count_hint",
+            "materialRegionCountHint",
+        ),
         "regions": [
             _region_with_page_defaults(
                 region,
@@ -278,21 +295,28 @@ def _payload_from_page_annotations(
         regions.extend(normalized_regions)
     pages, normalization = _merge_duplicate_pages_with_summary(pages)
     regions = _select_regions_for_contract(regions)
-    return ValidatedModelOutputPayload(
-        payload={
-            "schema_name": "semantic_annotation_model_output",
-            "schema_version": "v1",
-            "document_type": _document_type_from_payload_or_source(payload, source),
-            "pages": pages,
-            "regions": regions,
-            "quality_flags": {
-                "needs_high_quality_pass": needs_high_quality_pass,
-                "visual_degradation": bool(payload.get("visual_degradation", False)),
-                "poor_ocr": bool(payload.get("poor_ocr", False)),
-                "ambiguous_document_type": False,
-                "reason": None,
-            },
+    normalized_payload: dict[str, object] = {
+        "schema_name": "semantic_annotation_model_output",
+        "schema_version": "v1",
+        "document_type": _document_type_from_payload_or_source(payload, source),
+        "pages": pages,
+        "regions": regions,
+        "quality_flags": {
+            "needs_high_quality_pass": needs_high_quality_pass,
+            "visual_degradation": bool(payload.get("visual_degradation", False)),
+            "poor_ocr": bool(payload.get("poor_ocr", False)),
+            "ambiguous_document_type": False,
+            "reason": None,
         },
+    }
+    document_type_candidates = _document_type_candidates(payload.get("document_type_candidates"))
+    if document_type_candidates:
+        normalized_payload["document_type_candidates"] = document_type_candidates
+    planner_notes = _bounded_string_list(payload.get("planner_notes"), limit=6, max_length=160)
+    if planner_notes:
+        normalized_payload["planner_notes"] = planner_notes
+    return ValidatedModelOutputPayload(
+        payload=normalized_payload,
         normalization=normalization,
     )
 
@@ -345,6 +369,15 @@ def _merge_page(
         merged["confidence"] = incoming["confidence"]
     if existing.get("reason") is None and incoming.get("reason") is not None:
         merged["reason"] = incoming["reason"]
+    for key in (
+        "page_family_hints",
+        "continuation_group",
+        "docling_table_signal",
+        "requires_cross_page_context",
+        "material_region_count_hint",
+    ):
+        if key not in merged and key in incoming:
+            merged[key] = incoming[key]
     return merged
 
 
@@ -398,7 +431,7 @@ def _normalized_alternate_page(
     if page_grounding_repaired:
         escalation_reasons = _append_unique(escalation_reasons, "missing_docling_grounding")
     confidence = _average_confidence(page_regions)
-    return {
+    page_payload = {
         "page_id": page_id,
         "page_number": page_number,
         "page_role": _normalized_choice(item.get("page_role"), _PAGE_ROLES)
@@ -419,6 +452,8 @@ def _normalized_alternate_page(
         "reason": _optional_string(item.get("reason")),
         "confidence": _confidence_or_none(item.get("confidence")) or confidence,
     }
+    page_payload.update(_normalized_page_planner_fields(item))
+    return page_payload
 
 
 def _normalized_alternate_region(
@@ -440,7 +475,7 @@ def _normalized_alternate_region(
     target_schema = _target_schema_or_none(item.get("target_schema") or item.get("targetSchema"))
     expected_fields = expected_fields_from_json(item.get("expected_fields"))
     confidence = _confidence_or_none(item.get("confidence"))
-    return {
+    region_payload: dict[str, object] = {
         "semantic_type": _normalized_choice(
             item.get("semantic_type") or item.get("semanticType"),
             _SEMANTIC_TYPES,
@@ -461,6 +496,8 @@ def _normalized_alternate_region(
         "reason": _optional_string(item.get("reason")),
         "confidence": confidence,
     }
+    region_payload.update(_normalized_region_planner_fields(item))
+    return region_payload
 
 
 def _ignored_unmatched_region(*, page_id: str, reason: str) -> dict[str, object]:
@@ -561,6 +598,111 @@ def _document_type_or_none(value: object) -> str | None:
     return mapped
 
 
+def _document_type_candidates(value: object) -> list[dict[str, object]]:
+    if not isinstance(value, list):
+        return []
+    candidates: list[dict[str, object]] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        document_type = _document_type_or_none(
+            _first_present(item, "document_type", "documentType")
+        )
+        if document_type is None:
+            continue
+        candidates.append(
+            {
+                "document_type": document_type,
+                "confidence": _confidence_or_none(item.get("confidence")),
+                "evidence_terms": _bounded_string_list(
+                    _first_present(item, "evidence_terms", "evidenceTerms"),
+                    limit=8,
+                    max_length=64,
+                ),
+                "reason": _optional_string(item.get("reason")),
+            }
+        )
+        if len(candidates) >= 4:
+            break
+    return candidates
+
+
+def _normalized_page_planner_fields(item: dict[str, object]) -> dict[str, object]:
+    fields: dict[str, object] = {}
+    hints = [
+        hint
+        for hint in (
+            _document_type_or_none(value)
+            for value in _list_value(_first_present(item, "page_family_hints", "pageFamilyHints"))
+        )
+        if hint is not None
+    ][:3]
+    if hints:
+        fields["page_family_hints"] = hints
+    continuation_group = _optional_string(
+        _first_present(item, "continuation_group", "continuationGroup")
+    )
+    if continuation_group is not None:
+        fields["continuation_group"] = continuation_group[:80]
+    table_signal = _normalized_choice(
+        _first_present(item, "docling_table_signal", "doclingTableSignal"),
+        _DOCLING_TABLE_SIGNALS,
+    )
+    if table_signal is not None:
+        fields["docling_table_signal"] = table_signal
+    cross_page = _optional_bool(
+        _first_present(item, "requires_cross_page_context", "requiresCrossPageContext")
+    )
+    if cross_page is not None:
+        fields["requires_cross_page_context"] = cross_page
+    count_hint = _bounded_int(
+        _first_present(item, "material_region_count_hint", "materialRegionCountHint"),
+        minimum=0,
+        maximum=12,
+    )
+    if count_hint is not None:
+        fields["material_region_count_hint"] = count_hint
+    return fields
+
+
+def _normalized_region_planner_fields(item: dict[str, object]) -> dict[str, object]:
+    fields: dict[str, object] = {}
+    for key, allowed in (
+        ("importance", _PRIORITIES),
+        ("source_signal", _SOURCE_SIGNALS),
+        ("coverage_role", _COVERAGE_ROLES),
+        ("extraction_scope", _EXTRACTION_SCOPES),
+    ):
+        value = _normalized_choice(_first_present(item, key, _camel_case(key)), allowed)
+        if value is not None:
+            fields[key] = value
+    requires_full_page_image = _optional_bool(
+        _first_present(item, "requires_full_page_image", "requiresFullPageImage")
+    )
+    if requires_full_page_image is not None:
+        fields["requires_full_page_image"] = requires_full_page_image
+    continuation_group = _optional_string(
+        _first_present(item, "continuation_group", "continuationGroup")
+    )
+    if continuation_group is not None:
+        fields["continuation_group"] = continuation_group[:80]
+    for key in ("must_extract_reason", "negative_routing_reason"):
+        value = _optional_string(_first_present(item, key, _camel_case(key)))
+        if value is not None:
+            fields[key] = value[:180]
+    min_expected_items = _bounded_int(
+        _first_present(item, "min_expected_items", "minExpectedItems"),
+        minimum=0,
+        maximum=500,
+    )
+    if min_expected_items is not None:
+        fields["min_expected_items"] = min_expected_items
+    visual_bbox_hint = _visual_bbox_hint(_first_present(item, "visual_bbox_hint", "visualBboxHint"))
+    if visual_bbox_hint is not None:
+        fields["visual_bbox_hint"] = visual_bbox_hint
+    return fields
+
+
 def _granite_task_or_none(value: object) -> str | None:
     return _normalized_choice(value, _GRANITE_TASKS)
 
@@ -627,6 +769,60 @@ def _normalized_escalation_reasons(value: object) -> list[str]:
         if reason and reason not in reasons:
             reasons.append(reason)
     return reasons[:4]
+
+
+def _bounded_string_list(value: object, *, limit: int, max_length: int) -> list[str]:
+    values: list[str] = []
+    for item in _list_value(value):
+        if not isinstance(item, str):
+            continue
+        stripped = item.strip()
+        if not stripped:
+            continue
+        values.append(stripped[:max_length])
+        if len(values) >= limit:
+            break
+    return values
+
+
+def _list_value(value: object) -> list[object]:
+    return value if isinstance(value, list) else []
+
+
+def _first_present(item: dict[str, object], *keys: str) -> object:
+    for key in keys:
+        if key in item:
+            return item[key]
+    return None
+
+
+def _optional_bool(value: object) -> bool | None:
+    if isinstance(value, bool):
+        return value
+    return None
+
+
+def _bounded_int(value: object, *, minimum: int, maximum: int) -> int | None:
+    if not isinstance(value, int):
+        return None
+    return max(minimum, min(value, maximum))
+
+
+def _visual_bbox_hint(value: object) -> dict[str, int] | None:
+    if not isinstance(value, dict):
+        return None
+    try:
+        bbox = {key: max(0, min(int(value[key]), 1000)) for key in ("x1", "y1", "x2", "y2")}
+    except (KeyError, TypeError, ValueError):
+        return None
+    if bbox["x2"] < bbox["x1"] or bbox["y2"] < bbox["y1"]:
+        return None
+    return bbox
+
+
+def _camel_case(value: str) -> str:
+    parts = value.split("_")
+    return parts[0] + "".join(part.title() for part in parts[1:])
 
 
 def _append_unique(values: list[str], value: str) -> list[str]:

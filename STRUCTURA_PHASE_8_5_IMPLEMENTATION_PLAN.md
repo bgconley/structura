@@ -298,6 +298,45 @@ which corresponds to Qwen's 32x guidance at 256 to 2560 visual tokens per image.
 Do not downscale Docling originals globally, and do not weaken Granite
 page/crop/table inputs.
 
+Semantic planner prompt version `phase8_5-semantic-smart-v3` is the active Smart
+Parse contract. It changes the Qwen bias from sparse "highest-value only" routing
+to bounded recall:
+
+- emit all materially extractable grounded regions that could change factual
+  coverage;
+- preserve continuation groups across pages;
+- flag weak Docling table signal and request full-page image context for Granite
+  when visual tables are present;
+- emit competing `document_type_candidates` with evidence terms when family fit is
+  ambiguous;
+- include planner metadata (`importance`, `source_signal`, `coverage_role`,
+  `extraction_scope`, `requires_full_page_image`, `must_extract_reason`,
+  `negative_routing_reason`, `min_expected_items`, and advisory
+  `visual_bbox_hint`) without promoting values to canonical facts.
+
+The model-output schemas remain adapter contracts, not app persistence schemas.
+Structura validates and normalizes Qwen output, preserves planner metadata in the
+semantic manifest, and keeps validators/Granite/review policy as the promotion
+gate. Smart Granite fanout is capped at six region jobs per semantic pass, with
+line-item/service/payment regions prioritized over repeated headers and
+boilerplate.
+
+Before rerunning the full private corpus after Qwen prompt or schema changes,
+run the semantic-only canary with private expectations:
+
+```bash
+python scripts/gpu/run_phase8_5_semantic_canary.py \
+  --mode qwen3-vl-4b-adaptive \
+  --expectations-json /srv/structura/config/private-semantic-canary-expectations.json \
+  --json-output /srv/structura/objects/exports/phase85-runs/semantic-canary.json \
+  --pdf /path/to/document.pdf
+```
+
+The canary report must show Docling audit anchors/table signals, Qwen
+document-family candidates, page coverage, fan-in/fallback telemetry,
+schema-fit decisions, and expectation scorecard failures before Granite is
+reintroduced.
+
 qwen3-vl-8b-semantic-hq:v1
   engine: qwen
   task: semantic_annotation_high_quality

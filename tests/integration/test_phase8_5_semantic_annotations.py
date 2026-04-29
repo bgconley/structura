@@ -211,7 +211,7 @@ def _manifest(
         source_engine="qwen3_vl_4b",
         model_name="Qwen/Qwen3-VL-4B-Instruct",
         model_version=model_version,
-        prompt_version="phase8_5-semantic-smart-v2",
+        prompt_version="phase8_5-semantic-smart-v3",
         pages=[
             PageSemanticAnnotation(
                 page_id=page_id,

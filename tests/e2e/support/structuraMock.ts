@@ -733,7 +733,7 @@ function semanticAnnotationForDocument(documentId: string) {
     sourceEngine: "qwen3_vl_4b",
     modelName: "Qwen/Qwen3-VL-4B-Instruct",
     modelVersion: "fixture",
-    promptVersion: "phase8_5-semantic-smart-v2",
+    promptVersion: "phase8_5-semantic-smart-v3",
     reviewRequired: false,
     escalationReason: null,
     confidence: {overall: 0.91},

@@ -55,9 +55,11 @@ def main() -> int:
     if not document_ids:
         raise SystemExit("at least one --document-id or --pdf is required")
 
+    expectations = _load_expectations(args.expectations_json)
     documents = [
         _semantic_report(document_id=document_id, mode=args.mode) for document_id in document_ids
     ]
+    scorecard = _score_documents(documents, expectations) if expectations else None
     report = {
         "schema_name": "phase8_5_semantic_canary_report",
         "schema_version": "v1",
@@ -65,10 +67,14 @@ def main() -> int:
         "skip_granite": True,
         "documents": documents,
     }
+    if scorecard is not None:
+        report["scorecard"] = scorecard
     rendered = json.dumps(report, indent=2, sort_keys=True)
     if args.json_output:
         args.json_output.write_text(rendered + "\n", encoding="utf-8")
     print(rendered)
+    if scorecard is not None and not bool(scorecard["passed"]):
+        return 1
     return 0
 
 
@@ -88,6 +94,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--household-id", type=UUID)
     parser.add_argument("--user-id", type=UUID)
     parser.add_argument("--docling-timeout-seconds", type=int, default=1800)
+    parser.add_argument(
+        "--expectations-json",
+        type=Path,
+        help="Optional private canary expectations keyed by filename, title, or document ID.",
+    )
     return parser
 
 
@@ -133,7 +144,20 @@ def _semantic_report(*, document_id: UUID, mode: str) -> dict[str, Any]:
             "element_count": audit.element_count,
             "table_count": audit.table_count,
             "lexical_anchors": list(audit.lexical_anchors),
+            "anchor_counts": audit.anchor_counts,
             "suggested_family_hints": list(audit.suggested_family_hints),
+            "family_tension": list(audit.family_tension),
+            "table_summaries": [
+                {
+                    "page_number": table.page_number,
+                    "table_index": table.table_index,
+                    "table_signal": table.table_signal,
+                    "weak_signal_reason": table.weak_signal_reason,
+                    "markdown_snippet": table.markdown_snippet,
+                    "has_table_json": table.has_table_json,
+                }
+                for table in audit.table_summaries
+            ],
         },
         "qwen": {
             "profile_name": manifest.profile_name,
@@ -157,6 +181,7 @@ def _semantic_report(*, document_id: UUID, mode: str) -> dict[str, Any]:
                     "document_type_hint": page.document_type_hint,
                     "page_role": page.page_role,
                     "confidence": page.confidence,
+                    **page.metadata,
                 }
                 for page in manifest.pages
             ],
@@ -169,13 +194,323 @@ def _semantic_report(*, document_id: UUID, mode: str) -> dict[str, Any]:
                     "priority": region.priority,
                     "confidence": region.confidence,
                     "review_required": region.review_required,
+                    **region.metadata,
                 }
                 for region in manifest.regions
             ],
             "schema_fit": schema_fit,
             "confidence": manifest.confidence,
+            "document_type_candidates": manifest.manifest.get("document_type_candidates", []),
+            "planner_notes": manifest.manifest.get("planner_notes", []),
         },
     }
+
+
+def _load_expectations(path: Path | None) -> dict[str, Any]:
+    if path is None:
+        return {}
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise SystemExit("--expectations-json must contain a JSON object")
+    documents = payload.get("documents")
+    if not isinstance(documents, dict):
+        raise SystemExit("--expectations-json must contain a documents object")
+    return payload
+
+
+def _score_documents(
+    documents: list[dict[str, Any]],
+    expectations: dict[str, Any],
+) -> dict[str, Any]:
+    expected_documents = expectations.get("documents")
+    if not isinstance(expected_documents, dict):
+        return {"passed": True, "documents": []}
+    results = []
+    for document in documents:
+        expectation = _expectation_for_document(document, expected_documents)
+        if expectation is None:
+            results.append(
+                {
+                    "document_key": _document_key(document),
+                    "passed": True,
+                    "checks": [
+                        {
+                            "name": "expectation_present",
+                            "passed": True,
+                            "detail": "no expectation configured",
+                        }
+                    ],
+                }
+            )
+            continue
+        checks = _score_document(document, expectation)
+        results.append(
+            {
+                "document_key": _document_key(document),
+                "passed": all(bool(check["passed"]) for check in checks),
+                "checks": checks,
+            }
+        )
+    return {
+        "passed": all(bool(result["passed"]) for result in results),
+        "documents": results,
+    }
+
+
+def _expectation_for_document(
+    document: dict[str, Any],
+    expected_documents: dict[str, Any],
+) -> dict[str, Any] | None:
+    for key in (
+        str(document.get("filename") or ""),
+        str(document.get("title") or ""),
+        str(document.get("document_id") or ""),
+    ):
+        expectation = expected_documents.get(key)
+        if isinstance(expectation, dict):
+            return expectation
+    return None
+
+
+def _score_document(
+    document: dict[str, Any],
+    expectation: dict[str, Any],
+) -> list[dict[str, Any]]:
+    semantic_raw = document.get("semantic")
+    semantic: dict[str, Any] = semantic_raw if isinstance(semantic_raw, dict) else {}
+    docling_raw = document.get("docling")
+    docling: dict[str, Any] = docling_raw if isinstance(docling_raw, dict) else {}
+    regions_raw = semantic.get("regions")
+    regions: list[Any] = regions_raw if isinstance(regions_raw, list) else []
+    pages_raw = semantic.get("page_document_hints")
+    pages: list[Any] = pages_raw if isinstance(pages_raw, list) else []
+    semantic_types = {
+        str(region.get("semantic_type"))
+        for region in regions
+        if isinstance(region, dict) and region.get("semantic_type")
+    }
+    target_schemas = {
+        str(region.get("target_schema"))
+        for region in regions
+        if isinstance(region, dict) and region.get("target_schema")
+    }
+    continuation_groups = {
+        str(item.get("continuation_group"))
+        for item in [*pages, *regions]
+        if isinstance(item, dict) and item.get("continuation_group")
+    }
+    table_summaries_raw = docling.get("table_summaries")
+    table_summaries = table_summaries_raw if isinstance(table_summaries_raw, list) else []
+    docling_table_signals = {
+        str(table.get("table_signal"))
+        for table in table_summaries
+        if isinstance(table, dict) and table.get("table_signal")
+    }
+    planner_table_signals = {
+        str(page.get("docling_table_signal"))
+        for page in pages
+        if isinstance(page, dict) and page.get("docling_table_signal")
+    }
+    full_page_image_semantic_types = {
+        str(region.get("semantic_type"))
+        for region in regions
+        if isinstance(region, dict)
+        and region.get("semantic_type")
+        and region.get("requires_full_page_image") is True
+    }
+    checks = [
+        _check_in(
+            "document_type",
+            semantic.get("document_type"),
+            _string_set(expectation.get("expected_document_types")),
+            required=False,
+        ),
+        _check_not_in(
+            "forbidden_document_type",
+            semantic.get("document_type"),
+            _string_set(expectation.get("forbidden_document_types")),
+        ),
+        _check_contains_all(
+            "required_semantic_types",
+            semantic_types,
+            _string_set(expectation.get("required_semantic_types")),
+        ),
+        _check_disjoint(
+            "forbidden_semantic_types",
+            semantic_types,
+            _string_set(expectation.get("forbidden_semantic_types")),
+        ),
+        _check_contains_all(
+            "required_target_schemas",
+            target_schemas,
+            _string_set(expectation.get("required_target_schemas")),
+        ),
+        _check_disjoint(
+            "forbidden_target_schemas",
+            target_schemas,
+            _string_set(expectation.get("forbidden_target_schemas")),
+        ),
+        _check_minimum("min_region_count", len(regions), expectation.get("min_region_count")),
+        _check_minimum("min_page_count", len(pages), expectation.get("min_page_count")),
+        _check_contains_all(
+            "required_docling_family_hints",
+            set(_string_list(docling.get("suggested_family_hints"))),
+            _string_set(expectation.get("required_docling_family_hints")),
+        ),
+        _check_contains_all(
+            "required_lexical_anchors",
+            set(_string_list(docling.get("lexical_anchors"))),
+            _string_set(expectation.get("required_lexical_anchors")),
+        ),
+        _check_contains_all(
+            "required_continuation_groups",
+            continuation_groups,
+            _string_set(expectation.get("required_continuation_groups")),
+        ),
+        _check_contains_all(
+            "required_docling_table_signals",
+            docling_table_signals | planner_table_signals,
+            _string_set(expectation.get("required_docling_table_signals")),
+        ),
+        _check_contains_all(
+            "required_full_page_image_semantic_types",
+            full_page_image_semantic_types,
+            _string_set(expectation.get("required_full_page_image_semantic_types")),
+        ),
+    ]
+    checks.extend(
+        _check_required_region_attributes(
+            regions,
+            expectation.get("required_region_attributes"),
+        )
+    )
+    if expectation.get("require_page_coverage", True):
+        checks.append(
+            {
+                "name": "page_coverage",
+                "passed": len(pages) == int(docling.get("page_count") or 0),
+                "expected": docling.get("page_count"),
+                "actual": len(pages),
+            }
+        )
+    return checks
+
+
+def _check_in(
+    name: str,
+    actual: object,
+    expected: set[str],
+    *,
+    required: bool = True,
+) -> dict[str, Any]:
+    if not expected and not required:
+        return {"name": name, "passed": True, "detail": "not configured"}
+    actual_str = str(actual) if actual is not None else ""
+    return {
+        "name": name,
+        "passed": actual_str in expected,
+        "expected": sorted(expected),
+        "actual": actual_str,
+    }
+
+
+def _check_not_in(name: str, actual: object, forbidden: set[str]) -> dict[str, Any]:
+    if not forbidden:
+        return {"name": name, "passed": True, "detail": "not configured"}
+    actual_str = str(actual) if actual is not None else ""
+    return {
+        "name": name,
+        "passed": actual_str not in forbidden,
+        "forbidden": sorted(forbidden),
+        "actual": actual_str,
+    }
+
+
+def _check_contains_all(name: str, actual: set[str], required: set[str]) -> dict[str, Any]:
+    missing = sorted(required - actual)
+    return {
+        "name": name,
+        "passed": not missing,
+        "required": sorted(required),
+        "actual": sorted(actual),
+        "missing": missing,
+    }
+
+
+def _check_disjoint(name: str, actual: set[str], forbidden: set[str]) -> dict[str, Any]:
+    present = sorted(actual & forbidden)
+    return {
+        "name": name,
+        "passed": not present,
+        "forbidden": sorted(forbidden),
+        "actual": sorted(actual),
+        "present": present,
+    }
+
+
+def _check_minimum(name: str, actual: int, expected: object) -> dict[str, Any]:
+    if not isinstance(expected, int):
+        return {"name": name, "passed": True, "detail": "not configured", "actual": actual}
+    return {"name": name, "passed": actual >= expected, "expected": expected, "actual": actual}
+
+
+def _check_required_region_attributes(
+    regions: list[Any],
+    requirements: object,
+) -> list[dict[str, Any]]:
+    if not isinstance(requirements, list):
+        return [
+            {
+                "name": "required_region_attributes",
+                "passed": True,
+                "detail": "not configured",
+            }
+        ]
+    checks: list[dict[str, Any]] = []
+    for index, requirement in enumerate(requirements):
+        if not isinstance(requirement, dict):
+            checks.append(
+                {
+                    "name": f"required_region_attributes[{index}]",
+                    "passed": False,
+                    "detail": "requirement must be an object",
+                }
+            )
+            continue
+        semantic_type = requirement.get("semantic_type")
+        field = requirement.get("field")
+        expected = requirement.get("value")
+        matched = any(
+            isinstance(region, dict)
+            and region.get("semantic_type") == semantic_type
+            and region.get(str(field)) == expected
+            for region in regions
+            if isinstance(field, str)
+        )
+        checks.append(
+            {
+                "name": f"required_region_attributes[{index}]",
+                "passed": matched,
+                "semantic_type": semantic_type,
+                "field": field,
+                "expected": expected,
+            }
+        )
+    return checks
+
+
+def _string_set(value: object) -> set[str]:
+    return set(_string_list(value))
+
+
+def _string_list(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str) and item]
+
+
+def _document_key(document: dict[str, Any]) -> str:
+    return str(document.get("filename") or document.get("title") or document.get("document_id"))
 
 
 def _image_fan_in_sequence(*, page_count: int, confidence: dict[str, Any]) -> list[int]:

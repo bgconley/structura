@@ -24,7 +24,13 @@ def test_docling_audit_finds_real_estate_and_escrow_anchors() -> None:
     assert audit.page_count == 2
     assert "seller" in audit.lexical_anchors
     assert "escrow" in audit.lexical_anchors
+    assert audit.anchor_counts["real_estate_title"] >= 1
+    assert audit.anchor_counts["mortgage_escrow_statement"] >= 1
     assert audit.suggested_family_hints == (
+        "real_estate_title",
+        "mortgage_escrow_statement",
+    )
+    assert audit.family_tension == (
         "real_estate_title",
         "mortgage_escrow_statement",
     )
@@ -38,6 +44,8 @@ def test_docling_audit_preserves_table_inventory() -> None:
     assert audit.table_count == 1
     assert audit.table_summaries[0].page_number == 1
     assert audit.table_summaries[0].has_table_json is True
+    assert audit.table_summaries[0].table_signal == "strong"
+    assert audit.table_summaries[0].weak_signal_reason is None
     assert "line" in audit.table_summaries[0].markdown_snippet
 
 

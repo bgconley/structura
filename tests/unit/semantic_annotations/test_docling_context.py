@@ -64,6 +64,9 @@ def test_build_docling_context_includes_grounding_ids_and_bounded_snippets() -> 
 
     assert context["document"]["documentId"] == str(document_id)
     assert context["document"]["family"] == "invoice"
+    assert context["document"]["anchorCounts"]["invoice"] >= 1
+    assert context["document"]["firstPageSnippet"]
+    assert context["document"]["lastPageSnippet"]
     assert context["focusPages"][0]["pageId"] == str(page_id)
     assert context["focusPages"][0]["imageSha256"] == "a" * 64
     assert "image_asset_uri" not in str(context)
@@ -74,6 +77,8 @@ def test_build_docling_context_includes_grounding_ids_and_bounded_snippets() -> 
     assert len(context["focusPages"][0]["elements"][0]["textSnippet"]) <= 240
     assert context["focusPages"][0]["tables"][0]["tableId"] == str(table_id)
     assert context["focusPages"][0]["tables"][0]["tableIndex"] == 2
+    assert context["focusPages"][0]["tables"][0]["tableSignal"] == "strong"
+    assert context["document"]["tableInventory"][0]["tableSignal"] == "strong"
     assert context["pages"] == context["focusPages"]
 
     model_context = build_docling_context(source, include_pages_alias=False)
@@ -165,8 +170,17 @@ def test_docling_context_keeps_document_outline_for_focus_page() -> None:
         "uwm",
     ]
     assert [page["pageNumber"] for page in context["document"]["pageOutline"]] == [1, 2, 3]
+    assert [page["outlineRole"] for page in context["document"]["pageOutline"]] == [
+        "first",
+        "focus",
+        "last",
+    ]
     assert [page["pageNumber"] for page in context["focusPages"]] == [2]
     assert "Seller Information" in context["document"]["pageOutline"][0]["textSnippet"]
+    assert context["document"]["familyTension"] == [
+        "real_estate_title",
+        "mortgage_escrow_statement",
+    ]
 
 
 def _multi_page_source(page_texts: list[str]) -> ExtractionSourceDocument:

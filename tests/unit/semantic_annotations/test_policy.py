@@ -143,10 +143,18 @@ def test_semantic_annotation_model_output_schema_bounds_model_generated_arrays()
     defs = schema["$defs"]
 
     assert schema["properties"]["pages"]["maxItems"] == 4
-    assert schema["properties"]["regions"]["maxItems"] == 6
+    assert schema["properties"]["regions"]["maxItems"] == 12
+    assert schema["properties"]["document_type_candidates"]["maxItems"] == 4
+    assert schema["properties"]["planner_notes"]["maxItems"] == 6
     assert "confidence" not in schema["required"]
     assert defs["pageAnnotation"]["properties"]["escalation_reasons"]["maxItems"] == 4
     assert defs["regionAnnotation"]["properties"]["expected_fields"]["maxItems"] == 8
+    assert defs["regionAnnotation"]["properties"]["importance"]["enum"] == [
+        "low",
+        "medium",
+        "high",
+        "critical",
+    ]
 
 
 def test_semantic_annotation_schemas_include_expanded_qwen3_vl_4b_routing_vocabulary() -> None:
@@ -215,7 +223,7 @@ def _manifest_with_region(region: SemanticRegionAnnotation) -> DocumentSemanticM
         source_engine="qwen3_vl_4b",
         model_name="Qwen/Qwen3-VL-4B-Instruct",
         model_version="test",
-        prompt_version="phase8_5-semantic-smart-v2",
+        prompt_version="phase8_5-semantic-smart-v3",
         pages=[
             PageSemanticAnnotation(
                 page_id=page_id,
@@ -246,7 +254,7 @@ def _manifest_with_pages(
         source_engine="qwen3_vl_4b",
         model_name="Qwen/Qwen3-VL-4B-Instruct",
         model_version="test",
-        prompt_version="phase8_5-semantic-smart-v2",
+        prompt_version="phase8_5-semantic-smart-v3",
         pages=[
             PageSemanticAnnotation(
                 page_id=page_id,

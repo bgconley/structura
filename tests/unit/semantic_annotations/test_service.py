@@ -306,10 +306,7 @@ def test_semantic_service_downgrades_unanchored_eob_region_to_observation() -> N
     payload = jobs.created[0]["payload"]
     assert payload["target_schema_name"] == "document_observation"
     assert payload["metadata"]["schema_fit"]["requested_target_schema"] == "medical_eob"
-    assert (
-        payload["metadata"]["schema_fit"]["reason"]
-        == "conflicting_docling_observation_anchors"
-    )
+    assert payload["metadata"]["schema_fit"]["reason"] == "conflicting_docling_observation_anchors"
     assert payload["metadata"]["schema_fit"]["downgraded"] is True
 
 
@@ -353,10 +350,7 @@ def test_semantic_service_downgrades_weak_receipt_guess_when_title_anchors_domin
     payload = jobs.created[0]["payload"]
     assert payload["target_schema_name"] == "document_observation"
     assert payload["metadata"]["schema_fit"]["requested_target_schema"] == "receipt"
-    assert (
-        payload["metadata"]["schema_fit"]["reason"]
-        == "conflicting_docling_observation_anchors"
-    )
+    assert payload["metadata"]["schema_fit"]["reason"] == "conflicting_docling_observation_anchors"
     assert payload["metadata"]["schema_fit"]["downgraded"] is True
 
 
@@ -424,6 +418,94 @@ def test_semantic_service_caps_high_quality_granite_fanout() -> None:
         ]
         == [str(region_id) for region_id in region_ids[:8]]
     )
+
+
+def test_semantic_service_caps_smart_fanout_to_six_regions() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    region_ids = tuple(uuid4() for _ in range(10))
+    source = _source(document_id=document_id, household_id=household_id, page_id=page_id)
+    manifest = _manifest(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        region_count=10,
+    )
+    jobs = RecordingJobs()
+
+    result = SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
+            annotation_id=annotation_id,
+            region_ids=region_ids,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    assert len(jobs.created) == 6
+    assert len(result.queued_granite_job_ids) == 6
+
+
+def test_semantic_service_prioritizes_line_items_over_header_regions() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    line_item_region_id = uuid4()
+    header_region_ids = tuple(uuid4() for _ in range(6))
+    source = _source(document_id=document_id, household_id=household_id, page_id=page_id)
+    regions = [
+        SemanticRegionAnnotation(
+            semantic_type="document_header",
+            priority="high",
+            granite_task="kvp",
+            target_schema="invoice",
+            expected_fields=(f"header_{index}",),
+            grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+            confidence=0.99,
+        )
+        for index in range(6)
+    ]
+    regions.append(
+        SemanticRegionAnnotation(
+            semantic_type="invoice_line_item_table",
+            priority="high",
+            granite_task="tables_json",
+            target_schema="invoice",
+            expected_fields=("line_items",),
+            grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+            confidence=0.7,
+            metadata={
+                "coverage_role": "primary",
+                "source_signal": "table",
+                "requires_full_page_image": True,
+            },
+        )
+    )
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        regions=regions,
+    )
+    jobs = RecordingJobs()
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
+            annotation_id=annotation_id,
+            region_ids=(*header_region_ids, line_item_region_id),
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    semantic_region_ids = [job["payload"]["semantic_region_id"] for job in jobs.created]
+    assert str(line_item_region_id) in semantic_region_ids
+    assert len(jobs.created) == 6
 
 
 def test_semantic_service_caps_rescue_granite_fanout_to_single_retry() -> None:
@@ -608,7 +690,39 @@ def _manifest(
         source_engine="qwen3_vl_4b",
         model_name="Qwen/Qwen3-VL-4B-Instruct",
         model_version="v1",
-        prompt_version="phase8_5-semantic-smart-v2",
+        prompt_version="phase8_5-semantic-smart-v3",
+        pages=[
+            PageSemanticAnnotation(
+                page_id=page_id,
+                page_number=1,
+                page_role="invoice_summary",
+                has_structured_targets=True,
+            )
+        ],
+        regions=regions,
+        confidence={"overall": 0.9},
+        manifest={"document_type": document_type},
+        input_page_hashes=("c" * 64,),
+    )
+
+
+def _manifest_with_regions(
+    *,
+    document_id: UUID,
+    household_id: UUID,
+    page_id: UUID,
+    regions: list[SemanticRegionAnnotation],
+    document_type: str = "invoice",
+) -> DocumentSemanticManifest:
+    return DocumentSemanticManifest(
+        document_id=document_id,
+        household_id=household_id,
+        quality_mode="smart",
+        profile_name="qwen3-vl-4b-semantic:v1",
+        source_engine="qwen3_vl_4b",
+        model_name="Qwen/Qwen3-VL-4B-Instruct",
+        model_version="v1",
+        prompt_version="phase8_5-semantic-smart-v3",
         pages=[
             PageSemanticAnnotation(
                 page_id=page_id,

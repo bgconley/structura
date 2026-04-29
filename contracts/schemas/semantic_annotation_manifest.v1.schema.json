@@ -60,6 +60,16 @@
         "reason": { "type": ["string", "null"] }
       }
     },
+    "document_type_candidates": {
+      "type": "array",
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/documentTypeCandidate" }
+    },
+    "planner_notes": {
+      "type": "array",
+      "maxItems": 6,
+      "items": { "type": "string", "maxLength": 160 }
+    },
     "confidence": { "$ref": "#/$defs/confidenceObject" }
   },
   "$defs": {
@@ -68,6 +78,45 @@
     },
     "confidence": {
       "type": ["number", "null"]
+    },
+    "documentTypeCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["document_type", "confidence", "evidence_terms", "reason"],
+      "properties": {
+        "document_type": {
+          "type": "string",
+          "enum": [
+            "medical_eob",
+            "insurance_denial",
+            "medical_bill",
+            "invoice",
+            "receipt",
+            "retail_order",
+            "service_record",
+            "real_estate_title",
+            "mortgage_escrow_statement",
+            "financial_dispute_form",
+            "travel_receipt",
+            "restaurant_receipt",
+            "generic_form",
+            "unsupported_document",
+            "no_extraction_target",
+            "legal",
+            "tax",
+            "financial",
+            "other",
+            "unknown"
+          ]
+        },
+        "confidence": { "$ref": "#/$defs/confidence" },
+        "evidence_terms": {
+          "type": "array",
+          "maxItems": 8,
+          "items": { "type": "string", "maxLength": 64 }
+        },
+        "reason": { "type": ["string", "null"], "maxLength": 160 }
+      }
     },
     "confidenceObject": {
       "type": "object",
@@ -168,7 +217,43 @@
           "default": []
         },
         "reason": { "type": ["string", "null"] },
-        "confidence": { "$ref": "#/$defs/confidence" }
+        "confidence": { "$ref": "#/$defs/confidence" },
+        "page_family_hints": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "type": "string",
+            "enum": [
+              "medical_eob",
+              "insurance_denial",
+              "medical_bill",
+              "invoice",
+              "receipt",
+              "retail_order",
+              "service_record",
+              "real_estate_title",
+              "mortgage_escrow_statement",
+              "financial_dispute_form",
+              "travel_receipt",
+              "restaurant_receipt",
+              "generic_form",
+              "unsupported_document",
+              "no_extraction_target",
+              "legal",
+              "tax",
+              "financial",
+              "other",
+              "unknown"
+            ]
+          }
+        },
+        "continuation_group": { "type": ["string", "null"], "maxLength": 80 },
+        "docling_table_signal": {
+          "type": "string",
+          "enum": ["none", "weak", "strong", "unknown"]
+        },
+        "requires_cross_page_context": { "type": "boolean" },
+        "material_region_count_hint": { "type": ["integer", "null"], "minimum": 0, "maximum": 12 }
       }
     },
     "regionAnnotation": {
@@ -239,7 +324,40 @@
         "grounding": { "$ref": "#/$defs/grounding" },
         "review_required": { "type": "boolean" },
         "reason": { "type": ["string", "null"] },
-        "confidence": { "$ref": "#/$defs/confidence" }
+        "confidence": { "$ref": "#/$defs/confidence" },
+        "importance": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"]
+        },
+        "source_signal": {
+          "type": "string",
+          "enum": ["text", "table", "visual", "mixed"]
+        },
+        "coverage_role": {
+          "type": "string",
+          "enum": ["primary", "continuation", "summary", "supporting", "boilerplate", "unknown"]
+        },
+        "extraction_scope": {
+          "type": "string",
+          "enum": ["table", "element", "page", "multi_page_group"]
+        },
+        "requires_full_page_image": { "type": "boolean" },
+        "continuation_group": { "type": ["string", "null"], "maxLength": 80 },
+        "must_extract_reason": { "type": ["string", "null"], "maxLength": 180 },
+        "negative_routing_reason": { "type": ["string", "null"], "maxLength": 180 },
+        "min_expected_items": { "type": ["integer", "null"], "minimum": 0, "maximum": 500 },
+        "visual_bbox_hint": { "$ref": "#/$defs/visualBboxHint" }
+      }
+    },
+    "visualBboxHint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x1", "y1", "x2", "y2"],
+      "properties": {
+        "x1": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "y1": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "x2": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "y2": { "type": "integer", "minimum": 0, "maximum": 1000 }
       }
     },
     "grounding": {

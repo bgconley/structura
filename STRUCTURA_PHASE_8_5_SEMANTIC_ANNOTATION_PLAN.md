@@ -78,6 +78,44 @@ does not weaken Granite page/crop/table inputs.
 
 Fixture mode remains deterministic and must not claim Qwen or Granite provenance.
 
+## Qwen Smart Planner Contract
+
+Smart Parse uses prompt version `phase8_5-semantic-smart-v3`. The Qwen contract is
+recall-oriented semantic planning, not extraction:
+
+- Qwen must account for every input page image before selecting Granite targets.
+- Qwen must emit all materially extractable regions that could change downstream
+  factual coverage, bounded to 12 regions per request and usually no more than
+  three materially extractable regions per page.
+- Qwen must not output field values, money amounts, dates, names, addresses, or
+  canonical facts.
+- Qwen must keep Granite routing grounded to Docling IDs and use
+  `unmatched_region` only when a useful target cannot be grounded.
+- Qwen should emit competing `document_type_candidates` with evidence terms when
+  family fit is ambiguous, rather than forcing escrow/title/dispute/generic
+  documents into invoice, receipt, or medical EOB.
+- Qwen page annotations may carry `page_family_hints`, `continuation_group`,
+  `docling_table_signal`, `requires_cross_page_context`, and
+  `material_region_count_hint`.
+- Qwen region annotations may carry `importance`, `source_signal`,
+  `coverage_role`, `extraction_scope`, `requires_full_page_image`,
+  `continuation_group`, `must_extract_reason`, `negative_routing_reason`,
+  `min_expected_items`, and advisory `visual_bbox_hint`.
+- `planner_notes` are for routing warnings such as weak Docling table text,
+  conflicting family anchors, or continuation groups that require full-page
+  image context.
+
+Docling context sent to Qwen includes whole-document outline, first/last page
+snippets, lexical anchors, family hint tension, table inventory, and focused
+page details. It intentionally omits token-heavy bboxes, page image hashes, and
+the legacy duplicate `pages` alias in model prompts.
+
+The semantic canary can enforce private expectations through
+`scripts/gpu/run_phase8_5_semantic_canary.py --expectations-json <file>`. The
+committed example at
+`tests/fixtures/semantic_annotations/semantic_canary_expectations.example.json`
+documents the private canary shape without committing private PDFs.
+
 ## Data Model
 
 Migration `075_phase8_5_semantic_annotations.sql` adds:

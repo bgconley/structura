@@ -195,7 +195,7 @@ def test_qwen_client_falls_back_when_structured_output_request_is_rejected() -> 
     response = client.generate(
         VisionGenerateRequest(
             profile_name=QWEN_VL_PROFILE,
-            prompt_version="phase8_5-semantic-smart-v2",
+            prompt_version="phase8_5-semantic-smart-v3",
             prompt="Return JSON only",
             image_inputs=_request().image_inputs,
             response_schema_name="semantic_annotation_manifest",
@@ -239,7 +239,7 @@ def test_qwen_client_can_use_legacy_structured_outputs_payload_when_requested() 
     client.generate(
         VisionGenerateRequest(
             profile_name=QWEN_VL_PROFILE,
-            prompt_version="phase8_5-semantic-smart-v2",
+            prompt_version="phase8_5-semantic-smart-v3",
             prompt="Return JSON only",
             image_inputs=_request().image_inputs,
             response_schema_name="semantic_annotation_manifest",

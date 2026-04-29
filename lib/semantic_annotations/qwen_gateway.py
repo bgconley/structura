@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from dataclasses import replace
 from typing import Protocol
 from uuid import UUID
@@ -21,9 +20,9 @@ from lib.model_runtime.profiles import (
     QWEN_SEMANTIC_PROFILE,
     get_model_profile,
 )
-from lib.semantic_annotations.docling_context import build_docling_context
 from lib.semantic_annotations.manifest_merge import (
     merge_partial_manifests,
+    page_manifest_json,
     region_manifest_json,
 )
 from lib.semantic_annotations.models import (
@@ -36,6 +35,12 @@ from lib.semantic_annotations.models import (
 from lib.semantic_annotations.policy import (
     SemanticAnnotationValidationError,
     validate_manifest,
+)
+from lib.semantic_annotations.prompting import (
+    HIGH_QUALITY_PROMPT_VERSION,
+    RESCUE_PROMPT_VERSION,
+    SMART_PROMPT_VERSION,
+    build_semantic_planner_prompt,
 )
 from lib.semantic_annotations.qwen_output_normalization import (
     expected_fields_from_json,
@@ -54,6 +59,25 @@ from lib.storage import ObjectStorage
 MAX_SEMANTIC_MODEL_ATTEMPTS = 2
 SEMANTIC_PAGE_COVERAGE_FRAGMENT = "page coverage must exactly match docling pages"
 SINGLE_PAGE_FALLBACK_MAX_IMAGES = 1
+PAGE_PLANNER_METADATA_FIELDS = (
+    "page_family_hints",
+    "continuation_group",
+    "docling_table_signal",
+    "requires_cross_page_context",
+    "material_region_count_hint",
+)
+REGION_PLANNER_METADATA_FIELDS = (
+    "importance",
+    "source_signal",
+    "coverage_role",
+    "extraction_scope",
+    "requires_full_page_image",
+    "continuation_group",
+    "must_extract_reason",
+    "negative_routing_reason",
+    "min_expected_items",
+    "visual_bbox_hint",
+)
 
 
 class SemanticVisionClientProtocol(Protocol):
@@ -295,10 +319,10 @@ def _profile_for_mode(quality_mode: str) -> str:
 
 def _prompt_version_for_mode(quality_mode: str) -> str:
     if quality_mode == "high_quality":
-        return "phase8_5-semantic-high-quality-v1"
+        return HIGH_QUALITY_PROMPT_VERSION
     if quality_mode == "rescue":
-        return "phase8_5-semantic-rescue-v1"
-    return "phase8_5-semantic-smart-v2"
+        return RESCUE_PROMPT_VERSION
+    return SMART_PROMPT_VERSION
 
 
 def _max_image_inputs_for_profile(profile_name: str) -> int:
@@ -355,43 +379,7 @@ def _prompt(
     *,
     focus_page_numbers: set[int] | None = None,
 ) -> str:
-    context = build_docling_context(
-        source,
-        focus_page_numbers=focus_page_numbers,
-        include_pages_alias=False,
-        include_page_image_hashes=False,
-        include_element_bboxes=False,
-    )
-    context_json = json.dumps(context, sort_keys=True, separators=(",", ":"))
-    return (
-        "You are Structura's semantic annotation planner. Return valid JSON only as compact "
-        "semantic scout JSON, matching the provided semantic_annotation_model_output JSON "
-        "Schema. Docling is the physical parse authority: use Docling page_id, element_id, "
-        "and table_id from the context instead of inventing coordinates. This is semantic "
-        "planning, not extraction: do not output field values, money amounts, dates, names, or "
-        "canonical facts. expected_fields must contain field names only, using snake_case "
-        "names such as total_amount or patient_responsibility. Produce exactly one page "
-        "annotation for each input page image. Return no more than 6 regions total for "
-        "this request, and no more than 8 expected_fields per region. Select only the "
-        "highest-value Granite routing targets; do not enumerate every visible field. "
-        "Keep each reason to one short sentence and do not repeat equivalent regions. "
-        "Do not add top-level confidence; page and region confidence values are sufficient. "
-        "Add region annotations only for useful Granite extraction targets or no-op boilerplate. "
-        "Use target_schema medical_eob for EOB, insurance, denial, and medical billing "
-        "documents; invoice for bills and invoices; receipt for receipts, retail orders, "
-        "and service records; document_observation for generic observations, seller/title "
-        "information, escrow summaries, dispute forms, and useful unsupported forms; otherwise "
-        "null; do not force unfamiliar documents into invoice, receipt, or medical EOB. "
-        "Use granite_task kvp for summary/key-value blocks, "
-        "tables_json for line-item tables, tables_html or tables_otsl only when table "
-        "structure requires it, and ignore for boilerplate. Mark unmatched_region, "
-        "review_required=true, and low confidence when a useful target cannot be "
-        "grounded to Docling IDs. Set "
-        "needs_high_quality_pass for poor OCR, ambiguity, validation-sensitive medical, "
-        "legal, tax, or financial documents, or low confidence. "
-        "Docling context: "
-        f"{context_json}"
-    )
+    return build_semantic_planner_prompt(source, focus_page_numbers=focus_page_numbers)
 
 
 def _image_inputs(
@@ -442,6 +430,7 @@ def _manifest_from_response(
         document_type_hint=document_type_hint,
     )
     sanitized_payload = dict(normalized)
+    sanitized_payload["pages"] = [page_manifest_json(page) for page in pages]
     sanitized_payload["regions"] = [region_manifest_json(region) for region in regions]
     confidence = _confidence_from_payload(normalized)
     if model_output.normalization:
@@ -504,6 +493,10 @@ def _page_from_json(item: object) -> PageSemanticAnnotation:
         escalation_required=bool(item.get("escalation_required", False)),
         reason=str(item["reason"]) if item.get("reason") else None,
         confidence=float(item["confidence"]) if item.get("confidence") is not None else None,
+        metadata={
+            **_metadata_from_fields(item, PAGE_PLANNER_METADATA_FIELDS),
+            **_page_escalation_metadata(item),
+        },
     )
 
 
@@ -528,7 +521,24 @@ def _region_from_json(item: object) -> SemanticRegionAnnotation:
         review_required=bool(item.get("review_required", False)),
         reason=str(item["reason"]) if item.get("reason") else None,
         confidence=float(item["confidence"]) if item.get("confidence") is not None else None,
+        metadata=_metadata_from_fields(item, REGION_PLANNER_METADATA_FIELDS),
     )
+
+
+def _metadata_from_fields(
+    item: dict[str, object],
+    fields: tuple[str, ...],
+) -> dict[str, object]:
+    return {field: item[field] for field in fields if field in item}
+
+
+def _page_escalation_metadata(item: dict[str, object]) -> dict[str, object]:
+    escalation_reasons = item.get("escalation_reasons")
+    if not isinstance(escalation_reasons, list):
+        return {}
+    return {
+        "escalation_reasons": [reason for reason in escalation_reasons if isinstance(reason, str)]
+    }
 
 
 def _repair_region_grounding_for_source(

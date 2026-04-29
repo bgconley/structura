@@ -35,7 +35,7 @@ def test_merge_prefers_docling_anchored_document_type_over_first_chunk() -> None
         partials,
         quality_mode="smart",
         profile_name="qwen3-vl-4b-semantic:v1",
-        prompt_version="phase8_5-semantic-smart-v2",
+        prompt_version="phase8_5-semantic-smart-v3",
     )
 
     assert merged.manifest["document_type"] == "mortgage_escrow_statement"
@@ -116,7 +116,7 @@ def _partial(
         source_engine="qwen3_vl_4b",
         model_name="Qwen/Qwen3-VL-4B-Instruct",
         model_version="test",
-        prompt_version="phase8_5-semantic-smart-v2",
+        prompt_version="phase8_5-semantic-smart-v3",
         pages=[
             PageSemanticAnnotation(
                 page_id=page.page_id,

@@ -9,7 +9,7 @@ import subprocess  # nosec B404
 import sys
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -649,7 +649,7 @@ def _failed_jobs(document_id: UUID, *, queue_name: str) -> list[dict[str, Any]]:
                 (document_id, queue_name),
             )
             rows = cur.fetchall()
-    return _json_safe(rows)
+    return cast(list[dict[str, Any]], _json_safe(rows))
 
 
 def _summarize_document(document_id: UUID) -> dict[str, Any]:

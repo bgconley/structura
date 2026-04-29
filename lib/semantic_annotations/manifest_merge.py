@@ -47,6 +47,25 @@ _ANCHOR_VOTE_WEIGHT = 1.25
 _SOURCE_FAMILY_VOTE_WEIGHT = 0.35
 _PARTIAL_DOCUMENT_TYPE_WEIGHT = 0.5
 _UNANCHORED_CONFLICT_MARGIN = 0.5
+_PAGE_MANIFEST_METADATA_FIELDS = (
+    "page_family_hints",
+    "continuation_group",
+    "docling_table_signal",
+    "requires_cross_page_context",
+    "material_region_count_hint",
+)
+_REGION_MANIFEST_METADATA_FIELDS = (
+    "importance",
+    "source_signal",
+    "coverage_role",
+    "extraction_scope",
+    "requires_full_page_image",
+    "continuation_group",
+    "must_extract_reason",
+    "negative_routing_reason",
+    "min_expected_items",
+    "visual_bbox_hint",
+)
 
 
 @dataclass(frozen=True)
@@ -95,6 +114,35 @@ def merge_partial_manifests(
     }
     if overall_values:
         confidence["overall"] = sum(overall_values) / len(overall_values)
+    manifest_payload: dict[str, object] = {
+        "schema_name": "semantic_annotation_manifest",
+        "schema_version": "v1",
+        "document_type": document_type_resolution.selected,
+        "pages": [page_manifest_json(page) for page in pages],
+        "regions": [region_manifest_json(region) for region in regions],
+        "quality_flags": {
+            "needs_high_quality_pass": any(
+                bool(partial.manifest.get("quality_flags", {}).get("needs_high_quality_pass"))
+                for partial in partials
+                if isinstance(partial.manifest.get("quality_flags"), dict)
+            ),
+            "visual_degradation": any(
+                bool(partial.manifest.get("quality_flags", {}).get("visual_degradation"))
+                for partial in partials
+                if isinstance(partial.manifest.get("quality_flags"), dict)
+            ),
+        },
+        "confidence": confidence,
+    }
+    document_type_candidates = _document_type_candidates_from_partials(
+        document_type_resolution,
+        partials,
+    )
+    if document_type_candidates:
+        manifest_payload["document_type_candidates"] = document_type_candidates
+    planner_notes = _planner_notes_from_partials(partials)
+    if planner_notes:
+        manifest_payload["planner_notes"] = planner_notes
     return DocumentSemanticManifest(
         document_id=source.document_id,
         household_id=source.household_id,
@@ -107,26 +155,7 @@ def merge_partial_manifests(
         pages=pages,
         regions=regions,
         confidence=confidence,
-        manifest={
-            "schema_name": "semantic_annotation_manifest",
-            "schema_version": "v1",
-            "document_type": document_type_resolution.selected,
-            "pages": [page_manifest_json(page) for page in pages],
-            "regions": [region_manifest_json(region) for region in regions],
-            "quality_flags": {
-                "needs_high_quality_pass": any(
-                    bool(partial.manifest.get("quality_flags", {}).get("needs_high_quality_pass"))
-                    for partial in partials
-                    if isinstance(partial.manifest.get("quality_flags"), dict)
-                ),
-                "visual_degradation": any(
-                    bool(partial.manifest.get("quality_flags", {}).get("visual_degradation"))
-                    for partial in partials
-                    if isinstance(partial.manifest.get("quality_flags"), dict)
-                ),
-            },
-            "confidence": confidence,
-        },
+        manifest=manifest_payload,
         review_required=any(region.review_required for region in regions),
         input_page_hashes=tuple(
             page_hash for partial in partials for page_hash in partial.input_page_hashes
@@ -194,7 +223,7 @@ def resolve_document_type(
 
 
 def page_manifest_json(page: PageSemanticAnnotation) -> dict[str, object]:
-    return {
+    payload: dict[str, object] = {
         "page_id": str(page.page_id),
         "page_number": page.page_number,
         "page_role": page.page_role,
@@ -204,13 +233,18 @@ def page_manifest_json(page: PageSemanticAnnotation) -> dict[str, object]:
         "has_structured_targets": page.has_structured_targets,
         "ambiguous": page.ambiguous,
         "escalation_required": page.escalation_required,
+        "escalation_reasons": list(page.metadata.get("escalation_reasons", []))
+        if isinstance(page.metadata.get("escalation_reasons"), list)
+        else [],
         "reason": page.reason,
         "confidence": page.confidence,
     }
+    payload.update(_manifest_metadata(page.metadata, _PAGE_MANIFEST_METADATA_FIELDS))
+    return payload
 
 
 def region_manifest_json(region: SemanticRegionAnnotation) -> dict[str, object]:
-    return {
+    payload: dict[str, object] = {
         "semantic_type": region.semantic_type,
         "priority": region.priority,
         "granite_task": region.granite_task,
@@ -228,6 +262,83 @@ def region_manifest_json(region: SemanticRegionAnnotation) -> dict[str, object]:
         "reason": region.reason,
         "confidence": region.confidence,
     }
+    payload.update(_manifest_metadata(region.metadata, _REGION_MANIFEST_METADATA_FIELDS))
+    return payload
+
+
+def _manifest_metadata(
+    metadata: dict[str, Any],
+    allowed_fields: tuple[str, ...],
+) -> dict[str, object]:
+    return {field: metadata[field] for field in allowed_fields if field in metadata}
+
+
+def _document_type_candidates_from_partials(
+    resolution: DocumentTypeResolution,
+    partials: list[DocumentSemanticManifest],
+) -> list[dict[str, object]]:
+    candidates: list[dict[str, object]] = []
+    seen: set[str] = set()
+    for partial in partials:
+        raw_candidates = partial.manifest.get("document_type_candidates")
+        if not isinstance(raw_candidates, list):
+            continue
+        for item in raw_candidates:
+            if not isinstance(item, dict):
+                continue
+            document_type = _normalized_document_type(item.get("document_type"))
+            if document_type is None or document_type in seen:
+                continue
+            candidates.append(
+                {
+                    "document_type": document_type,
+                    "confidence": item.get("confidence"),
+                    "evidence_terms": _string_list(item.get("evidence_terms"), limit=8),
+                    "reason": item.get("reason") if isinstance(item.get("reason"), str) else None,
+                }
+            )
+            seen.add(document_type)
+            if len(candidates) >= 4:
+                return candidates
+    max_score = max(resolution.votes.values(), default=1.0)
+    for document_type, score in resolution.votes.items():
+        if document_type in seen:
+            continue
+        candidates.append(
+            {
+                "document_type": document_type,
+                "confidence": min(1.0, max(0.0, score / max(1.0, max_score))),
+                "evidence_terms": list(resolution.anchor_hints)[:8],
+                "reason": resolution.reason,
+            }
+        )
+        seen.add(document_type)
+        if len(candidates) >= 4:
+            break
+    return candidates
+
+
+def _planner_notes_from_partials(partials: list[DocumentSemanticManifest]) -> list[str]:
+    notes: list[str] = []
+    for partial in partials:
+        raw_notes = partial.manifest.get("planner_notes")
+        if not isinstance(raw_notes, list):
+            continue
+        for item in raw_notes:
+            if not isinstance(item, str):
+                continue
+            note = item.strip()
+            if note and note not in notes:
+                notes.append(note[:160])
+                if len(notes) >= 6:
+                    return notes
+    return notes
+
+
+def _string_list(value: object, *, limit: int) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [item.strip()[:64] for item in value if isinstance(item, str) and item.strip()][:limit]
 
 
 def _should_downgrade_to_generic_form(

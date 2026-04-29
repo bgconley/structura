@@ -71,6 +71,8 @@ class TableAuditSummary:
     table_index: int
     markdown_snippet: str
     has_table_json: bool
+    table_signal: str
+    weak_signal_reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -82,7 +84,9 @@ class DoclingAudit:
     page_snippets: tuple[PageAuditSnippet, ...]
     table_summaries: tuple[TableAuditSummary, ...]
     lexical_anchors: tuple[str, ...]
+    anchor_counts: dict[str, int]
     suggested_family_hints: tuple[str, ...]
+    family_tension: tuple[str, ...]
 
     def to_json(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -107,6 +111,11 @@ def build_docling_audit(source: ExtractionSourceDocument) -> DoclingAudit:
         )
     )
     anchor_hits = _anchor_hits(text)
+    suggested_family_hints = tuple(
+        family
+        for family in FAMILY_ANCHORS
+        if len(anchor_hits.get(family, ())) >= _hint_threshold(family)
+    )
     return DoclingAudit(
         document_id=source.document_id,
         page_count=len(source.pages),
@@ -117,11 +126,9 @@ def build_docling_audit(source: ExtractionSourceDocument) -> DoclingAudit:
         lexical_anchors=tuple(
             sorted({anchor for anchors in anchor_hits.values() for anchor in anchors})
         ),
-        suggested_family_hints=tuple(
-            family
-            for family in FAMILY_ANCHORS
-            if len(anchor_hits.get(family, ())) >= _hint_threshold(family)
-        ),
+        anchor_counts={family: len(anchors) for family, anchors in anchor_hits.items()},
+        suggested_family_hints=suggested_family_hints,
+        family_tension=_family_tension(suggested_family_hints),
     )
 
 
@@ -167,9 +174,48 @@ def _table_summaries(source: ExtractionSourceDocument) -> list[TableAuditSummary
             table_index=table.table_index,
             markdown_snippet=_snippet(table.table_markdown or "", TABLE_SNIPPET_CHARS),
             has_table_json=bool(table.table_json),
+            table_signal=_table_signal(table.table_markdown, table.table_json),
+            weak_signal_reason=_weak_table_signal_reason(table.table_markdown, table.table_json),
         )
         for table in source.tables
     ]
+
+
+def _table_signal(table_markdown: str | None, table_json: dict[str, Any]) -> str:
+    row_count = _markdown_row_count(table_markdown)
+    json_row_count = _table_json_row_count(table_json)
+    if row_count >= 2 or json_row_count >= 2 or (row_count >= 1 and json_row_count >= 1):
+        return "strong"
+    if (table_markdown or "").strip() or table_json:
+        return "weak"
+    return "none"
+
+
+def _weak_table_signal_reason(
+    table_markdown: str | None,
+    table_json: dict[str, Any],
+) -> str | None:
+    signal = _table_signal(table_markdown, table_json)
+    if signal != "weak":
+        return None
+    if not (table_markdown or "").strip():
+        return "missing_markdown"
+    if _markdown_row_count(table_markdown) < 2:
+        return "too_few_markdown_rows"
+    if table_json and _table_json_row_count(table_json) < 2:
+        return "too_few_json_rows"
+    return "weak_table_structure"
+
+
+def _markdown_row_count(table_markdown: str | None) -> int:
+    if not table_markdown:
+        return 0
+    return sum(1 for line in table_markdown.splitlines() if "|" in line and line.strip("| "))
+
+
+def _table_json_row_count(table_json: dict[str, Any]) -> int:
+    rows = table_json.get("rows") if isinstance(table_json, dict) else None
+    return len(rows) if isinstance(rows, list) else 0
 
 
 def _anchor_hits(text: str) -> dict[str, tuple[str, ...]]:
@@ -189,6 +235,12 @@ def _hint_threshold(family: str) -> int:
     if family in {"real_estate_title", "mortgage_escrow_statement"}:
         return 1
     return 2
+
+
+def _family_tension(suggested_family_hints: tuple[str, ...]) -> tuple[str, ...]:
+    if len(suggested_family_hints) <= 1:
+        return ()
+    return tuple(suggested_family_hints)
 
 
 def _normalized_text(value: str) -> str:

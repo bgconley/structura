@@ -64,15 +64,15 @@ def test_live_qwen_smart_gateway_builds_truthful_qwen3_vl_4b_manifest() -> None:
 
     assert result.manifest.source_engine == "qwen3_vl_4b"
     assert result.manifest.profile_name == QWEN_SEMANTIC_PROFILE
-    assert result.manifest.prompt_version == "phase8_5-semantic-smart-v2"
+    assert result.manifest.prompt_version == "phase8_5-semantic-smart-v3"
     assert client.request is not None
     assert "Docling context" in client.request.prompt
     assert '"focusPages":' in client.request.prompt
-    assert '"pages":' not in client.request.prompt
     context_json = client.request.prompt.split("Docling context: ", 1)[1]
     assert '": ' not in context_json
     assert ', "' not in context_json
     prompt_context = json.loads(context_json)
+    assert "pages" not in prompt_context
     assert "imageSha256" not in prompt_context["focusPages"][0]
     assert "bbox" not in prompt_context["focusPages"][0]["elements"][0]
     assert client.request.image_inputs[0].content == b"page-image"
@@ -96,14 +96,17 @@ def test_live_qwen_gateway_prompt_keeps_semantic_planning_but_not_tiny_region_li
     assert client.request is not None
     prompt = client.request.prompt
     assert "Return valid JSON only" in prompt
-    assert "Docling is the physical parse authority" in prompt
+    assert "Docling page_id, element_id, and table_id" in prompt
     assert "semantic planning, not extraction" in prompt
     assert "expected_fields must contain field names only" in prompt
-    assert "Return no more than 6 regions total" in prompt
-    assert "do not enumerate every visible field" in prompt
+    assert "Emit all materially extractable regions" in prompt
+    assert "Use no more than 12 regions total" in prompt
+    assert "Return no more than 6 regions total" not in prompt
+    assert "highest-value Granite routing targets" not in prompt
+    assert "do not enumerate every visible field" not in prompt
     assert "generic observations" in prompt
-    assert "do not force unfamiliar documents into invoice, receipt, or medical EOB" in prompt
-    assert "compact semantic scout JSON" in prompt
+    assert "Do not force unfamiliar documents into invoice, receipt, or medical_eob" in prompt
+    assert "semantic_annotation_model_output JSON" in prompt
     assert "canonical semantic manifest" not in prompt
     assert "at most two regions total" not in prompt
     assert "max_output_tokens" not in prompt
@@ -222,7 +225,7 @@ def test_live_qwen_high_quality_gateway_caps_alternate_page_annotation_regions()
         quality_mode="high_quality",
     )
 
-    assert len(result.manifest.regions) == 6
+    assert len(result.manifest.regions) == 8
     assert result.manifest.regions[0].expected_fields == ("field_0",)
 
 
@@ -256,13 +259,85 @@ def test_live_qwen_high_quality_gateway_normalizes_single_page_wrapper_shape() -
         quality_mode="high_quality",
     )
 
-    assert len(result.manifest.regions) == 6
+    assert len(result.manifest.regions) == 9
     region = result.manifest.regions[0]
     assert region.grounding.kind == "element"
     assert region.grounding.element_id == element.element_id
     assert region.granite_task == "kvp"
     assert region.target_schema == "medical_eob"
     assert region.expected_fields == ("deadline_field_0",)
+
+
+def test_live_qwen_gateway_preserves_planner_metadata_in_manifest() -> None:
+    source = _source_with_page_image()
+    payload = _semantic_payload(source.pages[0].page_id)
+    pages = payload["pages"]
+    assert isinstance(pages, list)
+    page = pages[0]
+    assert isinstance(page, dict)
+    page.update(
+        {
+            "page_family_hints": ["invoice", "receipt"],
+            "continuation_group": "service-lines",
+            "docling_table_signal": "weak",
+            "requires_cross_page_context": False,
+            "material_region_count_hint": 0,
+        }
+    )
+    regions = payload["regions"]
+    assert isinstance(regions, list)
+    region = regions[0]
+    assert isinstance(region, dict)
+    region.update(
+        {
+            "importance": "critical",
+            "source_signal": "mixed",
+            "coverage_role": "primary",
+            "extraction_scope": "page",
+            "requires_full_page_image": False,
+            "continuation_group": "service-lines",
+            "must_extract_reason": "Visible total region.",
+            "negative_routing_reason": "Not a medical EOB.",
+            "min_expected_items": 0,
+            "visual_bbox_hint": {"x1": 0, "y1": 0, "x2": 1000, "y2": 500},
+        }
+    )
+    payload["document_type_candidates"] = [
+        {
+            "document_type": "invoice",
+            "confidence": 0.9,
+            "evidence_terms": ["invoice"],
+            "reason": "invoice anchor present",
+        }
+    ]
+    payload["planner_notes"] = ["Docling table text is weak; use full page image."]
+    client = FakeSemanticVisionClient(
+        profile_name=QWEN_SEMANTIC_PROFILE,
+        source_engine="qwen3_vl_4b",
+        normalized_json=payload,
+    )
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
+
+    page_annotation = result.manifest.pages[0]
+    assert page_annotation.metadata["requires_cross_page_context"] is False
+    assert page_annotation.metadata["material_region_count_hint"] == 0
+    persisted_page = result.manifest.manifest["pages"][0]
+    assert isinstance(persisted_page, dict)
+    assert persisted_page["requires_cross_page_context"] is False
+    assert persisted_page["material_region_count_hint"] == 0
+    region_annotation = result.manifest.regions[0]
+    assert region_annotation.metadata["requires_full_page_image"] is False
+    assert region_annotation.metadata["min_expected_items"] == 0
+    persisted_region = result.manifest.manifest["regions"][0]
+    assert isinstance(persisted_region, dict)
+    assert persisted_region["importance"] == "critical"
+    assert persisted_region["requires_full_page_image"] is False
+    assert persisted_region["min_expected_items"] == 0
+    assert result.manifest.manifest["document_type_candidates"]
+    assert result.manifest.manifest["planner_notes"] == [
+        "Docling table text is weak; use full page image."
+    ]
 
 
 def test_live_qwen_high_quality_gateway_normalizes_nested_pages_shape() -> None:
@@ -1000,7 +1075,7 @@ def _semantic_payload(page_id) -> dict[str, object]:
     return _semantic_payload_for_pages([page_id])
 
 
-def _docling_context_from_prompt(prompt: str) -> dict[str, object]:
+def _docling_context_from_prompt(prompt: str) -> dict[str, Any]:
     _, context_json = prompt.split("Docling context: ", 1)
     context = json.loads(context_json)
     assert isinstance(context, dict)

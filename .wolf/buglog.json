@@ -1032,6 +1032,18 @@
       "related_bugs": ["bug-081"],
       "occurrences": 1,
       "last_seen": "2026-04-29T10:05:00-04:00"
+    },
+    {
+      "id": "bug-087",
+      "timestamp": "2026-04-29T15:55:00-04:00",
+      "error_message": "Qwen3-VL-4B Smart Parse emitted an overly lean semantic manifest for the BMW service invoice, leaving material service-line/payment routing underrepresented before Granite.",
+      "file": "lib/semantic_annotations/prompting.py",
+      "root_cause": "The semantic planner contract was sparse by design: prompt wording asked for only the highest-value Granite routing targets, the model-output schema capped regions at six total, and Smart Parse Granite enqueue capped execution at four jobs. This caused useful service-line, continuation, and payment regions to be easy to omit or discard.",
+      "fix": "Introduced Smart Parse prompt version phase8_5-semantic-smart-v3 as a bounded-recall planner, raised semantic model-output regions to 12, preserved planner metadata through normalization/manifest serialization, enriched Docling context with weak-table/family-tension clues, expanded semantic canary expectations, and raised smart Granite fanout to six with line-item/payment priority.",
+      "tags": ["phase-8.5", "qwen3-vl-4b", "semantic-routing", "bmw", "granite-fanout"],
+      "related_bugs": ["bug-081", "bug-086"],
+      "occurrences": 1,
+      "last_seen": "2026-04-29T15:55:00-04:00"
     }
   ]
 }

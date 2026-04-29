@@ -31,9 +31,32 @@ from lib.semantic_annotations.schema_fit import SchemaFitDecision, schema_fit_fo
 from lib.semantic_annotations.task_routing import corrected_granite_task_for_semantic_type
 
 MAX_GRANITE_TASKS_BY_QUALITY_MODE = {
-    "smart": 4,
+    "smart": 6,
     "high_quality": 8,
     "rescue": 1,
+}
+_LINE_ITEM_SEMANTIC_TYPES = {
+    "covered_services_line_item_table",
+    "invoice_line_item_table",
+    "receipt_line_item_table",
+    "retail_order_line_item_table",
+    "service_record_line_item_table",
+    "dispute_transaction_table",
+}
+_SUMMARY_SEMANTIC_TYPES = {
+    "billing_summary",
+    "payment_summary",
+    "patient_responsibility_summary",
+    "receipt_payment_summary",
+    "escrow_summary",
+    "mortgage_payment_summary",
+}
+_LOW_VALUE_SEMANTIC_TYPES = {
+    "document_header",
+    "boilerplate",
+    "unsupported_document_region",
+    "no_extraction_target",
+    "unmatched_region",
 }
 
 
@@ -342,12 +365,37 @@ def _target_schema_for_region(
 
 def _priority_for_region(region: SemanticRegionAnnotation) -> int:
     if region.priority == "critical":
-        return 28
-    if region.priority == "high":
-        return 32
-    if region.priority == "medium":
-        return 38
-    return 44
+        base = 28
+    elif region.priority == "high":
+        base = 32
+    elif region.priority == "medium":
+        base = 38
+    else:
+        base = 44
+
+    if region.semantic_type in _LINE_ITEM_SEMANTIC_TYPES:
+        base -= 8
+    elif region.semantic_type in _SUMMARY_SEMANTIC_TYPES:
+        base -= 4
+    elif region.semantic_type in _LOW_VALUE_SEMANTIC_TYPES:
+        base += 8
+
+    coverage_role = region.metadata.get("coverage_role")
+    if coverage_role == "primary":
+        base -= 2
+    elif coverage_role == "continuation":
+        base -= 1
+    elif coverage_role in {"supporting", "boilerplate"}:
+        base += 4
+
+    if region.metadata.get("source_signal") == "table":
+        base -= 2
+    if region.metadata.get("requires_full_page_image") is True and (
+        region.semantic_type in _LINE_ITEM_SEMANTIC_TYPES
+    ):
+        base -= 1
+
+    return max(1, base)
 
 
 def _granite_job_specs(
@@ -360,9 +408,7 @@ def _granite_job_specs(
         repaired_region, repair_metadata = _region_for_granite_job(region)
         if not _should_enqueue_granite(repaired_region):
             continue
-        schema_fit = _target_schema_for_region(
-            repaired_region, source, manifest_result.manifest
-        )
+        schema_fit = _target_schema_for_region(repaired_region, source, manifest_result.manifest)
         if not schema_fit.target_schema:
             continue
         specs.append(

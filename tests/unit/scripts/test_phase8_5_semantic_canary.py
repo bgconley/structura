@@ -25,6 +25,120 @@ def test_semantic_canary_parser_supports_expected_modes_and_skip_granite() -> No
         assert str(args.json_output) == "/tmp/semantic-canary.json"
 
 
+def test_semantic_canary_parser_supports_expectations_json() -> None:
+    args = semantic_canary.parse_args(
+        [
+            "--document-id",
+            str(uuid4()),
+            "--expectations-json",
+            "tests/fixtures/semantic_annotations/semantic_canary_expectations.example.json",
+        ]
+    )
+
+    assert str(args.expectations_json).endswith("semantic_canary_expectations.example.json")
+
+
+def test_semantic_canary_scores_document_family_and_regions() -> None:
+    report = {
+        "document_id": str(uuid4()),
+        "filename": "BMW CE-04 600mi run in service and tire service 04-23.pdf",
+        "title": "BMW service",
+        "docling": {
+            "page_count": 3,
+            "suggested_family_hints": [],
+            "lexical_anchors": [],
+            "table_summaries": [{"table_signal": "weak"}],
+        },
+        "semantic": {
+            "document_type": "service_record",
+            "page_document_hints": [{"page_number": 1}, {"page_number": 2}, {"page_number": 3}],
+            "regions": [
+                {
+                    "semantic_type": "service_record_line_item_table",
+                    "target_schema": "receipt",
+                    "continuation_group": "service_lines",
+                    "requires_full_page_image": True,
+                    "source_signal": "mixed",
+                },
+                {
+                    "semantic_type": "receipt_payment_summary",
+                    "target_schema": "receipt",
+                },
+                {
+                    "semantic_type": "vehicle_or_asset_block",
+                    "target_schema": "document_observation",
+                },
+            ],
+        },
+    }
+    expectations = {
+        "documents": {
+            "BMW CE-04 600mi run in service and tire service 04-23.pdf": {
+                "expected_document_types": ["service_record", "receipt"],
+                "forbidden_document_types": ["medical_eob"],
+                "required_semantic_types": ["service_record_line_item_table"],
+                "required_target_schemas": ["receipt"],
+                "required_continuation_groups": ["service_lines"],
+                "required_docling_table_signals": ["weak"],
+                "required_full_page_image_semantic_types": ["service_record_line_item_table"],
+                "required_region_attributes": [
+                    {
+                        "semantic_type": "service_record_line_item_table",
+                        "field": "source_signal",
+                        "value": "mixed",
+                    }
+                ],
+                "min_region_count": 3,
+                "require_page_coverage": True,
+            }
+        }
+    }
+
+    scorecard = semantic_canary._score_documents([report], expectations)
+
+    assert scorecard["passed"] is True
+    assert scorecard["documents"][0]["passed"] is True
+
+
+def test_semantic_canary_scores_forbidden_masquerade_failure() -> None:
+    report = {
+        "document_id": str(uuid4()),
+        "filename": "UWM Final Escrow Statement 4-29-24.pdf",
+        "title": "UWM escrow",
+        "docling": {
+            "page_count": 1,
+            "suggested_family_hints": ["mortgage_escrow_statement"],
+            "lexical_anchors": ["escrow"],
+        },
+        "semantic": {
+            "document_type": "medical_eob",
+            "page_document_hints": [{"page_number": 1}],
+            "regions": [],
+        },
+    }
+    expectations = {
+        "documents": {
+            "UWM Final Escrow Statement 4-29-24.pdf": {
+                "expected_document_types": ["mortgage_escrow_statement", "generic_form"],
+                "forbidden_document_types": ["medical_eob"],
+                "required_semantic_types": ["escrow_summary"],
+                "require_page_coverage": True,
+            }
+        }
+    }
+
+    scorecard = semantic_canary._score_documents([report], expectations)
+
+    assert scorecard["passed"] is False
+    checks = scorecard["documents"][0]["checks"]
+    assert any(
+        check["name"] == "forbidden_document_type" and not check["passed"] for check in checks
+    )
+    assert any(
+        check["name"] == "required_semantic_types" and not check["passed"] for check in checks
+    )
+
+
 def test_semantic_canary_estimates_adaptive_fan_in_with_fallback() -> None:
     sequence = semantic_canary._image_fan_in_sequence(
         page_count=3,
