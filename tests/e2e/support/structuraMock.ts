@@ -669,6 +669,22 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
       return;
     }
 
+    const semanticAllowRescueMatch = url.pathname.match(
+      /^\/api\/v1\/documents\/([^/]+)\/semantic-annotations\/allow-8b-rescue$/,
+    );
+    if (semanticAllowRescueMatch && request.method() === "POST") {
+      expect(request.headers()["x-csrf-token"]).toBe(expectedCsrfToken);
+      const document = documents.get(semanticAllowRescueMatch[1]);
+      await route.fulfill({
+        status: document ? 202 : 404,
+        headers: {"Content-Type": "application/json", ...corsHeaders},
+        json: document
+          ? {jobId: "86868686-8686-4686-8686-868686868686", status: "queued"}
+          : {detail: "Document not found"},
+      });
+      return;
+    }
+
     const detailMatch = url.pathname.match(/^\/api\/v1\/documents\/([^/]+)$/);
     if (detailMatch && request.method() === "GET") {
       const document = documents.get(detailMatch[1]);

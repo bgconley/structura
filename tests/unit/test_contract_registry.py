@@ -303,6 +303,10 @@ def test_all_job_event_schemas_validate_representative_payloads() -> None:
             "semantic_granite_task": "tables_json",
             "semantic_type": "invoice_line_item_table",
             "semantic_expected_fields": ["line_items"],
+            "semantic_quality_mode": "smart",
+            "allow_8b_rescue": False,
+            "requested_by_user_id": UUID_1,
+            "user_intent_reason": "User allowed one 8B rescue.",
         },
         "semantic_annotate_document_job.v1.schema.json": {
             "schema_name": "semantic_annotate_document_job",
@@ -311,7 +315,11 @@ def test_all_job_event_schemas_validate_representative_payloads() -> None:
             "created_at": TIMESTAMP,
             "document_id": UUID_2,
             "quality_mode": "smart",
+            "semantic_quality_mode": "smart",
+            "allow_8b_rescue": False,
             "requested_by": "system",
+            "requested_by_user_id": UUID_1,
+            "user_intent_reason": "Default Smart Parse.",
         },
         "embed_document_job.v1.schema.json": {
             "schema_name": "embed_document_job",

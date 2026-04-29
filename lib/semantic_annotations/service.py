@@ -82,7 +82,15 @@ class SemanticAnnotationService:
         *,
         quality_mode: QualityMode = "smart",
         requested_by: str = "system",
+        allow_8b_rescue: bool = False,
+        requested_by_user_id: UUID | None = None,
+        user_intent_reason: str | None = None,
     ) -> SemanticAnnotationRunResult:
+        _validate_qwen8b_intent(
+            quality_mode=quality_mode,
+            requested_by=requested_by,
+            allow_8b_rescue=allow_8b_rescue,
+        )
         source = self.source_loader(document_id)
         if source.document_id != document_id:
             raise SemanticAnnotationServiceError("Loaded source document ID mismatch.")
@@ -92,6 +100,9 @@ class SemanticAnnotationService:
                 source,
                 manifest_result,
                 requested_by=requested_by,
+                allow_8b_rescue=allow_8b_rescue,
+                requested_by_user_id=requested_by_user_id,
+                user_intent_reason=user_intent_reason,
             )
         persisted = self.manifest_persister(manifest_result.manifest)
         queued_job_ids = self._enqueue_granite_jobs(
@@ -99,6 +110,9 @@ class SemanticAnnotationService:
             manifest_result,
             persisted,
             requested_by=requested_by,
+            allow_8b_rescue=allow_8b_rescue,
+            requested_by_user_id=requested_by_user_id,
+            user_intent_reason=user_intent_reason,
         )
         return SemanticAnnotationRunResult(
             annotation_id=persisted.annotation_id,
@@ -112,6 +126,9 @@ class SemanticAnnotationService:
         manifest_result: SemanticAnnotationResult,
         *,
         requested_by: str,
+        allow_8b_rescue: bool,
+        requested_by_user_id: UUID | None,
+        user_intent_reason: str | None,
     ) -> SemanticAnnotationRunResult:
         with db_connection() as conn:
             with conn.cursor() as cur:
@@ -125,6 +142,9 @@ class SemanticAnnotationService:
                     manifest_result,
                     persisted,
                     requested_by=requested_by,
+                    allow_8b_rescue=allow_8b_rescue,
+                    requested_by_user_id=requested_by_user_id,
+                    user_intent_reason=user_intent_reason,
                 )
             conn.commit()
         return SemanticAnnotationRunResult(
@@ -140,6 +160,9 @@ class SemanticAnnotationService:
         persisted: PersistedSemanticManifest,
         *,
         requested_by: str,
+        allow_8b_rescue: bool,
+        requested_by_user_id: UUID | None,
+        user_intent_reason: str | None,
     ) -> list[UUID]:
         queued: list[UUID] = []
         for spec in _granite_job_specs(source, manifest_result, persisted):
@@ -162,6 +185,12 @@ class SemanticAnnotationService:
                     semantic_granite_task=spec.region.granite_task,
                     semantic_type=spec.region.semantic_type,
                     semantic_expected_fields=spec.region.expected_fields,
+                    semantic_quality_mode=_semantic_quality_mode(
+                        manifest_result.manifest.quality_mode
+                    ),
+                    allow_8b_rescue=allow_8b_rescue,
+                    requested_by_user_id=requested_by_user_id,
+                    user_intent_reason=user_intent_reason,
                     semantic_rescue=manifest_result.manifest.quality_mode == "rescue",
                 ),
                 priority=spec.priority,
@@ -180,6 +209,9 @@ class SemanticAnnotationService:
         persisted: PersistedSemanticManifest,
         *,
         requested_by: str,
+        allow_8b_rescue: bool,
+        requested_by_user_id: UUID | None,
+        user_intent_reason: str | None,
     ) -> list[UUID]:
         queued: list[UUID] = []
         for spec in _granite_job_specs(source, manifest_result, persisted):
@@ -203,6 +235,12 @@ class SemanticAnnotationService:
                     semantic_granite_task=spec.region.granite_task,
                     semantic_type=spec.region.semantic_type,
                     semantic_expected_fields=spec.region.expected_fields,
+                    semantic_quality_mode=_semantic_quality_mode(
+                        manifest_result.manifest.quality_mode
+                    ),
+                    allow_8b_rescue=allow_8b_rescue,
+                    requested_by_user_id=requested_by_user_id,
+                    user_intent_reason=user_intent_reason,
                     semantic_rescue=manifest_result.manifest.quality_mode == "rescue",
                 ),
                 priority=spec.priority,
@@ -214,6 +252,22 @@ class SemanticAnnotationService:
 
 class SemanticAnnotationServiceError(Exception):
     pass
+
+
+def _validate_qwen8b_intent(
+    *,
+    quality_mode: QualityMode,
+    requested_by: str,
+    allow_8b_rescue: bool,
+) -> None:
+    if quality_mode == "high_quality" and requested_by == "system":
+        raise SemanticAnnotationServiceError(
+            "Qwen3-VL 8B high-quality semantic pass requires explicit user or agent intent."
+        )
+    if quality_mode == "rescue" and not allow_8b_rescue:
+        raise SemanticAnnotationServiceError(
+            "Qwen3-VL 8B rescue semantic pass requires persisted user permission."
+        )
 
 
 @dataclass(frozen=True)
@@ -240,6 +294,12 @@ def _should_enqueue_granite(region: SemanticRegionAnnotation) -> bool:
         and region.granite_task != "ignore"
         and region.grounding.kind != "unmatched_region"
     )
+
+
+def _semantic_quality_mode(quality_mode: str) -> str:
+    if quality_mode == "high_quality":
+        return "high_quality"
+    return "smart"
 
 
 def _target_schema_for_region(

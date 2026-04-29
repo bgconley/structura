@@ -24,6 +24,10 @@ def build_extract_document_job_payload(
     semantic_granite_task: str | None = None,
     semantic_type: str | None = None,
     semantic_expected_fields: tuple[str, ...] | list[str] | None = None,
+    semantic_quality_mode: str | None = None,
+    allow_8b_rescue: bool = False,
+    requested_by_user_id: UUID | None = None,
+    user_intent_reason: str | None = None,
     semantic_rescue: bool = False,
 ) -> dict[str, Any]:
     payload = _without_none(
@@ -49,6 +53,10 @@ def build_extract_document_job_payload(
             "semantic_expected_fields": (
                 list(semantic_expected_fields) if semantic_expected_fields else None
             ),
+            "semantic_quality_mode": semantic_quality_mode,
+            "allow_8b_rescue": allow_8b_rescue,
+            "requested_by_user_id": (str(requested_by_user_id) if requested_by_user_id else None),
+            "user_intent_reason": user_intent_reason,
             "semantic_rescue": semantic_rescue or None,
         }
     )
@@ -88,7 +96,11 @@ def build_semantic_annotate_document_job_payload(
     job_id: UUID,
     document_id: UUID,
     quality_mode: str,
+    semantic_quality_mode: str | None = None,
+    allow_8b_rescue: bool = False,
     requested_by: str = "system",
+    requested_by_user_id: UUID | None = None,
+    user_intent_reason: str | None = None,
     reason: str | None = None,
     source_semantic_region_id: UUID | None = None,
     metadata: dict[str, Any] | None = None,
@@ -101,7 +113,11 @@ def build_semantic_annotate_document_job_payload(
             "created_at": _now(),
             "document_id": str(document_id),
             "quality_mode": quality_mode,
+            "semantic_quality_mode": semantic_quality_mode or _semantic_quality_mode(quality_mode),
+            "allow_8b_rescue": allow_8b_rescue,
             "requested_by": requested_by,
+            "requested_by_user_id": (str(requested_by_user_id) if requested_by_user_id else None),
+            "user_intent_reason": user_intent_reason,
             "reason": reason,
             "source_semantic_region_id": (
                 str(source_semantic_region_id) if source_semantic_region_id else None
@@ -118,6 +134,12 @@ def build_semantic_annotate_document_job_payload(
 
 def _contract_priority(pipeline_priority: int) -> int:
     return max(1, min(10, round(pipeline_priority / 10)))
+
+
+def _semantic_quality_mode(quality_mode: str) -> str:
+    if quality_mode == "high_quality":
+        return "high_quality"
+    return "smart"
 
 
 def _now() -> str:

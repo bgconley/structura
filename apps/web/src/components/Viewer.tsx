@@ -35,6 +35,7 @@ export function Viewer({
   isSemanticAnnotationLoading,
   onLoadSemanticAnnotation,
   onQueueHighQualityPass,
+  onAllow8bRescue,
 }: {
   document: DocumentDetail | null;
   summary?: DocumentSummary;
@@ -55,6 +56,7 @@ export function Viewer({
   isSemanticAnnotationLoading: boolean;
   onLoadSemanticAnnotation: (documentId: string) => void;
   onQueueHighQualityPass: (documentId: string) => Promise<void>;
+  onAllow8bRescue: (documentId: string) => Promise<void>;
 }) {
   const active = document ?? summary;
   const original = document?.assets.find((asset) => asset.assetRole === "original");
@@ -183,6 +185,7 @@ export function Viewer({
           isLoading={isSemanticAnnotationLoading}
           onLoad={() => onLoadSemanticAnnotation(String(active.id))}
           onHighQuality={() => onQueueHighQualityPass(String(active.id))}
+          onAllow8bRescue={() => onAllow8bRescue(String(active.id))}
         />
       </aside>
     </section>
@@ -195,12 +198,14 @@ function SemanticAnnotationPanel({
   isLoading,
   onLoad,
   onHighQuality,
+  onAllow8bRescue,
 }: {
   manifest: SemanticAnnotationManifest | null;
   error: string | null;
   isLoading: boolean;
   onLoad: () => void;
   onHighQuality: () => Promise<void>;
+  onAllow8bRescue: () => Promise<void>;
 }) {
   return (
     <section className="semantic-annotation-panel">
@@ -214,6 +219,9 @@ function SemanticAnnotationPanel({
         </button>
         <button type="button" onClick={() => void onHighQuality()}>
           High Quality Pass
+        </button>
+        <button type="button" onClick={() => void onAllow8bRescue()}>
+          Allow 8B Rescue
         </button>
       </div>
       {error ? <p className="form-error">{error}</p> : null}

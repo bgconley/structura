@@ -19,7 +19,13 @@ def test_semantic_annotation_worker_processes_semantic_annotate_job() -> None:
             state=SimpleNamespace(job_id=job_id, job_type="semantic_annotate"),
             document_id=document_id,
             household_id=household_id,
-            payload={"quality_mode": "high_quality", "requested_by": "reviewer"},
+            payload={
+                "quality_mode": "high_quality",
+                "requested_by": "reviewer",
+                "allow_8b_rescue": True,
+                "requested_by_user_id": str(uuid4()),
+                "user_intent_reason": "User allowed one 8B rescue.",
+            },
         )
     )
     service = RecordingSemanticService(
@@ -39,6 +45,9 @@ def test_semantic_annotation_worker_processes_semantic_annotate_job() -> None:
             "document_id": document_id,
             "quality_mode": "high_quality",
             "requested_by": "reviewer",
+            "allow_8b_rescue": True,
+            "requested_by_user_id": UUID(job_service.claimed.payload["requested_by_user_id"]),
+            "user_intent_reason": "User allowed one 8B rescue.",
         }
     ]
     assert job_service.completed == [
@@ -110,12 +119,18 @@ class RecordingSemanticService:
         *,
         quality_mode: QualityMode,
         requested_by: str,
+        allow_8b_rescue: bool = False,
+        requested_by_user_id: UUID | None = None,
+        user_intent_reason: str | None = None,
     ) -> RunResult:
         self.calls.append(
             {
                 "document_id": document_id,
                 "quality_mode": quality_mode,
                 "requested_by": requested_by,
+                "allow_8b_rescue": allow_8b_rescue,
+                "requested_by_user_id": requested_by_user_id,
+                "user_intent_reason": user_intent_reason,
             }
         )
         return RunResult(

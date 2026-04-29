@@ -27,6 +27,9 @@ class SemanticAnnotationServiceProtocol(Protocol):
         *,
         quality_mode: QualityMode,
         requested_by: str,
+        allow_8b_rescue: bool = False,
+        requested_by_user_id: UUID | None = None,
+        user_intent_reason: str | None = None,
     ) -> SemanticAnnotationRunResult: ...
 
 
@@ -77,6 +80,13 @@ def process_next_semantic_annotation_job(
             target_document_id,
             quality_mode=cast(QualityMode, str(claimed.payload.get("quality_mode") or "smart")),
             requested_by=str(claimed.payload.get("requested_by") or "system"),
+            allow_8b_rescue=bool(claimed.payload.get("allow_8b_rescue", False)),
+            requested_by_user_id=_optional_uuid(claimed.payload.get("requested_by_user_id")),
+            user_intent_reason=(
+                str(claimed.payload["user_intent_reason"])
+                if claimed.payload.get("user_intent_reason")
+                else None
+            ),
         )
         annotation_id = result.annotation_id
         queued_granite_job_ids = tuple(result.queued_granite_job_ids)
@@ -114,6 +124,12 @@ def _document_id_for_job(document_id: UUID | None, payload: dict[str, object]) -
     if not payload_document_id:
         raise SemanticAnnotationWorkerError("Semantic annotation job is missing document_id.")
     return UUID(str(payload_document_id))
+
+
+def _optional_uuid(value: object) -> UUID | None:
+    if not value:
+        return None
+    return UUID(str(value))
 
 
 def main() -> None:

@@ -85,7 +85,14 @@ def process_next_extraction_job(
                 schema_name=schema_name,
                 route_profile=route_profile,
                 semantic_region_id=_optional_uuid(claimed.payload.get("semantic_region_id")),
-                allow_rescue=not bool(claimed.payload.get("semantic_rescue")),
+                allow_8b_rescue=bool(claimed.payload.get("allow_8b_rescue", False)),
+                requested_by=str(claimed.payload.get("requested_by") or "system"),
+                requested_by_user_id=_optional_uuid(claimed.payload.get("requested_by_user_id")),
+                user_intent_reason=(
+                    str(claimed.payload["user_intent_reason"])
+                    if claimed.payload.get("user_intent_reason")
+                    else None
+                ),
             )
             job_service.complete_job(
                 job_id=claimed.state.job_id,

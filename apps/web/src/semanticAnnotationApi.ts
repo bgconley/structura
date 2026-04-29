@@ -19,3 +19,14 @@ export function queueHighQualitySemanticAnnotation(
     },
   });
 }
+
+export function queueAllow8bRescueSemanticAnnotation(
+  documentId: string,
+): Promise<{jobId: string; status: string}> {
+  return fetchJson(`/api/v1/documents/${documentId}/semantic-annotations/allow-8b-rescue`, {
+    method: "POST",
+    headers: {
+      "X-CSRF-Token": csrfToken(),
+    },
+  });
+}

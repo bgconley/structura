@@ -66,6 +66,8 @@ test("Phase 8.5 Smart Parse manifest and High Quality pass are visible in viewer
 
   await page.getByRole("button", {name: "High Quality Pass"}).click();
   await expect(page.locator(".semantic-annotation-panel")).toContainText("High Quality semantic pass queued");
+  await page.getByRole("button", {name: "Allow 8B Rescue"}).click();
+  await expect(page.locator(".semantic-annotation-panel")).toContainText("Allow 8B Rescue pass queued");
 });
 
 test("Phase 8 evidence viewer stays open when a stale visual search completes", async ({page}) => {

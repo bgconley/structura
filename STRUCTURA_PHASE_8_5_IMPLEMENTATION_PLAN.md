@@ -2,11 +2,49 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace Phase 8 fixture/fake model behavior with real local model services for Qwen3-VL, Granite Vision, text embeddings, and visual embeddings before Phase 9 analysis begins.
+**Goal:** Replace Phase 8 fixture/fake model behavior with real local model services for the intended Docling -> Qwen3-VL 2B -> Granite Vision pipeline, with Qwen3-VL 8B available only through explicit user intent, before Phase 9 analysis begins.
 
 **Architecture:** Phase 8.5 inserts a model-runtime foundation between Phase 8 and Phase 9. API, workers, and services keep deterministic fixture adapters for tests, but production/live GPU mode must use explicit HTTP model adapters with truthful provenance, bounded inputs, dimension validation, and model-backed golden evidence.
 
-**Tech Stack:** FastAPI/Python workers, PostgreSQL/pgvector, Docker Compose profiles, vLLM/OpenAI-compatible model APIs, TEI-compatible embedding APIs, Qwen3-VL-8B, Granite 4.0 3B Vision, Qwen3-Embedding, Qwen3-VL-Embedding, RTX PRO 4000 Blackwell SM120 GPUs, RTX 3090.
+**Tech Stack:** FastAPI/Python workers, PostgreSQL/pgvector, Docker Compose profiles, vLLM/OpenAI-compatible model APIs, TEI-compatible embedding APIs, Qwen3-VL-2B semantic annotation, user-selected/user-permitted Qwen3-VL-8B, Granite 4.0 3B Vision, Qwen3-Embedding, Qwen3-VL-Embedding, RTX PRO 4000 Blackwell SM120 GPUs, RTX 3090.
+
+## Phase 8.5 Realignment
+
+Canonical default pipeline:
+
+```text
+Docling physical parse
+-> Qwen3-VL 2B smart semantic annotation
+-> Granite 4.0 3B Vision targeted extraction
+-> validators / provenance / review policy
+-> canonical facts + evidence/search layer
+```
+
+Qwen3-VL 8B must never be invoked automatically by application logic.
+
+User-selectable modes:
+
+- `smart`: default Qwen3-VL 2B semantic pass.
+- `high_quality`: explicit user-selected Qwen3-VL 8B pass.
+- `rescue_permitted`: user allows one Qwen3-VL 8B rescue if policy says rescue
+  is useful.
+- `review_only`: no Qwen3-VL 8B permission; uncertain output routes to review.
+
+Persist these intent fields in semantic job payloads and audit-visible job data:
+
+- `semantic_quality_mode`: `smart` or `high_quality`
+- `allow_8b_rescue`: `true` or `false`
+- `requested_by_user_id`
+- `user_intent_reason`
+
+Valid document-quality outcomes are `extracted_cleanly`, `needs_human_review`,
+`insufficient_signal`, and `no_extraction_target`. Reserve `pipeline_failed` for
+runtime/system defects only: model timeout/unavailable, invalid model response
+after retry, worker crash, storage or DB error, contract violation, and related
+operational failures.
+
+Document-quality ambiguity must never dead-letter jobs. Runtime failures should
+retry and then dead-letter/admin-health as appropriate.
 
 ---
 
@@ -23,16 +61,23 @@ Phase 8.5 is therefore a mandatory stop point before Phase 9.
 
 ## Final Model Priority Decision
 
-Treat Qwen3-VL-8B and Granite 4.0 3B Vision as equal implementation priorities.
+Treat Qwen3-VL 2B semantic annotation and Granite 4.0 3B Vision as the default
+implementation priorities. Qwen3-VL 8B is an explicitly authorized high-quality
+or one-pass rescue service, not a default pipeline stage.
 
-Qwen3-VL-8B owns:
+Qwen3-VL 2B owns:
+
+- smart semantic annotation over Docling-grounded pages and regions;
+- bounded routing metadata for Granite;
+- ambiguity flags and review hints that do not become canonical facts.
+
+Qwen3-VL 8B owns, only when explicitly user-selected or user-permitted:
 
 - handwriting-heavy pages;
 - degraded scans;
-- OCR rescue;
+- OCR/layout rescue;
 - low-text visual reasoning;
-- ambiguous visual extraction fallback;
-- later Phase 9 cited analysis when enabled.
+- semantically recoverable ambiguity before human review.
 
 Granite 4.0 3B Vision owns:
 
@@ -63,7 +108,7 @@ Research was collected under `.firecrawl/model-serving-research/`. Important sou
 - Granite 4.0 3B Vision public materials emphasize enterprise document understanding, table extraction, chart understanding, semantic KVP extraction, full-page table benchmarks, and Docling integration.
 - IBM Granite-Docling materials reinforce that structure preservation matters for downstream RAG and analysis, especially tables, forms, charts, captions, equations, and layout relations.
 - Qwen3-Embedding supports 0.6B, 4B, and 8B sizes, custom output dimensions, and TEI deployment. Qwen3-Embedding-4B is the default accuracy/fit target for the RTX 3090.
-- Qwen3-VL-Embedding supports 2B and 8B variants, custom output dimensions, text/image/video retrieval, and vLLM examples. Qwen3-VL-Embedding-2B at 1024 dimensions is the initial fit target for selective visual embedding backfill.
+- Qwen3-VL-Embedding supports 2B and 8B variants, text/image/video retrieval, and vLLM examples. Live validation showed the selected vLLM endpoint returns native 2048-dimensional vectors and rejects the `dimensions` override, so Structura uses the 2048-dimensional visual index unless a different backend proves safe down-projection support.
 - The voipmonitor/cu130 work is useful evidence for SM120/cu130 experimentation, but it is not a project source of truth. Use it only through pinned images/digests and live benchmark gates.
 
 Primary source URLs:
@@ -90,10 +135,30 @@ Primary source URLs:
 - Keep model services isolated from API/web images. Do not add Qwen, Granite, Torch CUDA, vLLM, TEI, or NVIDIA stack dependencies to the API image unless an explicit ADR approves it.
 - Deterministic gateways are test fixtures only. In live GPU validation, they must be disabled or clearly reported as fixture mode.
 - A model output may claim `source_engine = qwen` or `source_engine = granite` only when the corresponding live model adapter successfully invoked that service.
+- Do not auto-run Qwen3-VL 8B during default ingest, default private corpus validation, or ordinary `needs_review`.
+- Do not treat low confidence, high-risk document family, or human-review policy as `pipeline_failed`.
+- Do not conflate human review required with extraction failure.
+- Do not let Qwen annotations become canonical facts or Granite candidates bypass validators/review policy.
+- Do not create repeated rescue loops or unbounded semantic/Granite fanout.
 - Do not log raw document text, image bytes, prompts, responses, object paths, presigned URLs, or model input file paths.
 - Model services must not fetch arbitrary external URLs. Pass sanitized local files mounted under a narrow allowed directory or base64 payloads through internal-only APIs.
 - Model service ports stay bound to `127.0.0.1` or Docker-internal networking unless a later operations ADR explicitly exposes them.
 - Every model call must have timeout, max input size, retry/dead-letter semantics, model profile metadata, and redacted error behavior.
+
+## Tightened Execution Order
+
+1. Lock contracts and tests around explicit Qwen3-VL 8B intent.
+2. Persist semantic intent fields in semantic and Granite extraction job payloads.
+3. Introduce `lib/extraction/rescue_policy.py` and replace `needs_review`-driven rescue.
+4. Enforce semantic rescue dedupe/caps in `lib/semantic_annotations/jobs.py`.
+5. Fix `scripts/gpu/run_phase8_5_private_corpus.py` so standard mode is Docling
+   -> smart semantic -> Granite -> validation -> visual embedding.
+6. Add explicit `--high-quality`, `--allow-8b-rescue`, and `--rescue-stress`
+   flags; `--rescue-stress` is synthetic and not a release corpus default.
+7. Add separate Viewer/API controls for High Quality Parse and Allow 8B Rescue.
+8. Run standard private corpus, Qwen2B semantic JSON, Granite targeted extraction,
+   optional HQ, optional permitted-rescue, visual embedding, and CI gates as
+   separate evidence streams.
 
 ## Required Artifact Set
 
@@ -131,8 +196,12 @@ Canonical GPU placement:
 
 ```text
 P620 Blackwell node, GPU 0:
+  model-qwen-semantic
+  Qwen3-VL-2B-Instruct smart semantic annotation.
+
+P620 Blackwell node, GPU 0 explicit user-selected/user-permitted profile:
   model-qwen
-  Qwen3-VL-8B-Instruct, Blackwell quantized profile preferred.
+  Qwen3-VL-8B-Instruct high-quality or one-pass rescue only.
 
 P620 Blackwell node, GPU 1:
   model-granite
@@ -140,7 +209,7 @@ P620 Blackwell node, GPU 1:
 
 P620 Blackwell node, GPU 1 alternate scheduled profile:
   model-vl-embed
-  Qwen3-VL-Embedding-2B at 1024 dimensions first; benchmark 8B before promotion.
+  Qwen3-VL-Embedding-2B at native 2048 dimensions; benchmark 8B before promotion.
 
 RTX 3090 node:
   model-embed
@@ -153,10 +222,11 @@ Default live profiles:
 
 ```text
 STRUCTURA_MODEL_MODE=live
+STRUCTURA_QWEN_SEMANTIC_PROFILE=qwen3-vl-2b-semantic:v1
 STRUCTURA_QWEN_PROFILE=qwen3-vl-8b-instruct-nvfp4-local:v1
 STRUCTURA_GRANITE_PROFILE=granite-4.0-3b-vision-bf16:v1
 STRUCTURA_TEXT_EMBED_PROFILE=qwen3-embedding-4b-1536:v1
-STRUCTURA_VISUAL_EMBED_PROFILE=qwen3-vl-embedding-2b-1024:v1
+STRUCTURA_VISUAL_EMBED_PROFILE=qwen3-vl-embedding-2b-2048:v1
 ```
 
 Test/CI fixture profile:
@@ -185,7 +255,31 @@ qwen3-vl-8b-instruct-nvfp4-local:v1
   max_images_per_request: 4
   max_image_bytes: 10485760
   max_model_len: 32768
-  source_engine: qwen
+  source_engine: qwen3_vl_8b
+
+qwen3-vl-2b-semantic:v1
+  engine: qwen
+  task: semantic_annotation
+  model_family: Qwen3-VL
+  base_model: Qwen/Qwen3-VL-2B-Instruct
+  backend: vllm-openai
+  default_gpu: blackwell-0
+  max_images_per_request: 4
+  max_image_bytes: 10485760
+  max_model_len: 32768
+  source_engine: qwen3_vl_2b
+
+qwen3-vl-8b-semantic-hq:v1
+  engine: qwen
+  task: semantic_annotation_high_quality
+  model_family: Qwen3-VL
+  base_model: Qwen/Qwen3-VL-8B-Instruct
+  backend: vllm-openai
+  default_gpu: blackwell-0-high-quality
+  max_images_per_request: 1
+  max_image_bytes: 10485760
+  max_model_len: 32768
+  source_engine: qwen3_vl_8b
 
 granite-4.0-3b-vision-bf16:v1
   engine: granite
@@ -209,15 +303,15 @@ qwen3-embedding-4b-1536:v1
   pgvector_index: embeddings_text_1536_hnsw_idx
   source_engine: embedding
 
-qwen3-vl-embedding-2b-1024:v1
+qwen3-vl-embedding-2b-2048:v1
   engine: visual_embedding
   task: embed_image_or_mixed
   model_family: Qwen3-VL-Embedding
   base_model: Qwen/Qwen3-VL-Embedding-2B
   backend: vllm-embed
   default_gpu: blackwell-1-alternate
-  output_dimensions: 1024
-  pgvector_index: embeddings_visual_1024_hnsw_idx
+  output_dimensions: 2048
+  pgvector_index: embeddings_visual_2048_hnsw_idx
   source_engine: embedding
 ```
 
@@ -440,7 +534,7 @@ Validation rules:
 
   - all required profiles exist;
   - text dimensions equal `1536`;
-  - visual dimensions equal `1024`;
+  - visual dimensions equal `2048`;
   - Qwen and Granite source engines are distinct;
   - Blackwell profiles are not assigned to the RTX 3090.
 
@@ -649,7 +743,7 @@ Validation rules:
   - invoice table extraction uses Granite route when a structured layout signal is present;
   - receipt KVP extraction uses Granite route when table/KVP confidence matters;
   - EOB line-item extraction uses Granite route when tables are present;
-  - Qwen fallback does not overwrite Granite provenance;
+  - Qwen semantic planning does not overwrite Granite provenance;
   - Granite response validation failure creates review-required candidates, not canonical facts.
 
 - [ ] **Step 2: Implement Granite client**
@@ -773,7 +867,7 @@ Validation rules:
   - missing image asset fails the job;
   - changed image bytes change request hash;
   - descriptor-only source cannot produce a live visual vector;
-  - response dimensions equal `1024`;
+  - response dimensions equal `2048`;
   - profile name starts with `qwen3-vl-embedding`.
 
 - [ ] **Step 2: Implement visual embedding client**
@@ -782,11 +876,13 @@ Validation rules:
 
   ```text
   Qwen/Qwen3-VL-Embedding-2B
-  output_dimensions = 1024
+  output_dimensions = 2048
   backend = vLLM embed or equivalent internal service
   ```
 
-  Keep 1024 dimensions to preserve existing `embeddings_visual_1024_hnsw_idx`.
+  Keep 2048 dimensions for the live vLLM path because the endpoint returns native
+  2048-dimensional vectors and rejects dimensions overrides. Use
+  `embeddings_visual_2048_hnsw_idx`.
 
 - [ ] **Step 3: Update visual embedding service path**
 
@@ -835,9 +931,10 @@ Validation rules:
   ```text
   digital-native simple invoice -> docling_plus_granite_structured optional, deterministic allowed only in fixture
   structured bill with tables -> docling_plus_granite_structured
-  handwriting-heavy page -> qwen_primary_review_required
-  degraded low-text page -> qwen_primary_review_required or visual review route
-  Granite failure with Qwen fallback -> review-required, no silent canonical promotion
+  handwriting-heavy page -> Qwen3-VL 2B smart semantic routing, review-required when uncertain
+  degraded low-text page -> Qwen3-VL 2B smart semantic routing or visual review route
+  Granite validation needs_review -> review-required, no automatic Qwen3-VL 8B
+  Granite recoverable semantic issue + allow_8b_rescue -> one Qwen3-VL 8B rescue max
   ```
 
 - [ ] **Step 2: Implement routing policy**
@@ -846,7 +943,8 @@ Validation rules:
 
   - Docling remains canonical structural parse.
   - Granite is preferred for tables, KVPs, line items, bills, receipts, invoices, and EOBs with layout complexity.
-  - Qwen is preferred for handwriting, degraded OCR rescue, and arbitration.
+  - Qwen3-VL 2B provides semantic planning/routing and may not create canonical facts.
+  - Qwen3-VL 8B runs only for explicit High Quality Parse or explicit user-permitted one-pass rescue.
   - Model-derived uncertain output remains review-required.
 
 - [ ] **Step 3: Persist route trace**
@@ -1067,7 +1165,7 @@ Validation rules:
   - Qwen sample image request succeeds;
   - Granite structured sample request succeeds;
   - text embedding request returns 1536 dimensions;
-  - visual embedding request returns 1024 dimensions;
+  - visual embedding request returns 2048 dimensions;
   - live Phase 8 E2E still passes;
   - model-backed corpus thresholds pass.
 
@@ -1146,10 +1244,16 @@ Validation rules:
 Phase 8.5 is complete only when all of the following are true:
 
 - Fixture gateways are explicitly named as fixtures and cannot claim Qwen/Granite provenance.
-- Qwen3-VL-8B live adapter is implemented, invoked, and persists truthful Qwen provenance.
+- Default ingest uses Docling -> Qwen3-VL 2B -> Granite.
+- Qwen3-VL 8B never runs unless the user explicitly requested High Quality Parse or allowed one rescue.
+- Document-quality ambiguity routes to review states, not job failure.
+- Runtime/system failures are the only `pipeline_failed` cases.
+- Rescue is user-permitted, bounded, deduped, and never loops.
+- Private corpus standard mode does not secretly run High Quality.
+- Qwen3-VL 2B, optional Qwen3-VL 8B, and Granite live adapters persist truthful provenance only when invoked.
 - Granite 4.0 3B Vision live adapter is implemented, invoked, and persists truthful Granite provenance.
 - Text embeddings use a real embedding service in live mode and persist 1536-dimensional vectors.
-- Visual embeddings use a real visual embedding service in live mode and persist 1024-dimensional vectors generated from image inputs.
+- Visual embeddings use a real visual embedding service in live mode and persist 2048-dimensional vectors generated from image inputs.
 - Deterministic CI remains green without GPU services.
 - GPU live validation proves model services respond on the canonical GPU node.
 - Model-backed golden corpus evidence exists for handwriting, structured tables/KVPs, text retrieval, visual retrieval, and hybrid retrieval.
@@ -1176,9 +1280,17 @@ docker compose --profile extraction --profile search --profile relationships --p
 Required GPU live checks:
 
 ```bash
-docker compose --profile models-live up -d model-qwen model-granite model-embed
+docker compose --profile models-live up -d model-qwen-semantic model-granite model-embed
 bash scripts/gpu/phase8_5_model_smoke.sh
 python scripts/run_model_corpus.py --require-model-backed --manifest tests/fixtures/model_corpus/phase8_5_model_manifest.json
+```
+
+Run optional HQ/rescue gates separately from the standard corpus gate:
+
+```bash
+python scripts/gpu/run_phase8_5_private_corpus.py --pdf /path/to/private.pdf
+python scripts/gpu/run_phase8_5_private_corpus.py --pdf /path/to/private.pdf --high-quality
+python scripts/gpu/run_phase8_5_private_corpus.py --pdf /path/to/private.pdf --allow-8b-rescue
 ```
 
 Required browser checks:

@@ -330,7 +330,7 @@ paths:
     post:
       tags:
       - Documents
-      summary: Queue a high-quality semantic annotation pass for a document
+      summary: Queue an explicit user-selected Qwen3-VL 8B high-quality semantic pass
       parameters:
       - in: path
         name: documentId
@@ -341,6 +341,29 @@ paths:
       responses:
         '202':
           description: High-quality semantic annotation queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedJob'
+        '401':
+          description: Not authenticated
+        '404':
+          description: Document not found
+  /api/v1/documents/{documentId}/semantic-annotations/allow-8b-rescue:
+    post:
+      tags:
+      - Documents
+      summary: Queue a smart parse with explicit permission for one bounded Qwen3-VL 8B rescue
+      parameters:
+      - in: path
+        name: documentId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '202':
+          description: Smart semantic annotation with one-rescue permission queued
           content:
             application/json:
               schema:

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Protocol
 from uuid import UUID, uuid4
 
+from lib.db.connection import db_connection
 from lib.extraction.classification import TARGET_EXTRACTION_SCHEMAS, classify_document
 from lib.extraction.gateway import ExtractionGateway
 from lib.extraction.gateways.routing import default_extraction_gateway
@@ -22,6 +23,7 @@ from lib.extraction.repository import (
     persist_classification,
     persist_extraction_run,
 )
+from lib.extraction.rescue_policy import RescuePolicy, RescuePolicyContext
 from lib.extraction.schema_registry import ExtractionSchemaRegistry
 from lib.extraction.validators import validate_extraction_payload
 from lib.jobs import JobService
@@ -29,6 +31,7 @@ from lib.jobs.event_payloads import (
     build_extract_document_job_payload,
     build_semantic_annotate_document_job_payload,
 )
+from lib.semantic_annotations.jobs import enqueue_semantic_annotation_job
 from lib.semantic_annotations.models import SemanticExtractionTask
 from lib.semantic_annotations.repository import load_semantic_extraction_task
 
@@ -64,6 +67,7 @@ class ExtractionService:
             load_semantic_extraction_task
         ),
         persister: Callable[..., PersistedExtraction] = persist_extraction_run,
+        rescue_policy: RescuePolicy | None = None,
     ) -> None:
         self.registry = registry or ExtractionSchemaRegistry()
         self.gateway = gateway or default_extraction_gateway()
@@ -71,6 +75,7 @@ class ExtractionService:
         self.source_loader = source_loader
         self.semantic_task_loader = semantic_task_loader
         self.persister = persister
+        self.rescue_policy = rescue_policy or RescuePolicy()
 
     def classify_document(
         self,
@@ -117,8 +122,15 @@ class ExtractionService:
         schema_name: str,
         route_profile: str = "docling_plus_structured_extraction",
         semantic_region_id: UUID | None = None,
-        allow_rescue: bool = True,
+        allow_8b_rescue: bool = False,
+        requested_by: str = "system",
+        requested_by_user_id: UUID | None = None,
+        user_intent_reason: str | None = None,
     ) -> PersistedExtraction:
+        if allow_8b_rescue and requested_by == "system":
+            raise ExtractionServiceError(
+                "Qwen3-VL 8B rescue requires explicit user or agent intent."
+            )
         source = self.source_loader(document_id)
         if schema_name not in TARGET_EXTRACTION_SCHEMAS:
             raise ExtractionServiceError(f"Unsupported extraction schema: {schema_name}")
@@ -159,8 +171,25 @@ class ExtractionService:
             field_candidates=field_candidates,
             line_item_candidates=line_item_candidates,
         )
-        if allow_rescue and semantic_task is not None and validation.needs_review:
-            self._enqueue_rescue_semantic_pass(source, semantic_task)
+        rescue_decision = self.rescue_policy.decide(
+            RescuePolicyContext(
+                allow_8b_rescue=allow_8b_rescue,
+                validation=validation,
+                semantic_task=semantic_task,
+                candidate_count=len(field_candidates) + len(line_item_candidates),
+                prior_rescue_attempted=False,
+            )
+        )
+        if rescue_decision.outcome == "rescue_permitted_once" and semantic_task is not None:
+            self._enqueue_rescue_semantic_pass(
+                source,
+                semantic_task,
+                failure_class=rescue_decision.failure_class,
+                allow_8b_rescue=allow_8b_rescue,
+                requested_by=requested_by,
+                requested_by_user_id=requested_by_user_id,
+                user_intent_reason=user_intent_reason,
+            )
         return persisted
 
     def _semantic_task_for_document(
@@ -183,7 +212,34 @@ class ExtractionService:
         self,
         source: ExtractionSourceDocument,
         semantic_task: SemanticExtractionTask,
+        *,
+        failure_class: str,
+        allow_8b_rescue: bool,
+        requested_by: str,
+        requested_by_user_id: UUID | None,
+        user_intent_reason: str | None,
     ) -> None:
+        if isinstance(self.jobs, JobService):
+            with db_connection() as conn:
+                with conn.cursor() as cur:
+                    enqueue_semantic_annotation_job(
+                        cur,
+                        document_id=source.document_id,
+                        household_id=source.household_id,
+                        quality_mode="rescue",
+                        semantic_quality_mode="smart",
+                        allow_8b_rescue=allow_8b_rescue,
+                        requested_by=requested_by,
+                        requested_by_user_id=requested_by_user_id,
+                        user_intent_reason=user_intent_reason,
+                        reason="phase8_5.validation_failed_rescue",
+                        source_semantic_region_id=semantic_task.region_id,
+                        rescue_failure_class=failure_class,
+                        dedupe_existing=True,
+                        priority=26,
+                    )
+                conn.commit()
+            return
         job_id = uuid4()
         self.jobs.create_job(
             job_id=job_id,
@@ -194,9 +250,14 @@ class ExtractionService:
                 job_id=job_id,
                 document_id=source.document_id,
                 quality_mode="rescue",
-                requested_by="system",
+                semantic_quality_mode="smart",
+                allow_8b_rescue=allow_8b_rescue,
+                requested_by=requested_by,
+                requested_by_user_id=requested_by_user_id,
+                user_intent_reason=user_intent_reason,
                 reason="phase8_5.validation_failed_rescue",
                 source_semantic_region_id=semantic_task.region_id,
+                metadata={"failure_class": failure_class},
             ),
             priority=26,
             queue_name="semantic-annotations",

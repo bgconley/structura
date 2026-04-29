@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -47,13 +48,13 @@ def test_extraction_service_loads_semantic_region_task_for_gateway() -> None:
         schema_name="invoice",
         route_profile="docling_plus_granite_structured",
         semantic_region_id=region_id,
-        allow_rescue=False,
+        allow_8b_rescue=False,
     )
 
     assert gateway.semantic_task == task
 
 
-def test_extraction_service_queues_rescue_semantic_pass_after_failed_granite_validation() -> None:
+def test_extraction_service_does_not_rescue_needs_review_without_user_permission() -> None:
     document_id = uuid4()
     household_id = uuid4()
     region_id = uuid4()
@@ -83,6 +84,44 @@ def test_extraction_service_queues_rescue_semantic_pass_after_failed_granite_val
         semantic_region_id=region_id,
     )
 
+    assert jobs.created == []
+
+
+def test_extraction_service_queues_rescue_only_with_user_permission_and_recoverable_issue() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    region_id = uuid4()
+    source = _source(document_id=document_id, household_id=household_id)
+    task = SemanticExtractionTask(
+        region_id=region_id,
+        annotation_id=uuid4(),
+        document_id=document_id,
+        semantic_type="invoice_line_item_table",
+        granite_task="tables_json",
+        target_schema="invoice",
+        expected_fields=("line_items", "total_amount"),
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+    )
+    jobs = RecordingJobs()
+    user_id = uuid4()
+
+    ExtractionService(
+        gateway=RecordingGateway(needs_review=True),
+        source_loader=lambda loaded_document_id: source,
+        semantic_task_loader=lambda loaded_region_id: task,
+        persister=lambda *args, **kwargs: _persisted(),
+        jobs=jobs,
+    ).extract_document(
+        document_id,
+        schema_name="invoice",
+        route_profile="docling_plus_granite_structured",
+        semantic_region_id=region_id,
+        allow_8b_rescue=True,
+        requested_by="user",
+        requested_by_user_id=user_id,
+        user_intent_reason="User allowed one 8B rescue.",
+    )
+
     assert jobs.created[0]["job_type"] == "semantic_annotate"
     assert jobs.created[0]["queue_name"] == "semantic-annotations"
     payload = jobs.created[0]["payload"]
@@ -92,7 +131,12 @@ def test_extraction_service_queues_rescue_semantic_pass_after_failed_granite_val
     )
     assert payload["job_id"] == str(jobs.created[0]["job_id"])
     assert payload["quality_mode"] == "rescue"
+    assert payload["semantic_quality_mode"] == "smart"
+    assert payload["allow_8b_rescue"] is True
+    assert payload["requested_by_user_id"] == str(user_id)
+    assert payload["user_intent_reason"] == "User allowed one 8B rescue."
     assert payload["source_semantic_region_id"] == str(region_id)
+    assert payload["metadata"]["failure_class"] == "unreconciled_totals"
 
 
 def test_extraction_service_does_not_enqueue_rescue_if_persist_fails() -> None:
@@ -157,11 +201,29 @@ class RecordingGateway:
                 route_profile=route_profile,
             ),
             normalized_json={
-                "document_type": "invoice",
-                "fields": {},
+                "schema_name": "invoice",
+                "schema_version": "v1",
+                "document_id": str(source.document_id),
+                "seller": {
+                    "display_name": "Acme Services",
+                    "party_type": "company",
+                    "evidence": [_evidence()],
+                },
+                "invoice": {
+                    "invoice_number": "INV-100",
+                    "issued_on": "2026-01-10",
+                    "evidence": [_evidence()],
+                },
                 "line_items": [],
+                "totals": {
+                    "subtotal": {"amount": 10.0, "currency": "USD"},
+                    "tax_total": {"amount": 1.0, "currency": "USD"},
+                    "total": {"amount": 99.0, "currency": "USD"},
+                    "evidence": [_evidence()],
+                },
                 "confidence": {"overall": 0.8},
                 "validation": {"needs_review": self.needs_review, "checks": []},
+                "created_at": datetime.now(UTC).isoformat(),
                 "metadata": {},
             },
             raw_output_json={"modelInvoked": True},
@@ -182,6 +244,15 @@ class RecordingJobs:
 @dataclass(frozen=True)
 class CreatedJob:
     job_id: UUID
+
+
+def _evidence() -> dict[str, object]:
+    return {
+        "page_number": 1,
+        "source_engine": "granite_vision_3b",
+        "source_text": "Invoice total $99.00",
+        "confidence": 0.8,
+    }
 
 
 def _source(

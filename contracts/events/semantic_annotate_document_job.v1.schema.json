@@ -10,7 +10,9 @@
     "job_id",
     "created_at",
     "document_id",
-    "quality_mode"
+    "quality_mode",
+    "semantic_quality_mode",
+    "allow_8b_rescue"
   ],
   "properties": {
     "schema_name": {
@@ -35,9 +37,23 @@
       "type": "string",
       "enum": ["smart", "high_quality", "rescue"]
     },
+    "semantic_quality_mode": {
+      "type": "string",
+      "enum": ["smart", "high_quality"]
+    },
+    "allow_8b_rescue": {
+      "type": "boolean",
+      "default": false
+    },
     "requested_by": {
       "type": "string",
       "enum": ["system", "user", "agent", "scheduler", "reviewer"]
+    },
+    "requested_by_user_id": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/uuid"
+    },
+    "user_intent_reason": {
+      "type": "string"
     },
     "reason": {
       "type": "string"

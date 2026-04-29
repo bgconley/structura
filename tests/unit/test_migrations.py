@@ -15,7 +15,7 @@ def test_baseline_migration_scripts_are_present_and_ordered() -> None:
     plan = baseline_migration_plan("database")
 
     assert plan.scripts[0].name == "001_extensions.sql"
-    assert plan.scripts[-1].name == "076_phase8_5_visual_embedding_2048.sql"
+    assert plan.scripts[-1].name == "077_phase8_5_semantic_type_constraint.sql"
     assert all(script.exists() for script in plan.scripts)
 
 
@@ -120,3 +120,11 @@ def test_phase8_5_visual_embedding_native_dimension_migration_is_baseline_migrat
     assert "embedding::halfvec(2048)" in sql
     assert "halfvec_cosine_ops" in sql
     assert "embedding_dimensions = 2048" in sql
+
+
+def test_phase8_5_semantic_type_constraint_migration_is_baseline_migration() -> None:
+    sql = Path("database/077_phase8_5_semantic_type_constraint.sql").read_text(encoding="utf-8")
+
+    assert "semantic_region_annotations_semantic_type_check" in sql
+    assert "covered_services_line_item_table" in sql
+    assert "unknown" in sql

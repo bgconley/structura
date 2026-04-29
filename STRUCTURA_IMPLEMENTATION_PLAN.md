@@ -1084,10 +1084,10 @@ Required phase artifact to review:
 Tasks:
 
 - Quarantine deterministic embedding/extraction gateways as fixture-only test adapters.
-- Implement live Qwen3-VL-8B service invocation for handwriting, degraded OCR rescue, and visual fallback.
+- Implement live Qwen3-VL-2B Smart Parse semantic annotation by default, with Qwen3-VL-8B only for explicit High Quality Parse or user-permitted one-pass rescue.
 - Implement live Granite 4.0 3B Vision service invocation for table, chart, form, KVP, invoice, bill, receipt, and EOB structure extraction.
 - Implement live text embedding service on the RTX 3090 with 1536-dimensional vectors.
-- Implement true visual embedding service for page/image bytes with 1024-dimensional vectors.
+- Implement true visual embedding service for page/image bytes with native 2048-dimensional vectors.
 - Add model profile registry, model health, redacted observability, pinned Compose profiles, and model-backed corpus gates.
 
 Done:

@@ -24,7 +24,7 @@ model-qwen-semantic -> Blackwell GPU 0, Qwen3-VL-2B semantic annotation
 model-qwen          -> Blackwell GPU 0, Qwen3-VL-8B high-quality/rescue
 model-granite       -> Blackwell GPU 1, Granite 4.0 3B Vision
 model-embed         -> GPU 1 by default for single-node validation; RTX 3090 node preferred for production, Qwen3-Embedding-4B at 1536 dimensions
-model-vl-embed      -> Blackwell scheduled/offline, Qwen3-VL-Embedding-2B at 1024 dimensions
+model-vl-embed      -> Blackwell scheduled/offline, Qwen3-VL-Embedding-2B at 2048 dimensions
 ```
 
 Do not run Qwen and Granite on the same 24 GB Blackwell card by default. Do not make

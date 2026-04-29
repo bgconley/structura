@@ -4,6 +4,8 @@ from types import SimpleNamespace
 from typing import Any
 from uuid import UUID, uuid4
 
+import pytest
+
 from lib.contracts.registry import ContractRegistry
 from lib.extraction.models import ExtractionSourceDocument, ParsedPageText
 from lib.semantic_annotations.models import (
@@ -14,7 +16,10 @@ from lib.semantic_annotations.models import (
     SemanticRegionAnnotation,
 )
 from lib.semantic_annotations.repository import PersistedSemanticManifest
-from lib.semantic_annotations.service import SemanticAnnotationService
+from lib.semantic_annotations.service import (
+    SemanticAnnotationService,
+    SemanticAnnotationServiceError,
+)
 
 
 def test_semantic_service_persists_manifest_and_queues_grounded_granite_jobs() -> None:
@@ -55,6 +60,43 @@ def test_semantic_service_persists_manifest_and_queues_grounded_granite_jobs() -
     assert payload["semantic_region_id"] == str(region_id)
     assert payload["semantic_granite_task"] == "tables_json"
     assert payload["semantic_expected_fields"] == ["line_items", "total_amount"]
+    assert payload["semantic_quality_mode"] == "smart"
+    assert payload["allow_8b_rescue"] is False
+
+
+def test_semantic_service_propagates_explicit_rescue_permission_to_granite_jobs() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    region_id = uuid4()
+    user_id = uuid4()
+    source = _source(document_id=document_id, household_id=household_id, page_id=page_id)
+    manifest = _manifest(document_id=document_id, household_id=household_id, page_id=page_id)
+    jobs = RecordingJobs()
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
+            annotation_id=annotation_id,
+            region_ids=(region_id,),
+        ),
+        jobs=jobs,
+    ).annotate_document(
+        document_id,
+        quality_mode="smart",
+        requested_by="user",
+        allow_8b_rescue=True,
+        requested_by_user_id=user_id,
+        user_intent_reason="User allowed one 8B rescue.",
+    )
+
+    payload = jobs.created[0]["payload"]
+    assert payload["semantic_quality_mode"] == "smart"
+    assert payload["allow_8b_rescue"] is True
+    assert payload["requested_by_user_id"] == str(user_id)
+    assert payload["user_intent_reason"] == "User allowed one 8B rescue."
 
 
 def test_semantic_service_does_not_queue_ignored_or_unmatched_regions() -> None:
@@ -109,7 +151,7 @@ def test_semantic_service_caps_high_quality_granite_fanout() -> None:
             region_ids=region_ids,
         ),
         jobs=jobs,
-    ).annotate_document(document_id, quality_mode="high_quality", requested_by="system")
+    ).annotate_document(document_id, quality_mode="high_quality", requested_by="user")
 
     assert len(jobs.created) == 8
     assert len(result.queued_granite_job_ids) == 8
@@ -146,11 +188,38 @@ def test_semantic_service_caps_rescue_granite_fanout_to_single_retry() -> None:
             region_ids=region_ids,
         ),
         jobs=jobs,
-    ).annotate_document(document_id, quality_mode="rescue", requested_by="system")
+    ).annotate_document(
+        document_id,
+        quality_mode="rescue",
+        requested_by="user",
+        allow_8b_rescue=True,
+        user_intent_reason="User allowed one 8B rescue.",
+    )
 
     assert len(jobs.created) == 1
     assert result.queued_granite_job_ids == (jobs.created_job_id,)
     assert jobs.created[0]["payload"]["semantic_rescue"] is True  # type: ignore[index]
+
+
+def test_semantic_service_rejects_rescue_without_persisted_permission() -> None:
+    document_id = uuid4()
+
+    with pytest.raises(SemanticAnnotationServiceError, match="persisted user permission"):
+        SemanticAnnotationService(
+            source_loader=lambda loaded_document_id: _source(
+                document_id=loaded_document_id,
+                household_id=uuid4(),
+                page_id=uuid4(),
+            ),
+            gateway=StaticGateway(
+                _manifest(
+                    document_id=document_id,
+                    household_id=uuid4(),
+                    page_id=uuid4(),
+                    quality_mode="rescue",
+                )
+            ),
+        ).annotate_document(document_id, quality_mode="rescue", requested_by="system")
 
 
 class StaticGateway:

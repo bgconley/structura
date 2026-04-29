@@ -143,13 +143,7 @@ def create_high_quality_semantic_annotation(
 ) -> AcceptedJob:
     if not principal.household_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
-    try:
-        require_document_readable(documentId, _document_access_context(principal))
-    except ExtractionRepositoryError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found",
-        ) from exc
+    _require_document_readable_or_404(documentId, principal)
     with db_connection() as conn:
         with conn.cursor() as cur:
             job_id = enqueue_semantic_annotation_job(
@@ -157,13 +151,62 @@ def create_high_quality_semantic_annotation(
                 document_id=documentId,
                 household_id=principal.household_id,
                 quality_mode="high_quality",
+                semantic_quality_mode="high_quality",
+                allow_8b_rescue=False,
                 requested_by="user",
+                requested_by_user_id=principal.user_id,
+                user_intent_reason="User explicitly selected High Quality Parse.",
                 priority=26,
                 reason="phase8_5.user_high_quality_pass",
                 dedupe_existing=True,
             )
         conn.commit()
     return AcceptedJob.model_validate({"jobId": job_id, "status": "queued"})
+
+
+@router.post(
+    "/documents/{documentId}/semantic-annotations/allow-8b-rescue",
+    response_model=AcceptedJob,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def create_allow_8b_rescue_semantic_annotation(
+    documentId: UUID,
+    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
+) -> AcceptedJob:
+    if not principal.household_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    _require_document_readable_or_404(documentId, principal)
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            job_id = enqueue_semantic_annotation_job(
+                cur,
+                document_id=documentId,
+                household_id=principal.household_id,
+                quality_mode="smart",
+                semantic_quality_mode="smart",
+                allow_8b_rescue=True,
+                requested_by="user",
+                requested_by_user_id=principal.user_id,
+                user_intent_reason="User allowed one Qwen3-VL 8B rescue if policy requires it.",
+                priority=34,
+                reason="phase8_5.user_allowed_8b_rescue",
+                dedupe_existing=True,
+            )
+        conn.commit()
+    return AcceptedJob.model_validate({"jobId": job_id, "status": "queued"})
+
+
+def _require_document_readable_or_404(
+    document_id: UUID,
+    principal: AuthPrincipal,
+) -> None:
+    try:
+        require_document_readable(document_id, _document_access_context(principal))
+    except ExtractionRepositoryError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        ) from exc
 
 
 def _document_access_context(principal: AuthPrincipal) -> DocumentAccessContext:
