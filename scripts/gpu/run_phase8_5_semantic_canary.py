@@ -206,7 +206,8 @@ def _token_budget_report(
     max_visual_tokens = profile.visual_token_max_per_image or 0
     min_pixels = min_visual_tokens * compression * compression if min_visual_tokens else None
     max_pixels = max_visual_tokens * compression * compression if max_visual_tokens else None
-    docling_context_json = json.dumps(build_docling_context(source), sort_keys=True)
+    prompt_context = build_docling_context(source, include_pages_alias=False)
+    docling_context_json = json.dumps(prompt_context, sort_keys=True)
     schema_json = json.dumps(semantic_annotation_model_output_schema(), sort_keys=True)
     schema_token_estimate = _estimate_text_tokens(schema_json)
     requested_output_tokens = _max_output_tokens_for_profile(QWEN_SEMANTIC_PROFILE)
@@ -232,6 +233,7 @@ def _token_budget_report(
             else None
         ),
         "selected_fan_in_sequence": list(selected_fan_in_sequence),
+        "prompt_context_includes_legacy_pages_alias": "pages" in prompt_context,
         "docling_context_text_token_estimate": _estimate_text_tokens(docling_context_json),
         "prompt_token_estimate": _estimate_text_tokens(_prompt(source)),
         "schema_token_estimate": schema_token_estimate,

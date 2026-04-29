@@ -20,6 +20,7 @@ def build_docling_context(
     source: ExtractionSourceDocument,
     *,
     focus_page_numbers: set[int] | None = None,
+    include_pages_alias: bool = True,
 ) -> dict[str, Any]:
     elements_by_page = _group_elements_by_page(source.elements)
     tables_by_page = _group_tables_by_page(source.tables)
@@ -37,7 +38,7 @@ def build_docling_context(
         )
         for page in focus_pages
     ]
-    return {
+    context = {
         "document": {
             "documentId": str(source.document_id),
             "family": source.family,
@@ -73,8 +74,10 @@ def build_docling_context(
             ],
         },
         "focusPages": focus_context,
-        "pages": focus_context,
     }
+    if include_pages_alias:
+        context["pages"] = focus_context
+    return context
 
 
 def _page_context(

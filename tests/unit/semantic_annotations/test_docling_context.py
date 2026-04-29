@@ -76,6 +76,11 @@ def test_build_docling_context_includes_grounding_ids_and_bounded_snippets() -> 
     assert context["focusPages"][0]["tables"][0]["tableIndex"] == 2
     assert context["pages"] == context["focusPages"]
 
+    model_context = build_docling_context(source, include_pages_alias=False)
+
+    assert "focusPages" in model_context
+    assert "pages" not in model_context
+
 
 def test_build_docling_context_caps_element_context_per_page() -> None:
     page_id = uuid4()

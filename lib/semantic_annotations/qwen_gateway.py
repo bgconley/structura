@@ -355,7 +355,11 @@ def _prompt(
     *,
     focus_page_numbers: set[int] | None = None,
 ) -> str:
-    context = build_docling_context(source, focus_page_numbers=focus_page_numbers)
+    context = build_docling_context(
+        source,
+        focus_page_numbers=focus_page_numbers,
+        include_pages_alias=False,
+    )
     return (
         "You are Structura's semantic annotation planner. Return valid JSON only as compact "
         "semantic scout JSON, matching the provided semantic_annotation_model_output JSON "
