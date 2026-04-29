@@ -65,8 +65,16 @@ Persisted semantic job intent fields:
 - Rescue: `qwen3-vl-8b-semantic-hq:v1`, one user-permitted rescue only
 - Structured extraction: `granite-4.0-3b-vision-bf16:v1`
 
-The Qwen3-VL-4B smart profile is bounded to one image per request by default so
-the existing page-window merge path preserves exact Docling page coverage.
+The Qwen3-VL-4B smart profile first attempts four page images per semantic
+request, preserving the historical Qwen3-VL-2B fan-in shape for short PDFs.
+Each Smart Parse page image is bounded to planner resolution through Qwen's 32x
+visual-token guidance: 256 minimum and 2560 maximum visual tokens per image
+(`shortest_edge = 262144`, `longest_edge = 2621440`). Exact Docling page
+coverage remains mandatory; if a multi-image request omits a Docling page or
+exceeds the model context, the gateway may retry that window as one-page
+requests while keeping whole-document Docling context in the prompt. This
+planner-resolution budget does not downscale Docling originals globally and
+does not weaken Granite page/crop/table inputs.
 
 Fixture mode remains deterministic and must not claim Qwen or Granite provenance.
 

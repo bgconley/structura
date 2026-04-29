@@ -417,6 +417,7 @@ services:
       STRUCTURA_VLLM_MAX_NUM_SEQS: "2"
       STRUCTURA_VLLM_MM_PROCESSOR_CACHE_GB: "0"
       STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT: '{"image":4,"video":0}'
+      STRUCTURA_VLLM_MM_PROCESSOR_KWARGS: '{"size":{"shortest_edge":262144,"longest_edge":2621440}}'
     deploy:
       resources:
         reservations:

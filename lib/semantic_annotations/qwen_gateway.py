@@ -7,7 +7,7 @@ from uuid import UUID
 
 from jsonschema import Draft202012Validator, ValidationError
 
-from lib.config.settings import Settings
+from lib.config.settings import Settings, get_settings
 from lib.extraction.models import ExtractionSourceDocument
 from lib.model_runtime.clients.qwen_vl import QwenVLClient
 from lib.model_runtime.contracts import (
@@ -318,9 +318,12 @@ def _max_output_tokens_for_profile(profile_name: str) -> int:
 
 
 def _timeout_seconds_for_profile(profile_name: str) -> int:
+    settings = get_settings()
     if profile_name == QWEN_SEMANTIC_HQ_PROFILE:
-        return 180
-    return 60
+        return settings.model_qwen_hq_timeout_seconds
+    if profile_name == QWEN_SEMANTIC_PROFILE:
+        return settings.model_qwen_semantic_timeout_seconds
+    return settings.model_http_timeout_seconds
 
 
 def _source_for_pages(

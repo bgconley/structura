@@ -25,6 +25,9 @@ class ModelProfile:
     max_images_per_request: int | None = None
     max_model_len: int | None = None
     pgvector_index: str | None = None
+    visual_token_spatial_compression: int | None = None
+    visual_token_min_per_image: int | None = None
+    visual_token_max_per_image: int | None = None
 
 
 _PROFILES: dict[str, ModelProfile] = {
@@ -51,6 +54,9 @@ _PROFILES: dict[str, ModelProfile] = {
         max_image_bytes=10 * 1024 * 1024,
         max_images_per_request=4,
         max_model_len=24576,
+        visual_token_spatial_compression=32,
+        visual_token_min_per_image=256,
+        visual_token_max_per_image=2560,
     ),
     QWEN_HISTORICAL_SEMANTIC_2B_PROFILE: ModelProfile(
         name=QWEN_HISTORICAL_SEMANTIC_2B_PROFILE,

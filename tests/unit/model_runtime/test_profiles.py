@@ -39,6 +39,9 @@ def test_qwen_semantic_profile_uses_qwen3_vl_4b_for_default_smart_parse() -> Non
     assert smart.default_gpu_role == "blackwell-0"
     assert smart.max_model_len == 24576
     assert smart.max_images_per_request == 4
+    assert smart.visual_token_spatial_compression == 32
+    assert smart.visual_token_min_per_image == 256
+    assert smart.visual_token_max_per_image == 2560
 
 
 def test_qwen2b_and_qwen8_profiles_remain_historical_but_not_required_live() -> None:

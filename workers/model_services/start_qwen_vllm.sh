@@ -48,4 +48,8 @@ if [[ -n "${STRUCTURA_VLLM_MM_PROCESSOR_CACHE_GB:-}" ]]; then
   args+=(--mm-processor-cache-gb "$STRUCTURA_VLLM_MM_PROCESSOR_CACHE_GB")
 fi
 
+if [[ -n "${STRUCTURA_VLLM_MM_PROCESSOR_KWARGS:-}" ]]; then
+  args+=(--mm-processor-kwargs "$STRUCTURA_VLLM_MM_PROCESSOR_KWARGS")
+fi
+
 exec python -m vllm.entrypoints.openai.api_server "${args[@]}"

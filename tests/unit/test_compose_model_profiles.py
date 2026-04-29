@@ -107,6 +107,9 @@ def test_live_model_profiles_have_concrete_blackwell_commands() -> None:
     assert qwen_semantic["environment"]["STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT"] == (
         '{"image":4,"video":0}'
     )
+    assert qwen_semantic["environment"]["STRUCTURA_VLLM_MM_PROCESSOR_KWARGS"] == (
+        '{"size":{"shortest_edge":262144,"longest_edge":2621440}}'
+    )
 
     qwen_hq = services["model-qwen"]
     assert "voipmonitor/vllm:cu130" in qwen_hq["image"]

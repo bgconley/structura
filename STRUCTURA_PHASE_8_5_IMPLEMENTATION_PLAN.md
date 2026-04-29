@@ -272,6 +272,9 @@ qwen3-vl-4b-semantic:v1
   max_images_per_request: 4
   max_image_bytes: 10485760
   max_model_len: 24576
+  visual_token_spatial_compression: 32
+  visual_token_min_per_image: 256
+  visual_token_max_per_image: 2560
   source_engine: qwen3_vl_4b
 
 Qwen3-VL-4B Smart Parse should first attempt the same four-page semantic image
@@ -279,6 +282,11 @@ fan-in shape used by the historical 2B path. Exact Docling page coverage remains
 mandatory. If the model returns valid JSON that omits a Docling page, retry that
 window as one-page requests, keep whole-document Docling context in each prompt,
 merge page votes/evidence, and record fallback telemetry in manifest confidence.
+Smart Parse images are planner-resolution only: vLLM should receive
+`STRUCTURA_VLLM_MM_PROCESSOR_KWARGS={"size":{"shortest_edge":262144,"longest_edge":2621440}}`,
+which corresponds to Qwen's 32x guidance at 256 to 2560 visual tokens per image.
+Do not downscale Docling originals globally, and do not weaken Granite
+page/crop/table inputs.
 
 qwen3-vl-8b-semantic-hq:v1
   engine: qwen
