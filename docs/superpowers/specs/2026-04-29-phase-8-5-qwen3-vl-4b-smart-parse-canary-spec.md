@@ -64,7 +64,7 @@ profile: qwen3-vl-4b-semantic:v1
 base model: Qwen/Qwen3-VL-4B-Instruct
 source_engine: qwen3_vl_4b
 dtype: bfloat16
-max_model_len: 24576
+max_model_len: 32768
 max_num_seqs: 2
 limit_mm_per_prompt: {"image": 4, "video": 0}
 gpu: Blackwell GPU 0

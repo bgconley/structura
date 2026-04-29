@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     qwen_profile: str = "qwen3-vl-8b-instruct-nvfp4-local:v1"
     qwen_hq_profile: str = "qwen3-vl-8b-semantic-hq:v1"
     qwen_semantic_profile: str = "qwen3-vl-4b-semantic:v1"
-    model_qwen_semantic_timeout_seconds: int = 180
+    model_qwen_semantic_timeout_seconds: int = 300
     model_qwen_hq_timeout_seconds: int = 180
     qwen8_enabled: bool = False
     granite_profile: str = "granite-4.0-3b-vision-bf16:v1"

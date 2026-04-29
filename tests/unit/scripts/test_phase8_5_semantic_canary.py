@@ -195,7 +195,7 @@ def test_semantic_canary_reports_qwen_visual_token_budget() -> None:
     assert report["mm_processor_kwargs"] == {
         "size": {"shortest_edge": 262144, "longest_edge": 2621440}
     }
-    assert report["requested_output_tokens"] == 3840
+    assert report["requested_output_tokens"] == 6144
     assert report["selected_fan_in_sequence"] == [2]
     assert report["docling_context_text_token_estimate"] > 0
     assert report["schema_token_estimate"] > 0
@@ -214,7 +214,7 @@ def test_semantic_canary_reports_qwen_visual_token_budget() -> None:
     assert first_window["page_numbers"] == [1, 2]
     assert first_window["image_count"] == 2
     assert first_window["visual_token_estimate"] <= 5120
-    assert first_window["conservative_total_token_estimate"] > 3840
+    assert first_window["conservative_total_token_estimate"] > 6144
 
 
 def _png_bytes(*, width: int, height: int) -> bytes:

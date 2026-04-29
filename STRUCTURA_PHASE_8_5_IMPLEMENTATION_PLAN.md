@@ -271,7 +271,7 @@ qwen3-vl-4b-semantic:v1
   default_gpu: blackwell-0
   max_images_per_request: 4
   max_image_bytes: 10485760
-  max_model_len: 24576
+  max_model_len: 32768
   visual_token_spatial_compression: 32
   visual_token_min_per_image: 256
   visual_token_max_per_image: 2560

@@ -1044,6 +1044,18 @@
       "related_bugs": ["bug-081", "bug-086"],
       "occurrences": 1,
       "last_seen": "2026-04-29T15:55:00-04:00"
+    },
+    {
+      "id": "bug-088",
+      "timestamp": "2026-04-29T16:35:00-04:00",
+      "error_message": "Live Qwen3-VL-4B semantic canary reached vLLM but failed because the Smart Parse response was truncated before valid JSON completed.",
+      "file": "lib/semantic_annotations/qwen_gateway.py",
+      "root_cause": "The high-recall phase8_5-semantic-smart-v3 planner contract can emit richer page and region metadata than the previous sparse prompt, but the active profile still used a 24K serving window and a 3,840-token response budget. Multi-image requests completed at vLLM but hit the completion budget before the structured JSON closed.",
+      "fix": "Raised Qwen3-VL-4B Smart Parse to a 32K serving/profile window, increased the smart semantic response budget to 6,144 tokens with a 300-second timeout, and added a multi-image truncated-output fallback that retries as one-page windows while preserving whole-document Docling context.",
+      "tags": ["phase-8.5", "qwen3-vl-4b", "semantic-routing", "vllm", "structured-output"],
+      "related_bugs": ["bug-086", "bug-087"],
+      "occurrences": 1,
+      "last_seen": "2026-04-29T16:35:00-04:00"
     }
   ]
 }

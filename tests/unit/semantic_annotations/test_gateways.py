@@ -78,7 +78,7 @@ def test_live_qwen_smart_gateway_builds_truthful_qwen3_vl_4b_manifest() -> None:
     assert client.request.image_inputs[0].content == b"page-image"
     assert client.request.response_schema_name == "semantic_annotation_model_output"
     assert client.request.response_json_schema == semantic_annotation_model_output_schema()
-    assert client.request.timeout_seconds == 180
+    assert client.request.timeout_seconds == 300
     assert result.manifest.manifest["schema_name"] == "semantic_annotation_manifest"
     assert result.manifest.confidence["overall"] == 0.88
 
@@ -123,7 +123,7 @@ def test_live_qwen_smart_gateway_uses_compact_output_budget_for_16k_service() ->
     QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
 
     assert client.request is not None
-    assert client.request.max_output_tokens == 3840
+    assert client.request.max_output_tokens == 6144
 
 
 def test_live_qwen_high_quality_gateway_uses_qwen8b_profile() -> None:
@@ -582,8 +582,8 @@ def test_live_qwen_smart_gateway_falls_back_after_context_length_failure() -> No
             self.requests.append(request)
             if len(request.image_inputs) > 1:
                 raise ModelProtocolError(
-                    "This model's maximum context length is 24576 tokens. "
-                    "However, you requested 3840 output tokens and your prompt contains "
+                    "This model's maximum context length is 32768 tokens. "
+                    "However, you requested 6144 output tokens and your prompt contains "
                     "at least 14500 input tokens."
                 )
             page_ids = [page_by_hash[image.validated_sha256()] for image in request.image_inputs]
@@ -610,6 +610,49 @@ def test_live_qwen_smart_gateway_falls_back_after_context_length_failure() -> No
     assert [len(request.image_inputs) for request in client.requests] == [2, 1, 1]
     assert len(result.manifest.pages) == 2
     assert result.manifest.confidence["fallback_reason"] == "multi_image_context_length"
+    assert result.manifest.confidence["fallback_max_images"] == 1
+
+
+def test_live_qwen_smart_gateway_falls_back_after_multi_image_truncation() -> None:
+    source = _source_with_two_page_images()
+    page_by_hash = {page.image_sha256: page.page_id for page in source.pages if page.image_sha256}
+
+    class TruncationFallbackClient:
+        requests: list[VisionGenerateRequest]
+
+        def __init__(self) -> None:
+            self.requests = []
+
+        def generate(self, request: VisionGenerateRequest) -> VisionGenerateResponse:
+            self.requests.append(request)
+            if len(request.image_inputs) > 1:
+                raise ModelProtocolError(
+                    "Vision model response was truncated before valid JSON completed."
+                )
+            page_ids = [page_by_hash[image.validated_sha256()] for image in request.image_inputs]
+            return VisionGenerateResponse(
+                profile_name=QWEN_SEMANTIC_PROFILE,
+                model_name="fake-qwen",
+                model_version="test",
+                source_engine="qwen3_vl_4b",
+                prompt_version=request.prompt_version,
+                raw_text="{}",
+                normalized_json=_semantic_payload_for_pages(page_ids),
+                confidence_json={"overall": 0.8},
+                input_sha256=tuple(image.validated_sha256() for image in request.image_inputs),
+                latency_ms=1,
+            )
+
+    client = TruncationFallbackClient()
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(
+        source,
+        quality_mode="smart",
+    )
+
+    assert [len(request.image_inputs) for request in client.requests] == [2, 1, 1]
+    assert len(result.manifest.pages) == 2
+    assert result.manifest.confidence["fallback_reason"] == "multi_image_output_truncated"
     assert result.manifest.confidence["fallback_max_images"] == 1
 
 

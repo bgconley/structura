@@ -60,7 +60,7 @@ contracts, or make Granite output canonical app JSON directly.
 - [ ] Add tests proving the smart semantic profile is `qwen3-vl-4b-semantic:v1`
       with source engine `qwen3_vl_4b`.
 - [ ] Add tests proving `model-qwen-semantic` uses `Qwen/Qwen3-VL-4B-Instruct`,
-      max model length 24576, max sequences 2, video cap 0, and bounded image
+      max model length 32768, max sequences 2, video cap 0, and bounded image
       fan-in.
 - [ ] Add tests proving `model-qwen` is not part of the active `models-live`
       path while Qwen8 is deferred.
@@ -99,7 +99,7 @@ implementation.
       Qwen8 provenance.
 - [ ] Set Qwen3-VL-4B base model to `Qwen/Qwen3-VL-4B-Instruct` and source engine to
       `qwen3_vl_4b`.
-- [ ] Set smart default max model length to 24576, max images initially to 1,
+- [ ] Set smart default max model length to 32768, max images initially to 1,
       and video to 0 so the existing page-window merge path preserves exact
       Docling page coverage.
 - [ ] Set Compose `model-qwen-semantic` to Qwen3-VL-4B BF16, max sequences 2, and

@@ -33,7 +33,7 @@
 
 ## Task 1: Preserve The Timeout Patch
 
-- [ ] Keep `model_qwen_semantic_timeout_seconds = 180`.
+- [ ] Keep `model_qwen_semantic_timeout_seconds = 300`.
 - [ ] Keep `model_qwen_hq_timeout_seconds = 180`.
 - [ ] Keep `_timeout_seconds_for_profile()` reading those settings.
 - [ ] Verify:

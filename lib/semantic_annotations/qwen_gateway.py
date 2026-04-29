@@ -57,6 +57,7 @@ from lib.semantic_annotations.target_schema_policy import (
 from lib.storage import ObjectStorage
 
 MAX_SEMANTIC_MODEL_ATTEMPTS = 2
+SMART_SEMANTIC_MAX_OUTPUT_TOKENS = 6144
 SEMANTIC_PAGE_COVERAGE_FRAGMENT = "page coverage must exactly match docling pages"
 SINGLE_PAGE_FALLBACK_MAX_IMAGES = 1
 PAGE_PLANNER_METADATA_FIELDS = (
@@ -265,6 +266,8 @@ class QwenSemanticAnnotationGateway:
                 return manifest
             except (ModelProtocolError, SemanticAnnotationValidationError) as exc:
                 last_error = exc
+                if _single_page_fallback_reason(exc, source, max_images=len(source.pages)):
+                    break
                 if attempt + 1 >= MAX_SEMANTIC_MODEL_ATTEMPTS or not _is_retryable_error(exc):
                     break
         if last_error is None:
@@ -337,7 +340,7 @@ def _response_json_schema_for_profile(profile_name: str) -> dict[str, object] | 
 
 def _max_output_tokens_for_profile(profile_name: str) -> int:
     if profile_name == QWEN_SEMANTIC_PROFILE:
-        return 3840
+        return SMART_SEMANTIC_MAX_OUTPUT_TOKENS
     return 4096
 
 
@@ -801,4 +804,6 @@ def _single_page_fallback_reason(
         return "multi_image_page_coverage"
     if "maximum context length" in message or "context length" in message:
         return "multi_image_context_length"
+    if "truncated" in message:
+        return "multi_image_output_truncated"
     return None

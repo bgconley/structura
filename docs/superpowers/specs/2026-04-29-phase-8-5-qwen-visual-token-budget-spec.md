@@ -54,13 +54,13 @@ remain unchanged.
 
 ## Output Budget
 
-Smart Parse keeps `max_output_tokens = 3840` for now. With planner-resolution
+Smart Parse keeps `max_output_tokens = 6144` for now. With planner-resolution
 image tokens and TurboQuant available for evaluation, reducing output tokens is
 not part of this change. Any future reduction must be based on canary evidence.
 
 ## Timeout Policy
 
-The Qwen semantic timeout is configurable and defaults to 180 seconds. The
+The Qwen semantic timeout is configurable and defaults to 300 seconds. The
 previous 60-second generic model timeout is too short for live Qwen3-VL-4B
 semantic canaries after context capacity is solved.
 
