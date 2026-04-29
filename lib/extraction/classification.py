@@ -48,8 +48,7 @@ def classify_document(
 
 
 def _route_profile_for_family(family: str, *, qwen_route: bool) -> str:
+    del qwen_route
     if family not in TARGET_EXTRACTION_SCHEMAS:
         return "docling_only"
-    if qwen_route:
-        return "qwen_primary_review_required"
     return "docling_plus_structured_extraction"

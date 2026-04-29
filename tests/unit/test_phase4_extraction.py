@@ -27,6 +27,24 @@ def test_phase4_classifier_identifies_invoice_from_canonical_text() -> None:
     assert decision.confidence >= 0.8
 
 
+def test_phase8_qwen_route_eligible_marks_review_without_auto_qwen8b_route() -> None:
+    source = _source(
+        """
+        Seller: Acme Repairs
+        Invoice Number: INV-200
+        Total: 88.00
+        """,
+        metadata={"phase8": {"quality": {"qwenRouteEligible": True}}},
+    )
+
+    decision = classify_document(source)
+
+    assert decision.family == "invoice"
+    assert decision.route_profile == "docling_plus_structured_extraction"
+    assert decision.needs_review is True
+    assert "phase8_qwen_route" in decision.payload["reasons"]
+
+
 def test_phase4_receipt_validation_flags_arithmetic_mismatch() -> None:
     source = _source(
         "Merchant: Whole Foods\nDate: 2026-04-03\nSubtotal: 10.00\nTax: 1.00\nTotal: 20.00"
@@ -95,7 +113,11 @@ def test_phase4_evidence_requires_concrete_locator() -> None:
     )
 
 
-def _source(text: str) -> ExtractionSourceDocument:
+def _source(
+    text: str,
+    *,
+    metadata: dict[str, object] | None = None,
+) -> ExtractionSourceDocument:
     document_id = uuid4()
     page_id = uuid4()
     return ExtractionSourceDocument(
@@ -110,7 +132,7 @@ def _source(text: str) -> ExtractionSourceDocument:
         document_date=None,
         counterparty_display=None,
         primary_folder_id=None,
-        metadata={"phase3": {"parseStatus": "succeeded"}},
+        metadata=metadata or {"phase3": {"parseStatus": "succeeded"}},
         pages=[ParsedPageText(page_id=page_id, page_number=1, text=text)],
         elements=[
             ParsedElementText(
