@@ -36,6 +36,10 @@ def test_invoice_region_reconciliation_preserves_line_items_and_payment_summary(
                                 "service_type": "MOUNT AND BALANCE FRONT AND REAR TIRES",
                                 "service_cost": "465.48",
                             },
+                            {
+                                "description": "Customer Information",
+                                "category_hint": "Customer Information",
+                            },
                         ]
                     },
                     "totals": {"total": {"amount": 795.55, "currency": "USD"}},
@@ -57,6 +61,9 @@ def test_invoice_region_reconciliation_preserves_line_items_and_payment_summary(
                 },
             ),
         ],
+        document_fallback={
+            "invoice_number": "6046058/1",
+        },
     )
 
     assert [item["description"] for item in aggregate["line_items"]] == [
@@ -79,3 +86,36 @@ def test_invoice_region_reconciliation_preserves_line_items_and_payment_summary(
             "semantic_type": "payment_summary",
         },
     ]
+
+
+def test_invoice_region_reconciliation_uses_document_level_invoice_fallback() -> None:
+    document_id = uuid4()
+
+    aggregate = reconcile_invoice_region_extractions(
+        document_id=document_id,
+        seller={"display_name": "MAX BMW", "party_type": "company"},
+        created_at=datetime.now(UTC),
+        regions=[
+            RegionExtraction(
+                extraction_id=uuid4(),
+                semantic_region_id=uuid4(),
+                semantic_type="invoice_line_item_table",
+                normalized_json={
+                    "line_items": [
+                        {
+                            "description": "PERFORM 600 MILE RUNNING-IN CHECK",
+                            "amount": {"amount": 250.00, "currency": "USD"},
+                        }
+                    ],
+                    "totals": {"total": {"amount": 250.00, "currency": "USD"}},
+                },
+            ),
+        ],
+        document_fallback={
+            "invoice_number": "6046058/1",
+            "date": "04/25/23",
+        },
+    )
+
+    assert aggregate["invoice"]["invoice_number"] == "6046058/1"
+    assert aggregate["invoice"]["issued_on"] == "2023-04-25"

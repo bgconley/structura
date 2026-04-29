@@ -98,6 +98,15 @@ def test_bmw_wrapped_granite_invoice_lines_create_line_item_candidates() -> None
                     "service_date": "04/25/23",
                     "service_provider": "MAX BMW Motorcycles",
                 },
+                {
+                    "description": "Customer Information",
+                    "category_hint": "Customer Information",
+                },
+                {
+                    "description": "Transaction information",
+                    "category_hint": "Transaction information",
+                    "amount": "4",
+                },
             ]
         },
         "confidence": {"overall": 0.73},

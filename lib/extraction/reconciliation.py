@@ -25,6 +25,7 @@ def reconcile_invoice_region_extractions(
     seller: dict[str, Any],
     created_at: datetime,
     regions: list[RegionExtraction],
+    document_fallback: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     line_items: list[dict[str, Any]] = []
     invoice: dict[str, Any] = {}
@@ -62,6 +63,7 @@ def reconcile_invoice_region_extractions(
             continue
         _merge_money_fields(totals, payload.get("totals"))
 
+    _merge_document_fallback(invoice, totals, document_fallback or {})
     if not invoice.get("invoice_number"):
         invoice["invoice_number"] = "unknown"
     if "total" not in totals and "amount_paid" in totals:
@@ -104,6 +106,37 @@ def _merge_money_fields(target: dict[str, Any], source: object) -> None:
         value = source.get(key)
         if isinstance(value, dict) and value.get("amount") is not None:
             target[key] = value
+
+
+def _merge_document_fallback(
+    invoice: dict[str, Any],
+    totals: dict[str, Any],
+    fallback: dict[str, Any],
+) -> None:
+    if not invoice.get("invoice_number"):
+        invoice_number = fallback.get("invoice_number") or fallback.get("invoice_no")
+        if invoice_number:
+            invoice["invoice_number"] = str(invoice_number)
+    if not invoice.get("issued_on"):
+        issued_on = _local_date(fallback.get("date") or fallback.get("issued_on"))
+        if issued_on:
+            invoice["issued_on"] = issued_on
+    if "total" not in totals:
+        total = fallback.get("total_amount") or fallback.get("amount_due")
+        if isinstance(total, dict) and total.get("amount") is not None:
+            totals["total"] = total
+
+
+def _local_date(value: object) -> str | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    text = value.strip()
+    for fmt in ("%Y-%m-%d", "%m/%d/%y", "%m/%d/%Y"):
+        try:
+            return datetime.strptime(text, fmt).date().isoformat()
+        except ValueError:
+            continue
+    return None
 
 
 def _renumber(line_items: list[dict[str, Any]]) -> list[dict[str, Any]]:

@@ -5,6 +5,14 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+_NON_LINE_ITEM_HEADINGS = {
+    "customer information",
+    "transaction information",
+    "vehicle information",
+    "service department hours",
+    "payment information",
+}
+
 
 def normalize_granite_region_output(
     *,
@@ -178,6 +186,8 @@ def _canonical_invoice_line_items(items: list[Any]) -> list[dict[str, Any]]:
         description = _line_item_description(item)
         if not description:
             continue
+        if _is_non_line_item_heading(item, description):
+            continue
         amount = _line_item_amount(item)
         service_date = item.get("service_date") or item.get("date")
         normalized_item = {
@@ -289,6 +299,16 @@ def _line_item_amount(item: dict[str, Any]) -> dict[str, Any] | None:
         if amount is not None:
             return amount
     return None
+
+
+def _is_non_line_item_heading(item: dict[str, Any], description: str) -> bool:
+    normalized_description = description.strip().lower()
+    category = item.get("category_hint") or item.get("gl_hint")
+    normalized_category = str(category).strip().lower() if category else ""
+    return (
+        normalized_description in _NON_LINE_ITEM_HEADINGS
+        or normalized_category in _NON_LINE_ITEM_HEADINGS
+    )
 
 
 def _line_item_source_text(item: dict[str, Any], description: str) -> str:

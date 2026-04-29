@@ -43,6 +43,11 @@ def maybe_reconcile_semantic_annotation(
                 semantic_annotation_id=semantic_annotation_id,
                 schema_name=schema_name,
             )
+            document_fallback = _current_document_extraction_json(
+                cur,
+                document_id=document_id,
+                schema_name=schema_name,
+            )
     if expected_count == 0 or len(rows) < expected_count:
         return None
 
@@ -68,6 +73,7 @@ def maybe_reconcile_semantic_annotation(
         },
         created_at=datetime.now(UTC),
         regions=regions,
+        document_fallback=document_fallback,
     )
     validation = validate_extraction_payload(schema_name, aggregate_json)
     validation = _force_aggregate_review(validation)
@@ -167,6 +173,33 @@ def _current_region_extraction_rows(
         (document_id, semantic_annotation_id, schema_name),
     )
     return list(cur.fetchall())
+
+
+def _current_document_extraction_json(
+    cur: Any,
+    *,
+    document_id: UUID,
+    schema_name: str,
+) -> dict[str, Any]:
+    cur.execute(
+        """
+        SELECT normalized_json
+        FROM document_extractions
+        WHERE document_id = %s
+          AND schema_name = %s
+          AND extraction_scope = 'document'
+          AND source_engine = 'granite_vision_3b'
+          AND is_current
+          AND status = 'completed'
+        ORDER BY created_at DESC
+        LIMIT 1
+        """,
+        (document_id, schema_name),
+    )
+    row = cur.fetchone()
+    if not row or not isinstance(row.get("normalized_json"), dict):
+        return {}
+    return dict(row["normalized_json"])
 
 
 def _force_aggregate_review(validation: ValidationReport) -> ValidationReport:
