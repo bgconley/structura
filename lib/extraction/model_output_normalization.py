@@ -34,11 +34,15 @@ def invoice_line_item_dicts_from_payload(payload: dict[str, Any]) -> list[dict[s
 
 
 def invoice_payment_summary_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
-    invoice = payload.get("invoice") if isinstance(payload.get("invoice"), dict) else {}
-    totals = payload.get("totals") if isinstance(payload.get("totals"), dict) else {}
-    metadata = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
-    payment_summary = (
-        metadata.get("payment_summary") if isinstance(metadata.get("payment_summary"), dict) else {}
+    raw_invoice = payload.get("invoice")
+    invoice: dict[str, Any] = raw_invoice if isinstance(raw_invoice, dict) else {}
+    raw_totals = payload.get("totals")
+    totals: dict[str, Any] = raw_totals if isinstance(raw_totals, dict) else {}
+    raw_metadata = payload.get("metadata")
+    metadata: dict[str, Any] = raw_metadata if isinstance(raw_metadata, dict) else {}
+    raw_payment_summary = metadata.get("payment_summary")
+    payment_summary: dict[str, Any] = (
+        raw_payment_summary if isinstance(raw_payment_summary, dict) else {}
     )
     payment = _first_payment(payload)
     amount = _money(payment.get("amount") or payload.get("amount") or totals.get("amount_paid"))
