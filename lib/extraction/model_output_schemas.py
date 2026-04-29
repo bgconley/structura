@@ -24,6 +24,15 @@ def model_output_schema_for_task(
 ) -> ModelOutputSchema | None:
     if semantic_task is None:
         return None
+    if schema_name == "invoice" and semantic_task.semantic_type == "invoice_line_item_table":
+        return load_model_output_schema("granite_invoice_line_items.v1")
+    if (
+        schema_name == "medical_eob"
+        and semantic_task.semantic_type == "covered_services_line_item_table"
+    ):
+        return load_model_output_schema("granite_medical_service_lines.v1")
+    if schema_name == "invoice" and semantic_task.semantic_type == "payment_summary":
+        return load_model_output_schema("granite_payment_summary.v1")
     if semantic_task.granite_task in {"tables_json", "tables_html", "tables_otsl"}:
         if schema_name == "invoice" and semantic_task.semantic_type == "invoice_line_item_table":
             return load_model_output_schema("granite_invoice_line_items.v1")

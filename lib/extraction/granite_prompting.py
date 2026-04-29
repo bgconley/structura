@@ -45,7 +45,7 @@ def granite_prompt(
         )
 
     schema_text = json.dumps(model_output_schema.schema, indent=2, sort_keys=True)
-    if semantic_task.granite_task in {"tables_json", "tables_html", "tables_otsl"}:
+    if _is_table_region(semantic_task):
         return (
             f"{base}<tables_json>\n"
             f"{task_context}"
@@ -140,3 +140,11 @@ def _page_context(source: ExtractionSourceDocument, task: SemanticExtractionTask
     if page is None or not page.text:
         return ""
     return f"Page {page.page_number} text excerpt:\n{page.text[:1600]}"
+
+
+def _is_table_region(task: SemanticExtractionTask) -> bool:
+    return task.granite_task in {
+        "tables_json",
+        "tables_html",
+        "tables_otsl",
+    } or task.semantic_type in {"invoice_line_item_table", "covered_services_line_item_table"}

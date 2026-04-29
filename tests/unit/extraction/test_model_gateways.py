@@ -139,6 +139,38 @@ def test_granite_gateway_routes_invoice_tables_to_model_output_schema() -> None:
     assert "line_items" in client.request.response_json_schema["properties"]
 
 
+def test_granite_gateway_forces_line_item_schema_when_qwen_task_label_is_kvp() -> None:
+    client = FakeVisionClient(
+        source_engine="granite_vision_3b",
+        profile_name=GRANITE_VISION_PROFILE,
+    )
+    source = _source_with_page_image()
+    task = SemanticExtractionTask(
+        region_id=uuid4(),
+        annotation_id=uuid4(),
+        document_id=source.document_id,
+        semantic_type="invoice_line_item_table",
+        granite_task="kvp",
+        target_schema="invoice",
+        expected_fields=("service_type", "service_cost", "total_amount"),
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+        reason="Qwen found service lines but mislabeled the Granite task.",
+        confidence=0.81,
+    )
+
+    GraniteVisionExtractionGateway(client=client).extract(
+        source,
+        schema_name="invoice",
+        route_profile="docling_plus_granite_structured",
+        semantic_task=task,
+    )
+
+    assert client.request is not None
+    assert "<tables_json>" in client.request.prompt
+    assert client.request.response_schema_name == "granite_invoice_line_items.v1"
+    assert client.request.response_json_schema is not None
+
+
 def test_granite_gateway_routes_payment_summary_to_kvp_schema_prompt() -> None:
     client = FakeVisionClient(
         source_engine="granite_vision_3b",

@@ -26,28 +26,60 @@ def normalize_granite_region_output(
 
 
 def invoice_line_item_dicts_from_payload(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    if isinstance(payload.get("line_items"), list):
-        return _canonical_invoice_line_items(payload["line_items"])
-    return _flat_invoice_line_items(payload)
+    model_payload = _unwrapped_payload(payload)
+    records = _invoice_line_item_records(model_payload)
+    if records:
+        return _canonical_invoice_line_items(records)
+    return _flat_invoice_line_items(model_payload)
 
 
 def invoice_payment_summary_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    invoice = payload.get("invoice") if isinstance(payload.get("invoice"), dict) else {}
+    totals = payload.get("totals") if isinstance(payload.get("totals"), dict) else {}
+    metadata = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
+    payment_summary = (
+        metadata.get("payment_summary") if isinstance(metadata.get("payment_summary"), dict) else {}
+    )
     payment = _first_payment(payload)
-    amount = _money(payment.get("amount") or payload.get("amount"))
+    amount = _money(payment.get("amount") or payload.get("amount") or totals.get("amount_paid"))
     summary = {
         key: value
         for key, value in {
-            "card_number": payment.get("card_number") or payload.get("card_number"),
-            "merchant_id": payment.get("merchant_id") or payload.get("merchant_id"),
-            "terminal_id": payment.get("terminal_id") or payload.get("terminal_id"),
-            "auth_code": payment.get("auth_code") or payload.get("auth_code"),
-            "auth_mode": payment.get("auth_mode") or payload.get("auth_mode"),
+            "card_number": (
+                payment.get("card_number")
+                or payload.get("card_number")
+                or payment_summary.get("card_number")
+            ),
+            "merchant_id": (
+                payment.get("merchant_id")
+                or payload.get("merchant_id")
+                or payment_summary.get("merchant_id")
+            ),
+            "terminal_id": (
+                payment.get("terminal_id")
+                or payload.get("terminal_id")
+                or payment_summary.get("terminal_id")
+            ),
+            "auth_code": (
+                payment.get("auth_code")
+                or payload.get("auth_code")
+                or payment_summary.get("auth_code")
+            ),
+            "auth_mode": (
+                payment.get("auth_mode")
+                or payload.get("auth_mode")
+                or payment_summary.get("auth_mode")
+            ),
             "application_name": payment.get("application_name") or payload.get("application_name"),
         }.items()
         if value not in (None, "")
     }
     return {
-        "invoice_number": payload.get("invoice_no") or payload.get("invoice_number"),
+        "invoice_number": (
+            payload.get("invoice_no")
+            or payload.get("invoice_number")
+            or invoice.get("invoice_number")
+        ),
         "amount_paid": amount,
         "payment_summary": summary,
     }
@@ -137,27 +169,29 @@ def _medical_service_lines_output(
 def _canonical_invoice_line_items(items: list[Any]) -> list[dict[str, Any]]:
     normalized: list[dict[str, Any]] = []
     for item in items:
-        if not isinstance(item, dict) or not item.get("description"):
+        if not isinstance(item, dict):
             continue
-        amount = _money(item.get("amount"))
-        normalized.append(
-            {
-                "ordinal": int(item.get("ordinal") or len(normalized) + 1),
-                "description": str(item["description"]),
-                **({"quantity": _number(item.get("quantity"))} if item.get("quantity") else {}),
-                **({"unit": item.get("unit")} if item.get("unit") else {}),
-                **(
-                    {"unit_price": _money(item.get("unit_price"))} if item.get("unit_price") else {}
-                ),
-                **({"amount": amount} if amount else {}),
-                **(
-                    {"category_hint": item.get("category_hint")}
-                    if item.get("category_hint")
-                    else {}
-                ),
-                "evidence": [_evidence(item.get("source_text") or item["description"])],
-            }
-        )
+        description = _line_item_description(item)
+        if not description:
+            continue
+        amount = _line_item_amount(item)
+        service_date = item.get("service_date") or item.get("date")
+        normalized_item = {
+            "ordinal": int(item.get("ordinal") or len(normalized) + 1),
+            "description": description,
+            **({"service_date": service_date} if service_date else {}),
+            **({"quantity": _number(item.get("quantity"))} if item.get("quantity") else {}),
+            **({"unit": item.get("unit")} if item.get("unit") else {}),
+            **({"unit_price": _money(item.get("unit_price"))} if item.get("unit_price") else {}),
+            **({"amount": amount} if amount else {}),
+            **(
+                {"gl_hint": item.get("gl_hint") or item.get("category_hint")}
+                if (item.get("gl_hint") or item.get("category_hint"))
+                else {}
+            ),
+            "evidence": [_evidence(_line_item_source_text(item, description))],
+        }
+        normalized.append(normalized_item)
     return normalized
 
 
@@ -212,6 +246,54 @@ def _invoice_totals(payload: dict[str, Any]) -> dict[str, Any]:
             if amount:
                 result["total"] = amount
     return result
+
+
+def _invoice_line_item_records(payload: dict[str, Any]) -> list[Any]:
+    if isinstance(payload.get("line_items"), list):
+        return list(payload["line_items"])
+    if isinstance(payload.get("invoice_line_items"), list):
+        return list(payload["invoice_line_items"])
+    data = payload.get("data")
+    if isinstance(data, dict):
+        if isinstance(data.get("line_items"), list):
+            return list(data["line_items"])
+        if isinstance(data.get("invoice_line_items"), list):
+            return list(data["invoice_line_items"])
+    return []
+
+
+def _line_item_description(item: dict[str, Any]) -> str | None:
+    for key in ("description", "service_description", "service_type", "line_description"):
+        value = item.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _line_item_amount(item: dict[str, Any]) -> dict[str, Any] | None:
+    for key in (
+        "amount",
+        "total_due",
+        "service_cost",
+        "subtotal",
+        "net_amount",
+        "line_total",
+        "labor",
+        "parts_cost",
+    ):
+        amount = _money(item.get(key))
+        if amount is not None:
+            return amount
+    return None
+
+
+def _line_item_source_text(item: dict[str, Any], description: str) -> str:
+    parts = [description]
+    for key in ("parts", "service_notes", "service_provider", "service_location"):
+        value = item.get(key)
+        if isinstance(value, str) and value.strip():
+            parts.append(f"{key}: {value.strip()}")
+    return " | ".join(parts)
 
 
 def _first_payment(payload: dict[str, Any]) -> dict[str, Any]:

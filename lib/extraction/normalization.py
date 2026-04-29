@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
@@ -373,6 +374,7 @@ def _line_items(
                 description=str(item["description"]),
                 evidence=_evidence(item),
                 candidate_group=f"{line_item_type}.default",
+                service_date=_date(item.get("service_date")),
                 quantity=_number(item.get("quantity")),
                 unit=item.get("unit"),
                 unit_price=_money_amount(item.get("unit_price")),
@@ -380,7 +382,7 @@ def _line_items(
                 discount_amount=_money_amount(item.get("discount")),
                 net_amount=_money_amount(item.get("amount")),
                 currency=amount.get("currency"),
-                category_hint=item.get("category_hint"),
+                category_hint=item.get("category_hint") or item.get("gl_hint"),
                 confidence=confidence,
                 authority_weight=AUTHORITY_WEIGHTS.get(source_engine, 0.5),
                 status=status,
@@ -477,3 +479,17 @@ def _number(value: Any) -> float | None:
     if value is None:
         return None
     return float(value)
+
+
+def _date(value: Any) -> date | None:
+    if isinstance(value, date):
+        return value
+    if not isinstance(value, str) or not value.strip():
+        return None
+    text = value.strip()
+    for fmt in ("%Y-%m-%d", "%m/%d/%y", "%m/%d/%Y"):
+        try:
+            return datetime.strptime(text, fmt).date()
+        except ValueError:
+            continue
+    return None

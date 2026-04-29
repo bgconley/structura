@@ -91,13 +91,7 @@ def _with_region_evidence(
         evidence = []
         for evidence_item in item.get("evidence") or []:
             if isinstance(evidence_item, dict):
-                evidence.append(
-                    {
-                        **evidence_item,
-                        "extraction_id": str(region.extraction_id),
-                        "semantic_region_id": str(region.semantic_region_id),
-                    }
-                )
+                evidence.append(dict(evidence_item))
         copied["evidence"] = evidence
         enriched.append(copied)
     return enriched

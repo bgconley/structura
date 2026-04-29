@@ -26,20 +26,18 @@ def test_invoice_region_reconciliation_preserves_line_items_and_payment_summary(
                 semantic_region_id=line_region_id,
                 semantic_type="invoice_line_item_table",
                 normalized_json={
-                    "line_items": [
-                        {
-                            "ordinal": 1,
-                            "description": "PERFORM 600 MILE RUNNING-IN CHECK",
-                            "amount": {"amount": 250.00, "currency": "USD"},
-                            "evidence": [{"page_number": 1}],
-                        },
-                        {
-                            "ordinal": 2,
-                            "description": "MOUNT AND BALANCE FRONT AND REAR TIRES",
-                            "amount": {"amount": 465.48, "currency": "USD"},
-                            "evidence": [{"page_number": 1}],
-                        },
-                    ],
+                    "data": {
+                        "invoice_line_items": [
+                            {
+                                "service_description": "PERFORM 600 MILE RUNNING-IN CHECK",
+                                "total_due": "250.00",
+                            },
+                            {
+                                "service_type": "MOUNT AND BALANCE FRONT AND REAR TIRES",
+                                "service_cost": "465.48",
+                            },
+                        ]
+                    },
                     "totals": {"total": {"amount": 795.55, "currency": "USD"}},
                 },
             ),
@@ -48,10 +46,14 @@ def test_invoice_region_reconciliation_preserves_line_items_and_payment_summary(
                 semantic_region_id=payment_region_id,
                 semantic_type="payment_summary",
                 normalized_json={
-                    "invoice_no": "6064658",
-                    "amount": "$795.55",
-                    "card_number": "**********11108",
-                    "auth_code": "000268P",
+                    "invoice": {"invoice_number": "6064658"},
+                    "totals": {"amount_paid": {"amount": 795.55, "currency": "USD"}},
+                    "metadata": {
+                        "payment_summary": {
+                            "card_number": "**********11108",
+                            "auth_code": "000268P",
+                        }
+                    },
                 },
             ),
         ],
@@ -64,6 +66,7 @@ def test_invoice_region_reconciliation_preserves_line_items_and_payment_summary(
     assert aggregate["invoice"]["invoice_number"] == "6064658"
     assert aggregate["totals"]["amount_paid"] == {"amount": 795.55, "currency": "USD"}
     assert aggregate["metadata"]["payment_summary"]["card_number"] == "**********11108"
+    assert all("extraction_id" not in item for item in aggregate["line_items"][0]["evidence"])
     assert aggregate["metadata"]["region_extractions"] == [
         {
             "extraction_id": str(line_extraction_id),
