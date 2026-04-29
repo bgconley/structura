@@ -175,6 +175,7 @@
 - [2026-04-29] Do not make the GPU ZFS bootstrap remount live datasets just to repair permissions. Existing dataset properties should be checked before setting, and mounted datasets should not be remounted when they are already mounted.
 - [2026-04-29] Do not quote shell globs in ZFS dataset names. Prefer `zfs list -r -d 1 <dataset>` for child dataset reporting so bootstrap scripts exit cleanly after repairs.
 - [2026-04-29] Do not rely on setgid directories alone when the container UID is not in the host operator group. Structura app/worker containers need `STRUCTURA_RUNTIME_HOST_GID` via Compose `group_add` so UID 10001 can preserve setgid inheritance on `/srv/structura` bind mounts.
+- [2026-04-29] Do not carry the old 3,840-token semantic output budget into the 16K Qwen3-VL-4B smart service. Use a compact 2,048-token semantic budget and fall back from multi-image to single-page windows when vLLM reports a context-length rejection.
 
 ## Decision Log
 

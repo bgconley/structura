@@ -111,7 +111,7 @@ def test_live_qwen_smart_gateway_uses_compact_output_budget_for_16k_service() ->
     QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
 
     assert client.request is not None
-    assert client.request.max_output_tokens == 3840
+    assert client.request.max_output_tokens == 2048
 
 
 def test_live_qwen_high_quality_gateway_uses_qwen8b_profile() -> None:
@@ -482,6 +482,51 @@ def test_live_qwen_smart_gateway_falls_back_to_one_page_windows_after_coverage_f
     ] == [[1], [2]]
     assert all("Invoice cover" in request.prompt for request in client.requests)
     assert all("Invoice total $42" in request.prompt for request in client.requests)
+
+
+def test_live_qwen_smart_gateway_falls_back_after_context_length_failure() -> None:
+    source = _source_with_two_page_images()
+    page_by_hash = {page.image_sha256: page.page_id for page in source.pages if page.image_sha256}
+
+    class ContextLengthFallbackClient:
+        requests: list[VisionGenerateRequest]
+
+        def __init__(self) -> None:
+            self.requests = []
+
+        def generate(self, request: VisionGenerateRequest) -> VisionGenerateResponse:
+            self.requests.append(request)
+            if len(request.image_inputs) > 1:
+                raise ModelProtocolError(
+                    "This model's maximum context length is 16384 tokens. "
+                    "However, you requested 2048 output tokens and your prompt contains "
+                    "at least 14500 input tokens."
+                )
+            page_ids = [page_by_hash[image.validated_sha256()] for image in request.image_inputs]
+            return VisionGenerateResponse(
+                profile_name=QWEN_SEMANTIC_PROFILE,
+                model_name="fake-qwen",
+                model_version="test",
+                source_engine="qwen3_vl_4b",
+                prompt_version=request.prompt_version,
+                raw_text="{}",
+                normalized_json=_semantic_payload_for_pages(page_ids),
+                confidence_json={"overall": 0.8},
+                input_sha256=tuple(image.validated_sha256() for image in request.image_inputs),
+                latency_ms=1,
+            )
+
+    client = ContextLengthFallbackClient()
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(
+        source,
+        quality_mode="smart",
+    )
+
+    assert [len(request.image_inputs) for request in client.requests] == [2, 1, 1]
+    assert len(result.manifest.pages) == 2
+    assert result.manifest.confidence["fallback_reason"] == "multi_image_context_length"
+    assert result.manifest.confidence["fallback_max_images"] == 1
 
 
 def test_live_qwen_smart_gateway_falls_back_per_failed_four_page_window() -> None:

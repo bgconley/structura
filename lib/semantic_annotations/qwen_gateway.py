@@ -123,7 +123,8 @@ class QwenSemanticAnnotationGateway:
                     prompt_version=prompt_version,
                 )
             except ModelProtocolError as exc:
-                if not _should_fallback_to_single_page_windows(exc, source, max_images=max_images):
+                fallback_reason = _single_page_fallback_reason(exc, source, max_images=max_images)
+                if fallback_reason is None:
                     raise
                 manifest = self._annotate_in_page_windows(
                     source,
@@ -131,7 +132,7 @@ class QwenSemanticAnnotationGateway:
                     profile_name=profile_name,
                     prompt_version=prompt_version,
                     max_images=SINGLE_PAGE_FALLBACK_MAX_IMAGES,
-                    fallback_reason="multi_image_page_coverage",
+                    fallback_reason=fallback_reason,
                     primary_max_images=max_images,
                 )
         else:
@@ -172,13 +173,14 @@ class QwenSemanticAnnotationGateway:
                     )
                 )
             except ModelProtocolError as exc:
-                if not _should_fallback_to_single_page_windows(
+                fallback_reason_for_error = _single_page_fallback_reason(
                     exc,
                     chunk_source,
                     max_images=max_images,
-                ):
+                )
+                if fallback_reason_for_error is None:
                     raise
-                fallback_reasons.append("multi_image_page_coverage")
+                fallback_reasons.append(fallback_reason_for_error)
                 for page in chunk_source.pages:
                     page_source = _source_for_pages(source, [page])
                     partials.append(
@@ -311,7 +313,7 @@ def _response_json_schema_for_profile(profile_name: str) -> dict[str, object] | 
 
 def _max_output_tokens_for_profile(profile_name: str) -> int:
     if profile_name == QWEN_SEMANTIC_PROFILE:
-        return 3840
+        return 2048
     return 4096
 
 
@@ -760,8 +762,23 @@ def _should_fallback_to_single_page_windows(
     *,
     max_images: int,
 ) -> bool:
-    return (
+    return _single_page_fallback_reason(exc, source, max_images=max_images) is not None
+
+
+def _single_page_fallback_reason(
+    exc: Exception,
+    source: ExtractionSourceDocument,
+    *,
+    max_images: int,
+) -> str | None:
+    message = str(exc).lower()
+    if not (
         max_images > SINGLE_PAGE_FALLBACK_MAX_IMAGES
         and len(source.pages) > SINGLE_PAGE_FALLBACK_MAX_IMAGES
-        and SEMANTIC_PAGE_COVERAGE_FRAGMENT in str(exc).lower()
-    )
+    ):
+        return None
+    if SEMANTIC_PAGE_COVERAGE_FRAGMENT in message:
+        return "multi_image_page_coverage"
+    if "maximum context length" in message or "context length" in message:
+        return "multi_image_context_length"
+    return None
