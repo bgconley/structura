@@ -151,7 +151,7 @@ def _normalized_model_output_payload(
         and isinstance(pages, list)
         and isinstance(regions, list)
     ):
-        return _canonical_payload_with_duplicate_pages_collapsed(payload, pages=pages)
+        return _canonical_payload_normalized_for_source(payload, pages=pages, source=source)
     if isinstance(pages, list):
         return _payload_from_page_annotations(
             {"page_annotations": [_page_annotation_from_page_wrapper(page) for page in pages]},
@@ -169,21 +169,95 @@ def _normalized_model_output_payload(
     return ValidatedModelOutputPayload(payload=payload, normalization={})
 
 
-def _canonical_payload_with_duplicate_pages_collapsed(
+def _canonical_payload_normalized_for_source(
     payload: dict[str, object],
     *,
     pages: list[object],
+    source: ExtractionSourceDocument,
 ) -> ValidatedModelOutputPayload:
     if not all(isinstance(page, dict) for page in pages):
-        return ValidatedModelOutputPayload(payload=payload, normalization={})
+        return _canonical_payload_filtered_to_source(payload, source=source)
     merged_pages, normalization = _merge_duplicate_pages_with_summary(
         [page for page in pages if isinstance(page, dict)]
     )
-    if not normalization:
-        return ValidatedModelOutputPayload(payload=payload, normalization={})
     normalized_payload = dict(payload)
     normalized_payload["pages"] = merged_pages
+    filtered = _canonical_payload_filtered_to_source(normalized_payload, source=source)
+    if normalization:
+        normalization = {**normalization, **filtered.normalization}
+    else:
+        normalization = filtered.normalization
+    return ValidatedModelOutputPayload(payload=filtered.payload, normalization=normalization)
+
+
+def _canonical_payload_filtered_to_source(
+    payload: dict[str, object],
+    *,
+    source: ExtractionSourceDocument,
+) -> ValidatedModelOutputPayload:
+    pages = payload.get("pages")
+    regions = payload.get("regions")
+    if not isinstance(pages, list) or not isinstance(regions, list):
+        return ValidatedModelOutputPayload(payload=payload, normalization={})
+
+    valid_page_ids = {str(page.page_id) for page in source.pages}
+
+    kept_pages: list[object] = []
+    dropped_page_ids: list[str] = []
+    for page in pages:
+        if not isinstance(page, dict):
+            kept_pages.append(page)
+            continue
+        page_id = str(page.get("page_id") or "")
+        if page_id in valid_page_ids:
+            kept_pages.append(page)
+        elif page_id:
+            dropped_page_ids.append(page_id)
+
+    kept_regions: list[object] = []
+    dropped_region_count = 0
+    for region in regions:
+        if not isinstance(region, dict):
+            kept_regions.append(region)
+            continue
+        if _region_grounding_is_within_source_window(
+            region,
+            valid_page_ids=valid_page_ids,
+        ):
+            kept_regions.append(region)
+        else:
+            dropped_region_count += 1
+
+    if not dropped_page_ids and not dropped_region_count:
+        return ValidatedModelOutputPayload(payload=payload, normalization={})
+
+    normalized_payload = dict(payload)
+    normalized_payload["pages"] = kept_pages
+    normalized_payload["regions"] = kept_regions
+    normalization: dict[str, object] = {
+        "output_scope_filter_policy": "filter_to_requested_docling_pages",
+    }
+    if dropped_page_ids:
+        normalization["out_of_window_pages_dropped"] = len(dropped_page_ids)
+        normalization["out_of_window_page_ids"] = dropped_page_ids[:12]
+    if dropped_region_count:
+        normalization["out_of_window_regions_dropped"] = dropped_region_count
     return ValidatedModelOutputPayload(payload=normalized_payload, normalization=normalization)
+
+
+def _region_grounding_is_within_source_window(
+    region: dict[str, object],
+    *,
+    valid_page_ids: set[str],
+) -> bool:
+    grounding = region.get("grounding")
+    if not isinstance(grounding, dict):
+        return True
+
+    page_id = str(grounding.get("page_id") or "")
+    if page_id and page_id not in valid_page_ids:
+        return False
+    return True
 
 
 def _page_annotation_from_page_wrapper(page: dict[str, object]) -> dict[str, object]:

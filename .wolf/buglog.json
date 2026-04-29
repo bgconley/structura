@@ -1056,6 +1056,18 @@
       "related_bugs": ["bug-086", "bug-087"],
       "occurrences": 1,
       "last_seen": "2026-04-29T16:35:00-04:00"
+    },
+    {
+      "id": "bug-089",
+      "timestamp": "2026-04-29T17:10:00-04:00",
+      "error_message": "Live Qwen3-VL-4B one-page fallback produced useful JSON but failed Docling page coverage because the response included context-only pages from the whole-document prompt.",
+      "file": "lib/semantic_annotations/qwen_output_normalization.py",
+      "root_cause": "One-page fallback prompts correctly preserved whole-document Docling context, but canonical model-output normalization accepted all Qwen pages and regions verbatim. When Qwen annotated both the focused page and context-only pages, the strict page-coverage validator saw out-of-window Docling page IDs in a one-page manifest.",
+      "fix": "Canonical semantic model-output normalization now filters pages and regions to the requested Docling source window before manifest construction, records dropped out-of-window pages/regions in normalization telemetry, and preserves strict manifest page-coverage validation.",
+      "tags": ["phase-8.5", "qwen3-vl-4b", "semantic-routing", "docling", "page-coverage"],
+      "related_bugs": ["bug-081", "bug-088"],
+      "occurrences": 1,
+      "last_seen": "2026-04-29T17:10:00-04:00"
     }
   ]
 }

@@ -656,6 +656,63 @@ def test_live_qwen_smart_gateway_falls_back_after_multi_image_truncation() -> No
     assert result.manifest.confidence["fallback_max_images"] == 1
 
 
+def test_live_qwen_smart_gateway_filters_context_only_pages_in_fallback() -> None:
+    source = _source_with_two_page_images()
+    all_page_ids = [page.page_id for page in source.pages]
+
+    class ContextOnlyPageClient:
+        requests: list[VisionGenerateRequest]
+
+        def __init__(self) -> None:
+            self.requests = []
+
+        def generate(self, request: VisionGenerateRequest) -> VisionGenerateResponse:
+            self.requests.append(request)
+            if len(request.image_inputs) > 1:
+                raise ModelProtocolError(
+                    "Vision model response was truncated before valid JSON completed."
+                )
+            return VisionGenerateResponse(
+                profile_name=QWEN_SEMANTIC_PROFILE,
+                model_name="fake-qwen",
+                model_version="test",
+                source_engine="qwen3_vl_4b",
+                prompt_version=request.prompt_version,
+                raw_text="{}",
+                normalized_json=_semantic_payload_for_pages(all_page_ids),
+                confidence_json={"overall": 0.8},
+                input_sha256=tuple(image.validated_sha256() for image in request.image_inputs),
+                latency_ms=1,
+            )
+
+    client = ContextOnlyPageClient()
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(
+        source,
+        quality_mode="smart",
+    )
+
+    assert [len(request.image_inputs) for request in client.requests] == [2, 1, 1]
+    assert [page.page_id for page in result.manifest.pages] == all_page_ids
+    assert [region.grounding.page_id for region in result.manifest.regions] == all_page_ids
+    chunks = result.manifest.confidence["chunks"]
+    assert isinstance(chunks, list)
+    first_normalization = chunks[0]["normalization"]
+    second_normalization = chunks[1]["normalization"]
+    assert first_normalization == {
+        "output_scope_filter_policy": "filter_to_requested_docling_pages",
+        "out_of_window_pages_dropped": 1,
+        "out_of_window_page_ids": [str(source.pages[1].page_id)],
+        "out_of_window_regions_dropped": 1,
+    }
+    assert second_normalization == {
+        "output_scope_filter_policy": "filter_to_requested_docling_pages",
+        "out_of_window_pages_dropped": 1,
+        "out_of_window_page_ids": [str(source.pages[0].page_id)],
+        "out_of_window_regions_dropped": 1,
+    }
+
+
 def test_live_qwen_smart_gateway_falls_back_per_failed_four_page_window() -> None:
     source = _source_with_many_page_images(5)
     page_by_hash = {page.image_sha256: page.page_id for page in source.pages if page.image_sha256}
