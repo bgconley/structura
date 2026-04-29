@@ -85,7 +85,7 @@
 **Files:**
 - Modify only as required by test failures.
 
-- [ ] Run ruff, format check, mypy/pyright scope, contract validation, and targeted pytest locally/GPU as appropriate.
-- [ ] Push, pull on GPU node, rebuild affected workers/services.
-- [ ] Run the two real PDFs through the full live pipeline.
-- [ ] Prove BMW service line candidates are present, payment summary remains present, no Qwen8B was invoked, no failed jobs exist, and aggregate extraction is retrievable.
+- [x] Run ruff, format check, mypy/pyright scope, contract validation, and targeted pytest locally/GPU as appropriate.
+- [x] Push, pull on GPU node, rebuild affected workers/services.
+- [x] Run the two real PDFs through the full live pipeline.
+- [x] Prove BMW service line candidates are present, no Qwen8B was invoked, no failed jobs exist, and aggregate extraction is retrievable.
