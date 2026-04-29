@@ -128,6 +128,40 @@ def test_semantic_service_prefers_document_family_over_region_target_schema() ->
     assert payload["target_schema_name"] == "invoice"
 
 
+def test_semantic_service_uses_semantic_type_before_unclassified_family() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    region_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="medical_eob",
+    )
+    manifest = _manifest(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        target_schema="medical_eob",
+    )
+    jobs = RecordingJobs()
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
+            annotation_id=annotation_id,
+            region_ids=(region_id,),
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    payload = jobs.created[0]["payload"]
+    assert payload["target_schema_name"] == "invoice"
+
+
 def test_semantic_service_does_not_queue_ignored_or_unmatched_regions() -> None:
     document_id = uuid4()
     household_id = uuid4()
@@ -283,6 +317,7 @@ def _source(
     document_id: UUID,
     household_id: UUID,
     page_id: UUID,
+    family: str = "invoice",
 ) -> ExtractionSourceDocument:
     return ExtractionSourceDocument(
         document_id=document_id,
@@ -290,7 +325,7 @@ def _source(
         title="Invoice",
         original_filename="invoice.pdf",
         mime_type="application/pdf",
-        family="invoice",
+        family=family,
         subtype=None,
         sensitivity="standard",
         document_date=None,

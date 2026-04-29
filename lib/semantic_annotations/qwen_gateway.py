@@ -41,6 +41,10 @@ from lib.semantic_annotations.schema import (
     semantic_annotation_manifest_schema,
     semantic_annotation_model_output_schema,
 )
+from lib.semantic_annotations.target_schema_policy import (
+    preferred_target_schema,
+    target_schema_from_document_hint,
+)
 from lib.storage import ObjectStorage
 
 MAX_SEMANTIC_MODEL_ATTEMPTS = 2
@@ -455,9 +459,11 @@ def _manifest_from_response(
         raise ModelProtocolError("Semantic annotation output must include pages and regions.")
     pages = [_page_from_json(item) for item in pages_raw]
     pages = _attach_page_normalization_metadata(pages, model_output.normalization)
+    document_type_hint = _document_type_hint(normalized, pages)
     regions = _repair_region_grounding_for_source(
         [_region_from_json(item) for item in regions_raw],
         source=source,
+        document_type_hint=document_type_hint,
     )
     sanitized_payload = dict(normalized)
     sanitized_payload["regions"] = [_region_manifest_json(region) for region in regions]
@@ -553,6 +559,7 @@ def _repair_region_grounding_for_source(
     regions: list[SemanticRegionAnnotation],
     *,
     source: ExtractionSourceDocument,
+    document_type_hint: str | None = None,
 ) -> list[SemanticRegionAnnotation]:
     valid_page_ids = {page.page_id for page in source.pages}
     valid_element_ids = {element.element_id for element in source.elements}
@@ -567,7 +574,14 @@ def _repair_region_grounding_for_source(
         for region in regions
     ]
     return _deduplicate_region_intents(
-        [_repair_region_target_schema(region, source=source) for region in repaired]
+        [
+            _repair_region_target_schema(
+                region,
+                source=source,
+                document_type_hint=document_type_hint,
+            )
+            for region in repaired
+        ]
     )
 
 
@@ -623,10 +637,17 @@ def _repair_region_target_schema(
     region: SemanticRegionAnnotation,
     *,
     source: ExtractionSourceDocument,
+    document_type_hint: str | None,
 ) -> SemanticRegionAnnotation:
     if region.granite_task in {None, "ignore"}:
         return region
-    target_schema = _default_target_schema_for_source(source)
+    target_schema = preferred_target_schema(
+        document_family=source.family,
+        document_metadata=source.metadata,
+        document_type_hint=document_type_hint,
+        semantic_type=region.semantic_type,
+        model_target_schema=region.target_schema,
+    )
     if region.target_schema is not None:
         if target_schema and region.target_schema != target_schema:
             metadata = dict(region.metadata)
@@ -655,14 +676,16 @@ def _repair_region_target_schema(
     )
 
 
-def _default_target_schema_for_source(source: ExtractionSourceDocument) -> str | None:
-    family = source.family.strip().lower()
-    if family in {"medical_eob", "insurance_denial", "medical_bill"}:
-        return "medical_eob"
-    if family == "invoice":
-        return "invoice"
-    if family in {"receipt", "service_record"}:
-        return "receipt"
+def _document_type_hint(
+    normalized: dict[str, object],
+    pages: list[PageSemanticAnnotation],
+) -> str | None:
+    document_type = normalized.get("document_type")
+    if isinstance(document_type, str) and target_schema_from_document_hint(document_type):
+        return document_type
+    for page in pages:
+        if target_schema_from_document_hint(page.document_type_hint):
+            return page.document_type_hint
     return None
 
 

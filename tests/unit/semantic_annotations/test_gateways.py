@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 from uuid import uuid4
 
@@ -519,7 +519,10 @@ def test_live_qwen_gateway_drops_invalid_expected_field_names_from_model_output(
 
 
 def test_live_qwen_gateway_repairs_missing_target_schema_from_source_family() -> None:
-    source = _source_with_page_image_and_element()
+    source = replace(
+        _source_with_page_image_and_element(),
+        metadata={"phase4": {"classification": {"family": "medical_eob"}}},
+    )
     payload = _semantic_payload(source.pages[0].page_id)
     regions = payload["regions"]
     assert isinstance(regions, list)
@@ -562,6 +565,29 @@ def test_live_qwen_gateway_realigns_wrong_target_schema_to_source_family() -> No
     assert repaired_region.target_schema == "invoice"
     assert repaired_region.review_required is True
     assert repaired_region.confidence == 0.2
+    assert repaired_region.metadata["original_target_schema"] == "medical_eob"
+    assert repaired_region.metadata["target_schema_repaired"] is True
+
+
+def test_live_qwen_gateway_uses_document_type_hint_before_unclassified_family() -> None:
+    source = replace(_source_with_page_image(), family="medical_eob", metadata={})
+    payload = _semantic_payload(source.pages[0].page_id)
+    regions = payload["regions"]
+    assert isinstance(regions, list)
+    region = regions[0]
+    assert isinstance(region, dict)
+    region["semantic_type"] = "invoice_line_item_table"
+    region["target_schema"] = "medical_eob"
+    client = FakeSemanticVisionClient(
+        profile_name=QWEN_SEMANTIC_PROFILE,
+        source_engine="qwen3_vl_2b",
+        normalized_json=payload,
+    )
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
+
+    repaired_region = result.manifest.regions[0]
+    assert repaired_region.target_schema == "invoice"
     assert repaired_region.metadata["original_target_schema"] == "medical_eob"
     assert repaired_region.metadata["target_schema_repaired"] is True
 

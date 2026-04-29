@@ -7,7 +7,6 @@ from uuid import UUID, uuid4
 
 from lib.config import get_settings
 from lib.db.connection import db_connection
-from lib.extraction.classification import TARGET_EXTRACTION_SCHEMAS
 from lib.extraction.models import ExtractionSourceDocument
 from lib.extraction.repository import load_extraction_source
 from lib.jobs import JobService, create_job_with_cursor
@@ -28,6 +27,7 @@ from lib.semantic_annotations.repository import (
     persist_semantic_manifest_record,
     persist_semantic_manifest_with_cursor,
 )
+from lib.semantic_annotations.target_schema_policy import preferred_target_schema
 
 MAX_GRANITE_TASKS_BY_QUALITY_MODE = {
     "smart": 4,
@@ -306,11 +306,13 @@ def _target_schema_for_region(
     region: SemanticRegionAnnotation,
     source: ExtractionSourceDocument,
 ) -> str | None:
-    if source.family in TARGET_EXTRACTION_SCHEMAS:
-        return source.family
-    if region.target_schema:
-        return region.target_schema
-    return None
+    return preferred_target_schema(
+        document_family=source.family,
+        document_metadata=source.metadata,
+        document_type_hint=None,
+        semantic_type=region.semantic_type,
+        model_target_schema=region.target_schema,
+    )
 
 
 def _priority_for_region(region: SemanticRegionAnnotation) -> int:
