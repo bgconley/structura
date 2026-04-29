@@ -25,6 +25,8 @@ class VisionExtractionGateway:
     prompt_version: str
     profile_name: str
     max_image_inputs = 4
+    max_output_tokens = 2048
+    timeout_seconds = 60
 
     def __init__(
         self,
@@ -60,9 +62,9 @@ class VisionExtractionGateway:
                     max_images=self.max_image_inputs,
                 ),
                 response_schema_name=schema_name,
-                max_output_tokens=2048,
+                max_output_tokens=self.max_output_tokens,
                 temperature=0.0,
-                timeout_seconds=60,
+                timeout_seconds=self.timeout_seconds,
             )
         )
         return GatewayExtraction(
@@ -182,6 +184,7 @@ def _prompt(
         "Extract evidence-backed structured fields from the provided document page images. "
         f"Target schema: {schema_name}. Route profile: {route_profile}. "
         "Use Docling text only as context; image evidence is authoritative for visual fields. "
+        "Return compact candidate JSON; do not transcribe long paragraphs or unrelated fields. "
         "Return JSON only in this shape: "
         '{"normalized":{...target schema JSON...},"confidence":{"overall":0.0,'
         '"schema_fit":0.0}}. Do not include Markdown fences or explanatory text.'
@@ -192,7 +195,9 @@ def _prompt(
         f"{base} Semantic task from Qwen annotation: "
         f"type={semantic_task.semantic_type}; granite_task={semantic_task.granite_task}; "
         f"expected_fields={list(semantic_task.expected_fields)}; "
-        f"grounding={semantic_task.grounding.kind}; reason={semantic_task.reason or ''}."
+        f"grounding={semantic_task.grounding.kind}; reason={semantic_task.reason or ''}. "
+        "For grounded semantic tasks, extract only the visible fields needed for that task; "
+        "omit uncertain values instead of adding prose."
     )
 
 

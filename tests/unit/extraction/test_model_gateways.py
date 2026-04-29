@@ -102,7 +102,25 @@ def test_granite_gateway_prompt_includes_grounded_semantic_task() -> None:
     assert client.request is not None
     assert "Semantic task from Qwen annotation" in client.request.prompt
     assert "invoice_line_item_table" in client.request.prompt
+    assert "Return compact candidate JSON" in client.request.prompt
     assert result.raw_output_json["semanticTask"]["semanticRegionId"] == str(task.region_id)
+
+
+def test_granite_gateway_uses_larger_output_budget_for_live_structured_json() -> None:
+    client = FakeVisionClient(
+        source_engine="granite_vision_3b",
+        profile_name=GRANITE_VISION_PROFILE,
+    )
+    source = _source_with_page_image()
+
+    GraniteVisionExtractionGateway(client=client).extract(
+        source,
+        schema_name="invoice",
+        route_profile="docling_plus_granite_structured",
+    )
+
+    assert client.request is not None
+    assert client.request.max_output_tokens == 4096
 
 
 def test_granite_gateway_sends_only_semantic_grounded_page() -> None:

@@ -99,6 +99,35 @@ def test_semantic_service_propagates_explicit_rescue_permission_to_granite_jobs(
     assert payload["user_intent_reason"] == "User allowed one 8B rescue."
 
 
+def test_semantic_service_prefers_document_family_over_region_target_schema() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    region_id = uuid4()
+    source = _source(document_id=document_id, household_id=household_id, page_id=page_id)
+    manifest = _manifest(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        target_schema="medical_eob",
+    )
+    jobs = RecordingJobs()
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
+            annotation_id=annotation_id,
+            region_ids=(region_id,),
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    payload = jobs.created[0]["payload"]
+    assert payload["target_schema_name"] == "invoice"
+
+
 def test_semantic_service_does_not_queue_ignored_or_unmatched_regions() -> None:
     document_id = uuid4()
     household_id = uuid4()
@@ -291,6 +320,7 @@ def _manifest(
     granite_task: str = "tables_json",
     quality_mode: str = "smart",
     region_count: int = 1,
+    target_schema: str = "invoice",
 ) -> DocumentSemanticManifest:
     def expected_fields(index: int) -> tuple[str, ...]:
         if region_count == 1:
@@ -302,7 +332,7 @@ def _manifest(
             semantic_type="invoice_line_item_table",
             priority="high",
             granite_task=granite_task,
-            target_schema="invoice",
+            target_schema=target_schema,
             expected_fields=expected_fields(index),
             grounding=SemanticGroundingRef(kind="page", page_id=page_id),
             confidence=0.9,

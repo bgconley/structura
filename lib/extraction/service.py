@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Protocol
 from uuid import UUID, uuid4
 
@@ -205,7 +205,10 @@ class ExtractionService:
         if task.document_id != document_id:
             raise ExtractionServiceError("Semantic extraction task document mismatch.")
         if task.target_schema and task.target_schema != schema_name:
-            raise ExtractionServiceError("Semantic extraction task schema mismatch.")
+            metadata = dict(task.metadata)
+            metadata["original_target_schema"] = task.target_schema
+            metadata["target_schema_repaired"] = True
+            return replace(task, target_schema=schema_name, metadata=metadata)
         return task
 
     def _enqueue_rescue_semantic_pass(

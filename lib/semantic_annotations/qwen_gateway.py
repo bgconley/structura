@@ -624,9 +624,22 @@ def _repair_region_target_schema(
     *,
     source: ExtractionSourceDocument,
 ) -> SemanticRegionAnnotation:
-    if region.granite_task in {None, "ignore"} or region.target_schema is not None:
+    if region.granite_task in {None, "ignore"}:
         return region
     target_schema = _default_target_schema_for_source(source)
+    if region.target_schema is not None:
+        if target_schema and region.target_schema != target_schema:
+            metadata = dict(region.metadata)
+            metadata["original_target_schema"] = region.target_schema
+            metadata["target_schema_repaired"] = True
+            return replace(
+                region,
+                target_schema=target_schema,
+                review_required=True,
+                confidence=_low_confidence(region.confidence),
+                metadata=metadata,
+            )
+        return region
     if target_schema:
         return replace(
             region,

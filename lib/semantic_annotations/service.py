@@ -306,10 +306,10 @@ def _target_schema_for_region(
     region: SemanticRegionAnnotation,
     source: ExtractionSourceDocument,
 ) -> str | None:
-    if region.target_schema:
-        return region.target_schema
     if source.family in TARGET_EXTRACTION_SCHEMAS:
         return source.family
+    if region.target_schema:
+        return region.target_schema
     return None
 
 

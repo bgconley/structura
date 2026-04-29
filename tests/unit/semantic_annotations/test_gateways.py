@@ -542,6 +542,30 @@ def test_live_qwen_gateway_repairs_missing_target_schema_from_source_family() ->
     assert repaired_region.review_required is True
 
 
+def test_live_qwen_gateway_realigns_wrong_target_schema_to_source_family() -> None:
+    source = _source_with_page_image()
+    payload = _semantic_payload(source.pages[0].page_id)
+    regions = payload["regions"]
+    assert isinstance(regions, list)
+    region = regions[0]
+    assert isinstance(region, dict)
+    region["target_schema"] = "medical_eob"
+    client = FakeSemanticVisionClient(
+        profile_name=QWEN_SEMANTIC_PROFILE,
+        source_engine="qwen3_vl_2b",
+        normalized_json=payload,
+    )
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
+
+    repaired_region = result.manifest.regions[0]
+    assert repaired_region.target_schema == "invoice"
+    assert repaired_region.review_required is True
+    assert repaired_region.confidence == 0.2
+    assert repaired_region.metadata["original_target_schema"] == "medical_eob"
+    assert repaired_region.metadata["target_schema_repaired"] is True
+
+
 def test_live_qwen_gateway_marks_unknown_docling_grounding_review_required() -> None:
     source = _source_with_page_image()
     payload = _semantic_payload(source.pages[0].page_id)

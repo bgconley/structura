@@ -54,6 +54,44 @@ def test_extraction_service_loads_semantic_region_task_for_gateway() -> None:
     assert gateway.semantic_task == task
 
 
+def test_extraction_service_realizes_semantic_task_schema_to_requested_schema() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    region_id = uuid4()
+    source = _source(document_id=document_id, household_id=household_id)
+    task = SemanticExtractionTask(
+        region_id=region_id,
+        annotation_id=uuid4(),
+        document_id=document_id,
+        semantic_type="invoice_line_item_table",
+        granite_task="tables_json",
+        target_schema="medical_eob",
+        expected_fields=("line_items", "total_amount"),
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+        reason="Qwen semantic pass identified an invoice table but mislabeled schema.",
+        confidence=0.91,
+    )
+    gateway = RecordingGateway()
+
+    ExtractionService(
+        gateway=gateway,
+        source_loader=lambda loaded_document_id: source,
+        semantic_task_loader=lambda loaded_region_id: task,
+        persister=lambda *args, **kwargs: _persisted(),
+    ).extract_document(
+        document_id,
+        schema_name="invoice",
+        route_profile="docling_plus_granite_structured",
+        semantic_region_id=region_id,
+        allow_8b_rescue=False,
+    )
+
+    assert gateway.semantic_task is not None
+    assert gateway.semantic_task.target_schema == "invoice"
+    assert gateway.semantic_task.metadata["original_target_schema"] == "medical_eob"
+    assert gateway.semantic_task.metadata["target_schema_repaired"] is True
+
+
 def test_extraction_service_does_not_rescue_needs_review_without_user_permission() -> None:
     document_id = uuid4()
     household_id = uuid4()
