@@ -271,7 +271,7 @@ qwen3-vl-4b-semantic:v1
   default_gpu: blackwell-0
   max_images_per_request: 4
   max_image_bytes: 10485760
-  max_model_len: 16384
+  max_model_len: 24576
   source_engine: qwen3_vl_4b
 
 Qwen3-VL-4B Smart Parse should first attempt the same four-page semantic image

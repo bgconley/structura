@@ -111,7 +111,7 @@ def test_live_qwen_smart_gateway_uses_compact_output_budget_for_16k_service() ->
     QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
 
     assert client.request is not None
-    assert client.request.max_output_tokens == 2048
+    assert client.request.max_output_tokens == 3840
 
 
 def test_live_qwen_high_quality_gateway_uses_qwen8b_profile() -> None:
@@ -498,8 +498,8 @@ def test_live_qwen_smart_gateway_falls_back_after_context_length_failure() -> No
             self.requests.append(request)
             if len(request.image_inputs) > 1:
                 raise ModelProtocolError(
-                    "This model's maximum context length is 16384 tokens. "
-                    "However, you requested 2048 output tokens and your prompt contains "
+                    "This model's maximum context length is 24576 tokens. "
+                    "However, you requested 3840 output tokens and your prompt contains "
                     "at least 14500 input tokens."
                 )
             page_ids = [page_by_hash[image.validated_sha256()] for image in request.image_inputs]

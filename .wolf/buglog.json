@@ -1027,7 +1027,7 @@
       "error_message": "Qwen3-VL-4B semantic annotation failed on BH Photo because vLLM rejected a 16,385-token request against the 16,384-token context limit.",
       "file": "lib/semantic_annotations/qwen_gateway.py",
       "root_cause": "Smart semantic prompts retained the historical multi-image fan-in shape but still requested 3,840 output tokens. BH Photo produced about 12,545 prompt tokens, so the fixed output budget pushed the request one token over the active 16K Qwen3-VL-4B service limit.",
-      "fix": "Reduced the smart semantic output budget to 2,048 tokens and added a context-length fallback path that retries multi-image semantic requests as single-page windows while preserving whole-document Docling context.",
+      "fix": "Raised the active Qwen3-VL-4B Smart Parse context window to 24K while keeping the 3,840-token semantic output budget, and added a context-length fallback path that retries multi-image semantic requests as single-page windows while preserving whole-document Docling context.",
       "tags": ["phase-8.5", "qwen3-vl-4b", "semantic-routing", "vllm", "context-length"],
       "related_bugs": ["bug-081"],
       "occurrences": 1,

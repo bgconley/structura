@@ -50,7 +50,7 @@ _PROFILES: dict[str, ModelProfile] = {
         default_gpu_role="blackwell-0",
         max_image_bytes=10 * 1024 * 1024,
         max_images_per_request=4,
-        max_model_len=16384,
+        max_model_len=24576,
     ),
     QWEN_HISTORICAL_SEMANTIC_2B_PROFILE: ModelProfile(
         name=QWEN_HISTORICAL_SEMANTIC_2B_PROFILE,
