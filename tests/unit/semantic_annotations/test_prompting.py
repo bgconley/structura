@@ -38,6 +38,9 @@ def test_semantic_planner_prompt_includes_compact_hard_class_examples() -> None:
     assert "receipt_payment_summary" in prompt
     assert "Vehicle or motorcycle repair orders" in prompt
     assert "route their service and parts rows as service_record_line_item_table" in prompt
+    assert "emit a vehicle_or_asset_block" in prompt
+    assert "continuation_group=service_lines" in prompt
+    assert "requires_full_page_image=true" in prompt
 
 
 def _source() -> ExtractionSourceDocument:

@@ -1075,7 +1075,7 @@
       "error_message": "BMW service invoice semantic canary completed page coverage but still emitted only one generic invoice line-item region and missed service-record/payment routing expectations.",
       "file": "lib/semantic_annotations/docling_audit.py",
       "root_cause": "The Docling audit had no service_record anchor family, while real_estate_title could become a suggested family from one title/seller-like hit. Qwen therefore saw weak or conflicting family evidence for a vehicle service record and stayed with generic invoice semantics despite the Smart Parse v3 few-shot.",
-      "fix": "Added service_record anchors for repair orders, R/O, labor, parts, mileage/VIN, vehicle, and motorcycle language; tightened real_estate_title suggested/conflict thresholds to require stronger evidence; mapped service_record semantic types to receipt target schema; and added explicit service-record prompt rules for service/parts rows and payment summaries.",
+      "fix": "Added service_record anchors for repair orders, R/O, labor, parts, mileage/VIN, vehicle, and motorcycle language; tightened real_estate_title suggested/conflict thresholds to require stronger evidence; mapped service_record semantic types to receipt target schema; added explicit service-record prompt rules for service/parts rows, vehicle blocks, and payment summaries; and repaired service-line planner metadata for service_lines/full-page-image routing.",
       "tags": ["phase-8.5", "qwen3-vl-4b", "semantic-routing", "docling", "bmw"],
       "related_bugs": ["bug-087"],
       "occurrences": 1,

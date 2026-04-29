@@ -1091,6 +1091,51 @@ def test_live_qwen_smart_gateway_collapses_duplicate_canonical_page_annotations_
     assert result.manifest.pages[0].metadata["normalization"] == normalization
 
 
+def test_live_qwen_gateway_repairs_service_record_line_item_planner_metadata() -> None:
+    source = _source_with_page_image()
+    page_id = source.pages[0].page_id
+    payload = _semantic_payload(page_id)
+    payload["document_type"] = "service_record"
+    pages = payload["pages"]
+    assert isinstance(pages, list)
+    page = pages[0]
+    assert isinstance(page, dict)
+    page["document_type_hint"] = "service_record"
+    page["docling_table_signal"] = "weak"
+    regions = payload["regions"]
+    assert isinstance(regions, list)
+    region = regions[0]
+    assert isinstance(region, dict)
+    region.update(
+        {
+            "semantic_type": "service_record_line_item_table",
+            "granite_task": "tables_json",
+            "target_schema": "receipt",
+            "source_signal": "mixed",
+            "requires_full_page_image": False,
+        }
+    )
+    region.pop("continuation_group", None)
+    client = FakeSemanticVisionClient(
+        profile_name=QWEN_SEMANTIC_PROFILE,
+        source_engine="qwen3_vl_4b",
+        normalized_json=payload,
+    )
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
+
+    repaired_region = result.manifest.regions[0]
+    assert repaired_region.semantic_type == "service_record_line_item_table"
+    assert repaired_region.target_schema == "receipt"
+    assert repaired_region.metadata["continuation_group"] == "service_lines"
+    assert repaired_region.metadata["requires_full_page_image"] is True
+    normalization = result.manifest.confidence["normalization"]
+    assert normalization == {
+        "service_record_line_item_continuation_group_repaired": 1,
+        "service_record_line_item_full_page_image_repaired": 1,
+    }
+
+
 def test_live_qwen_gateway_retries_once_after_truncated_model_output() -> None:
     source = _source_with_page_image()
 

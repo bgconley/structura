@@ -54,7 +54,12 @@ def build_semantic_planner_prompt(
         "tables, and paid service receipts are service_record documents even when the "
         "page also says invoice; route their service and parts rows as "
         "service_record_line_item_table with target_schema receipt, and route payment "
-        "or paid-total areas as receipt_payment_summary. Use target_schema medical_eob "
+        "or paid-total areas as receipt_payment_summary. For service records, emit a "
+        "vehicle_or_asset_block for VIN, mileage, vehicle, R/O number, or service "
+        "advisor identity blocks when present; this is a routing target, not a fact "
+        "extraction. Every service_record_line_item_table region should use "
+        "continuation_group=service_lines, and weak or visually reconstructed service "
+        "tables should set requires_full_page_image=true. Use target_schema medical_eob "
         "for EOB, insurance, denial, and medical billing documents; invoice for bills "
         "and invoices; receipt for receipts, retail orders, and service records; "
         "document_observation for generic observations, seller/title information, "
@@ -91,6 +96,8 @@ def _few_shot_examples() -> list[dict[str, object]]:
                     "target_schema": "receipt",
                     "coverage_role": "primary",
                     "source_signal": "mixed",
+                    "continuation_group": "service_lines",
+                    "requires_full_page_image": True,
                     "expected_fields": ["service_description", "quantity", "line_total"],
                 },
                 {
@@ -99,7 +106,15 @@ def _few_shot_examples() -> list[dict[str, object]]:
                     "target_schema": "receipt",
                     "coverage_role": "continuation",
                     "continuation_group": "service_lines",
+                    "requires_full_page_image": True,
                     "expected_fields": ["service_description", "line_total"],
+                },
+                {
+                    "semantic_type": "vehicle_or_asset_block",
+                    "granite_task": "kvp",
+                    "target_schema": "receipt",
+                    "coverage_role": "supporting",
+                    "expected_fields": ["vin", "mileage", "repair_order_number"],
                 },
                 {
                     "semantic_type": "receipt_payment_summary",
