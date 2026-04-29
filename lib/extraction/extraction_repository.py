@@ -108,7 +108,7 @@ def _persist_extraction_rows(
     normalized_object: StoredObject,
 ) -> PersistedExtraction:
     review_status = "needs_review" if validation.needs_review else "auto_accepted"
-    status = "failed" if _schema_check_failed(validation) else "completed"
+    status = _status_for_persisted_extraction(validation)
     with db_connection() as conn:
         with conn.cursor() as cur:
             _lock_document(cur, source.document_id)
@@ -419,11 +419,10 @@ def _supersede_current_assets(
     )
 
 
-def _schema_check_failed(validation: ValidationReport) -> bool:
-    return any(
-        check["code"] == "json_schema" and check["status"] == "failed"
-        for check in validation.checks
-    )
+def _status_for_persisted_extraction(validation: ValidationReport) -> str:
+    # Validation failures are document-quality/review outcomes, not worker failures.
+    del validation
+    return "completed"
 
 
 def _overall_confidence(payload: dict[str, Any]) -> float | None:
