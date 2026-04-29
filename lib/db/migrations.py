@@ -28,6 +28,7 @@ BASELINE_SQL_FILES = (
     "077_phase8_5_semantic_type_constraint.sql",
     "078_phase8_5_region_extraction_scope.sql",
     "079_phase8_5_extraction_observations.sql",
+    "080_phase8_5_semantic_type_expansion.sql",
 )
 
 

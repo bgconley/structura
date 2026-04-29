@@ -195,7 +195,7 @@ def test_semantic_manifest_schema_is_not_the_model_generation_schema() -> None:
 
 
 def test_semantic_region_db_constraint_covers_policy_semantic_types() -> None:
-    migration_name = "077_phase8_5_semantic_type_constraint.sql"
+    migration_name = "080_phase8_5_semantic_type_expansion.sql"
     assert migration_name in BASELINE_SQL_FILES
     migration_sql = (Path(__file__).resolve().parents[3] / "database" / migration_name).read_text(
         encoding="utf-8"

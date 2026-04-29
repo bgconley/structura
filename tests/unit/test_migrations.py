@@ -15,7 +15,7 @@ def test_baseline_migration_scripts_are_present_and_ordered() -> None:
     plan = baseline_migration_plan("database")
 
     assert plan.scripts[0].name == "001_extensions.sql"
-    assert plan.scripts[-1].name == "079_phase8_5_extraction_observations.sql"
+    assert plan.scripts[-1].name == "080_phase8_5_semantic_type_expansion.sql"
     assert all(script.exists() for script in plan.scripts)
 
 
@@ -159,3 +159,19 @@ def test_phase8_5_extraction_observations_migration_is_baseline_migration() -> N
     assert "source_semantic_region_id" in sql
     assert "model_output_schema_name" in sql
     assert "extraction_observations_document_family_idx" in sql
+
+
+def test_phase8_5_semantic_type_expansion_migration_is_baseline_migration() -> None:
+    plan = baseline_migration_plan("database")
+    names = [script.name for script in plan.scripts]
+
+    assert "080_phase8_5_semantic_type_expansion.sql" in names
+
+    phase8_semantic_sql = Path("database/075_phase8_5_semantic_annotations.sql").read_text(
+        encoding="utf-8"
+    )
+    sql = Path("database/080_phase8_5_semantic_type_expansion.sql").read_text(encoding="utf-8")
+    assert "retail_order_line_item_table" not in phase8_semantic_sql
+    assert "retail_order_line_item_table" in sql
+    assert "seller_information_block" in sql
+    assert "unsupported_document_region" in sql
