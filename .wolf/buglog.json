@@ -984,6 +984,18 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-29T05:00:00-04:00"
+    },
+    {
+      "id": "bug-083",
+      "timestamp": "2026-04-29T09:35:00-04:00",
+      "error_message": "GPU runtime dataset repair failed with cannot unmount '/srv/structura': pool or dataset is busy.",
+      "file": "infrastructure/zfs/create_gpu_runtime_datasets.sh",
+      "root_cause": "The bootstrap script unconditionally reapplied ZFS mountpoint and mount operations for existing mounted datasets. On a live busy runtime tree, re-setting the current mountpoint can trigger a ZFS remount path and fail before permission repair runs.",
+      "fix": "Made the GPU runtime bootstrap idempotent: it now sets ZFS properties only when the current value differs, mounts datasets only when they are not already mounted, and exposes functions for a regression test that verifies unchanged mountpoints are not reapplied.",
+      "tags": ["phase-8.5", "zfs", "permissions", "gpu-node", "bootstrap"],
+      "related_bugs": ["bug-082"],
+      "occurrences": 1,
+      "last_seen": "2026-04-29T09:35:00-04:00"
     }
   ]
 }
