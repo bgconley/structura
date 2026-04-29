@@ -80,7 +80,7 @@ def test_live_model_profiles_have_concrete_blackwell_commands() -> None:
     assert qwen_semantic["environment"]["STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION"] == "0.76"
     assert qwen_semantic["environment"]["STRUCTURA_VLLM_MAX_NUM_SEQS"] == "2"
     assert qwen_semantic["environment"]["STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT"] == (
-        '{"image":2,"video":0}'
+        '{"image":1,"video":0}'
     )
 
     qwen_hq = services["model-qwen"]

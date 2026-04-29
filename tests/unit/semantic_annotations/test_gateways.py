@@ -51,7 +51,7 @@ def test_fixture_gateway_has_explicit_fixture_provenance() -> None:
     assert result.manifest.regions[0].granite_task == "kvp"
 
 
-def test_live_qwen_smart_gateway_builds_truthful_qwen4_manifest() -> None:
+def test_live_qwen_smart_gateway_builds_truthful_qwen3_vl_4b_manifest() -> None:
     source = _source_with_page_image()
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
@@ -384,7 +384,7 @@ def test_live_qwen_high_quality_gateway_merges_duplicate_page_annotations() -> N
     }
 
 
-def test_live_qwen_smart_gateway_uses_two_image_qwen4_semantic_service() -> None:
+def test_live_qwen_smart_gateway_chunks_pages_for_one_image_qwen3_vl_4b_service() -> None:
     source = _source_with_two_page_images()
     page_by_hash = {page.image_sha256: page.page_id for page in source.pages if page.image_sha256}
 
@@ -417,10 +417,12 @@ def test_live_qwen_smart_gateway_uses_two_image_qwen4_semantic_service() -> None
         quality_mode="smart",
     )
 
-    assert len(client.requests) == 1
-    assert [len(request.image_inputs) for request in client.requests] == [2]
+    assert len(client.requests) == 2
+    assert [len(request.image_inputs) for request in client.requests] == [1, 1]
     assert len(result.manifest.pages) == 2
     assert len(result.manifest.regions) == 2
+    assert result.manifest.profile_name == QWEN_SEMANTIC_PROFILE
+    assert result.manifest.confidence["chunk_count"] == 2
 
 
 def test_live_qwen_high_quality_gateway_chunks_pages_for_one_image_hq_service() -> None:

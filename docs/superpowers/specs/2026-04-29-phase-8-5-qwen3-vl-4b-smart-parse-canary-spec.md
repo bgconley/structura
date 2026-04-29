@@ -1,4 +1,4 @@
-# Phase 8.5 Qwen4 Smart Parse And Canary Hardening Spec
+# Phase 8.5 Qwen3-VL-4B Smart Parse And Canary Hardening Spec
 
 ## Purpose
 
@@ -66,14 +66,17 @@ source_engine: qwen3_vl_4b
 dtype: bfloat16
 max_model_len: 16384
 max_num_seqs: 2 initially
-limit_mm_per_prompt: {"image": 2, "video": 0} initially
+limit_mm_per_prompt: {"image": 1, "video": 0} initially
 gpu: Blackwell GPU 0
 ```
 
 The implementation may probe `kv_cache_dtype=fp8`, but it must fall back cleanly
-if the installed vLLM/Qwen path rejects it. Image fan-in may rise from 2 to 4
-only after a live probe proves launch, throughput, and queue behavior are
-acceptable.
+if the installed vLLM/Qwen path rejects it. Smart Parse must use the same
+Docling-grounded page-window harness and semantic manifest contract that the 2B
+path used. Live canary validation showed Qwen3-VL-4B can omit page annotations
+when multiple page images are supplied in one semantic request, so the default
+profile uses one image per request and relies on the existing manifest merge
+path to preserve exact Docling page coverage.
 
 Granite remains on Blackwell GPU 1. Visual embedding may remain on GPU 1 only if
 it continues to fit with Granite under live load. The 3090 is not required for
@@ -311,7 +314,7 @@ This realignment is complete only when:
 7. Useful unsupported data is persisted as reviewable observations.
 8. Aggregates preserve richer sibling region outputs and do not masquerade
    unsupported docs as invoice/EOB.
-9. The private canary gate passes with Qwen4 Smart Parse only.
+9. The private canary gate passes with Qwen3-VL-4B Smart Parse only.
 
 ## Sources
 

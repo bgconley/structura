@@ -397,7 +397,7 @@ services:
       STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION: "0.76"
       STRUCTURA_VLLM_MAX_NUM_SEQS: "2"
       STRUCTURA_VLLM_MM_PROCESSOR_CACHE_GB: "0"
-      STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT: '{"image":2,"video":0}'
+      STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT: '{"image":1,"video":0}'
     deploy:
       resources:
         reservations:

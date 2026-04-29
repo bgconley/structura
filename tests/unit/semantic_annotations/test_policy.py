@@ -149,7 +149,7 @@ def test_semantic_annotation_model_output_schema_bounds_model_generated_arrays()
     assert defs["regionAnnotation"]["properties"]["expected_fields"]["maxItems"] == 8
 
 
-def test_semantic_annotation_schemas_include_expanded_qwen4_routing_vocabulary() -> None:
+def test_semantic_annotation_schemas_include_expanded_qwen3_vl_4b_routing_vocabulary() -> None:
     from lib.semantic_annotations.schema import (
         semantic_annotation_manifest_schema,
         semantic_annotation_model_output_schema,

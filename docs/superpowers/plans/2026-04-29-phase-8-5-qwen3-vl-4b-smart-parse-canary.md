@@ -1,4 +1,4 @@
-# Phase 8.5 Qwen4 Smart Parse And Canary Hardening Implementation Plan
+# Phase 8.5 Qwen3-VL-4B Smart Parse And Canary Hardening Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -13,7 +13,7 @@
 ## Scope
 
 This plan implements the spec in
-`docs/superpowers/specs/2026-04-29-phase-8-5-qwen4-smart-parse-canary-spec.md`.
+`docs/superpowers/specs/2026-04-29-phase-8-5-qwen3-vl-4b-smart-parse-canary-spec.md`.
 
 It must not start Phase 9, introduce ColQwen, delete historical Qwen2B/Qwen8
 contracts, or make Granite output canonical app JSON directly.
@@ -24,11 +24,11 @@ contracts, or make Granite output canonical app JSON directly.
   wiring remains stable.
 - `model-qwen` should leave the active `models-live` runtime path while Qwen8 is
   deferred. Keep the contract surface and historical provenance support.
-- `workers/model_services/start_qwen_vllm.sh` already accepts the Qwen4 runtime
+- `workers/model_services/start_qwen_vllm.sh` already accepts the Qwen3-VL-4B runtime
   knobs needed for this pass.
 - `lib/semantic_annotations/qwen_gateway.py` currently assumes smart, high
   quality, and rescue modes are runnable. It needs explicit disabled behavior
-  for HQ/rescue, not a remap to Qwen4.
+  for HQ/rescue, not a remap to Qwen3-VL-4B.
 - `semantic_annotation_manifest.v1` and
   `semantic_annotation_model_output.v1` already exist. Expand enums additively.
 - `lib/extraction/model_output_schemas.py` and
@@ -66,7 +66,7 @@ contracts, or make Granite output canonical app JSON directly.
       path while Qwen8 is deferred.
 - [ ] Add API/job/service tests proving High Quality Parse and Allow 8B Rescue
       are explicit but disabled/deferred, and are not silently remapped to
-      Qwen4.
+      Qwen3-VL-4B.
 - [ ] Add semantic contract tests for the expanded document-family and
       semantic-region vocabulary.
 - [ ] Add Granite routing tests for receipt/order tables, title seller-info,
@@ -82,7 +82,7 @@ contracts, or make Granite output canonical app JSON directly.
 Run targeted tests and confirm they fail for missing behavior before
 implementation.
 
-## Task 2: Swap Smart Semantic Runtime To Qwen4
+## Task 2: Swap Smart Semantic Runtime To Qwen3-VL-4B
 
 **Files:**
 - Modify: `lib/model_runtime/profiles.py`
@@ -97,11 +97,12 @@ implementation.
 - [ ] Add `QWEN_SEMANTIC_PROFILE = "qwen3-vl-4b-semantic:v1"`.
 - [ ] Preserve historical profile constants/metadata needed to read Qwen2B and
       Qwen8 provenance.
-- [ ] Set Qwen4 base model to `Qwen/Qwen3-VL-4B-Instruct` and source engine to
+- [ ] Set Qwen3-VL-4B base model to `Qwen/Qwen3-VL-4B-Instruct` and source engine to
       `qwen3_vl_4b`.
-- [ ] Set smart default max model length to 16384, max images initially to 2,
-      and video to 0.
-- [ ] Set Compose `model-qwen-semantic` to Qwen4 BF16, max sequences 2, and
+- [ ] Set smart default max model length to 16384, max images initially to 1,
+      and video to 0 so the existing page-window merge path preserves exact
+      Docling page coverage.
+- [ ] Set Compose `model-qwen-semantic` to Qwen3-VL-4B BF16, max sequences 2, and
       conservative GPU memory utilization.
 - [ ] Probe `STRUCTURA_VLLM_KV_CACHE_DTYPE=fp8` only behind a setting that can
       be removed without code changes if vLLM rejects it.
@@ -358,7 +359,7 @@ Required proof:
 - Modify: `STRUCTURA_PHASE_8_5_IMPLEMENTATION_PLAN.md` only if this plan becomes
   the active canonical Phase 8.5 sequence.
 
-- [ ] Document the Qwen4 Smart Parse runtime profile and Qwen8 disabled/deferred
+- [ ] Document the Qwen3-VL-4B Smart Parse runtime profile and Qwen8 disabled/deferred
       state.
 - [ ] Document the private canary gate and non-committed manifest path.
 - [ ] Record any measured GPU profile changes, such as image fan-in, KV dtype,

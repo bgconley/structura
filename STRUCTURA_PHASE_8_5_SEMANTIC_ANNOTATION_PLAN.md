@@ -10,7 +10,7 @@ The canonical pipeline is:
 ```text
 Document / image
 -> Docling physical parse
--> Qwen3-VL 2B smart semantic annotation manifest
+-> Qwen3-VL-4B smart semantic annotation manifest
 -> Granite 4.0 3B Vision targeted extraction
 -> validators / provenance / review
 -> canonical facts + search/evidence layer
@@ -35,9 +35,10 @@ facts.
 
 ## User-Selectable Model Modes
 
-Default Smart Parse uses Qwen3-VL 2B. Qwen3-VL 8B must never be invoked by
-default ingest, validation review policy, low confidence alone, or private corpus
-standard validation.
+Default Smart Parse uses Qwen3-VL-4B through the same Docling-grounded semantic
+harness and manifest contract originally built for the 2B path. Qwen3-VL 8B
+must never be invoked by default ingest, validation review policy, low
+confidence alone, or private corpus standard validation.
 
 Qwen3-VL 8B has exactly two authorization paths:
 
@@ -59,10 +60,13 @@ Persisted semantic job intent fields:
 
 ## Runtime Profiles
 
-- Smart Parse: `qwen3-vl-2b-semantic:v1`
+- Smart Parse: `qwen3-vl-4b-semantic:v1`
 - High Quality: `qwen3-vl-8b-semantic-hq:v1`, user-selected only
 - Rescue: `qwen3-vl-8b-semantic-hq:v1`, one user-permitted rescue only
 - Structured extraction: `granite-4.0-3b-vision-bf16:v1`
+
+The Qwen3-VL-4B smart profile is bounded to one image per request by default so
+the existing page-window merge path preserves exact Docling page coverage.
 
 Fixture mode remains deterministic and must not claim Qwen or Granite provenance.
 

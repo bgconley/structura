@@ -128,7 +128,7 @@ Phase 8.5 canonical semantic pipeline:
 
 ```text
 Docling physical parse
--> Qwen3-VL 2B smart semantic annotation
+-> Qwen3-VL-4B smart semantic annotation
 -> Granite 4.0 3B Vision targeted structured extraction
 -> validators / provenance / human review policy
 -> canonical facts + search/evidence layer
@@ -170,12 +170,13 @@ Phase 8.5 anti-patterns to avoid:
 
 Phase 8.5 runtime/model placement decisions:
 
-1. `model-qwen-semantic` on Blackwell GPU 0 is the default Smart Parse semantic service: Qwen3-VL-2B grounded against Docling context/page images.
-2. `model-qwen` on Blackwell GPU 0 is Qwen3-VL-8B for explicit user-selected High Quality Parse or explicit user-permitted one-pass rescue only.
+1. `model-qwen-semantic` on Blackwell GPU 0 is the default Smart Parse semantic service: Qwen3-VL-4B grounded against Docling context/page images through the same semantic harness and manifest contract originally used for the 2B path.
+2. `model-qwen` / Qwen3-VL-8B is disabled/deferred in the active runtime. The High Quality Parse and 8B rescue contracts remain visible for future evaluation, but default application logic must not silently remap them to Qwen3-VL-4B.
 3. `model-granite` on Blackwell GPU 1 is Granite 4.0 3B Vision for structured extraction from Docling/Qwen-grounded targets.
 4. `model-embed` belongs on the RTX 3090 or an explicit offload path for Qwen3-Embedding text retrieval, preserving the 1536-dimensional text pgvector index.
 5. `model-vl-embed` is Qwen3-VL-Embedding visual retrieval. Live validation showed the vLLM endpoint returns native 2048-dimensional vectors and rejects the `dimensions` override, so visual embedding defaults/indexes must be 2048 unless a serving backend proves safe down-projection support.
 6. Co-residency on the two 24GB Blackwell cards is allowed only as measured runtime capacity. Allocate KV cache by pipeline priority and measured document context needs; do not assume all services can run at 32K context simultaneously.
+7. The Qwen3-VL-4B smart profile uses `max_model_len=16384`, `max_num_seqs=2`, video disabled, and one image per semantic request by default. This preserves exact Docling page coverage through the existing page-window merge path rather than weakening the semantic contract.
 
 Deterministic model gateways are test fixtures only. In live or required model mode they must not silently replace Qwen, Granite, text embedding, or visual embedding services, and they must never claim Qwen or Granite provenance.
 
@@ -185,7 +186,7 @@ Current Phase 8.5 implementation work has established these seams:
 2. `lib/model_runtime/clients/` owns Qwen, Granite, text embedding, and visual embedding HTTP adapters. These adapters validate response shapes and dimensions before returning data to extraction/search layers.
 3. `lib/extraction/gateways/` owns live Qwen/Granite extraction adapters and routing. `lib/extraction/gateway.py` remains the deterministic Docling-text fixture path and must not claim Qwen/Granite provenance.
 4. `lib/search/embeddings/` owns live text/visual embedding adapters. `EmbeddingService` selects fixture gateways only when `STRUCTURA_MODEL_MODE=fixture`; `live`/`required` use configured model service URLs.
-5. Compose now separates `models-placeholder`, `models-live`, and `visual-embed-live`; `model-qwen` defaults to Blackwell GPU 0, `model-granite` to Blackwell GPU 1, and `model-vl-embed` is scheduled/offline rather than always-on with Granite.
+5. Compose now separates `models-placeholder`, `models-live`, and `visual-embed-live`; `model-qwen-semantic` uses Blackwell GPU 0, `model-granite` uses Blackwell GPU 1, and `model-vl-embed` may be co-resident with Granite on GPU 1 when the measured KV/cache profile fits. `model-qwen` / Qwen3-VL-8B is retained for future evaluation contracts but is not part of the default active runtime.
 6. Model-corpus release evidence is represented by `scripts/run_model_corpus.py` and `tests/fixtures/model_corpus/`. The committed example manifest is deterministic; release validation requires a private model-backed manifest with `fixtureType = "model_backed"`.
 
 Phase 8.5 critical extraction closure landed through commit `9fd1534`:
@@ -204,7 +205,7 @@ The final Phase 8.5 critical-closure GPU gate at `9fd1534` used standard mode on
 1. `/Users/brennanconley/Downloads/MRI Anthem Denial 01-26.pdf`, final GPU document `47b6a63b-c022-4d1e-a1b9-28c878fc490f`.
 2. `/Users/brennanconley/Downloads/BMW CE-04 600mi run in service and tire service 04-23.pdf`, final GPU document `6f6bd028-7e9c-42aa-a5c3-84cae29da655`.
 
-Final proof for that gate: Qwen8B invocation count was `0`; failed/dead-letter job count was `0`; both documents used Qwen3-VL 2B smart semantic annotation; BMW produced 3 current Granite semantic-region invoice line-item extraction rows, a current aggregate invoice row, 4 Granite region line-item candidates, and 4 aggregate line-item candidates. The BMW aggregate invoice JSON included invoice number `6046058/1`, issued date `2023-04-25`, line items, totals, and a deliberate `semantic_region_aggregate` review warning.
+Final proof for that gate: Qwen8B invocation count was `0`; failed/dead-letter job count was `0`; both documents used the then-current smart semantic annotation profile; BMW produced 3 current Granite semantic-region invoice line-item extraction rows, a current aggregate invoice row, 4 Granite region line-item candidates, and 4 aggregate line-item candidates. The BMW aggregate invoice JSON included invoice number `6046058/1`, issued date `2023-04-25`, line items, totals, and a deliberate `semantic_region_aggregate` review warning.
 
 Phase 9 integration seams after Phase 8 and planned Phase 8.5:
 
