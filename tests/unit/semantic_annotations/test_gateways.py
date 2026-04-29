@@ -97,6 +97,20 @@ def test_live_qwen_gateway_prompt_keeps_semantic_planning_but_not_tiny_region_li
     assert "max_output_tokens" not in prompt
 
 
+def test_live_qwen_smart_gateway_uses_compact_output_budget_for_16k_service() -> None:
+    source = _source_with_page_image()
+    client = FakeSemanticVisionClient(
+        profile_name=QWEN_SEMANTIC_PROFILE,
+        source_engine="qwen3_vl_2b",
+        normalized_json=_semantic_payload(source.pages[0].page_id),
+    )
+
+    QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
+
+    assert client.request is not None
+    assert client.request.max_output_tokens == 2048
+
+
 def test_live_qwen_high_quality_gateway_uses_qwen8b_profile() -> None:
     source = _source_with_page_image()
     client = FakeSemanticVisionClient(

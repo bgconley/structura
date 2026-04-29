@@ -243,7 +243,8 @@ def _response_json_schema_for_profile(profile_name: str) -> dict[str, object] | 
 
 
 def _max_output_tokens_for_profile(profile_name: str) -> int:
-    _ = profile_name
+    if profile_name == QWEN_SEMANTIC_PROFILE:
+        return 2048
     return 4096
 
 
