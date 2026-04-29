@@ -1008,6 +1008,18 @@
       "related_bugs": ["bug-083"],
       "occurrences": 1,
       "last_seen": "2026-04-29T09:45:00-04:00"
+    },
+    {
+      "id": "bug-085",
+      "timestamp": "2026-04-29T09:55:00-04:00",
+      "error_message": "A new derived object written after image rebuild had mode 660 but group 10001, so the host operator still could not read it.",
+      "file": "compose.yaml",
+      "root_cause": "The runtime tree was repaired to 10001:bgconley, but app containers ran as UID/GID 10001 without host group 1000 as a supplementary group. Linux cleared setgid when that non-root process chmodded bgconley-group directories, and mkstemp output was later moved into object storage with group 10001.",
+      "fix": "Added Compose group_add for the Structura app, worker, and placeholder services using STRUCTURA_RUNTIME_HOST_GID so UID 10001 can preserve setgid inheritance and create group-readable objects for the host operator group.",
+      "tags": ["phase-8.5", "storage", "permissions", "gpu-node", "compose"],
+      "related_bugs": ["bug-082"],
+      "occurrences": 1,
+      "last_seen": "2026-04-29T09:55:00-04:00"
     }
   ]
 }

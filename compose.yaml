@@ -5,6 +5,10 @@ x-live-model-runtime: &live-model-runtime
     memlock: -1
     stack: 67108864
 
+x-app-runtime-access: &app-runtime-access
+  group_add:
+    - "${STRUCTURA_RUNTIME_HOST_GID:-1000}"
+
 services:
   postgres:
     image: ${STRUCTURA_POSTGRES_IMAGE:-paradedb/paradedb:0.21.5-pg17}
@@ -23,6 +27,7 @@ services:
       retries: 10
 
   api:
+    <<: *app-runtime-access
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -82,6 +87,7 @@ services:
       retries: 10
 
   worker-ingest:
+    <<: *app-runtime-access
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -106,6 +112,7 @@ services:
       retries: 10
 
   worker-previews:
+    <<: *app-runtime-access
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -128,6 +135,7 @@ services:
       retries: 10
 
   worker-docling:
+    <<: *app-runtime-access
     build:
       context: .
       dockerfile: workers/docling/Dockerfile
@@ -151,6 +159,7 @@ services:
       retries: 10
 
   worker-extraction:
+    <<: *app-runtime-access
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -178,6 +187,7 @@ services:
       retries: 10
 
   worker-semantic-annotations:
+    <<: *app-runtime-access
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -204,6 +214,7 @@ services:
       retries: 10
 
   worker-embeddings:
+    <<: *app-runtime-access
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -228,6 +239,7 @@ services:
       retries: 10
 
   worker-visual-embeddings:
+    <<: *app-runtime-access
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -253,6 +265,7 @@ services:
       retries: 10
 
   worker-watched-folders:
+    <<: *app-runtime-access
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -276,6 +289,7 @@ services:
       retries: 10
 
   worker-relationships:
+    <<: *app-runtime-access
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -297,6 +311,7 @@ services:
       retries: 10
 
   worker-analysis:
+    <<: *app-runtime-access
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -318,6 +333,7 @@ services:
       retries: 10
 
   model-qwen-placeholder:
+    <<: *app-runtime-access
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -332,6 +348,7 @@ services:
     profiles: ["models-placeholder", "models"]
 
   model-granite-placeholder:
+    <<: *app-runtime-access
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -346,6 +363,7 @@ services:
     profiles: ["models-placeholder", "models"]
 
   model-embed-placeholder:
+    <<: *app-runtime-access
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -360,6 +378,7 @@ services:
     profiles: ["models-placeholder", "models"]
 
   model-vl-embed-placeholder:
+    <<: *app-runtime-access
     build:
       context: .
       dockerfile: apps/api/Dockerfile

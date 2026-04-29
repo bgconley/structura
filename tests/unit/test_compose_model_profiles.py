@@ -5,6 +5,31 @@ from pathlib import Path
 import yaml
 
 
+def test_app_runtime_services_include_host_operator_group() -> None:
+    compose = yaml.safe_load(Path("compose.yaml").read_text())
+    services = compose["services"]
+    expected_group = ["${STRUCTURA_RUNTIME_HOST_GID:-1000}"]
+
+    for name in (
+        "api",
+        "worker-ingest",
+        "worker-previews",
+        "worker-docling",
+        "worker-extraction",
+        "worker-semantic-annotations",
+        "worker-embeddings",
+        "worker-visual-embeddings",
+        "worker-watched-folders",
+        "worker-relationships",
+        "worker-analysis",
+        "model-qwen-placeholder",
+        "model-granite-placeholder",
+        "model-embed-placeholder",
+        "model-vl-embed-placeholder",
+    ):
+        assert services[name]["group_add"] == expected_group
+
+
 def test_model_profiles_are_safe_and_gpu_placed() -> None:
     compose = yaml.safe_load(Path("compose.yaml").read_text())
     services = compose["services"]

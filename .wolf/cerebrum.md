@@ -174,6 +174,7 @@
 - [2026-04-29] Do not bypass Structura storage permissions for host-side Phase 8.5 diagnostics. Runtime object stores must preserve container UID write access and host operator group read/traverse access: writable dirs should be setgid and stored blobs group-readable, with existing GPU runtime trees repaired by `infrastructure/zfs/create_gpu_runtime_datasets.sh`.
 - [2026-04-29] Do not make the GPU ZFS bootstrap remount live datasets just to repair permissions. Existing dataset properties should be checked before setting, and mounted datasets should not be remounted when they are already mounted.
 - [2026-04-29] Do not quote shell globs in ZFS dataset names. Prefer `zfs list -r -d 1 <dataset>` for child dataset reporting so bootstrap scripts exit cleanly after repairs.
+- [2026-04-29] Do not rely on setgid directories alone when the container UID is not in the host operator group. Structura app/worker containers need `STRUCTURA_RUNTIME_HOST_GID` via Compose `group_add` so UID 10001 can preserve setgid inheritance on `/srv/structura` bind mounts.
 
 ## Decision Log
 
