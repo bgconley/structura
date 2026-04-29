@@ -912,6 +912,42 @@
       "related_bugs": ["bug-075"],
       "occurrences": 1,
       "last_seen": "2026-04-27T03:06:00-04:00"
+    },
+    {
+      "id": "bug-077",
+      "timestamp": "2026-04-29T00:00:00-04:00",
+      "error_message": "BMW Phase 8.5 live extraction failed with Phase 4 extraction job failed / AttributeError and produced no service line candidates from useful Granite output.",
+      "file": "lib/extraction/model_output_normalization.py",
+      "root_cause": "Qwen labeled invoice_line_item_table regions with granite_task=kvp, the gateway only selected the line-item model-output schema for table Granite tasks, and the normalizer did not map useful wrapped data.invoice_line_items or BMW flat service fields into canonical invoice line items.",
+      "fix": "Made semantic type drive Granite line-item schema/prompt selection, added granite_invoice_line_items.v1 routing, mapped BMW flat and data.invoice_line_items payloads into line_item_candidates, and kept results in needs_review.",
+      "tags": ["phase-8.5", "granite", "invoice", "line-items", "gpu-node", "normalization"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-29T00:00:00-04:00"
+    },
+    {
+      "id": "bug-078",
+      "timestamp": "2026-04-29T00:00:00-04:00",
+      "error_message": "BMW aggregate invoice contained section headings such as Customer Information / Transaction information as line-item candidates and lost useful document-level invoice fields.",
+      "file": "lib/extraction/reconciliation.py",
+      "root_cause": "The model-output mapper accepted obvious section headings as line items and aggregate reconciliation only merged region rows, ignoring useful current document-level Granite fallback fields such as invoice number/date.",
+      "fix": "Filtered known non-line-item headings, added document-level invoice fallback for invoice number/date/totals, and persisted a schema-valid aggregate invoice with review warning.",
+      "tags": ["phase-8.5", "granite", "invoice", "reconciliation", "line-items"],
+      "related_bugs": ["bug-077"],
+      "occurrences": 1,
+      "last_seen": "2026-04-29T00:00:00-04:00"
+    },
+    {
+      "id": "bug-079",
+      "timestamp": "2026-04-29T00:00:00-04:00",
+      "error_message": "GPU mypy/pyright failed on Optional .get access in Phase 8.5 payment summary normalization.",
+      "file": "lib/extraction/model_output_normalization.py",
+      "root_cause": "Inline dict-or-empty expressions were not narrowed by mypy/pyright before payment_summary/totals/invoice .get calls.",
+      "fix": "Introduced explicit typed dict variables before reading normalized payment summary fallback fields.",
+      "tags": ["phase-8.5", "typing", "mypy", "pyright"],
+      "related_bugs": ["bug-077"],
+      "occurrences": 1,
+      "last_seen": "2026-04-29T00:00:00-04:00"
     }
   ]
 }

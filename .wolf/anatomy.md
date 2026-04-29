@@ -110,11 +110,25 @@
 - `tests/unit/test_phase8_difficult_documents.py` — Unit coverage for quality classifier, visual search contract, visual embedding profile/modality validation, RRF visual fusion, and Phase 8 benchmark cases (~900 tok)
 - `docs/ui-reference/figma/difficult-documents/` — Phase 8 difficult-document UI context, comparison notes, Playwright reference screenshot, and deterministic Linux snapshot linkage (~450 tok plus image)
 
+## Phase 8.5 critical extraction closure additions
+
+- `database/078_phase8_5_region_extraction_scope.sql` — Adds scoped extraction persistence columns, JSON object checks, and current-row indexes for document, semantic-region, and aggregate extraction rows (~800 tok)
+- `contracts/model_outputs/granite_invoice_line_items.v1.schema.json` — Granite task contract for invoice service/line-item table output before Structura canonical normalization (~350 tok)
+- `contracts/model_outputs/granite_payment_summary.v1.schema.json` — Granite task contract for payment-summary KVP output before canonical invoice mapping (~250 tok)
+- `contracts/model_outputs/granite_medical_service_lines.v1.schema.json` — Granite task contract for EOB covered-service line output before canonical medical EOB mapping (~250 tok)
+- `lib/extraction/model_output_schemas.py` — Selects Granite model-output schema by canonical schema, semantic type, and Granite task; semantic type can override a mistaken `granite_task=kvp` for line-item regions (~450 tok)
+- `lib/extraction/granite_prompting.py` — Builds Granite prompts for generic, table, and KVP semantic tasks with Docling table/page context and schema instructions (~1200 tok)
+- `lib/extraction/model_output_normalization.py` — Maps Granite task output, BMW-style flat fields, and wrapped `data.invoice_line_items` into canonical invoice/EOB payload fragments while recording repairs/rejected fields and filtering section headings (~2600 tok)
+- `lib/extraction/reconciliation.py` — Pure invoice region reconciliation that merges current semantic-region line items, totals, payment/document fallback fields, and provenance metadata into aggregate invoice JSON (~1300 tok)
+- `lib/extraction/reconciliation_repository.py` — DB orchestration for terminal-region aggregate persistence; loads current region rows and document-level fallback, then persists aggregate extraction/candidates (~1700 tok)
+- `docs/superpowers/plans/2026-04-29-phase85-critical-extraction-closure.md` — Executed closure plan and verification checklist for scoped persistence, Granite contracts, normalization, reconciliation, and GPU proof (~1200 tok)
+- `tests/unit/extraction/test_reconciliation.py` — Regression coverage for aggregate invoice merge, line-item/payment preservation, heading filtering, and document fallback fields (~800 tok)
+
 ## ./
 
 - `.DS_Store` (~3824 tok)
 - `CLAUDE.md` — OpenWolf (~57 tok)
-- `agents.md` / `AGENTS.md` — Agent operating guidance; root implementation plan as phase map, non-archive artifact references as required implementation depth, archive exclusion, Markdown-over-DOCX and chunked large-file review handling, conflict resolution, architecture stewardship, Phase 5/6/7 baselines and hardening records, Phase 8 implementation details, Phase 9 seams, Figma evidence, GPU-node runtime/test policy, all-phase live Playwright suite rule, and Docling worker dependency isolation (~5600 tok)
+- `agents.md` / `AGENTS.md` — Agent operating guidance; root implementation plan as phase map, non-archive artifact references as required implementation depth, archive exclusion, Markdown-over-DOCX and chunked large-file review handling, conflict resolution, architecture stewardship, Phase 5/6/7 baselines and hardening records, Phase 8 implementation details, Phase 8.5 semantic/model runtime policy including Docling->Qwen2B->Granite pipeline, strict user-only Qwen8B invocation, scoped extraction persistence, Granite model-output contracts, aggregate reconciliation, final GPU proof at `9fd1534`, Phase 9 seams, Figma evidence, GPU-node runtime/test policy, all-phase live Playwright suite rule, and Docling worker dependency isolation (~7600 tok)
 - `STRUCTURA_PLAN_INDEX.md` — Canonical planning index; source alignment policy, Markdown-first duplicate-artifact handling with DOCX parity note, UI source of truth, GPU node sync policy, stop rule (~1000 tok)
 - `STRUCTURA_IMPLEMENTATION_PLAN.md` — Canonical end-to-end implementation plan; phase gates, mandatory per-phase artifact lists, API/database/event coverage, Markdown-first duplicate-artifact handling with DOCX parity note, GPU sync policy (~15500 tok)
 - `STRUCTURA_PHASE_1_IMPLEMENTATION_PLAN.md` — Phase 1 execution plan; upload, object storage, Inbox, protected asset streaming, preview, Viewer, fresh-context rereads, Firecrawl evidence rules, validation gate (~5700 tok)

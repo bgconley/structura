@@ -82,7 +82,7 @@ Older artifact-pack docs may group the same work differently. Treat the root pla
 
 ## Current Baseline And Next Phase
 
-As of 2026-04-28, the repo is implemented through Phase 8 on `master`; local, `origin/master`, and the GPU checkout at `/tank/repos/structura` must stay synced before any milestone validation. Phase 8.5 is the next implementation phase and must start from `STRUCTURA_PHASE_8_5_IMPLEMENTATION_PLAN.md` plus its Fresh Context artifacts. Do not start Phase 9 analysis until Phase 8.5 model-service gates pass or the user explicitly accepts documented blockers.
+As of 2026-04-29, the repo is implemented through Phase 8 plus the Phase 8.5 live model-runtime and critical extraction-closure work on `master`; local, `origin/master`, and the GPU checkout at `/tank/repos/structura` must stay synced before any milestone validation. Current synchronized HEAD is `9fd1534` (`Record Phase 8.5 closure verification`). Remaining Phase 8.5 work must continue from `STRUCTURA_PHASE_8_5_IMPLEMENTATION_PLAN.md`, `STRUCTURA_PHASE_8_5_SEMANTIC_ANNOTATION_PLAN.md`, and `docs/superpowers/plans/2026-04-29-phase85-critical-extraction-closure.md`. Do not start Phase 9 analysis until the remaining Phase 8.5 model-service gates pass or the user explicitly accepts documented blockers.
 
 Phase 4 implementation code landed in commit `d04a762` (`Implement Phase 4 extraction review`). It adds the extraction/review foundation; before calling the phase complete, current HEAD must be pushed, pulled on the GPU node, migrated through `068_phase4_extraction_review.sql`, rebuilt with the extraction profile, and validated on the GPU node.
 
@@ -124,12 +124,58 @@ Phase 8 was canonically validated on the GPU node at commit `4a83690`: `web` was
 
 Phase 8.5 is a mandatory model-runtime foundation before Phase 9. It exists to close the release-readiness gaps where Phase 8 seams were present but model behavior was still fixture-backed: visual embeddings must be generated from real image inputs, Qwen provenance must only be recorded when Qwen is actually invoked, Granite 4.0 3B Vision must be implemented for structured table/KVP/form extraction, and model-backed golden evidence must exist before analysis uses those outputs.
 
-Phase 8.5 final model priority decision:
+Phase 8.5 canonical semantic pipeline:
 
-1. `model-qwen` on Blackwell GPU 0: Qwen3-VL-8B for handwriting-heavy pages, degraded OCR rescue, ambiguous visual fallback, and later cited analysis support.
-2. `model-granite` on Blackwell GPU 1: Granite 4.0 3B Vision for bills, invoices, receipts, EOBs, forms, tables, charts, semantic KVPs, and layout-sensitive extraction.
-3. `model-embed` on the RTX 3090: Qwen3-Embedding text retrieval, preserving the 1536-dimensional pgvector index.
-4. `model-vl-embed` as a scheduled/offline Blackwell profile: Qwen3-VL-Embedding visual retrieval, preserving the 1024-dimensional visual pgvector index. Do not make this always-on ahead of Granite unless concurrency and quality are benchmarked.
+```text
+Docling physical parse
+-> Qwen3-VL 2B smart semantic annotation
+-> Granite 4.0 3B Vision targeted structured extraction
+-> validators / provenance / human review policy
+-> canonical facts + search/evidence layer
+```
+
+Docling is the source of physical truth: pages, text, element IDs, table IDs, coordinates, page images, and evidence provenance. Qwen is a semantic planner and may not create canonical facts. Granite is the structured extractor for tables, forms, KVPs, charts, invoices, bills, receipts, EOBs, statements, and other layout-sensitive documents. Validators and review policy remain the truth gate.
+
+Phase 8.5 Qwen3-VL 8B authorization policy is strict:
+
+1. Qwen3-VL 8B must never be invoked automatically by application logic.
+2. Qwen3-VL 8B may run only when the user explicitly selects `High Quality Parse` for a document/run.
+3. Qwen3-VL 8B may run as rescue only when the user explicitly selected `Allow 8B Rescue`; even then the application may use at most one bounded first-pass rescue before handing the document to human review.
+4. If neither user option is selected, uncertain, incomplete, low-confidence, unreconciled, or ambiguous extraction results become `needs_human_review` or `insufficient_signal`. They do not trigger Qwen3-VL 8B.
+5. Loading or co-residently serving Qwen3-VL 8B is a capacity/runtime decision only. It does not grant permission to invoke it.
+
+Use precise Phase 8.5 outcome vocabulary:
+
+1. `extracted_cleanly`: candidates are extracted and validation/evidence policy passes.
+2. `needs_human_review`: candidates exist but confidence, reconciliation, evidence, or policy requires review.
+3. `insufficient_signal`: the document/page/region is degraded, ambiguous, blank, or unreadable enough that reliable candidates cannot be produced.
+4. `no_extraction_target`: the page/region is boilerplate, blank, irrelevant, or non-extractable.
+5. `pipeline_failed`: system/runtime failure only, such as model service unavailable, timeout, invalid response after retry, storage/read error, contract violation, worker crash, or DB error.
+
+Do not call document-quality uncertainty a job failure. True `pipeline_failed` states are operational defects and should drive retry/dead-letter/admin health behavior. Document-quality outcomes should create review/diagnostic state while preserving evidence and candidates where available.
+
+Phase 8.5 anti-patterns to avoid:
+
+1. Do not auto-run Qwen3-VL 8B during default ingest.
+2. Do not treat `validation.needs_review` as a rescue trigger.
+3. Do not treat low confidence, high-risk document family, or human-review policy as pipeline failure.
+4. Do not create repeated rescue loops or fanout storms.
+5. Do not run private corpus validation in a mode that secretly forces High Quality.
+6. Do not silently normalize arbitrary model output until it passes without recording bounded normalization behavior.
+7. Do not let fixture behavior define live-model contracts.
+8. Do not let Qwen annotations become canonical facts.
+9. Do not let Granite output bypass validators or review policy.
+10. Do not claim Qwen/Granite provenance unless the actual live adapter was invoked.
+11. Do not proceed to Phase 9 while model mode, Qwen8B user permission, rescue policy, and corpus gates are ambiguous.
+
+Phase 8.5 runtime/model placement decisions:
+
+1. `model-qwen-semantic` on Blackwell GPU 0 is the default Smart Parse semantic service: Qwen3-VL-2B grounded against Docling context/page images.
+2. `model-qwen` on Blackwell GPU 0 is Qwen3-VL-8B for explicit user-selected High Quality Parse or explicit user-permitted one-pass rescue only.
+3. `model-granite` on Blackwell GPU 1 is Granite 4.0 3B Vision for structured extraction from Docling/Qwen-grounded targets.
+4. `model-embed` belongs on the RTX 3090 or an explicit offload path for Qwen3-Embedding text retrieval, preserving the 1536-dimensional text pgvector index.
+5. `model-vl-embed` is Qwen3-VL-Embedding visual retrieval. Live validation showed the vLLM endpoint returns native 2048-dimensional vectors and rejects the `dimensions` override, so visual embedding defaults/indexes must be 2048 unless a serving backend proves safe down-projection support.
+6. Co-residency on the two 24GB Blackwell cards is allowed only as measured runtime capacity. Allocate KV cache by pipeline priority and measured document context needs; do not assume all services can run at 32K context simultaneously.
 
 Deterministic model gateways are test fixtures only. In live or required model mode they must not silently replace Qwen, Granite, text embedding, or visual embedding services, and they must never claim Qwen or Granite provenance.
 
@@ -141,6 +187,24 @@ Current Phase 8.5 implementation work has established these seams:
 4. `lib/search/embeddings/` owns live text/visual embedding adapters. `EmbeddingService` selects fixture gateways only when `STRUCTURA_MODEL_MODE=fixture`; `live`/`required` use configured model service URLs.
 5. Compose now separates `models-placeholder`, `models-live`, and `visual-embed-live`; `model-qwen` defaults to Blackwell GPU 0, `model-granite` to Blackwell GPU 1, and `model-vl-embed` is scheduled/offline rather than always-on with Granite.
 6. Model-corpus release evidence is represented by `scripts/run_model_corpus.py` and `tests/fixtures/model_corpus/`. The committed example manifest is deterministic; release validation requires a private model-backed manifest with `fixtureType = "model_backed"`.
+
+Phase 8.5 critical extraction closure landed through commit `9fd1534`:
+
+1. Migration `078_phase8_5_region_extraction_scope.sql` adds `document_extractions.extraction_scope`, `semantic_annotation_id`, `source_semantic_region_id`, `semantic_type`, `granite_task`, `model_output_schema_name`, `model_output_schema_version`, `normalization_json`, and `metadata_json`.
+2. Current extraction supersession is scoped: document and aggregate rows are current per document/schema/scope, while semantic-region rows are current per document/schema/source region. A later payment-summary or header region must not erase service-line region output.
+3. Granite model-output contracts live under `contracts/model_outputs/`. Granite should emit small task contracts such as `granite_invoice_line_items.v1`, `granite_payment_summary.v1`, and `granite_medical_service_lines.v1`; Structura maps these into canonical `invoice.v1`/`medical_eob.v1` candidates and records repairs/rejected fields in `normalization_json`.
+4. `lib/extraction/model_output_schemas.py` and `lib/extraction/granite_prompting.py` select task schemas/prompts from semantic type and Granite task. For line-item semantic types, semantic type wins over a mistaken `granite_task=kvp`; force the line-item/table contract and table-style prompt rather than trusting the task label blindly.
+5. `lib/extraction/model_output_normalization.py` handles useful noncanonical Granite payloads, including BMW-style flat fields and wrapped `data.invoice_line_items`, while filtering obvious section headings such as customer/transaction information so they do not become service lines.
+6. `lib/extraction/reconciliation.py` and `lib/extraction/reconciliation_repository.py` build aggregate invoice rows from current semantic-region outputs after the annotation's Granite jobs are terminal. Aggregate rows preserve region/extraction provenance, include document-level invoice number/date fallback when useful, and remain `needs_review` even when JSON schema and arithmetic checks pass.
+7. `lib/documents/read_model.py` surfaces current document/aggregate extraction summaries for the app while region rows remain queryable for evidence/debug/review.
+8. `workers/extraction/worker.py` calls reconciliation after semantic-region extraction completes and records any aggregate extraction ID in the job result.
+
+The final Phase 8.5 critical-closure GPU gate at `9fd1534` used standard mode only, without `--high-quality`, `--allow-8b-rescue`, or `--rescue-stress`. GPU validation passed `ruff`, format check, contract validation, `pyright`, `mypy`, and `pytest` (`215 passed`, `49 skipped`), rebuilt `api` and `worker-extraction`, applied migration `078`, and ran the full live pipeline on:
+
+1. `/Users/brennanconley/Downloads/MRI Anthem Denial 01-26.pdf`, final GPU document `47b6a63b-c022-4d1e-a1b9-28c878fc490f`.
+2. `/Users/brennanconley/Downloads/BMW CE-04 600mi run in service and tire service 04-23.pdf`, final GPU document `6f6bd028-7e9c-42aa-a5c3-84cae29da655`.
+
+Final proof for that gate: Qwen8B invocation count was `0`; failed/dead-letter job count was `0`; both documents used Qwen3-VL 2B smart semantic annotation; BMW produced 3 current Granite semantic-region invoice line-item extraction rows, a current aggregate invoice row, 4 Granite region line-item candidates, and 4 aggregate line-item candidates. The BMW aggregate invoice JSON included invoice number `6046058/1`, issued date `2023-04-25`, line items, totals, and a deliberate `semantic_region_aggregate` review warning.
 
 Phase 9 integration seams after Phase 8 and planned Phase 8.5:
 
