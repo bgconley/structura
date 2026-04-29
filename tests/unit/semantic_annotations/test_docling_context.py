@@ -8,7 +8,7 @@ from lib.extraction.models import (
     ParsedPageText,
     ParsedTableText,
 )
-from lib.semantic_annotations.docling_context import build_docling_context
+from lib.semantic_annotations.docling_context import MAX_ELEMENTS_PER_PAGE, build_docling_context
 
 
 def test_build_docling_context_includes_grounding_ids_and_bounded_snippets() -> None:
@@ -74,3 +74,51 @@ def test_build_docling_context_includes_grounding_ids_and_bounded_snippets() -> 
     assert len(context["pages"][0]["elements"][0]["textSnippet"]) <= 240
     assert context["pages"][0]["tables"][0]["tableId"] == str(table_id)
     assert context["pages"][0]["tables"][0]["tableIndex"] == 2
+
+
+def test_build_docling_context_caps_element_context_per_page() -> None:
+    page_id = uuid4()
+    element_count = MAX_ELEMENTS_PER_PAGE + 5
+    source = ExtractionSourceDocument(
+        document_id=uuid4(),
+        household_id=uuid4(),
+        title="Dense service record",
+        original_filename="service.pdf",
+        mime_type="application/pdf",
+        family="receipt",
+        subtype=None,
+        sensitivity="normal",
+        document_date=None,
+        counterparty_display=None,
+        primary_folder_id=None,
+        metadata={},
+        pages=[
+            ParsedPageText(
+                page_id=page_id,
+                page_number=1,
+                text="Dense service page",
+                image_mime_type="image/png",
+                image_sha256="b" * 64,
+            )
+        ],
+        elements=[
+            ParsedElementText(
+                element_id=uuid4(),
+                page_number=1,
+                ordinal=ordinal,
+                text=f"service line {ordinal}",
+                bbox=None,
+            )
+            for ordinal in range(1, element_count + 1)
+        ],
+        tables=[],
+    )
+
+    context = build_docling_context(source)
+
+    page_context = context["pages"][0]
+    assert page_context["elementCount"] == element_count
+    assert page_context["elementsTruncated"] == 5
+    assert len(page_context["elements"]) == MAX_ELEMENTS_PER_PAGE
+    assert page_context["elements"][0]["ordinal"] == 1
+    assert page_context["elements"][-1]["ordinal"] == MAX_ELEMENTS_PER_PAGE

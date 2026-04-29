@@ -10,8 +10,9 @@ from lib.extraction.models import (
 )
 
 PAGE_SNIPPET_CHARS = 320
-ELEMENT_SNIPPET_CHARS = 240
+ELEMENT_SNIPPET_CHARS = 160
 TABLE_SNIPPET_CHARS = 320
+MAX_ELEMENTS_PER_PAGE = 48
 
 
 def build_docling_context(source: ExtractionSourceDocument) -> dict[str, Any]:
@@ -41,12 +42,15 @@ def _page_context(
     elements: list[ParsedElementText],
     tables: list[ParsedTableText],
 ) -> dict[str, Any]:
+    bounded_elements = sorted(elements, key=lambda element: element.ordinal)[:MAX_ELEMENTS_PER_PAGE]
     return {
         "pageId": str(page.page_id),
         "pageNumber": page.page_number,
         "imageSha256": page.image_sha256,
         "textSnippet": _snippet(page.text, PAGE_SNIPPET_CHARS),
-        "elements": [_element_context(element) for element in elements],
+        "elementCount": len(elements),
+        "elementsTruncated": max(0, len(elements) - len(bounded_elements)),
+        "elements": [_element_context(element) for element in bounded_elements],
         "tables": [_table_context(table) for table in tables],
     }
 

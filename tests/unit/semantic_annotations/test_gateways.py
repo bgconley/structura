@@ -108,7 +108,7 @@ def test_live_qwen_smart_gateway_uses_compact_output_budget_for_16k_service() ->
     QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
 
     assert client.request is not None
-    assert client.request.max_output_tokens == 3072
+    assert client.request.max_output_tokens == 3840
 
 
 def test_live_qwen_high_quality_gateway_uses_qwen8b_profile() -> None:
