@@ -53,7 +53,7 @@ def test_fixture_gateway_has_explicit_fixture_provenance() -> None:
 
 
 def test_live_qwen_smart_gateway_builds_truthful_qwen3_vl_4b_manifest() -> None:
-    source = _source_with_page_image()
+    source = _source_with_page_image_and_element()
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
         source_engine="qwen3_vl_4b",
@@ -72,6 +72,9 @@ def test_live_qwen_smart_gateway_builds_truthful_qwen3_vl_4b_manifest() -> None:
     context_json = client.request.prompt.split("Docling context: ", 1)[1]
     assert '": ' not in context_json
     assert ', "' not in context_json
+    prompt_context = json.loads(context_json)
+    assert "imageSha256" not in prompt_context["focusPages"][0]
+    assert "bbox" not in prompt_context["focusPages"][0]["elements"][0]
     assert client.request.image_inputs[0].content == b"page-image"
     assert client.request.response_schema_name == "semantic_annotation_model_output"
     assert client.request.response_json_schema == semantic_annotation_model_output_schema()

@@ -17,6 +17,9 @@
 - `compose.yaml`: set Qwen semantic `STRUCTURA_VLLM_MM_PROCESSOR_KWARGS` to the 2560-token/page planner budget.
 - `workers/model_services/qwen-vllm.example.env`: keep the operator example aligned with Qwen3-VL-4B Smart Parse.
 - `scripts/gpu/run_phase8_5_semantic_canary.py`: emit token-budget diagnostics.
+- `lib/semantic_annotations/docling_context.py`: allow Qwen prompts to omit
+  token-heavy bboxes and page image hashes while preserving default full Docling
+  context for other callers.
 - `STRUCTURA_PHASE_8_5_IMPLEMENTATION_PLAN.md`: record the 4B planner-resolution budget.
 - `STRUCTURA_PHASE_8_5_SEMANTIC_ANNOTATION_PLAN.md`: remove the stale one-image-default statement and record the adaptive four-image policy.
 - `docs/superpowers/specs/2026-04-29-phase-8-5-qwen-visual-token-budget-spec.md`: focused spec for this work.
@@ -85,6 +88,8 @@ visual_token_max_per_image: int | None = None
 - [ ] Implement standard-library PNG/JPEG dimension parsing so the script does not add Pillow to the shared runtime.
 - [ ] Estimate text/schema tokens with a conservative `ceil(characters / 4)` heuristic.
 - [ ] Estimate Qwen visual tokens using the profile budget and 32x compression.
+- [ ] Report whether Qwen prompt context contains legacy page aliases, element
+      bboxes, or page image hashes.
 - [ ] Verify:
 
 ```bash

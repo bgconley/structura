@@ -359,6 +359,8 @@ def _prompt(
         source,
         focus_page_numbers=focus_page_numbers,
         include_pages_alias=False,
+        include_page_image_hashes=False,
+        include_element_bboxes=False,
     )
     context_json = json.dumps(context, sort_keys=True, separators=(",", ":"))
     return (

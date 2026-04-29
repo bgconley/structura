@@ -87,6 +87,8 @@ def test_semantic_canary_reports_qwen_visual_token_budget() -> None:
     assert report["schema_token_estimate"] > 0
     assert report["prompt_token_estimate"] > report["docling_context_text_token_estimate"]
     assert report["prompt_context_includes_legacy_pages_alias"] is False
+    assert report["prompt_context_includes_page_image_hashes"] is False
+    assert report["prompt_context_includes_element_bboxes"] is False
 
     first_page = report["page_images"][0]
     assert first_page["width_px"] == 2480

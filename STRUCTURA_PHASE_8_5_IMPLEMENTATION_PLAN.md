@@ -283,6 +283,16 @@ mandatory. If the model returns valid JSON that omits a Docling page, retry that
 window as one-page requests, keep whole-document Docling context in each prompt,
 merge page votes/evidence, and record fallback telemetry in manifest confidence.
 Smart Parse images are planner-resolution only: vLLM should receive
+
+```json
+{"size":{"shortest_edge":262144,"longest_edge":2621440}}
+```
+
+Qwen semantic planner prompts should carry Docling page/element/table IDs,
+document outline, bounded text snippets, and table snippets. They should not
+carry token-heavy element bbox arrays or page image hashes. Those remain in
+Docling persistence and Granite extraction/evidence paths, but Qwen does not
+need them to choose semantic routing targets.
 `STRUCTURA_VLLM_MM_PROCESSOR_KWARGS={"size":{"shortest_edge":262144,"longest_edge":2621440}}`,
 which corresponds to Qwen's 32x guidance at 256 to 2560 visual tokens per image.
 Do not downscale Docling originals globally, and do not weaken Granite

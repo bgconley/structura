@@ -21,6 +21,8 @@ def build_docling_context(
     *,
     focus_page_numbers: set[int] | None = None,
     include_pages_alias: bool = True,
+    include_page_image_hashes: bool = True,
+    include_element_bboxes: bool = True,
 ) -> dict[str, Any]:
     elements_by_page = _group_elements_by_page(source.elements)
     tables_by_page = _group_tables_by_page(source.tables)
@@ -35,6 +37,8 @@ def build_docling_context(
             page,
             elements=elements_by_page.get(page.page_number, []),
             tables=tables_by_page.get(page.page_number, []),
+            include_page_image_hash=include_page_image_hashes,
+            include_element_bboxes=include_element_bboxes,
         )
         for page in focus_pages
     ]
@@ -85,28 +89,37 @@ def _page_context(
     *,
     elements: list[ParsedElementText],
     tables: list[ParsedTableText],
+    include_page_image_hash: bool,
+    include_element_bboxes: bool,
 ) -> dict[str, Any]:
     bounded_elements = sorted(elements, key=lambda element: element.ordinal)[:MAX_ELEMENTS_PER_PAGE]
-    return {
+    context = {
         "pageId": str(page.page_id),
         "pageNumber": page.page_number,
-        "imageSha256": page.image_sha256,
         "textSnippet": _snippet(page.text, PAGE_SNIPPET_CHARS),
         "elementCount": len(elements),
         "elementsTruncated": max(0, len(elements) - len(bounded_elements)),
-        "elements": [_element_context(element) for element in bounded_elements],
+        "elements": [
+            _element_context(element, include_bbox=include_element_bboxes)
+            for element in bounded_elements
+        ],
         "tables": [_table_context(table) for table in tables],
     }
+    if include_page_image_hash:
+        context["imageSha256"] = page.image_sha256
+    return context
 
 
-def _element_context(element: ParsedElementText) -> dict[str, Any]:
-    return {
+def _element_context(element: ParsedElementText, *, include_bbox: bool) -> dict[str, Any]:
+    context = {
         "elementId": str(element.element_id),
         "pageNumber": element.page_number,
         "ordinal": element.ordinal,
-        "bbox": element.bbox,
         "textSnippet": _snippet(element.text, ELEMENT_SNIPPET_CHARS),
     }
+    if include_bbox:
+        context["bbox"] = element.bbox
+    return context
 
 
 def _table_context(table: ParsedTableText) -> dict[str, Any]:

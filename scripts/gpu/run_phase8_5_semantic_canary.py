@@ -206,7 +206,12 @@ def _token_budget_report(
     max_visual_tokens = profile.visual_token_max_per_image or 0
     min_pixels = min_visual_tokens * compression * compression if min_visual_tokens else None
     max_pixels = max_visual_tokens * compression * compression if max_visual_tokens else None
-    prompt_context = build_docling_context(source, include_pages_alias=False)
+    prompt_context = build_docling_context(
+        source,
+        include_pages_alias=False,
+        include_page_image_hashes=False,
+        include_element_bboxes=False,
+    )
     docling_context_json = json.dumps(prompt_context, sort_keys=True, separators=(",", ":"))
     schema_json = json.dumps(semantic_annotation_model_output_schema(), sort_keys=True)
     schema_token_estimate = _estimate_text_tokens(schema_json)
@@ -234,6 +239,10 @@ def _token_budget_report(
         ),
         "selected_fan_in_sequence": list(selected_fan_in_sequence),
         "prompt_context_includes_legacy_pages_alias": "pages" in prompt_context,
+        "prompt_context_includes_page_image_hashes": _context_has_key(
+            prompt_context, "imageSha256"
+        ),
+        "prompt_context_includes_element_bboxes": _context_has_key(prompt_context, "bbox"),
         "docling_context_text_token_estimate": _estimate_text_tokens(docling_context_json),
         "prompt_token_estimate": _estimate_text_tokens(_prompt(source)),
         "schema_token_estimate": schema_token_estimate,
@@ -336,6 +345,14 @@ def _page_visual_tokens(page_budget: dict[str, Any] | None) -> int:
         return 0
     visual_tokens = grid.get("visual_tokens")
     return int(visual_tokens) if isinstance(visual_tokens, int | float) else 0
+
+
+def _context_has_key(value: object, key: str) -> bool:
+    if isinstance(value, dict):
+        return key in value or any(_context_has_key(item, key) for item in value.values())
+    if isinstance(value, list):
+        return any(_context_has_key(item, key) for item in value)
+    return False
 
 
 def _qwen_grid_estimate(

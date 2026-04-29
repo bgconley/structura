@@ -81,6 +81,20 @@ def test_build_docling_context_includes_grounding_ids_and_bounded_snippets() -> 
     assert "focusPages" in model_context
     assert "pages" not in model_context
 
+    compact_model_context = build_docling_context(
+        source,
+        include_pages_alias=False,
+        include_page_image_hashes=False,
+        include_element_bboxes=False,
+    )
+
+    compact_page = compact_model_context["focusPages"][0]
+    compact_element = compact_page["elements"][0]
+    assert "imageSha256" not in compact_page
+    assert "bbox" not in compact_element
+    assert compact_element["elementId"] == str(element_id)
+    assert compact_element["textSnippet"]
+
 
 def test_build_docling_context_caps_element_context_per_page() -> None:
     page_id = uuid4()

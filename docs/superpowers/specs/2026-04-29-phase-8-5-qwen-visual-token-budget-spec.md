@@ -46,6 +46,12 @@ This is a planner-only budget. Do not downscale Docling originals globally. Do
 not weaken Granite inputs. Granite keeps page/crop images and Docling
 table/layout context for extraction.
 
+Qwen semantic prompts must also avoid token-heavy physical-layout details that
+are not needed for semantic routing. Send Docling page, element, and table IDs
+with bounded text/table snippets, but omit element bbox arrays and page image
+hashes from the Qwen prompt. Docling persistence and Granite extraction inputs
+remain unchanged.
+
 ## Output Budget
 
 Smart Parse keeps `max_output_tokens = 3840` for now. With planner-resolution
@@ -71,6 +77,8 @@ must emit a token-budget section that records:
 - requested output tokens,
 - conservative total request-size estimate,
 - selected fan-in sequence.
+- whether legacy page aliases, page image hashes, or element bboxes were present
+  in the model-facing prompt context.
 
 The estimates are diagnostic. They do not replace vLLM metrics, but they should
 make visual-token blowups visible before full-pipeline corpus runs.
