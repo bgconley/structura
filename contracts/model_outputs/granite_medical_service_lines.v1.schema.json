@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/model_outputs/granite_medical_service_lines.v1.schema.json",
+  "title": "Granite Medical Service Lines v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "service_lines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["service_description"],
+        "properties": {
+          "ordinal": {"type": "integer", "minimum": 1},
+          "service_description": {"type": "string", "minLength": 1},
+          "service_date": {"type": ["string", "null"]},
+          "procedure_code": {"type": ["string", "null"]},
+          "billed_amount": {"type": ["number", "string", "null"]},
+          "allowed_amount": {"type": ["number", "string", "null"]},
+          "paid_amount": {"type": ["number", "string", "null"]},
+          "patient_responsibility": {"type": ["number", "string", "null"]},
+          "source_text": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "required": ["service_lines"]
+}

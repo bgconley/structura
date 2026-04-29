@@ -92,6 +92,70 @@ def test_extraction_service_realizes_semantic_task_schema_to_requested_schema() 
     assert gateway.semantic_task.metadata["target_schema_repaired"] is True
 
 
+def test_extraction_service_passes_semantic_region_scope_to_persister() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    line_region_id = uuid4()
+    payment_region_id = uuid4()
+    source = _source(document_id=document_id, household_id=household_id)
+    tasks = {
+        line_region_id: SemanticExtractionTask(
+            region_id=line_region_id,
+            annotation_id=uuid4(),
+            document_id=document_id,
+            semantic_type="invoice_line_item_table",
+            granite_task="tables_json",
+            target_schema="invoice",
+            expected_fields=("line_items", "total_amount"),
+            grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+            reason="Qwen semantic pass identified the invoice table.",
+            confidence=0.91,
+        ),
+        payment_region_id: SemanticExtractionTask(
+            region_id=payment_region_id,
+            annotation_id=uuid4(),
+            document_id=document_id,
+            semantic_type="payment_summary",
+            granite_task="kvp",
+            target_schema="invoice",
+            expected_fields=("amount_paid", "payment_reference"),
+            grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+            reason="Qwen semantic pass identified the payment summary.",
+            confidence=0.88,
+        ),
+    }
+    persisted_scopes: list[SemanticExtractionTask | None] = []
+
+    def persist(*_args: object, semantic_task: SemanticExtractionTask | None, **_kwargs: object):
+        persisted_scopes.append(semantic_task)
+        return _persisted()
+
+    service = ExtractionService(
+        gateway=RecordingGateway(needs_review=True),
+        source_loader=lambda loaded_document_id: source,
+        semantic_task_loader=lambda loaded_region_id: tasks[loaded_region_id],
+        persister=persist,
+    )
+
+    service.extract_document(
+        document_id,
+        schema_name="invoice",
+        route_profile="docling_plus_granite_structured",
+        semantic_region_id=line_region_id,
+    )
+    service.extract_document(
+        document_id,
+        schema_name="invoice",
+        route_profile="docling_plus_granite_structured",
+        semantic_region_id=payment_region_id,
+    )
+
+    assert [scope.region_id if scope else None for scope in persisted_scopes] == [
+        line_region_id,
+        payment_region_id,
+    ]
+
+
 def test_extraction_service_does_not_rescue_needs_review_without_user_permission() -> None:
     document_id = uuid4()
     household_id = uuid4()

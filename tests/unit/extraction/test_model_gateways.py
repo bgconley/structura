@@ -106,6 +106,73 @@ def test_granite_gateway_prompt_includes_grounded_semantic_task() -> None:
     assert result.raw_output_json["semanticTask"]["semanticRegionId"] == str(task.region_id)
 
 
+def test_granite_gateway_routes_invoice_tables_to_model_output_schema() -> None:
+    client = FakeVisionClient(
+        source_engine="granite_vision_3b",
+        profile_name=GRANITE_VISION_PROFILE,
+    )
+    source = _source_with_page_image()
+    task = SemanticExtractionTask(
+        region_id=uuid4(),
+        annotation_id=uuid4(),
+        document_id=source.document_id,
+        semantic_type="invoice_line_item_table",
+        granite_task="tables_json",
+        target_schema="invoice",
+        expected_fields=("line_items", "total_amount"),
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+        reason="Qwen identified an invoice table.",
+        confidence=0.92,
+    )
+
+    GraniteVisionExtractionGateway(client=client).extract(
+        source,
+        schema_name="invoice",
+        route_profile="docling_plus_granite_structured",
+        semantic_task=task,
+    )
+
+    assert client.request is not None
+    assert "<tables_json>" in client.request.prompt
+    assert client.request.response_schema_name == "granite_invoice_line_items.v1"
+    assert client.request.response_json_schema is not None
+    assert "line_items" in client.request.response_json_schema["properties"]
+
+
+def test_granite_gateway_routes_payment_summary_to_kvp_schema_prompt() -> None:
+    client = FakeVisionClient(
+        source_engine="granite_vision_3b",
+        profile_name=GRANITE_VISION_PROFILE,
+    )
+    source = _source_with_page_image()
+    task = SemanticExtractionTask(
+        region_id=uuid4(),
+        annotation_id=uuid4(),
+        document_id=source.document_id,
+        semantic_type="payment_summary",
+        granite_task="kvp",
+        target_schema="invoice",
+        expected_fields=("amount_paid", "payment_reference"),
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+        reason="Qwen identified a payment summary.",
+        confidence=0.88,
+    )
+
+    GraniteVisionExtractionGateway(client=client).extract(
+        source,
+        schema_name="invoice",
+        route_profile="docling_plus_granite_structured",
+        semantic_task=task,
+    )
+
+    assert client.request is not None
+    assert "Return a JSON object matching this schema" in client.request.prompt
+    assert "Return null for fields you cannot find" in client.request.prompt
+    assert client.request.response_schema_name == "granite_payment_summary.v1"
+    assert client.request.response_json_schema is not None
+    assert "payments" in client.request.response_json_schema["properties"]
+
+
 def test_granite_gateway_uses_larger_output_budget_for_live_structured_json() -> None:
     client = FakeVisionClient(
         source_engine="granite_vision_3b",

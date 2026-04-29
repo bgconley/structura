@@ -26,6 +26,7 @@ BASELINE_SQL_FILES = (
     "075_phase8_5_semantic_annotations.sql",
     "076_phase8_5_visual_embedding_2048.sql",
     "077_phase8_5_semantic_type_constraint.sql",
+    "078_phase8_5_region_extraction_scope.sql",
 )
 
 

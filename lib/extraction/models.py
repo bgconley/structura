@@ -104,6 +104,48 @@ class GatewayExtraction:
     route: ModelRoute
     normalized_json: dict[str, Any]
     raw_output_json: dict[str, Any]
+    model_output_schema_name: str | None = None
+    model_output_schema_version: str | None = None
+    normalization_json: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class ExtractionRunScope:
+    extraction_scope: str = "document"
+    semantic_annotation_id: UUID | None = None
+    source_semantic_region_id: UUID | None = None
+    semantic_type: str | None = None
+    granite_task: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def document(cls) -> ExtractionRunScope:
+        return cls(extraction_scope="document")
+
+    @classmethod
+    def aggregate(cls, *, semantic_annotation_id: UUID | None = None) -> ExtractionRunScope:
+        return cls(
+            extraction_scope="aggregate",
+            semantic_annotation_id=semantic_annotation_id,
+        )
+
+    @classmethod
+    def semantic_region(
+        cls,
+        *,
+        semantic_annotation_id: UUID,
+        source_semantic_region_id: UUID,
+        semantic_type: str,
+        granite_task: str | None,
+    ) -> ExtractionRunScope:
+        return cls(
+            extraction_scope="semantic_region",
+            semantic_annotation_id=semantic_annotation_id,
+            source_semantic_region_id=source_semantic_region_id,
+            semantic_type=semantic_type,
+            granite_task=granite_task,
+        )
 
 
 @dataclass(frozen=True)

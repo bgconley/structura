@@ -170,6 +170,7 @@ class ExtractionService:
             validation=validation,
             field_candidates=field_candidates,
             line_item_candidates=line_item_candidates,
+            semantic_task=semantic_task,
         )
         rescue_decision = self.rescue_policy.decide(
             RescuePolicyContext(

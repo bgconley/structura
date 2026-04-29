@@ -15,7 +15,7 @@ def test_baseline_migration_scripts_are_present_and_ordered() -> None:
     plan = baseline_migration_plan("database")
 
     assert plan.scripts[0].name == "001_extensions.sql"
-    assert plan.scripts[-1].name == "077_phase8_5_semantic_type_constraint.sql"
+    assert plan.scripts[-1].name == "078_phase8_5_region_extraction_scope.sql"
     assert all(script.exists() for script in plan.scripts)
 
 
@@ -128,3 +128,20 @@ def test_phase8_5_semantic_type_constraint_migration_is_baseline_migration() -> 
     assert "semantic_region_annotations_semantic_type_check" in sql
     assert "covered_services_line_item_table" in sql
     assert "unknown" in sql
+
+
+def test_phase8_5_region_extraction_scope_migration_is_baseline_migration() -> None:
+    plan = baseline_migration_plan("database")
+    names = [script.name for script in plan.scripts]
+
+    assert "078_phase8_5_region_extraction_scope.sql" in names
+
+    sql = Path("database/078_phase8_5_region_extraction_scope.sql").read_text(encoding="utf-8")
+    assert "ADD COLUMN IF NOT EXISTS extraction_scope" in sql
+    assert "source_semantic_region_id" in sql
+    assert "semantic_annotation_id" in sql
+    assert "model_output_schema_name" in sql
+    assert "normalization_json" in sql
+    assert "DROP INDEX IF EXISTS document_extractions_one_current_idx" in sql
+    assert "document_extractions_current_document_scope_idx" in sql
+    assert "document_extractions_current_region_scope_idx" in sql

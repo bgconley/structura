@@ -7,6 +7,7 @@ import time
 from uuid import UUID
 
 from lib.extraction import ExtractionService
+from lib.extraction.reconciliation_repository import maybe_reconcile_semantic_annotation
 from lib.jobs import JobService, record_service_health
 from lib.relationships.jobs import enqueue_relationship_job
 from lib.search.jobs import enqueue_embed_document_job
@@ -94,11 +95,21 @@ def process_next_extraction_job(
                     else None
                 ),
             )
+            aggregate = maybe_reconcile_semantic_annotation(
+                document_id=target_document_id,
+                semantic_annotation_id=_optional_uuid(
+                    claimed.payload.get("semantic_annotation_id")
+                ),
+                schema_name=schema_name,
+            )
             job_service.complete_job(
                 job_id=claimed.state.job_id,
                 result={
                     "extraction_status": "succeeded",
                     "extraction_id": str(persisted.extraction_id),
+                    "aggregate_extraction_id": (
+                        str(aggregate.extraction_id) if aggregate is not None else None
+                    ),
                     "review_status": persisted.review_status,
                     "candidate_count": persisted.candidate_count,
                     "canonical_count": persisted.canonical_count,

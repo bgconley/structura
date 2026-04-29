@@ -101,10 +101,12 @@ def get_document_detail(document_id: UUID, access: DocumentAccessContext) -> Doc
                   model_version,
                   confidence,
                   review_status::text AS review_status,
+                  extraction_scope,
                   created_at
                 FROM document_extractions
                 WHERE document_id = %s
                   AND is_current
+                  AND extraction_scope IN ('document', 'aggregate')
                 ORDER BY created_at DESC
                 """,
                 (document_id,),
@@ -252,6 +254,7 @@ def _extraction_payload(row: dict[str, object]) -> dict[str, object]:
         "modelVersion": row.get("model_version"),
         "confidence": row.get("confidence"),
         "reviewStatus": row.get("review_status"),
+        "extractionScope": row.get("extraction_scope"),
         "createdAt": row.get("created_at"),
     }
 

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/model_outputs/granite_payment_summary.v1.schema.json",
+  "title": "Granite Payment Summary v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "invoice_no": {"type": ["string", "null"]},
+    "amount": {"type": ["number", "string", "null"]},
+    "payments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "amount": {"type": ["number", "string", "null"]},
+          "card_number": {"type": ["string", "null"]},
+          "merchant_id": {"type": ["string", "null"]},
+          "terminal_id": {"type": ["string", "null"]},
+          "auth_code": {"type": ["string", "null"]},
+          "auth_mode": {"type": ["string", "null"]},
+          "application_name": {"type": ["string", "null"]},
+          "source_text": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

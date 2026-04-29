@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from lib.extraction.granite_prompting import granite_prompt
+from lib.extraction.model_output_normalization import normalize_granite_region_output
+from lib.extraction.model_output_schemas import model_output_schema_for_task
 from lib.extraction.models import (
     ExtractionSourceDocument,
     GatewayExtraction,
@@ -45,15 +48,20 @@ class VisionExtractionGateway:
         route_profile: str,
         semantic_task: SemanticExtractionTask | None = None,
     ) -> GatewayExtraction:
+        model_output_schema = model_output_schema_for_task(
+            schema_name=schema_name,
+            semantic_task=semantic_task,
+        )
         response = self.client.generate(
             VisionGenerateRequest(
                 profile_name=self.profile_name,
                 prompt_version=self.prompt_version,
-                prompt=_prompt(
+                prompt=granite_prompt(
                     source=source,
                     schema_name=schema_name,
                     route_profile=route_profile,
                     semantic_task=semantic_task,
+                    model_output_schema=model_output_schema,
                 ),
                 image_inputs=_image_inputs(
                     source,
@@ -61,11 +69,24 @@ class VisionExtractionGateway:
                     semantic_task=semantic_task,
                     max_images=self.max_image_inputs,
                 ),
-                response_schema_name=schema_name,
+                response_schema_name=(
+                    model_output_schema.name if model_output_schema is not None else schema_name
+                ),
                 max_output_tokens=self.max_output_tokens,
                 temperature=0.0,
                 timeout_seconds=self.timeout_seconds,
+                response_json_schema=(
+                    model_output_schema.schema if model_output_schema is not None else None
+                ),
             )
+        )
+        normalized_json, normalization_json = normalize_granite_region_output(
+            document_id=source.document_id,
+            schema_name=schema_name,
+            model_output_schema_name=(
+                model_output_schema.name if model_output_schema is not None else None
+            ),
+            payload=dict(response.normalized_json),
         )
         return GatewayExtraction(
             schema_name=schema_name,
@@ -77,7 +98,7 @@ class VisionExtractionGateway:
                 prompt_version=response.prompt_version,
                 route_profile=route_profile,
             ),
-            normalized_json=dict(response.normalized_json),
+            normalized_json=normalized_json,
             raw_output_json={
                 "modelInvoked": True,
                 "profileName": response.profile_name,
@@ -90,7 +111,17 @@ class VisionExtractionGateway:
                 "confidence": response.confidence_json,
                 "rawText": response.raw_text,
                 "semanticTask": _semantic_task_json(semantic_task),
+                "modelOutputSchema": (
+                    model_output_schema.name if model_output_schema is not None else None
+                ),
             },
+            model_output_schema_name=(
+                model_output_schema.name if model_output_schema is not None else None
+            ),
+            model_output_schema_version=(
+                model_output_schema.version if model_output_schema is not None else None
+            ),
+            normalization_json=normalization_json,
         )
 
 

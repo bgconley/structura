@@ -21,6 +21,7 @@ from lib.extraction.errors import ExtractionRepositoryError
 from lib.extraction.models import (
     CandidateFact,
     ClassificationDecision,
+    ExtractionRunScope,
     ExtractionSourceDocument,
     GatewayExtraction,
     LineItemCandidateFact,
@@ -65,8 +66,11 @@ def persist_extraction_run(
     validation: ValidationReport,
     field_candidates: list[CandidateFact],
     line_item_candidates: list[LineItemCandidateFact],
+    run_scope: ExtractionRunScope | None = None,
+    semantic_task: Any | None = None,
     storage: ObjectStorage | None = None,
 ) -> PersistedExtraction:
+    resolved_scope = run_scope or _run_scope_from_semantic_task(semantic_task)
     object_storage = storage or ObjectStorage()
     created_objects: list[StoredObject] = []
     raw_object = object_storage.store_bytes(
@@ -89,6 +93,7 @@ def persist_extraction_run(
             validation=validation,
             field_candidates=field_candidates,
             line_item_candidates=line_item_candidates,
+            run_scope=resolved_scope,
             raw_object=raw_object,
             normalized_object=normalized_object,
         )
@@ -104,6 +109,7 @@ def _persist_extraction_rows(
     validation: ValidationReport,
     field_candidates: list[CandidateFact],
     line_item_candidates: list[LineItemCandidateFact],
+    run_scope: ExtractionRunScope,
     raw_object: StoredObject,
     normalized_object: StoredObject,
 ) -> PersistedExtraction:
@@ -123,7 +129,7 @@ def _persist_extraction_rows(
                 stored=raw_object,
                 asset_role="raw_model_output",
                 mime_type="application/json",
-                metadata={"phase": "phase4", "schemaName": extraction.schema_name},
+                metadata=_artifact_metadata(extraction, run_scope),
                 model_name=extraction.route.model_name,
                 model_version=extraction.route.model_version,
             )
@@ -133,11 +139,17 @@ def _persist_extraction_rows(
                 stored=normalized_object,
                 asset_role="normalized_extraction_json",
                 mime_type="application/json",
-                metadata={"phase": "phase4", "schemaName": extraction.schema_name},
+                metadata=_artifact_metadata(extraction, run_scope),
                 model_name=extraction.route.model_name,
                 model_version=extraction.route.model_version,
             )
-            _supersede_current_extractions(cur, source.document_id, extraction.schema_name)
+            _supersede_current_extractions(
+                cur,
+                source.document_id,
+                extraction.schema_name,
+                extraction_scope=run_scope.extraction_scope,
+                source_semantic_region_id=run_scope.source_semantic_region_id,
+            )
             extraction_id = _insert_extraction_run_row(
                 cur,
                 extraction=extraction,
@@ -146,6 +158,7 @@ def _persist_extraction_rows(
                 status=status,
                 review_status=review_status,
                 raw_asset_id=raw_asset_id,
+                run_scope=run_scope,
             )
             inserted_candidates = [
                 insert_field_candidate(
@@ -275,6 +288,7 @@ def _insert_extraction_run_row(
     status: str,
     review_status: str,
     raw_asset_id: UUID,
+    run_scope: ExtractionRunScope,
 ) -> UUID:
     cur.execute(
         """
@@ -283,9 +297,15 @@ def _insert_extraction_run_row(
             document_id, schema_name, schema_version, status, is_current,
             source_engine, model_name, model_version, prompt_version,
             raw_output_asset_id, normalized_json, validation_json, confidence,
-            review_status
+            review_status, extraction_scope, semantic_annotation_id,
+            source_semantic_region_id, semantic_type, granite_task,
+            model_output_schema_name, model_output_schema_version,
+            normalization_json, metadata_json
           )
-        VALUES (%s, %s, %s, %s, true, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s, %s)
+        VALUES (
+          %s, %s, %s, %s, true, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s, %s,
+          %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb
+        )
         RETURNING id
         """,
         (
@@ -302,6 +322,15 @@ def _insert_extraction_run_row(
             Jsonb(validation.as_json()),
             _overall_confidence(extraction.normalized_json),
             review_status,
+            run_scope.extraction_scope,
+            run_scope.semantic_annotation_id,
+            run_scope.source_semantic_region_id,
+            run_scope.semantic_type,
+            run_scope.granite_task,
+            extraction.model_output_schema_name,
+            extraction.model_output_schema_version,
+            Jsonb(extraction.normalization_json),
+            Jsonb({**run_scope.metadata, **extraction.metadata}),
         ),
     )
     row = cur.fetchone()
@@ -386,7 +415,30 @@ def _lock_document(cur: Any, document_id: UUID) -> None:
         raise ExtractionRepositoryError("Document not found.")
 
 
-def _supersede_current_extractions(cur: Any, document_id: UUID, schema_name: str) -> None:
+def _supersede_current_extractions(
+    cur: Any,
+    document_id: UUID,
+    schema_name: str,
+    *,
+    extraction_scope: str = "document",
+    source_semantic_region_id: UUID | None = None,
+) -> None:
+    if extraction_scope == "semantic_region":
+        cur.execute(
+            """
+            UPDATE document_extractions
+            SET is_current = false,
+                status = CASE WHEN status = 'completed' THEN 'superseded' ELSE status END,
+                updated_at = now()
+            WHERE document_id = %s
+              AND schema_name = %s
+              AND extraction_scope = %s
+              AND source_semantic_region_id = %s
+              AND is_current
+            """,
+            (document_id, schema_name, extraction_scope, source_semantic_region_id),
+        )
+        return
     cur.execute(
         """
         UPDATE document_extractions
@@ -395,9 +447,10 @@ def _supersede_current_extractions(cur: Any, document_id: UUID, schema_name: str
             updated_at = now()
         WHERE document_id = %s
           AND schema_name = %s
+          AND extraction_scope = %s
           AND is_current
         """,
-        (document_id, schema_name),
+        (document_id, schema_name, extraction_scope),
     )
 
 
@@ -417,6 +470,41 @@ def _supersede_current_assets(
         """,
         (document_id, list(asset_roles)),
     )
+
+
+def _run_scope_from_semantic_task(semantic_task: Any | None) -> ExtractionRunScope:
+    if semantic_task is None:
+        return ExtractionRunScope.document()
+    return ExtractionRunScope.semantic_region(
+        semantic_annotation_id=semantic_task.annotation_id,
+        source_semantic_region_id=semantic_task.region_id,
+        semantic_type=semantic_task.semantic_type,
+        granite_task=semantic_task.granite_task,
+    )
+
+
+def _artifact_metadata(
+    extraction: GatewayExtraction,
+    run_scope: ExtractionRunScope,
+) -> dict[str, Any]:
+    metadata: dict[str, Any] = {
+        "phase": "phase8_5" if run_scope.extraction_scope != "document" else "phase4",
+        "schemaName": extraction.schema_name,
+        "extractionScope": run_scope.extraction_scope,
+    }
+    if run_scope.semantic_annotation_id:
+        metadata["semanticAnnotationId"] = str(run_scope.semantic_annotation_id)
+    if run_scope.source_semantic_region_id:
+        metadata["sourceSemanticRegionId"] = str(run_scope.source_semantic_region_id)
+    if run_scope.semantic_type:
+        metadata["semanticType"] = run_scope.semantic_type
+    if run_scope.granite_task:
+        metadata["graniteTask"] = run_scope.granite_task
+    if extraction.model_output_schema_name:
+        metadata["modelOutputSchemaName"] = extraction.model_output_schema_name
+    if extraction.model_output_schema_version:
+        metadata["modelOutputSchemaVersion"] = extraction.model_output_schema_version
+    return metadata
 
 
 def _status_for_persisted_extraction(validation: ValidationReport) -> str:

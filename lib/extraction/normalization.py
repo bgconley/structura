@@ -4,6 +4,7 @@ from typing import Any
 from uuid import UUID
 
 from lib.extraction.evidence import has_concrete_evidence
+from lib.extraction.model_output_normalization import invoice_line_item_dicts_from_payload
 from lib.extraction.models import CandidateFact, Evidence, LineItemCandidateFact, ValidationReport
 
 AUTHORITY_WEIGHTS = {
@@ -52,9 +53,10 @@ def line_item_candidates_from_extraction(
             payload.get("line_items"), "receipt_item", source_engine, confidence, status
         )
     if schema_name == "invoice":
-        return _line_items(
-            payload.get("line_items"), "invoice_item", source_engine, confidence, status
-        )
+        invoice_items = payload.get("line_items")
+        if not isinstance(invoice_items, list) or not invoice_items:
+            invoice_items = invoice_line_item_dicts_from_payload(payload)
+        return _line_items(invoice_items, "invoice_item", source_engine, confidence, status)
     if schema_name == "medical_eob":
         return _eob_line_items(
             payload.get("service_lines"), source_engine, confidence, "needs_review"

@@ -1,5 +1,8 @@
+import json
+from pathlib import Path
+
 import pytest
-from jsonschema import ValidationError
+from jsonschema import Draft202012Validator, ValidationError
 from pydantic import TypeAdapter
 from pydantic import ValidationError as PydanticValidationError
 
@@ -37,6 +40,11 @@ def test_json_schemas_are_valid_draft_2020_12() -> None:
     registry = ContractRegistry.load("contracts")
 
     registry.check_json_schemas()
+
+
+def test_model_output_schemas_are_valid_draft_2020_12() -> None:
+    for path in sorted(Path("contracts/model_outputs").glob("*.schema.json")):
+        Draft202012Validator.check_schema(json.loads(path.read_text(encoding="utf-8")))
 
 
 def test_evidence_requires_page_number_and_concrete_locator() -> None:
