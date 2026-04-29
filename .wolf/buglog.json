@@ -972,6 +972,18 @@
       "related_bugs": ["bug-080"],
       "occurrences": 1,
       "last_seen": "2026-04-29T04:20:00-04:00"
+    },
+    {
+      "id": "bug-082",
+      "timestamp": "2026-04-29T05:00:00-04:00",
+      "error_message": "GPU Phase 8.5 semantic canary failed with PermissionError reading a /srv/structura/objects/derived page-preview blob from the host venv.",
+      "file": "lib/storage/service.py",
+      "root_cause": "ObjectStorage wrote mkstemp-created blobs with 0600 and content-addressed directories were created as 10001:10001 without setgid inheritance, so the host operator group could not inspect or read derived artifacts despite the runtime bootstrap intending 10001:bgconley group access.",
+      "fix": "ObjectStorage now chmods writable storage roots, temporary directories, content-addressed directories, and stored blobs to setgid group-readable modes; GPU runtime bootstrap now sets g+s on writable runtime directories so new content inherits the host group.",
+      "tags": ["phase-8.5", "storage", "permissions", "gpu-node", "object-store"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-29T05:00:00-04:00"
     }
   ]
 }

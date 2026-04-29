@@ -87,6 +87,14 @@ create_app_dirs() {
     "${ROOT}/cache" \
     "${ROOT}/logs" \
     "${ROOT}/tmp"
+  find \
+    "${ROOT}/objects" \
+    "${ROOT}/models" \
+    "${ROOT}/staging" \
+    "${ROOT}/cache" \
+    "${ROOT}/logs" \
+    "${ROOT}/tmp" \
+    -type d -exec chmod g+s {} +
 
   chown -R "bgconley:${HOST_GROUP}" \
     "${ROOT}/config" \

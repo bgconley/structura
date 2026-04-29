@@ -16,6 +16,8 @@ StorageKind = Literal["canonical", "derived", "exports"]
 
 HASH_RE = re.compile(r"^[a-f0-9]{64}$")
 SAFE_OBJECT_NAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+OBJECT_DIRECTORY_MODE = 0o2770
+OBJECT_FILE_MODE = 0o660
 
 
 class StorageError(Exception):
@@ -131,8 +133,10 @@ class ObjectStorage:
         chunk_size: int = 1024 * 1024,
     ) -> StagedObject:
         root = self.root_for(kind)
+        _chmod_directory(root)
         tmp_dir = root / ".tmp"
         tmp_dir.mkdir(parents=True, exist_ok=True)
+        _chmod_directory(tmp_dir)
         digest = hashlib.sha256()
         total = 0
         fd, temp_name = tempfile.mkstemp(prefix="structura-", suffix=".upload", dir=tmp_dir)
@@ -150,6 +154,7 @@ class ObjectStorage:
                     target.write(chunk)
                 target.flush()
                 os.fsync(target.fileno())
+            _chmod_object_file(temp_path)
         except Exception:
             temp_path.unlink(missing_ok=True)
             raise
@@ -165,10 +170,11 @@ class ObjectStorage:
         filename = object_filename_for_role(role)
         uri = object_uri(kind=kind, sha256=staged.sha256, filename=filename)
         destination = self.path_for_uri(uri)
-        destination.parent.mkdir(parents=True, exist_ok=True)
+        self._ensure_object_parent(kind=kind, destination=destination)
 
         if destination.exists():
             self._assert_existing_matches(destination, staged.sha256, staged.byte_size)
+            _chmod_object_file(destination)
             staged.temp_path.unlink(missing_ok=True)
             return StoredObject(
                 uri=uri,
@@ -178,7 +184,9 @@ class ObjectStorage:
                 created=False,
             )
 
+        _chmod_object_file(staged.temp_path)
         os.replace(staged.temp_path, destination)
+        _chmod_object_file(destination)
         return StoredObject(
             uri=uri,
             sha256=staged.sha256,
@@ -192,9 +200,10 @@ class ObjectStorage:
         filename = object_filename_for_role(role)
         uri = object_uri(kind=kind, sha256=digest, filename=filename)
         destination = self.path_for_uri(uri)
-        destination.parent.mkdir(parents=True, exist_ok=True)
+        self._ensure_object_parent(kind=kind, destination=destination)
         if destination.exists():
             self._assert_existing_matches(destination, digest, len(data))
+            _chmod_object_file(destination)
             return StoredObject(
                 uri=uri,
                 sha256=digest,
@@ -205,6 +214,7 @@ class ObjectStorage:
 
         tmp_dir = self.root_for(kind) / ".tmp"
         tmp_dir.mkdir(parents=True, exist_ok=True)
+        _chmod_directory(tmp_dir)
         fd, temp_name = tempfile.mkstemp(prefix="structura-", suffix=".derived", dir=tmp_dir)
         temp_path = Path(temp_name)
         try:
@@ -212,7 +222,9 @@ class ObjectStorage:
                 target.write(data)
                 target.flush()
                 os.fsync(target.fileno())
+            _chmod_object_file(temp_path)
             os.replace(temp_path, destination)
+            _chmod_object_file(destination)
         except Exception:
             temp_path.unlink(missing_ok=True)
             raise
@@ -264,6 +276,15 @@ class ObjectStorage:
         if staged:
             staged.temp_path.unlink(missing_ok=True)
 
+    def _ensure_object_parent(self, *, kind: StorageKind, destination: Path) -> None:
+        root = self.root_for(kind)
+        _chmod_directory(root)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        current = root
+        for part in destination.parent.relative_to(root).parts:
+            current = current / part
+            _chmod_directory(current)
+
     def _assert_existing_matches(self, path: Path, sha256: str, byte_size: int) -> None:
         if path.stat().st_size != byte_size or file_sha256(path) != sha256:
             raise StorageError("Existing content-addressed object does not match expected bytes.")
@@ -278,6 +299,14 @@ def file_sha256(path: Path) -> str:
                 break
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _chmod_directory(path: Path) -> None:
+    os.chmod(path, OBJECT_DIRECTORY_MODE)
+
+
+def _chmod_object_file(path: Path) -> None:
+    os.chmod(path, OBJECT_FILE_MODE)
 
 
 def remove_empty_hash_dir(path: Path) -> None:

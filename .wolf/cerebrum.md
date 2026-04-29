@@ -171,6 +171,7 @@
 - [2026-04-29] Do not let isolated page-window context drive document-family routing. Qwen fallback prompts must carry whole-document Docling title/page-outline/table/anchor context, and merged document type must use page votes plus Docling anchors rather than first non-empty page output.
 - [2026-04-29] Do not send Granite invoice, receipt, or medical EOB jobs solely because Qwen emitted a matching semantic type. Apply schema-fit gates using Docling anchors and downgrade unsupported or conflicting evidence to `document_observation`.
 - [2026-04-29] Do not mix vLLM structured-output mechanisms in one request. Use one of `response_format: json_schema` or `structured_outputs.json`, keep prompt-level schema instructions, and retain JSON-object fallback with telemetry.
+- [2026-04-29] Do not bypass Structura storage permissions for host-side Phase 8.5 diagnostics. Runtime object stores must preserve container UID write access and host operator group read/traverse access: writable dirs should be setgid and stored blobs group-readable, with existing GPU runtime trees repaired by `infrastructure/zfs/create_gpu_runtime_datasets.sh`.
 
 ## Decision Log
 

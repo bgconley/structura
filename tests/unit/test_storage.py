@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import stat
 from io import BytesIO
 from types import ModuleType
 
@@ -40,6 +41,32 @@ def test_content_addressed_write_dedupe_and_verify(tmp_path) -> None:
         expected_sha256=stored.sha256,
         expected_size=stored.byte_size,
     ).ok
+
+
+def test_stored_objects_are_group_readable_and_storage_dirs_are_setgid(tmp_path) -> None:
+    storage = ObjectStorage(
+        canonical_root=tmp_path / "canonical",
+        derived_root=tmp_path / "derived",
+        export_root=tmp_path / "exports",
+    )
+
+    staged = storage.stage_stream(BytesIO(b"original bytes"), kind="canonical")
+    canonical = storage.commit_staged(staged, kind="canonical", role="original")
+    derived = storage.store_bytes(b"derived bytes", kind="derived", role="preview")
+
+    for stored in (canonical, derived):
+        assert stat.S_IMODE(stored.path.stat().st_mode) == 0o660
+        root = tmp_path / parse_object_uri(stored.uri).kind
+        parents = []
+        current = stored.path.parent
+        while current != root.parent:
+            parents.append(current)
+            if current == root:
+                break
+            current = current.parent
+        parents.append(root / ".tmp")
+        for parent in parents:
+            assert stat.S_IMODE(parent.stat().st_mode) == 0o2770
 
 
 def test_object_uri_rejects_path_traversal() -> None:
