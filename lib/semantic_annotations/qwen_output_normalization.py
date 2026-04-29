@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from dataclasses import dataclass
 
 from jsonschema import Draft202012Validator, ValidationError
 
@@ -76,19 +77,25 @@ _MAX_MODEL_OUTPUT_REGIONS = 6
 _PRIORITY_RANK = {"critical": 3, "high": 2, "medium": 1, "low": 0}
 
 
+@dataclass(frozen=True)
+class ValidatedModelOutputPayload:
+    payload: dict[str, object]
+    normalization: dict[str, object]
+
+
 def validated_model_output_payload(
     response: VisionGenerateResponse,
     *,
     source: ExtractionSourceDocument,
-) -> dict[str, object]:
-    payload = _normalized_model_output_payload(dict(response.normalized_json), source=source)
+) -> ValidatedModelOutputPayload:
+    normalized = _normalized_model_output_payload(dict(response.normalized_json), source=source)
     try:
-        Draft202012Validator(semantic_annotation_model_output_schema()).validate(payload)
+        Draft202012Validator(semantic_annotation_model_output_schema()).validate(normalized.payload)
     except ValidationError as exc:
         raise ModelProtocolError(
             f"semantic annotation model output failed schema validation: {exc.message}"
         ) from exc
-    return payload
+    return normalized
 
 
 def expected_fields_from_json(value: object) -> tuple[str, ...]:
@@ -113,7 +120,7 @@ def _normalized_model_output_payload(
     payload: dict[str, object],
     *,
     source: ExtractionSourceDocument,
-) -> dict[str, object]:
+) -> ValidatedModelOutputPayload:
     pages = payload.get("pages")
     regions = payload.get("regions")
     if (
@@ -121,7 +128,7 @@ def _normalized_model_output_payload(
         and isinstance(pages, list)
         and isinstance(regions, list)
     ):
-        return payload
+        return _canonical_payload_with_duplicate_pages_collapsed(payload, pages=pages)
     if isinstance(pages, list):
         return _payload_from_page_annotations(
             {"page_annotations": [_page_annotation_from_page_wrapper(page) for page in pages]},
@@ -136,7 +143,24 @@ def _normalized_model_output_payload(
             {"page_annotations": [_page_annotation_from_page_wrapper(page)]},
             source=source,
         )
-    return payload
+    return ValidatedModelOutputPayload(payload=payload, normalization={})
+
+
+def _canonical_payload_with_duplicate_pages_collapsed(
+    payload: dict[str, object],
+    *,
+    pages: list[object],
+) -> ValidatedModelOutputPayload:
+    if not all(isinstance(page, dict) for page in pages):
+        return ValidatedModelOutputPayload(payload=payload, normalization={})
+    merged_pages, normalization = _merge_duplicate_pages_with_summary(
+        [page for page in pages if isinstance(page, dict)]
+    )
+    if not normalization:
+        return ValidatedModelOutputPayload(payload=payload, normalization={})
+    normalized_payload = dict(payload)
+    normalized_payload["pages"] = merged_pages
+    return ValidatedModelOutputPayload(payload=normalized_payload, normalization=normalization)
 
 
 def _page_annotation_from_page_wrapper(page: dict[str, object]) -> dict[str, object]:
@@ -188,12 +212,15 @@ def _payload_from_page_annotations(
     payload: dict[str, object],
     *,
     source: ExtractionSourceDocument,
-) -> dict[str, object]:
+) -> ValidatedModelOutputPayload:
     page_by_id = {str(page.page_id): page for page in source.pages}
     pages: list[dict[str, object]] = []
     regions: list[dict[str, object]] = []
     needs_high_quality_pass = False
-    for item in payload["page_annotations"]:
+    page_annotations = payload.get("page_annotations")
+    if not isinstance(page_annotations, list):
+        return ValidatedModelOutputPayload(payload=payload, normalization={})
+    for item in page_annotations:
         if not isinstance(item, dict):
             continue
         page_id = str(item.get("page_id") or item.get("pageId") or "")
@@ -230,35 +257,53 @@ def _payload_from_page_annotations(
             )
         )
         regions.extend(normalized_regions)
-    pages = _merge_duplicate_pages(pages)
+    pages, normalization = _merge_duplicate_pages_with_summary(pages)
     regions = _select_regions_for_contract(regions)
-    return {
-        "schema_name": "semantic_annotation_model_output",
-        "schema_version": "v1",
-        "document_type": _document_type_from_payload_or_source(payload, source),
-        "pages": pages,
-        "regions": regions,
-        "quality_flags": {
-            "needs_high_quality_pass": needs_high_quality_pass,
-            "visual_degradation": bool(payload.get("visual_degradation", False)),
-            "poor_ocr": bool(payload.get("poor_ocr", False)),
-            "ambiguous_document_type": False,
-            "reason": None,
+    return ValidatedModelOutputPayload(
+        payload={
+            "schema_name": "semantic_annotation_model_output",
+            "schema_version": "v1",
+            "document_type": _document_type_from_payload_or_source(payload, source),
+            "pages": pages,
+            "regions": regions,
+            "quality_flags": {
+                "needs_high_quality_pass": needs_high_quality_pass,
+                "visual_degradation": bool(payload.get("visual_degradation", False)),
+                "poor_ocr": bool(payload.get("poor_ocr", False)),
+                "ambiguous_document_type": False,
+                "reason": None,
+            },
         },
-    }
+        normalization=normalization,
+    )
 
 
-def _merge_duplicate_pages(pages: list[dict[str, object]]) -> list[dict[str, object]]:
+def _merge_duplicate_pages_with_summary(
+    pages: list[dict[str, object]],
+) -> tuple[list[dict[str, object]], dict[str, object]]:
     merged: dict[str, dict[str, object]] = {}
     order: list[str] = []
-    for page in pages:
+    duplicate_count = 0
+    duplicate_page_ids: list[str] = []
+    for index, page in enumerate(pages):
         page_id = str(page.get("page_id") or "")
-        if page_id not in merged:
-            merged[page_id] = dict(page)
-            order.append(page_id)
+        key = page_id or f"__missing_page_id_{index}"
+        if key not in merged:
+            merged[key] = dict(page)
+            order.append(key)
             continue
-        merged[page_id] = _merge_page(merged[page_id], page)
-    return [merged[page_id] for page_id in order]
+        duplicate_count += 1
+        if page_id and page_id not in duplicate_page_ids:
+            duplicate_page_ids.append(page_id)
+        merged[key] = _merge_page(merged[key], page)
+    normalization: dict[str, object] = {}
+    if duplicate_count:
+        normalization = {
+            "duplicate_page_annotations_collapsed": duplicate_count,
+            "duplicate_page_annotation_page_ids": duplicate_page_ids,
+            "duplicate_page_annotation_policy": "merge_by_page_id_preserving_docling_coverage",
+        }
+    return [merged[key] for key in order], normalization
 
 
 def _merge_page(
@@ -560,11 +605,11 @@ def _append_unique(values: list[str], value: str) -> list[str]:
 
 
 def _average_confidence(regions: list[dict[str, object]]) -> float | None:
-    values = [
-        float(region["confidence"])
-        for region in regions
-        if isinstance(region.get("confidence"), int | float)
-    ]
+    values: list[float] = []
+    for region in regions:
+        confidence = region.get("confidence")
+        if isinstance(confidence, int | float):
+            values.append(float(confidence))
     if not values:
         return None
     return sum(values) / len(values)

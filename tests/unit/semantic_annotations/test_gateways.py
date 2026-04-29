@@ -604,6 +604,36 @@ def test_live_qwen_gateway_deduplicates_duplicate_model_regions() -> None:
     assert len(persisted_regions) == 1
 
 
+def test_live_qwen_smart_gateway_collapses_duplicate_canonical_page_annotations_with_audit() -> (
+    None
+):
+    source = _source_with_page_image()
+    page_id = source.pages[0].page_id
+    payload = _semantic_payload(page_id)
+    pages = payload["pages"]
+    assert isinstance(pages, list)
+    pages.append(dict(pages[0]))
+    client = FakeSemanticVisionClient(
+        profile_name=QWEN_SEMANTIC_PROFILE,
+        source_engine="qwen3_vl_2b",
+        normalized_json=payload,
+    )
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
+
+    assert len(result.manifest.pages) == 1
+    persisted_pages = result.manifest.manifest["pages"]
+    assert isinstance(persisted_pages, list)
+    assert len(persisted_pages) == 1
+    normalization = result.manifest.confidence["normalization"]
+    assert normalization == {
+        "duplicate_page_annotations_collapsed": 1,
+        "duplicate_page_annotation_page_ids": [str(page_id)],
+        "duplicate_page_annotation_policy": "merge_by_page_id_preserving_docling_coverage",
+    }
+    assert result.manifest.pages[0].metadata["normalization"] == normalization
+
+
 def test_live_qwen_gateway_retries_once_after_truncated_model_output() -> None:
     source = _source_with_page_image()
 

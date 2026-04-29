@@ -444,18 +444,26 @@ def _manifest_from_response(
     response: VisionGenerateResponse,
 ) -> DocumentSemanticManifest:
     model_output = validated_model_output_payload(response, source=source)
-    normalized = _canonical_payload_from_model_output(response=response, model_output=model_output)
+    normalized = _canonical_payload_from_model_output(
+        response=response,
+        model_output=model_output.payload,
+    )
     pages_raw = normalized.get("pages")
     regions_raw = normalized.get("regions")
     if not isinstance(pages_raw, list) or not isinstance(regions_raw, list):
         raise ModelProtocolError("Semantic annotation output must include pages and regions.")
     pages = [_page_from_json(item) for item in pages_raw]
+    pages = _attach_page_normalization_metadata(pages, model_output.normalization)
     regions = _repair_region_grounding_for_source(
         [_region_from_json(item) for item in regions_raw],
         source=source,
     )
     sanitized_payload = dict(normalized)
     sanitized_payload["regions"] = [_region_manifest_json(region) for region in regions]
+    confidence = _confidence_from_payload(normalized)
+    if model_output.normalization:
+        confidence["normalization"] = model_output.normalization
+        sanitized_payload["confidence"] = confidence
     return DocumentSemanticManifest(
         document_id=source.document_id,
         household_id=source.household_id,
@@ -467,11 +475,33 @@ def _manifest_from_response(
         prompt_version=response.prompt_version,
         pages=pages,
         regions=regions,
-        confidence=_confidence_from_payload(normalized),
+        confidence=confidence,
         manifest=sanitized_payload,
         review_required=any(region.review_required for region in regions),
         input_page_hashes=tuple(response.input_sha256),
     )
+
+
+def _attach_page_normalization_metadata(
+    pages: list[PageSemanticAnnotation],
+    normalization: dict[str, object],
+) -> list[PageSemanticAnnotation]:
+    duplicate_page_ids = normalization.get("duplicate_page_annotation_page_ids")
+    if not isinstance(duplicate_page_ids, list):
+        return pages
+    duplicate_page_id_set = {str(page_id) for page_id in duplicate_page_ids}
+    return [
+        replace(
+            page,
+            metadata={
+                **page.metadata,
+                "normalization": normalization,
+            },
+        )
+        if str(page.page_id) in duplicate_page_id_set
+        else page
+        for page in pages
+    ]
 
 
 def _page_from_json(item: object) -> PageSemanticAnnotation:
