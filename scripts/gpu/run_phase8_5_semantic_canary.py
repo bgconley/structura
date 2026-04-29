@@ -207,7 +207,7 @@ def _token_budget_report(
     min_pixels = min_visual_tokens * compression * compression if min_visual_tokens else None
     max_pixels = max_visual_tokens * compression * compression if max_visual_tokens else None
     prompt_context = build_docling_context(source, include_pages_alias=False)
-    docling_context_json = json.dumps(prompt_context, sort_keys=True)
+    docling_context_json = json.dumps(prompt_context, sort_keys=True, separators=(",", ":"))
     schema_json = json.dumps(semantic_annotation_model_output_schema(), sort_keys=True)
     schema_token_estimate = _estimate_text_tokens(schema_json)
     requested_output_tokens = _max_output_tokens_for_profile(QWEN_SEMANTIC_PROFILE)

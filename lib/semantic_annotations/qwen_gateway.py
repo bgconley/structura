@@ -360,6 +360,7 @@ def _prompt(
         focus_page_numbers=focus_page_numbers,
         include_pages_alias=False,
     )
+    context_json = json.dumps(context, sort_keys=True, separators=(",", ":"))
     return (
         "You are Structura's semantic annotation planner. Return valid JSON only as compact "
         "semantic scout JSON, matching the provided semantic_annotation_model_output JSON "
@@ -387,7 +388,7 @@ def _prompt(
         "needs_high_quality_pass for poor OCR, ambiguity, validation-sensitive medical, "
         "legal, tax, or financial documents, or low confidence. "
         "Docling context: "
-        f"{json.dumps(context, sort_keys=True)}"
+        f"{context_json}"
     )
 
 

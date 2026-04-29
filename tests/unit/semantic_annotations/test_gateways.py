@@ -69,6 +69,9 @@ def test_live_qwen_smart_gateway_builds_truthful_qwen3_vl_4b_manifest() -> None:
     assert "Docling context" in client.request.prompt
     assert '"focusPages":' in client.request.prompt
     assert '"pages":' not in client.request.prompt
+    context_json = client.request.prompt.split("Docling context: ", 1)[1]
+    assert '": ' not in context_json
+    assert ', "' not in context_json
     assert client.request.image_inputs[0].content == b"page-image"
     assert client.request.response_schema_name == "semantic_annotation_model_output"
     assert client.request.response_json_schema == semantic_annotation_model_output_schema()
