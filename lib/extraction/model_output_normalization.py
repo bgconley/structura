@@ -194,7 +194,8 @@ def _line_item(
 
 
 def _invoice_totals(payload: dict[str, Any]) -> dict[str, Any]:
-    totals = payload.get("totals") if isinstance(payload.get("totals"), dict) else {}
+    raw_totals = payload.get("totals")
+    totals: dict[str, Any] = raw_totals if isinstance(raw_totals, dict) else {}
     result: dict[str, Any] = {}
     for source_key, target_key in (
         ("subtotal", "subtotal"),
