@@ -584,7 +584,10 @@ def _summarize_document(document_id: UUID) -> dict[str, Any]:
                   d.id,
                   d.title,
                   d.original_filename,
-                  d.parse_status::text AS parse_status,
+                  CASE
+                    WHEN count(DISTINCT p.id) > 0 THEN 'succeeded'
+                    ELSE 'pending'
+                  END AS parse_status,
                   d.document_family::text AS document_family,
                   count(DISTINCT p.id) AS page_count,
                   count(DISTINCT e.id) AS element_count,

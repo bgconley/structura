@@ -94,6 +94,19 @@ def test_private_corpus_allow_8b_rescue_is_separate_from_hq(
     assert args.rescue_stress is False
 
 
+def test_private_corpus_summary_does_not_select_removed_document_parse_status() -> None:
+    sql = (
+        Path(__file__)
+        .resolve()
+        .parents[2]
+        .joinpath("scripts/gpu/run_phase8_5_private_corpus.py")
+        .read_text(encoding="utf-8")
+    )
+
+    assert "d.parse_status" not in sql
+    assert "count(DISTINCT p.id) > 0" in sql
+
+
 def test_cancel_text_embedding_jobs_types_corpus_actor_for_postgres(
     monkeypatch,
 ) -> None:
