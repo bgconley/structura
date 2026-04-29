@@ -39,7 +39,7 @@ class VisualModelEmbeddingGateway:
                     for asset in assets
                 ),
                 output_dimensions=self.profile.dimensions,
-                timeout_seconds=30,
+                timeout_seconds=90,
             )
         )
         vectors = validated_response_vectors(

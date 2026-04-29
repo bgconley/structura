@@ -75,6 +75,7 @@ def test_visual_model_embedding_gateway_requires_image_bytes() -> None:
     assert embedded.values[1] == 1.0
     assert client.request is not None
     assert client.request.inputs[0].image_bytes == image_bytes
+    assert client.request.timeout_seconds == 90
 
 
 def test_embedding_service_selects_live_model_gateways_when_model_mode_is_live(
