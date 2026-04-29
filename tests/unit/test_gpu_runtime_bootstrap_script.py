@@ -6,7 +6,7 @@ import textwrap
 from pathlib import Path
 
 
-def test_gpu_runtime_bootstrap_does_not_reapply_current_mountpoint(tmp_path: Path) -> None:
+def _write_fake_zfs(tmp_path: Path) -> tuple[Path, Path]:
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
     calls = tmp_path / "calls.log"
@@ -37,7 +37,11 @@ def test_gpu_runtime_bootstrap_does_not_reapply_current_mountpoint(tmp_path: Pat
         )
     )
     zfs.chmod(0o755)
+    return fake_bin, calls
 
+
+def test_gpu_runtime_bootstrap_does_not_reapply_current_mountpoint(tmp_path: Path) -> None:
+    fake_bin, calls = _write_fake_zfs(tmp_path)
     script = Path("infrastructure/zfs/create_gpu_runtime_datasets.sh").resolve()
     command = f"source {script}; create_or_update_ds tank/structura /srv/structura 128K lz4"
 
@@ -56,3 +60,28 @@ def test_gpu_runtime_bootstrap_does_not_reapply_current_mountpoint(tmp_path: Pat
     recorded_calls = calls.read_text()
     assert "set mountpoint=/srv/structura tank/structura" not in recorded_calls
     assert "mount tank/structura" not in recorded_calls
+
+
+def test_gpu_runtime_bootstrap_prints_dataset_tree_without_shell_glob(tmp_path: Path) -> None:
+    fake_bin, calls = _write_fake_zfs(tmp_path)
+    script = Path("infrastructure/zfs/create_gpu_runtime_datasets.sh").resolve()
+    command = f"source {script}; print_result"
+
+    subprocess.run(
+        ["bash", "-lc", command],
+        check=True,
+        env={
+            **os.environ,
+            "PATH": f"{fake_bin}:{os.environ['PATH']}",
+            "STRUCTURA_ZFS_BOOTSTRAP_SOURCE_ONLY": "1",
+        },
+        text=True,
+        capture_output=True,
+    )
+
+    recorded_calls = calls.read_text()
+    assert "tank/structura/*" not in recorded_calls
+    assert (
+        "list -r -d 1 -o name,mountpoint,recordsize,compression,atime,sync tank/structura"
+        in recorded_calls
+    )

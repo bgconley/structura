@@ -996,6 +996,18 @@
       "related_bugs": ["bug-082"],
       "occurrences": 1,
       "last_seen": "2026-04-29T09:35:00-04:00"
+    },
+    {
+      "id": "bug-084",
+      "timestamp": "2026-04-29T09:45:00-04:00",
+      "error_message": "GPU runtime bootstrap completed permission repair but exited nonzero while printing results because ZFS received literal dataset name tank/structura/*.",
+      "file": "infrastructure/zfs/create_gpu_runtime_datasets.sh",
+      "root_cause": "print_result quoted the child dataset glob, so shell expansion never happened and ZFS attempted to open a dataset name containing '*'.",
+      "fix": "Changed print_result to use zfs list -r -d 1 against the base dataset and added a script regression test proving the bootstrap does not pass literal shell globs to ZFS.",
+      "tags": ["phase-8.5", "zfs", "permissions", "gpu-node", "bootstrap"],
+      "related_bugs": ["bug-083"],
+      "occurrences": 1,
+      "last_seen": "2026-04-29T09:45:00-04:00"
     }
   ]
 }

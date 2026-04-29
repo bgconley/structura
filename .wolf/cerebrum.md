@@ -173,6 +173,7 @@
 - [2026-04-29] Do not mix vLLM structured-output mechanisms in one request. Use one of `response_format: json_schema` or `structured_outputs.json`, keep prompt-level schema instructions, and retain JSON-object fallback with telemetry.
 - [2026-04-29] Do not bypass Structura storage permissions for host-side Phase 8.5 diagnostics. Runtime object stores must preserve container UID write access and host operator group read/traverse access: writable dirs should be setgid and stored blobs group-readable, with existing GPU runtime trees repaired by `infrastructure/zfs/create_gpu_runtime_datasets.sh`.
 - [2026-04-29] Do not make the GPU ZFS bootstrap remount live datasets just to repair permissions. Existing dataset properties should be checked before setting, and mounted datasets should not be remounted when they are already mounted.
+- [2026-04-29] Do not quote shell globs in ZFS dataset names. Prefer `zfs list -r -d 1 <dataset>` for child dataset reporting so bootstrap scripts exit cleanly after repairs.
 
 ## Decision Log
 

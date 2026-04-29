@@ -134,7 +134,7 @@ print_existing_state() {
 print_result() {
   echo
   echo "Structura runtime datasets:"
-  zfs list -o name,mountpoint,recordsize,compression,atime,sync "${BASE_DATASET}" "${BASE_DATASET}"/*
+  zfs list -r -d 1 -o name,mountpoint,recordsize,compression,atime,sync "${BASE_DATASET}"
   echo
   echo "Host convention preserved:"
   echo "  repo checkout: /tank/repos/structura"
