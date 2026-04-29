@@ -188,6 +188,19 @@ class LineItemCandidateFact:
 
 
 @dataclass(frozen=True)
+class ObservationCandidateFact:
+    observation_family: str | None
+    field_name: str
+    value_type: str
+    value: Any
+    evidence: list[Evidence]
+    confidence: float | None = None
+    validation: dict[str, Any] = field(default_factory=dict)
+    status: str = "needs_review"
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class PersistedExtraction:
     extraction_id: UUID
     review_status: str

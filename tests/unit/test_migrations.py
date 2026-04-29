@@ -15,7 +15,7 @@ def test_baseline_migration_scripts_are_present_and_ordered() -> None:
     plan = baseline_migration_plan("database")
 
     assert plan.scripts[0].name == "001_extensions.sql"
-    assert plan.scripts[-1].name == "078_phase8_5_region_extraction_scope.sql"
+    assert plan.scripts[-1].name == "079_phase8_5_extraction_observations.sql"
     assert all(script.exists() for script in plan.scripts)
 
 
@@ -145,3 +145,17 @@ def test_phase8_5_region_extraction_scope_migration_is_baseline_migration() -> N
     assert "DROP INDEX IF EXISTS document_extractions_one_current_idx" in sql
     assert "document_extractions_current_document_scope_idx" in sql
     assert "document_extractions_current_region_scope_idx" in sql
+
+
+def test_phase8_5_extraction_observations_migration_is_baseline_migration() -> None:
+    plan = baseline_migration_plan("database")
+    names = [script.name for script in plan.scripts]
+
+    assert "079_phase8_5_extraction_observations.sql" in names
+
+    sql = Path("database/079_phase8_5_extraction_observations.sql").read_text(encoding="utf-8")
+    assert "CREATE TABLE IF NOT EXISTS extraction_observations" in sql
+    assert "semantic_annotation_id" in sql
+    assert "source_semantic_region_id" in sql
+    assert "model_output_schema_name" in sql
+    assert "extraction_observations_document_family_idx" in sql

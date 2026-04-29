@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/model_outputs/granite_real_estate_title_seller_info.v1.schema.json",
+  "title": "Granite Real Estate Title Seller Info v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "seller_name": {"type": ["string", "null"], "maxLength": 240},
+    "property_address": {"type": ["string", "null"], "maxLength": 400},
+    "title_company": {"type": ["string", "null"], "maxLength": 240},
+    "file_number": {"type": ["string", "null"], "maxLength": 120},
+    "closing_date": {"type": ["string", "null"], "maxLength": 40},
+    "confidence": {"type": "object", "additionalProperties": true}
+  }
+}

@@ -292,6 +292,8 @@ paths:
                 $ref: '#/components/schemas/DocumentDetail'
         '401':
           description: Not authenticated
+        '409':
+          description: Qwen8 high-quality mode is disabled for the current runtime profile
         '404':
           description: Document not found
   /api/v1/documents/{documentId}/semantic-annotations/current:
@@ -324,6 +326,8 @@ paths:
                 $ref: '#/components/schemas/SemanticAnnotationCurrentResponse'
         '401':
           description: Not authenticated
+        '409':
+          description: Qwen8 rescue mode is disabled for the current runtime profile
         '404':
           description: Document not found
   /api/v1/documents/{documentId}/semantic-annotations/high-quality:

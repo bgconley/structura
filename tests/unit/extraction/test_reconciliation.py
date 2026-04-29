@@ -119,3 +119,24 @@ def test_invoice_region_reconciliation_uses_document_level_invoice_fallback() ->
 
     assert aggregate["invoice"]["invoice_number"] == "6046058/1"
     assert aggregate["invoice"]["issued_on"] == "2023-04-25"
+
+
+def test_invoice_region_reconciliation_skips_non_invoice_observation_regions() -> None:
+    aggregate = reconcile_invoice_region_extractions(
+        document_id=uuid4(),
+        seller={"display_name": "unknown", "party_type": "company"},
+        created_at=datetime.now(UTC),
+        regions=[
+            RegionExtraction(
+                extraction_id=uuid4(),
+                semantic_region_id=uuid4(),
+                semantic_type="seller_information_block",
+                normalized_json={
+                    "schema_name": "document_observation",
+                    "observations": [{"field_name": "seller_name", "value": "Jane Seller"}],
+                },
+            )
+        ],
+    )
+
+    assert aggregate is None

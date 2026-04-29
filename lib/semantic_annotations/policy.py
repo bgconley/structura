@@ -26,9 +26,19 @@ ALLOWED_SEMANTIC_TYPES = {
     "covered_services_line_item_table",
     "invoice_line_item_table",
     "receipt_line_item_table",
+    "retail_order_line_item_table",
     "service_record_line_item_table",
+    "receipt_payment_summary",
     "denial_or_coverage_decision",
     "appeal_or_next_steps",
+    "seller_information_block",
+    "escrow_summary",
+    "mortgage_payment_summary",
+    "dispute_transaction_table",
+    "dispute_reason_block",
+    "generic_form_kvp",
+    "no_extraction_target",
+    "unsupported_document_region",
     "tax_summary",
     "legal_clause",
     "contact_block",
@@ -39,7 +49,7 @@ ALLOWED_SEMANTIC_TYPES = {
     "unknown",
 }
 
-ALLOWED_TARGET_SCHEMAS = {"receipt", "invoice", "medical_eob"}
+ALLOWED_TARGET_SCHEMAS = {"receipt", "invoice", "medical_eob", "document_observation"}
 _EXPECTED_FIELD_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 
 HIGH_RISK_FAMILIES = {

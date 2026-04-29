@@ -64,7 +64,39 @@ def test_semantic_service_persists_manifest_and_queues_grounded_granite_jobs() -
     assert payload["allow_8b_rescue"] is False
 
 
-def test_semantic_service_propagates_explicit_rescue_permission_to_granite_jobs() -> None:
+def test_semantic_service_rejects_rescue_permission_when_qwen8_disabled() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    region_id = uuid4()
+    user_id = uuid4()
+    source = _source(document_id=document_id, household_id=household_id, page_id=page_id)
+    manifest = _manifest(document_id=document_id, household_id=household_id, page_id=page_id)
+    jobs = RecordingJobs()
+
+    with pytest.raises(SemanticAnnotationServiceError, match="disabled"):
+        SemanticAnnotationService(
+            source_loader=lambda loaded_document_id: source,
+            gateway=StaticGateway(manifest),
+            manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
+                annotation_id=annotation_id,
+                region_ids=(region_id,),
+            ),
+            jobs=jobs,
+        ).annotate_document(
+            document_id,
+            quality_mode="smart",
+            requested_by="user",
+            allow_8b_rescue=True,
+            requested_by_user_id=user_id,
+            user_intent_reason="User allowed one 8B rescue.",
+        )
+
+    assert jobs.created == []
+
+
+def test_semantic_service_propagates_explicit_rescue_permission_when_qwen8_enabled() -> None:
     document_id = uuid4()
     household_id = uuid4()
     page_id = uuid4()
@@ -83,6 +115,7 @@ def test_semantic_service_propagates_explicit_rescue_permission_to_granite_jobs(
             region_ids=(region_id,),
         ),
         jobs=jobs,
+        qwen8_enabled=True,
     ).annotate_document(
         document_id,
         quality_mode="smart",
@@ -214,6 +247,7 @@ def test_semantic_service_caps_high_quality_granite_fanout() -> None:
             region_ids=region_ids,
         ),
         jobs=jobs,
+        qwen8_enabled=True,
     ).annotate_document(document_id, quality_mode="high_quality", requested_by="user")
 
     assert len(jobs.created) == 8
@@ -251,6 +285,7 @@ def test_semantic_service_caps_rescue_granite_fanout_to_single_retry() -> None:
             region_ids=region_ids,
         ),
         jobs=jobs,
+        qwen8_enabled=True,
     ).annotate_document(
         document_id,
         quality_mode="rescue",
@@ -282,7 +317,29 @@ def test_semantic_service_rejects_rescue_without_persisted_permission() -> None:
                     quality_mode="rescue",
                 )
             ),
+            qwen8_enabled=True,
         ).annotate_document(document_id, quality_mode="rescue", requested_by="system")
+
+
+def test_semantic_service_rejects_high_quality_when_qwen8_disabled() -> None:
+    document_id = uuid4()
+
+    with pytest.raises(SemanticAnnotationServiceError, match="disabled"):
+        SemanticAnnotationService(
+            source_loader=lambda loaded_document_id: _source(
+                document_id=loaded_document_id,
+                household_id=uuid4(),
+                page_id=uuid4(),
+            ),
+            gateway=StaticGateway(
+                _manifest(
+                    document_id=document_id,
+                    household_id=uuid4(),
+                    page_id=uuid4(),
+                    quality_mode="high_quality",
+                )
+            ),
+        ).annotate_document(document_id, quality_mode="high_quality", requested_by="user")
 
 
 class StaticGateway:
@@ -378,11 +435,11 @@ def _manifest(
         document_id=document_id,
         household_id=household_id,
         quality_mode=quality_mode,  # type: ignore[arg-type]
-        profile_name="qwen3-vl-2b-semantic:v1",
-        source_engine="qwen3_vl_2b",
-        model_name="Qwen/Qwen3-VL-2B-Instruct",
+        profile_name="qwen3-vl-4b-semantic:v1",
+        source_engine="qwen3_vl_4b",
+        model_name="Qwen/Qwen3-VL-4B-Instruct",
         model_version="v1",
-        prompt_version="phase8_5-semantic-smart-v1",
+        prompt_version="phase8_5-semantic-smart-v2",
         pages=[
             PageSemanticAnnotation(
                 page_id=page_id,

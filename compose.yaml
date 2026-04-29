@@ -37,6 +37,7 @@ services:
       STRUCTURA_MODEL_QWEN_URL: http://model-qwen:8100
       STRUCTURA_MODEL_QWEN_HQ_URL: http://model-qwen:8100
       STRUCTURA_MODEL_QWEN_SEMANTIC_URL: http://model-qwen-semantic:8104
+      STRUCTURA_QWEN8_ENABLED: "false"
       STRUCTURA_MODEL_GRANITE_URL: http://model-granite:8101
       STRUCTURA_MODEL_TEXT_EMBED_URL: http://model-embed:8102
       STRUCTURA_MODEL_VISUAL_EMBED_URL: http://model-vl-embed:8103
@@ -161,6 +162,7 @@ services:
       STRUCTURA_MODEL_QWEN_URL: http://model-qwen:8100
       STRUCTURA_MODEL_QWEN_HQ_URL: http://model-qwen:8100
       STRUCTURA_MODEL_QWEN_SEMANTIC_URL: http://model-qwen-semantic:8104
+      STRUCTURA_QWEN8_ENABLED: "false"
       STRUCTURA_MODEL_GRANITE_URL: http://model-granite:8101
     volumes:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/derived:/srv/structura/objects/derived
@@ -187,6 +189,7 @@ services:
       STRUCTURA_MODEL_QWEN_URL: http://model-qwen:8100
       STRUCTURA_MODEL_QWEN_HQ_URL: http://model-qwen:8100
       STRUCTURA_MODEL_QWEN_SEMANTIC_URL: http://model-qwen-semantic:8104
+      STRUCTURA_QWEN8_ENABLED: "false"
     volumes:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/derived:/srv/structura/objects/derived
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/workers:/srv/structura/logs/workers
@@ -385,16 +388,16 @@ services:
     environment:
       CUDA_DEVICE_ORDER: PCI_BUS_ID
       STRUCTURA_CUDA_VISIBLE_DEVICES: "0"
-      STRUCTURA_MODEL_PROFILE: ${STRUCTURA_QWEN_SEMANTIC_PROFILE:-qwen3-vl-2b-semantic:v1}
-      STRUCTURA_VLLM_MODEL_ID: Qwen/Qwen3-VL-2B-Instruct
-      STRUCTURA_VLLM_SERVED_MODEL_NAME: Qwen/Qwen3-VL-2B-Instruct
+      STRUCTURA_MODEL_PROFILE: ${STRUCTURA_QWEN_SEMANTIC_PROFILE:-qwen3-vl-4b-semantic:v1}
+      STRUCTURA_VLLM_MODEL_ID: Qwen/Qwen3-VL-4B-Instruct
+      STRUCTURA_VLLM_SERVED_MODEL_NAME: Qwen/Qwen3-VL-4B-Instruct
       STRUCTURA_VLLM_PORT: "8104"
       STRUCTURA_VLLM_DTYPE: bfloat16
       STRUCTURA_VLLM_MAX_MODEL_LEN: "16384"
-      STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION: "0.50"
-      STRUCTURA_VLLM_MAX_NUM_SEQS: "4"
+      STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION: "0.76"
+      STRUCTURA_VLLM_MAX_NUM_SEQS: "2"
       STRUCTURA_VLLM_MM_PROCESSOR_CACHE_GB: "0"
-      STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT: '{"image":4,"video":0}'
+      STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT: '{"image":2,"video":0}'
     deploy:
       resources:
         reservations:
@@ -436,7 +439,7 @@ services:
             - driver: nvidia
               device_ids: ["${STRUCTURA_MODEL_QWEN_GPU:-0}"]
               capabilities: [gpu]
-    profiles: ["models-live", "qwen-hq-live"]
+    profiles: ["qwen-hq-disabled"]
 
   model-granite:
     <<: *live-model-runtime

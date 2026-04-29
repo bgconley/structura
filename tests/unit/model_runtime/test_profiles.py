@@ -4,6 +4,7 @@ import pytest
 
 from lib.model_runtime.profiles import (
     GRANITE_VISION_PROFILE,
+    QWEN_HISTORICAL_SEMANTIC_2B_PROFILE,
     QWEN_SEMANTIC_HQ_PROFILE,
     QWEN_SEMANTIC_PROFILE,
     QWEN_VL_PROFILE,
@@ -18,9 +19,7 @@ from lib.model_runtime.settings import configured_model_profiles
 
 def test_phase8_5_required_live_profiles_are_registered() -> None:
     assert required_live_profile_names() == (
-        QWEN_VL_PROFILE,
         QWEN_SEMANTIC_PROFILE,
-        QWEN_SEMANTIC_HQ_PROFILE,
         GRANITE_VISION_PROFILE,
         TEXT_EMBED_PROFILE,
         VISUAL_EMBED_PROFILE,
@@ -31,17 +30,30 @@ def test_phase8_5_required_live_profiles_are_registered() -> None:
     assert all(isinstance(profile, ModelProfile) for profile in profiles)
 
 
-def test_qwen_semantic_profiles_distinguish_smart_and_high_quality_modes() -> None:
+def test_qwen_semantic_profile_uses_qwen4_for_default_smart_parse() -> None:
     smart = get_model_profile(QWEN_SEMANTIC_PROFILE)
+
+    assert smart.name == "qwen3-vl-4b-semantic:v1"
+    assert smart.base_model == "Qwen/Qwen3-VL-4B-Instruct"
+    assert smart.source_engine == "qwen3_vl_4b"
+    assert smart.default_gpu_role == "blackwell-0"
+    assert smart.max_model_len == 16384
+    assert smart.max_images_per_request == 2
+
+
+def test_qwen2b_and_qwen8_profiles_remain_historical_but_not_required_live() -> None:
+    historical_smart = get_model_profile(QWEN_HISTORICAL_SEMANTIC_2B_PROFILE)
     high_quality = get_model_profile(QWEN_SEMANTIC_HQ_PROFILE)
 
-    assert smart.base_model == "Qwen/Qwen3-VL-2B-Instruct"
-    assert smart.source_engine == "qwen3_vl_2b"
-    assert smart.default_gpu_role == "blackwell-0"
+    assert historical_smart.base_model == "Qwen/Qwen3-VL-2B-Instruct"
+    assert historical_smart.source_engine == "qwen3_vl_2b"
     assert high_quality.base_model == "Qwen/Qwen3-VL-8B-Instruct"
     assert high_quality.source_engine == "qwen3_vl_8b"
     assert high_quality.default_gpu_role == "blackwell-0-high-quality"
     assert high_quality.max_images_per_request == 1
+    assert QWEN_HISTORICAL_SEMANTIC_2B_PROFILE not in required_live_profile_names()
+    assert QWEN_SEMANTIC_HQ_PROFILE not in required_live_profile_names()
+    assert QWEN_VL_PROFILE not in required_live_profile_names()
 
 
 def test_qwen_and_granite_profiles_have_distinct_truthful_source_engines() -> None:

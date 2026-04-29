@@ -26,7 +26,7 @@ def main() -> int:
     parser.add_argument("--qwen-url", default="http://127.0.0.1:8100")
     parser.add_argument("--qwen-model", default="Qwen/Qwen3-VL-8B-Instruct")
     parser.add_argument("--qwen-semantic-url", default="http://127.0.0.1:8104")
-    parser.add_argument("--qwen-semantic-model", default="Qwen/Qwen3-VL-2B-Instruct")
+    parser.add_argument("--qwen-semantic-model", default="Qwen/Qwen3-VL-4B-Instruct")
     parser.add_argument("--granite-url", default="http://127.0.0.1:8101")
     parser.add_argument("--granite-model", default="ibm-granite/granite-4.0-3b-vision")
     parser.add_argument("--text-embed-url", default="http://127.0.0.1:8102")

@@ -67,6 +67,7 @@ class SemanticAnnotationService:
             PersistedSemanticManifest,
         ] = persist_semantic_manifest_record,
         jobs: JobCreator | None = None,
+        qwen8_enabled: bool | None = None,
     ) -> None:
         self.source_loader = source_loader
         self.gateway = gateway or default_semantic_annotation_gateway()
@@ -75,6 +76,9 @@ class SemanticAnnotationService:
             manifest_persister is persist_semantic_manifest_record and jobs is None
         )
         self.jobs = jobs or JobService()
+        self.qwen8_enabled = (
+            get_settings().qwen8_enabled if qwen8_enabled is None else qwen8_enabled
+        )
 
     def annotate_document(
         self,
@@ -90,6 +94,7 @@ class SemanticAnnotationService:
             quality_mode=quality_mode,
             requested_by=requested_by,
             allow_8b_rescue=allow_8b_rescue,
+            qwen8_enabled=self.qwen8_enabled,
         )
         source = self.source_loader(document_id)
         if source.document_id != document_id:
@@ -259,7 +264,12 @@ def _validate_qwen8b_intent(
     quality_mode: QualityMode,
     requested_by: str,
     allow_8b_rescue: bool,
+    qwen8_enabled: bool,
 ) -> None:
+    if (quality_mode in {"high_quality", "rescue"} or allow_8b_rescue) and not qwen8_enabled:
+        raise SemanticAnnotationServiceError(
+            "Qwen3-VL 8B high-quality/rescue semantic pass is disabled."
+        )
     if quality_mode == "high_quality" and requested_by == "system":
         raise SemanticAnnotationServiceError(
             "Qwen3-VL 8B high-quality semantic pass requires explicit user or agent intent."

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/model_outputs/granite_retail_order.v1.schema.json",
+  "title": "Granite Retail Order v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "merchant_name": {"type": ["string", "null"], "maxLength": 200},
+    "order_number": {"type": ["string", "null"], "maxLength": 120},
+    "order_date": {"type": ["string", "null"], "maxLength": 40},
+    "line_items": {
+      "type": "array",
+      "maxItems": 40,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["description"],
+        "properties": {
+          "description": {"type": "string", "minLength": 1, "maxLength": 240},
+          "quantity": {"type": ["number", "string", "null"]},
+          "unit_price": {"type": ["number", "string", "null"]},
+          "amount": {"type": ["number", "string", "null"]},
+          "source_text": {"type": ["string", "null"], "maxLength": 500}
+        }
+      }
+    },
+    "total": {"type": ["number", "string", "null"]},
+    "confidence": {"type": "object", "additionalProperties": true}
+  }
+}

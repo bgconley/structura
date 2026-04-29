@@ -189,7 +189,9 @@ def test_extraction_service_does_not_rescue_needs_review_without_user_permission
     assert jobs.created == []
 
 
-def test_extraction_service_queues_rescue_only_with_user_permission_and_recoverable_issue() -> None:
+def test_extraction_service_does_not_queue_rescue_when_qwen8_disabled_even_with_permission() -> (
+    None
+):
     document_id = uuid4()
     household_id = uuid4()
     region_id = uuid4()
@@ -213,6 +215,45 @@ def test_extraction_service_queues_rescue_only_with_user_permission_and_recovera
         semantic_task_loader=lambda loaded_region_id: task,
         persister=lambda *args, **kwargs: _persisted(),
         jobs=jobs,
+    ).extract_document(
+        document_id,
+        schema_name="invoice",
+        route_profile="docling_plus_granite_structured",
+        semantic_region_id=region_id,
+        allow_8b_rescue=True,
+        requested_by="user",
+        requested_by_user_id=user_id,
+        user_intent_reason="User allowed one 8B rescue.",
+    )
+
+    assert jobs.created == []
+
+
+def test_extraction_service_queues_rescue_with_user_permission_when_qwen8_enabled() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    region_id = uuid4()
+    source = _source(document_id=document_id, household_id=household_id)
+    task = SemanticExtractionTask(
+        region_id=region_id,
+        annotation_id=uuid4(),
+        document_id=document_id,
+        semantic_type="invoice_line_item_table",
+        granite_task="tables_json",
+        target_schema="invoice",
+        expected_fields=("line_items", "total_amount"),
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+    )
+    jobs = RecordingJobs()
+    user_id = uuid4()
+
+    ExtractionService(
+        gateway=RecordingGateway(needs_review=True),
+        source_loader=lambda loaded_document_id: source,
+        semantic_task_loader=lambda loaded_region_id: task,
+        persister=lambda *args, **kwargs: _persisted(),
+        jobs=jobs,
+        qwen8_enabled=True,
     ).extract_document(
         document_id,
         schema_name="invoice",

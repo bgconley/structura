@@ -12,6 +12,7 @@ RescueOutcome = Literal["review_only", "rescue_permitted_once", "pipeline_failed
 @dataclass(frozen=True)
 class RescuePolicyContext:
     allow_8b_rescue: bool
+    qwen8_enabled: bool
     validation: ValidationReport
     semantic_task: SemanticExtractionTask | None
     candidate_count: int
@@ -47,6 +48,12 @@ class RescuePolicy:
                 outcome="review_only",
                 failure_class=failure_class,
                 reason="User did not permit Qwen3-VL 8B rescue.",
+            )
+        if not context.qwen8_enabled:
+            return RescuePolicyDecision(
+                outcome="review_only",
+                failure_class=failure_class,
+                reason="Qwen3-VL 8B rescue is disabled for this runtime profile.",
             )
         if _recoverable_by_semantic_rescue(context, failure_class):
             return RescuePolicyDecision(

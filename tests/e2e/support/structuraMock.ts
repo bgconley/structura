@@ -660,10 +660,10 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
       expect(request.headers()["x-csrf-token"]).toBe(expectedCsrfToken);
       const document = documents.get(semanticHighQualityMatch[1]);
       await route.fulfill({
-        status: document ? 202 : 404,
+        status: document ? 409 : 404,
         headers: {"Content-Type": "application/json", ...corsHeaders},
         json: document
-          ? {jobId: "85858585-8585-4585-8585-858585858585", status: "queued"}
+          ? {detail: "Qwen8 disabled for the current runtime profile."}
           : {detail: "Document not found"},
       });
       return;
@@ -676,10 +676,10 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
       expect(request.headers()["x-csrf-token"]).toBe(expectedCsrfToken);
       const document = documents.get(semanticAllowRescueMatch[1]);
       await route.fulfill({
-        status: document ? 202 : 404,
+        status: document ? 409 : 404,
         headers: {"Content-Type": "application/json", ...corsHeaders},
         json: document
-          ? {jobId: "86868686-8686-4686-8686-868686868686", status: "queued"}
+          ? {detail: "Qwen8 disabled for the current runtime profile."}
           : {detail: "Document not found"},
       });
       return;
@@ -729,11 +729,11 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
 function semanticAnnotationForDocument(documentId: string) {
   return {
     qualityMode: "smart",
-    profileName: "qwen3-vl-2b-semantic:v1",
-    sourceEngine: "qwen3_vl_2b",
-    modelName: "Qwen/Qwen3-VL-2B-Instruct",
+    profileName: "qwen3-vl-4b-semantic:v1",
+    sourceEngine: "qwen3_vl_4b",
+    modelName: "Qwen/Qwen3-VL-4B-Instruct",
     modelVersion: "fixture",
-    promptVersion: "phase8_5-semantic-smart-v1",
+    promptVersion: "phase8_5-semantic-smart-v2",
     reviewRequired: false,
     escalationReason: null,
     confidence: {overall: 0.91},

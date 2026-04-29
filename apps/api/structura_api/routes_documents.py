@@ -143,6 +143,11 @@ def create_high_quality_semantic_annotation(
 ) -> AcceptedJob:
     if not principal.household_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    if not _qwen8_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Qwen8 disabled for the current runtime profile.",
+        )
     _require_document_readable_or_404(documentId, principal)
     with db_connection() as conn:
         with conn.cursor() as cur:
@@ -159,6 +164,7 @@ def create_high_quality_semantic_annotation(
                 priority=26,
                 reason="phase8_5.user_high_quality_pass",
                 dedupe_existing=True,
+                qwen8_enabled=True,
             )
         conn.commit()
     return AcceptedJob.model_validate({"jobId": job_id, "status": "queued"})
@@ -175,6 +181,11 @@ def create_allow_8b_rescue_semantic_annotation(
 ) -> AcceptedJob:
     if not principal.household_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    if not _qwen8_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Qwen8 disabled for the current runtime profile.",
+        )
     _require_document_readable_or_404(documentId, principal)
     with db_connection() as conn:
         with conn.cursor() as cur:
@@ -217,6 +228,12 @@ def _document_access_context(principal: AuthPrincipal) -> DocumentAccessContext:
         user_id=principal.user_id,
         household_role=principal.household_role,
     )
+
+
+def _qwen8_enabled() -> bool:
+    from lib.config import get_settings
+
+    return get_settings().qwen8_enabled
 
 
 def _semantic_manifest_payload(manifest: DocumentSemanticManifest) -> dict[str, object]:

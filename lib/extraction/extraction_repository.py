@@ -25,9 +25,11 @@ from lib.extraction.models import (
     ExtractionSourceDocument,
     GatewayExtraction,
     LineItemCandidateFact,
+    ObservationCandidateFact,
     PersistedExtraction,
     ValidationReport,
 )
+from lib.extraction.observation_repository import insert_observation_candidate
 from lib.review.task_repository import upsert_review_task
 from lib.storage import ObjectStorage, StoredObject, cleanup_unreferenced_stored_object
 
@@ -66,6 +68,7 @@ def persist_extraction_run(
     validation: ValidationReport,
     field_candidates: list[CandidateFact],
     line_item_candidates: list[LineItemCandidateFact],
+    observation_candidates: list[ObservationCandidateFact] | None = None,
     run_scope: ExtractionRunScope | None = None,
     semantic_task: Any | None = None,
     storage: ObjectStorage | None = None,
@@ -93,6 +96,7 @@ def persist_extraction_run(
             validation=validation,
             field_candidates=field_candidates,
             line_item_candidates=line_item_candidates,
+            observation_candidates=observation_candidates or [],
             run_scope=resolved_scope,
             raw_object=raw_object,
             normalized_object=normalized_object,
@@ -109,6 +113,7 @@ def _persist_extraction_rows(
     validation: ValidationReport,
     field_candidates: list[CandidateFact],
     line_item_candidates: list[LineItemCandidateFact],
+    observation_candidates: list[ObservationCandidateFact],
     run_scope: ExtractionRunScope,
     raw_object: StoredObject,
     normalized_object: StoredObject,
@@ -178,6 +183,18 @@ def _persist_extraction_rows(
                     extraction.route.source_engine,
                     line_item,
                 )
+            for observation in observation_candidates:
+                insert_observation_candidate(
+                    cur,
+                    source.document_id,
+                    extraction_id,
+                    extraction.route.source_engine,
+                    observation,
+                    semantic_annotation_id=run_scope.semantic_annotation_id,
+                    source_semantic_region_id=run_scope.source_semantic_region_id,
+                    semantic_type=run_scope.semantic_type,
+                    model_output_schema_name=extraction.model_output_schema_name,
+                )
             canonical_count = promote_candidates(
                 cur,
                 source=source,
@@ -200,7 +217,9 @@ def _persist_extraction_rows(
     return PersistedExtraction(
         extraction_id=extraction_id,
         review_status=review_status,
-        candidate_count=len(field_candidates) + len(line_item_candidates),
+        candidate_count=len(field_candidates)
+        + len(line_item_candidates)
+        + len(observation_candidates),
         canonical_count=canonical_count,
         review_task_count=review_task_count,
     )

@@ -5,6 +5,7 @@ from dataclasses import dataclass, replace
 from typing import Protocol
 from uuid import UUID, uuid4
 
+from lib.config import get_settings
 from lib.db.connection import db_connection
 from lib.extraction.classification import TARGET_EXTRACTION_SCHEMAS, classify_document
 from lib.extraction.gateway import ExtractionGateway
@@ -17,6 +18,7 @@ from lib.extraction.models import (
 from lib.extraction.normalization import (
     field_candidates_from_extraction,
     line_item_candidates_from_extraction,
+    observation_candidates_from_extraction,
 )
 from lib.extraction.repository import (
     load_extraction_source,
@@ -68,6 +70,7 @@ class ExtractionService:
         ),
         persister: Callable[..., PersistedExtraction] = persist_extraction_run,
         rescue_policy: RescuePolicy | None = None,
+        qwen8_enabled: bool | None = None,
     ) -> None:
         self.registry = registry or ExtractionSchemaRegistry()
         self.gateway = gateway or default_extraction_gateway()
@@ -76,6 +79,9 @@ class ExtractionService:
         self.semantic_task_loader = semantic_task_loader
         self.persister = persister
         self.rescue_policy = rescue_policy or RescuePolicy()
+        self.qwen8_enabled = (
+            get_settings().qwen8_enabled if qwen8_enabled is None else qwen8_enabled
+        )
 
     def classify_document(
         self,
@@ -164,20 +170,29 @@ class ExtractionService:
             validation=validation,
             source_engine=gateway_result.route.source_engine,
         )
+        observation_candidates = observation_candidates_from_extraction(
+            schema_name=schema_name,
+            payload=gateway_result.normalized_json,
+            validation=validation,
+        )
         persisted = self.persister(
             gateway_result,
             source=source,
             validation=validation,
             field_candidates=field_candidates,
             line_item_candidates=line_item_candidates,
+            observation_candidates=observation_candidates,
             semantic_task=semantic_task,
         )
         rescue_decision = self.rescue_policy.decide(
             RescuePolicyContext(
                 allow_8b_rescue=allow_8b_rescue,
+                qwen8_enabled=self.qwen8_enabled,
                 validation=validation,
                 semantic_task=semantic_task,
-                candidate_count=len(field_candidates) + len(line_item_candidates),
+                candidate_count=(
+                    len(field_candidates) + len(line_item_candidates) + len(observation_candidates)
+                ),
                 prior_rescue_attempted=False,
             )
         )
@@ -241,6 +256,7 @@ class ExtractionService:
                         rescue_failure_class=failure_class,
                         dedupe_existing=True,
                         priority=26,
+                        qwen8_enabled=self.qwen8_enabled,
                     )
                 conn.commit()
             return

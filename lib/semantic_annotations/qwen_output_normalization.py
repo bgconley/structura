@@ -18,7 +18,16 @@ _DOCUMENT_TYPES = {
     "medical_bill",
     "invoice",
     "receipt",
+    "retail_order",
     "service_record",
+    "real_estate_title",
+    "mortgage_escrow_statement",
+    "financial_dispute_form",
+    "travel_receipt",
+    "restaurant_receipt",
+    "generic_form",
+    "unsupported_document",
+    "no_extraction_target",
     "legal",
     "tax",
     "financial",
@@ -58,9 +67,19 @@ _SEMANTIC_TYPES = {
     "covered_services_line_item_table",
     "invoice_line_item_table",
     "receipt_line_item_table",
+    "retail_order_line_item_table",
     "service_record_line_item_table",
+    "receipt_payment_summary",
     "denial_or_coverage_decision",
     "appeal_or_next_steps",
+    "seller_information_block",
+    "escrow_summary",
+    "mortgage_payment_summary",
+    "dispute_transaction_table",
+    "dispute_reason_block",
+    "generic_form_kvp",
+    "no_extraction_target",
+    "unsupported_document_region",
     "tax_summary",
     "legal_clause",
     "contact_block",
@@ -72,7 +91,7 @@ _SEMANTIC_TYPES = {
 }
 _PRIORITIES = {"low", "medium", "high", "critical"}
 _GRANITE_TASKS = {"kvp", "tables_json", "tables_html", "tables_otsl", "ignore"}
-_TARGET_SCHEMAS = {"receipt", "invoice", "medical_eob"}
+_TARGET_SCHEMAS = {"receipt", "invoice", "medical_eob", "document_observation"}
 _MAX_MODEL_OUTPUT_REGIONS = 6
 _PRIORITY_RANK = {"critical": 3, "high": 2, "medium": 1, "low": 0}
 
@@ -556,6 +575,14 @@ def _target_schema_or_none(value: object) -> str | None:
         "insurance_denial": "medical_eob",
         "medical_bill": "medical_eob",
         "service_record": "receipt",
+        "retail_order": "receipt",
+        "travel_receipt": "receipt",
+        "restaurant_receipt": "receipt",
+        "real_estate_title": "document_observation",
+        "mortgage_escrow_statement": "document_observation",
+        "financial_dispute_form": "document_observation",
+        "generic_form": "document_observation",
+        "unsupported_document": "document_observation",
     }.get(value.strip().lower())
     return mapped
 
@@ -575,6 +602,8 @@ def _inferred_semantic_type(
             return "receipt_line_item_table"
         if target_schema == "medical_eob":
             return "covered_services_line_item_table"
+        if target_schema == "document_observation":
+            return "generic_form_kvp"
     fields = set(expected_fields)
     if fields & {"request_status", "denial_reason", "appeal_deadline", "care_requested"}:
         return "denial_or_coverage_decision"
@@ -584,6 +613,8 @@ def _inferred_semantic_type(
         return "billing_summary"
     if target_schema == "receipt":
         return "payment_summary"
+    if target_schema == "document_observation":
+        return "generic_form_kvp"
     return "unknown"
 
 

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/model_outputs/granite_dispute_form.v1.schema.json",
+  "title": "Granite Dispute Form v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "account_holder": {"type": ["string", "null"], "maxLength": 240},
+    "merchant_name": {"type": ["string", "null"], "maxLength": 240},
+    "transaction_date": {"type": ["string", "null"], "maxLength": 40},
+    "transaction_amount": {"type": ["number", "string", "null"]},
+    "dispute_reason": {"type": ["string", "null"], "maxLength": 500},
+    "transactions": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "merchant_name": {"type": ["string", "null"], "maxLength": 240},
+          "transaction_date": {"type": ["string", "null"], "maxLength": 40},
+          "amount": {"type": ["number", "string", "null"]},
+          "source_text": {"type": ["string", "null"], "maxLength": 500}
+        }
+      }
+    },
+    "confidence": {"type": "object", "additionalProperties": true}
+  }
+}

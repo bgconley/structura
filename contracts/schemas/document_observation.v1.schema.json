@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/schemas/document_observation.v1.schema.json",
+  "title": "Document Observation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "document_id",
+    "observations",
+    "confidence",
+    "created_at"
+  ],
+  "properties": {
+    "schema_name": {"const": "document_observation"},
+    "schema_version": {"const": "v1"},
+    "document_id": {"type": "string"},
+    "observations": {
+      "type": "array",
+      "maxItems": 80,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["field_name", "value", "evidence"],
+        "properties": {
+          "family": {"type": ["string", "null"], "maxLength": 120},
+          "field_name": {"type": "string", "minLength": 1, "maxLength": 120},
+          "value": {"type": ["string", "number", "boolean", "object", "array", "null"]},
+          "value_type": {
+            "type": "string",
+            "enum": ["string", "number", "boolean", "json", "null"]
+          },
+          "source_text": {"type": ["string", "null"], "maxLength": 500},
+          "confidence": {"type": ["number", "null"]},
+          "evidence": {
+            "type": "array",
+            "items": {"type": "object", "additionalProperties": true}
+          }
+        }
+      }
+    },
+    "confidence": {"type": "object", "additionalProperties": true},
+    "created_at": {"type": "string"},
+    "metadata": {"type": "object", "additionalProperties": true},
+    "validation": {"type": "object", "additionalProperties": true}
+  }
+}

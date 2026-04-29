@@ -3,7 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 QWEN_VL_PROFILE = "qwen3-vl-8b-instruct-nvfp4-local:v1"
-QWEN_SEMANTIC_PROFILE = "qwen3-vl-2b-semantic:v1"
+QWEN_HISTORICAL_SEMANTIC_2B_PROFILE = "qwen3-vl-2b-semantic:v1"
+QWEN_SEMANTIC_PROFILE = "qwen3-vl-4b-semantic:v1"
 QWEN_SEMANTIC_HQ_PROFILE = "qwen3-vl-8b-semantic-hq:v1"
 GRANITE_VISION_PROFILE = "granite-4.0-3b-vision-bf16:v1"
 TEXT_EMBED_PROFILE = "qwen3-embedding-4b-1536:v1"
@@ -43,10 +44,22 @@ _PROFILES: dict[str, ModelProfile] = {
         name=QWEN_SEMANTIC_PROFILE,
         engine="qwen",
         task="semantic_annotation",
+        base_model="Qwen/Qwen3-VL-4B-Instruct",
+        backend="vllm-openai",
+        source_engine="qwen3_vl_4b",
+        default_gpu_role="blackwell-0",
+        max_image_bytes=10 * 1024 * 1024,
+        max_images_per_request=2,
+        max_model_len=16384,
+    ),
+    QWEN_HISTORICAL_SEMANTIC_2B_PROFILE: ModelProfile(
+        name=QWEN_HISTORICAL_SEMANTIC_2B_PROFILE,
+        engine="qwen",
+        task="semantic_annotation_historical",
         base_model="Qwen/Qwen3-VL-2B-Instruct",
         backend="vllm-openai",
         source_engine="qwen3_vl_2b",
-        default_gpu_role="blackwell-0",
+        default_gpu_role="historical",
         max_image_bytes=10 * 1024 * 1024,
         max_images_per_request=4,
         max_model_len=32768,
@@ -103,9 +116,7 @@ _PROFILES: dict[str, ModelProfile] = {
 
 def required_live_profile_names() -> tuple[str, ...]:
     return (
-        QWEN_VL_PROFILE,
         QWEN_SEMANTIC_PROFILE,
-        QWEN_SEMANTIC_HQ_PROFILE,
         GRANITE_VISION_PROFILE,
         TEXT_EMBED_PROFILE,
         VISUAL_EMBED_PROFILE,

@@ -5,8 +5,17 @@ from typing import Any
 from uuid import UUID
 
 from lib.extraction.evidence import has_concrete_evidence
-from lib.extraction.model_output_normalization import invoice_line_item_dicts_from_payload
-from lib.extraction.models import CandidateFact, Evidence, LineItemCandidateFact, ValidationReport
+from lib.extraction.model_output_normalization import (
+    invoice_line_item_dicts_from_payload,
+    observation_dicts_from_payload,
+)
+from lib.extraction.models import (
+    CandidateFact,
+    Evidence,
+    LineItemCandidateFact,
+    ObservationCandidateFact,
+    ValidationReport,
+)
 
 AUTHORITY_WEIGHTS = {
     "docling": 0.62,
@@ -63,6 +72,37 @@ def line_item_candidates_from_extraction(
             payload.get("service_lines"), source_engine, confidence, "needs_review"
         )
     return []
+
+
+def observation_candidates_from_extraction(
+    *,
+    schema_name: str,
+    payload: dict[str, Any],
+    validation: ValidationReport,
+) -> list[ObservationCandidateFact]:
+    if schema_name != "document_observation":
+        return []
+    candidates: list[ObservationCandidateFact] = []
+    for item in observation_dicts_from_payload(payload):
+        field_name = item.get("field_name")
+        if not field_name:
+            continue
+        candidates.append(
+            ObservationCandidateFact(
+                observation_family=(
+                    str(item["family"]) if item.get("family") not in (None, "") else None
+                ),
+                field_name=str(field_name),
+                value_type=str(item.get("value_type") or "string"),
+                value=item.get("value"),
+                evidence=_evidence(item),
+                confidence=_number_or_none(item.get("confidence")),
+                validation=validation.as_json(),
+                status="needs_review",
+                metadata={"source_text": item.get("source_text")},
+            )
+        )
+    return candidates
 
 
 def _receipt_candidates(
@@ -479,6 +519,13 @@ def _number(value: Any) -> float | None:
     if value is None:
         return None
     return float(value)
+
+
+def _number_or_none(value: Any) -> float | None:
+    try:
+        return _number(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _date(value: Any) -> date | None:

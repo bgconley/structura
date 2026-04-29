@@ -46,7 +46,7 @@ test("Phase 8 difficult-document visual retrieval and review cues are visible", 
   });
 });
 
-test("Phase 8.5 Smart Parse manifest and High Quality pass are visible in viewer", async ({page}) => {
+test("Phase 8.5 Smart Parse manifest is visible and Qwen8 controls are deferred", async ({page}) => {
   await page.goto("/");
   await page.getByRole("button", {name: /Search/}).click();
   await page.getByLabel("Corpus search query").fill("handwritten degraded intake");
@@ -60,14 +60,13 @@ test("Phase 8.5 Smart Parse manifest and High Quality pass are visible in viewer
     .click();
 
   await page.getByRole("button", {name: "Load Smart Parse"}).click();
-  await expect(page.locator(".semantic-annotation-panel")).toContainText("qwen3_vl_2b");
+  await expect(page.locator(".semantic-annotation-panel")).toContainText("qwen3_vl_4b");
   await expect(page.locator(".semantic-annotation-panel")).toContainText("receipt_line_item_table");
   await expect(page.locator(".semantic-annotation-panel")).toContainText("tables_json");
 
-  await page.getByRole("button", {name: "High Quality Pass"}).click();
-  await expect(page.locator(".semantic-annotation-panel")).toContainText("High Quality semantic pass queued");
-  await page.getByRole("button", {name: "Allow 8B Rescue"}).click();
-  await expect(page.locator(".semantic-annotation-panel")).toContainText("Allow 8B Rescue pass queued");
+  await expect(page.getByRole("button", {name: "High Quality Pass"})).toBeDisabled();
+  await expect(page.getByRole("button", {name: "Allow 8B Rescue"})).toBeDisabled();
+  await expect(page.locator(".semantic-annotation-panel")).toContainText("Qwen8 disabled");
 });
 
 test("Phase 8 evidence viewer stays open when a stale visual search completes", async ({page}) => {

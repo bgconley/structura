@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-QWEN_URL="${STRUCTURA_MODEL_QWEN_URL:-http://127.0.0.1:8100}"
 QWEN_SEMANTIC_URL="${STRUCTURA_MODEL_QWEN_SEMANTIC_URL:-http://127.0.0.1:8104}"
 GRANITE_URL="${STRUCTURA_MODEL_GRANITE_URL:-http://127.0.0.1:8101}"
 TEXT_EMBED_URL="${STRUCTURA_MODEL_TEXT_EMBED_URL:-http://127.0.0.1:8102}"
@@ -11,25 +10,21 @@ HEALTH_POLL_SECONDS="${STRUCTURA_MODEL_SMOKE_HEALTH_POLL_SECONDS:-5}"
 MANAGE_COMPOSE="${STRUCTURA_MODEL_SMOKE_MANAGE_COMPOSE:-0}"
 COMPOSE_PROFILES=(
   --profile models-live
-  --profile qwen-hq-live
   --profile text-embed-live
   --profile visual-embed-live
 )
 MODEL_SERVICES=(
   model-qwen-semantic
-  model-qwen
   model-granite
   model-embed
   model-vl-embed
 )
 BLACKWELL_CORE_SERVICES=(
   model-qwen-semantic
-  model-qwen
   model-granite
   model-vl-embed
 )
 BLACKWELL_BASE_SERVICES=(
-  model-qwen
   model-granite
 )
 BLACKWELL_COMPANION_SERVICES=(
@@ -68,10 +63,9 @@ probe_health() {
 
 probe_live_models() {
   "${PYTHON:-python3}" scripts/gpu/probe_phase8_5_live_models.py \
-    --qwen-url "${QWEN_URL}" \
-    --qwen-model "${STRUCTURA_MODEL_QWEN_MODEL:-Qwen/Qwen3-VL-8B-Instruct}" \
+    --skip-qwen \
     --qwen-semantic-url "${QWEN_SEMANTIC_URL}" \
-    --qwen-semantic-model "${STRUCTURA_MODEL_QWEN_SEMANTIC_MODEL:-Qwen/Qwen3-VL-2B-Instruct}" \
+    --qwen-semantic-model "${STRUCTURA_MODEL_QWEN_SEMANTIC_MODEL:-Qwen/Qwen3-VL-4B-Instruct}" \
     --granite-url "${GRANITE_URL}" \
     --granite-model "${STRUCTURA_MODEL_GRANITE_MODEL:-ibm-granite/granite-4.0-3b-vision}" \
     --text-embed-url "${TEXT_EMBED_URL}" \
@@ -93,14 +87,12 @@ start_core_services() {
   echo "Starting co-resident Phase 8.5 Blackwell model services"
   remove_model_services "${MODEL_SERVICES[@]}"
   compose_model up -d --force-recreate "${BLACKWELL_BASE_SERVICES[@]}"
-  probe_health "model-qwen" "${QWEN_URL}"
   probe_health "model-granite" "${GRANITE_URL}"
   compose_model up -d --force-recreate "${BLACKWELL_COMPANION_SERVICES[@]}"
 }
 
 probe_core_services() {
   probe_health "model-qwen-semantic" "${QWEN_SEMANTIC_URL}"
-  probe_health "model-qwen" "${QWEN_URL}"
   probe_health "model-granite" "${GRANITE_URL}"
   probe_health "model-vl-embed" "${VISUAL_EMBED_URL}"
   probe_live_models --skip-text-embed
@@ -127,7 +119,6 @@ if [[ "$MANAGE_COMPOSE" == "1" || "$MANAGE_COMPOSE" == "true" ]]; then
   probe_core_services
   probe_text_embedding
 else
-  probe_health "model-qwen" "${QWEN_URL}"
   probe_health "model-qwen-semantic" "${QWEN_SEMANTIC_URL}"
   probe_health "model-granite" "${GRANITE_URL}"
   probe_health "model-embed" "${TEXT_EMBED_URL}"

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/model_outputs/granite_receipt_payment_summary.v1.schema.json",
+  "title": "Granite Receipt Payment Summary v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "merchant_name": {"type": ["string", "null"], "maxLength": 200},
+    "transaction_date": {"type": ["string", "null"], "maxLength": 40},
+    "subtotal": {"type": ["number", "string", "null"]},
+    "tax": {"type": ["number", "string", "null"]},
+    "tip": {"type": ["number", "string", "null"]},
+    "total": {"type": ["number", "string", "null"]},
+    "payment_method": {"type": ["string", "null"], "maxLength": 120},
+    "confidence": {"type": "object", "additionalProperties": true}
+  }
+}

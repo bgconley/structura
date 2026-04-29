@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/model_outputs/granite_mortgage_escrow_statement.v1.schema.json",
+  "title": "Granite Mortgage Escrow Statement v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "loan_number": {"type": ["string", "null"], "maxLength": 120},
+    "servicer_name": {"type": ["string", "null"], "maxLength": 240},
+    "statement_date": {"type": ["string", "null"], "maxLength": 40},
+    "escrow_balance": {"type": ["number", "string", "null"]},
+    "payment_amount": {"type": ["number", "string", "null"]},
+    "tax_amount": {"type": ["number", "string", "null"]},
+    "insurance_amount": {"type": ["number", "string", "null"]},
+    "confidence": {"type": "object", "additionalProperties": true}
+  }
+}

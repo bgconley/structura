@@ -57,7 +57,8 @@ class Settings(BaseSettings):
     model_visual_embed_url: str = "http://127.0.0.1:8103"
     qwen_profile: str = "qwen3-vl-8b-instruct-nvfp4-local:v1"
     qwen_hq_profile: str = "qwen3-vl-8b-semantic-hq:v1"
-    qwen_semantic_profile: str = "qwen3-vl-2b-semantic:v1"
+    qwen_semantic_profile: str = "qwen3-vl-4b-semantic:v1"
+    qwen8_enabled: bool = False
     granite_profile: str = "granite-4.0-3b-vision-bf16:v1"
     text_embed_profile: str = "qwen3-embedding-4b-1536:v1"
     visual_embed_profile: str = "qwen3-vl-embedding-2b-2048:v1"

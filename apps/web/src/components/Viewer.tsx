@@ -217,13 +217,14 @@ function SemanticAnnotationPanel({
         <button type="button" onClick={onLoad} disabled={isLoading}>
           {isLoading ? "Loading..." : "Load Smart Parse"}
         </button>
-        <button type="button" onClick={() => void onHighQuality()}>
+        <button type="button" onClick={() => void onHighQuality()} disabled>
           High Quality Pass
         </button>
-        <button type="button" onClick={() => void onAllow8bRescue()}>
+        <button type="button" onClick={() => void onAllow8bRescue()} disabled>
           Allow 8B Rescue
         </button>
       </div>
+      <p className="debug-copy">Qwen8 disabled for this Phase 8.5 runtime.</p>
       {error ? <p className="form-error">{error}</p> : null}
       {manifest ? (
         <div className="semantic-annotation-summary">

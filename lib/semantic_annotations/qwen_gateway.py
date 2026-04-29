@@ -59,12 +59,11 @@ class QwenSemanticVisionClient:
         self,
         *,
         smart: SemanticVisionClientProtocol,
-        high_quality: SemanticVisionClientProtocol,
+        high_quality: SemanticVisionClientProtocol | None = None,
     ) -> None:
-        self._clients = {
-            QWEN_SEMANTIC_PROFILE: smart,
-            QWEN_SEMANTIC_HQ_PROFILE: high_quality,
-        }
+        self._clients = {QWEN_SEMANTIC_PROFILE: smart}
+        if high_quality is not None:
+            self._clients[QWEN_SEMANTIC_HQ_PROFILE] = high_quality
 
     @classmethod
     def from_settings(cls, settings: Settings) -> QwenSemanticVisionClient:
@@ -73,9 +72,13 @@ class QwenSemanticVisionClient:
                 profile=get_model_profile(QWEN_SEMANTIC_PROFILE),
                 http_client_base_url=str(settings.model_qwen_semantic_url),
             ),
-            high_quality=QwenVLClient(
-                profile=get_model_profile(QWEN_SEMANTIC_HQ_PROFILE),
-                http_client_base_url=str(settings.model_qwen_hq_url),
+            high_quality=(
+                QwenVLClient(
+                    profile=get_model_profile(QWEN_SEMANTIC_HQ_PROFILE),
+                    http_client_base_url=str(settings.model_qwen_hq_url),
+                )
+                if settings.qwen8_enabled
+                else None
             ),
         )
 
@@ -233,11 +236,11 @@ def _prompt_version_for_mode(quality_mode: str) -> str:
         return "phase8_5-semantic-high-quality-v1"
     if quality_mode == "rescue":
         return "phase8_5-semantic-rescue-v1"
-    return "phase8_5-semantic-smart-v1"
+    return "phase8_5-semantic-smart-v2"
 
 
-def _max_image_inputs_for_profile(_profile_name: str) -> int:
-    return 1
+def _max_image_inputs_for_profile(profile_name: str) -> int:
+    return get_model_profile(profile_name).max_images_per_request or 1
 
 
 def _response_json_schema_for_profile(profile_name: str) -> dict[str, object] | None:
@@ -405,8 +408,11 @@ def _prompt(source: ExtractionSourceDocument) -> str:
         "Do not add top-level confidence; page and region confidence values are sufficient. "
         "Add region annotations only for useful Granite extraction targets or no-op boilerplate. "
         "Use target_schema medical_eob for EOB, insurance, denial, and medical billing "
-        "documents; invoice for bills and invoices; receipt for receipts and service "
-        "records; otherwise null. Use granite_task kvp for summary/key-value blocks, "
+        "documents; invoice for bills and invoices; receipt for receipts, retail orders, "
+        "and service records; document_observation for generic observations, seller/title "
+        "information, escrow summaries, dispute forms, and useful unsupported forms; otherwise "
+        "null; do not force unfamiliar documents into invoice, receipt, or medical EOB. "
+        "Use granite_task kvp for summary/key-value blocks, "
         "tables_json for line-item tables, tables_html or tables_otsl only when table "
         "structure requires it, and ignore for boilerplate. Mark unmatched_region, "
         "review_required=true, and low confidence when a useful target cannot be "

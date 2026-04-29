@@ -134,7 +134,7 @@ def test_qwen_client_sends_json_schema_structured_output_payload() -> None:
         transport=httpx.MockTransport(handler),
     )
 
-    client.generate(
+    response = client.generate(
         VisionGenerateRequest(
             profile_name=QWEN_VL_PROFILE,
             prompt_version="phase8_5-semantic-smart-v1",
@@ -159,6 +159,62 @@ def test_qwen_client_sends_json_schema_structured_output_payload() -> None:
         },
     }
     assert payload["structured_outputs"] == {"json": semantic_annotation_manifest_schema()}
+    assert response.finish_reason is None
+    assert response.structured_output_used is True
+    assert response.structured_output_fallback_reason is None
+
+
+def test_qwen_client_falls_back_when_structured_output_request_is_rejected() -> None:
+    seen: list[dict[str, object]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        payload = json.loads(request.content)
+        seen.append(payload)
+        if payload.get("response_format", {}).get("type") == "json_schema":
+            return httpx.Response(400, json={"error": "structured output unsupported"})
+        return httpx.Response(
+            200,
+            json={
+                "model": "Qwen/Qwen3-VL-8B-Instruct",
+                "usage": {"completion_tokens": 8},
+                "choices": [
+                    {
+                        "finish_reason": "stop",
+                        "message": {"content": json.dumps({"normalized": {"ok": True}})},
+                    }
+                ],
+            },
+        )
+
+    client = QwenVLClient(
+        profile=get_model_profile(QWEN_VL_PROFILE),
+        http_client_base_url="http://model-qwen:8100",
+        transport=httpx.MockTransport(handler),
+    )
+
+    response = client.generate(
+        VisionGenerateRequest(
+            profile_name=QWEN_VL_PROFILE,
+            prompt_version="phase8_5-semantic-smart-v2",
+            prompt="Return JSON only",
+            image_inputs=_request().image_inputs,
+            response_schema_name="semantic_annotation_manifest",
+            response_json_schema=semantic_annotation_manifest_schema(),
+            max_output_tokens=4096,
+            temperature=0.0,
+            timeout_seconds=30,
+        )
+    )
+
+    assert len(seen) == 2
+    assert seen[0]["response_format"] != seen[1]["response_format"]
+    assert seen[1]["response_format"] == {"type": "json_object"}
+    assert "structured_outputs" not in seen[1]
+    assert response.normalized_json == {"ok": True}
+    assert response.finish_reason == "stop"
+    assert response.usage_json == {"completion_tokens": 8}
+    assert response.structured_output_used is False
+    assert response.structured_output_fallback_reason == "Model service returned HTTP 400."
 
 
 def test_qwen_client_rejects_truncated_structured_content() -> None:

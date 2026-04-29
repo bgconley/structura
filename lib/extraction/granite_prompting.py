@@ -147,4 +147,11 @@ def _is_table_region(task: SemanticExtractionTask) -> bool:
         "tables_json",
         "tables_html",
         "tables_otsl",
-    } or task.semantic_type in {"invoice_line_item_table", "covered_services_line_item_table"}
+    } or task.semantic_type in {
+        "invoice_line_item_table",
+        "covered_services_line_item_table",
+        "receipt_line_item_table",
+        "retail_order_line_item_table",
+        "service_record_line_item_table",
+        "dispute_transaction_table",
+    }

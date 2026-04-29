@@ -19,22 +19,55 @@ def normalize_granite_region_output(
     document_id: UUID,
     schema_name: str,
     model_output_schema_name: str | None,
-    payload: dict[str, Any],
+    payload: Any,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    model_payload = _unwrapped_payload(payload)
+    model_payload, wrapper_repairs = _unwrapped_payload(payload)
     if model_output_schema_name == "granite_invoice_line_items.v1":
-        return _invoice_line_items_output(document_id, model_payload)
+        normalized, metadata = _invoice_line_items_output(document_id, model_payload)
+        metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
+        return normalized, metadata
     if model_output_schema_name == "granite_payment_summary.v1":
-        return _invoice_payment_output(document_id, model_payload)
+        normalized, metadata = _invoice_payment_output(document_id, model_payload)
+        metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
+        return normalized, metadata
     if model_output_schema_name == "granite_medical_service_lines.v1":
-        return _medical_service_lines_output(document_id, model_payload)
+        normalized, metadata = _medical_service_lines_output(document_id, model_payload)
+        metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
+        return normalized, metadata
+    if model_output_schema_name in {
+        "granite_receipt_line_items.v1",
+        "granite_retail_order.v1",
+    }:
+        normalized, metadata = _receipt_line_items_output(document_id, model_payload)
+        metadata["mapper"] = model_output_schema_name
+        metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
+        return normalized, metadata
+    if model_output_schema_name == "granite_receipt_payment_summary.v1":
+        normalized, metadata = _receipt_payment_output(document_id, model_payload)
+        metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
+        return normalized, metadata
+    if schema_name == "document_observation" or model_output_schema_name in {
+        "granite_real_estate_title_seller_info.v1",
+        "granite_mortgage_escrow_statement.v1",
+        "granite_dispute_form.v1",
+        "granite_generic_kvp.v1",
+    }:
+        normalized, metadata = _document_observation_output(
+            document_id,
+            model_payload,
+            model_output_schema_name=model_output_schema_name,
+        )
+        metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
+        return normalized, metadata
     if schema_name == "invoice" and _has_flat_invoice_line_items(model_payload):
-        return _invoice_line_items_output(document_id, model_payload)
-    return dict(payload), {"mapper": None, "repairs": [], "rejected_fields": []}
+        normalized, metadata = _invoice_line_items_output(document_id, model_payload)
+        metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
+        return normalized, metadata
+    return model_payload, {"mapper": None, "repairs": wrapper_repairs, "rejected_fields": []}
 
 
 def invoice_line_item_dicts_from_payload(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    model_payload = _unwrapped_payload(payload)
+    model_payload, _repairs = _unwrapped_payload(payload)
     records = _invoice_line_item_records(model_payload)
     if records:
         return _canonical_invoice_line_items(records)
@@ -178,6 +211,142 @@ def _medical_service_lines_output(
     )
 
 
+def _receipt_line_items_output(
+    document_id: UUID,
+    payload: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    line_items = _canonical_receipt_line_items(_invoice_line_item_records(payload))
+    if not line_items:
+        line_items = _canonical_receipt_line_items(payload.get("line_items") or [])
+    confidence = payload.get("confidence") if isinstance(payload.get("confidence"), dict) else {}
+    transaction: dict[str, Any] = {}
+    raw_totals = payload.get("totals")
+    totals: dict[str, Any] = raw_totals if isinstance(raw_totals, dict) else {}
+    for source_key, target_key in (
+        ("subtotal", "subtotal"),
+        ("tax", "tax"),
+        ("tax_total", "tax"),
+        ("total", "total"),
+    ):
+        amount = _money(totals.get(source_key) or payload.get(source_key))
+        if amount:
+            transaction[target_key] = amount
+    normalized: dict[str, Any] = {
+        "schema_name": "receipt",
+        "schema_version": "v1",
+        "document_id": str(document_id),
+        "merchant": _receipt_merchant(payload),
+        "transaction": transaction,
+        "line_items": line_items,
+        "confidence": confidence,
+        "created_at": datetime.now(UTC).isoformat(),
+    }
+    return normalized, {
+        "mapper": "granite_receipt_line_items.v1",
+        "repairs": ["mapped_model_output_to_canonical_receipt_line_items"],
+        "rejected_fields": _rejected_fields(
+            payload,
+            {"line_items", "totals", "confidence", "merchant_name", "order_number", "order_date"},
+        ),
+    }
+
+
+def _receipt_payment_output(
+    document_id: UUID,
+    payload: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    confidence = payload.get("confidence") if isinstance(payload.get("confidence"), dict) else {}
+    transaction: dict[str, Any] = {}
+    for source_key, target_key in (
+        ("transaction_date", "date_local"),
+        ("subtotal", "subtotal"),
+        ("tax", "tax"),
+        ("tip", "tip"),
+        ("total", "total"),
+    ):
+        value = payload.get(source_key)
+        if target_key in {"subtotal", "tax", "tip", "total"}:
+            amount = _money(value)
+            if amount:
+                transaction[target_key] = amount
+        elif value not in (None, ""):
+            transaction[target_key] = str(value)
+    normalized: dict[str, Any] = {
+        "schema_name": "receipt",
+        "schema_version": "v1",
+        "document_id": str(document_id),
+        "merchant": _receipt_merchant(payload),
+        "transaction": transaction,
+        "line_items": [],
+        "confidence": confidence,
+        "created_at": datetime.now(UTC).isoformat(),
+    }
+    if payload.get("payment_method"):
+        normalized["metadata"] = {"payment_method": str(payload["payment_method"])}
+    return normalized, {
+        "mapper": "granite_receipt_payment_summary.v1",
+        "repairs": ["mapped_model_output_to_canonical_receipt_payment_summary"],
+        "rejected_fields": _rejected_fields(
+            payload,
+            {
+                "merchant_name",
+                "transaction_date",
+                "subtotal",
+                "tax",
+                "tip",
+                "total",
+                "payment_method",
+                "confidence",
+            },
+        ),
+    }
+
+
+def _document_observation_output(
+    document_id: UUID,
+    payload: dict[str, Any],
+    *,
+    model_output_schema_name: str | None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    repairs: list[str] = []
+    observations: list[dict[str, Any]] = []
+    if _looks_like_schema_echo(payload):
+        repairs.append("schema_echo_rejected")
+    else:
+        observations = _observations_from_model_payload(payload, model_output_schema_name)
+        if "fields" in payload:
+            repairs.append("mapped_fields_array_to_observations")
+        else:
+            repairs.append("mapped_flat_fields_to_observations")
+    confidence = payload.get("confidence") if isinstance(payload.get("confidence"), dict) else {}
+    return (
+        {
+            "schema_name": "document_observation",
+            "schema_version": "v1",
+            "document_id": str(document_id),
+            "observations": observations,
+            "confidence": confidence,
+            "created_at": datetime.now(UTC).isoformat(),
+            "metadata": {"model_output_schema_name": model_output_schema_name},
+        },
+        {
+            "mapper": model_output_schema_name or "granite_generic_kvp.v1",
+            "repairs": repairs,
+            "rejected_fields": _rejected_fields(
+                payload,
+                {"fields", "confidence", *{item["field_name"] for item in observations}},
+            ),
+        },
+    )
+
+
+def observation_dicts_from_payload(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    observations = payload.get("observations")
+    if not isinstance(observations, list):
+        return []
+    return [dict(item) for item in observations if isinstance(item, dict)]
+
+
 def _canonical_invoice_line_items(items: list[Any]) -> list[dict[str, Any]]:
     normalized: list[dict[str, Any]] = []
     for item in items:
@@ -203,6 +372,30 @@ def _canonical_invoice_line_items(items: list[Any]) -> list[dict[str, Any]]:
                 if (item.get("gl_hint") or item.get("category_hint"))
                 else {}
             ),
+            "evidence": [_evidence(_line_item_source_text(item, description))],
+        }
+        normalized.append(normalized_item)
+    return normalized
+
+
+def _canonical_receipt_line_items(items: Any) -> list[dict[str, Any]]:
+    if not isinstance(items, list):
+        return []
+    normalized: list[dict[str, Any]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        description = _line_item_description(item)
+        if not description:
+            continue
+        amount = _line_item_amount(item)
+        normalized_item = {
+            "ordinal": int(item.get("ordinal") or len(normalized) + 1),
+            "description": description,
+            **({"quantity": _number(item.get("quantity"))} if item.get("quantity") else {}),
+            **({"unit_price": _money(item.get("unit_price"))} if item.get("unit_price") else {}),
+            **({"amount": amount} if amount else {}),
+            **({"sku": item.get("sku")} if item.get("sku") else {}),
             "evidence": [_evidence(_line_item_source_text(item, description))],
         }
         normalized.append(normalized_item)
@@ -276,6 +469,15 @@ def _invoice_line_item_records(payload: dict[str, Any]) -> list[Any]:
     return []
 
 
+def _receipt_merchant(payload: dict[str, Any]) -> dict[str, Any]:
+    merchant_name = payload.get("merchant_name") or payload.get("merchant")
+    if isinstance(merchant_name, dict):
+        return merchant_name
+    if merchant_name:
+        return {"display_name": str(merchant_name), "evidence": [_evidence(merchant_name)]}
+    return {}
+
+
 def _line_item_description(item: dict[str, Any]) -> str | None:
     for key in ("description", "service_description", "service_type", "line_description"):
         value = item.get(key)
@@ -335,11 +537,139 @@ def _has_flat_invoice_line_items(payload: dict[str, Any]) -> bool:
     )
 
 
-def _unwrapped_payload(payload: dict[str, Any]) -> dict[str, Any]:
+def _looks_like_schema_echo(payload: dict[str, Any]) -> bool:
+    if "$schema" in payload or "$defs" in payload:
+        return True
+    if "properties" in payload and ("type" in payload or "required" in payload):
+        schema_keys = {
+            "$schema",
+            "$defs",
+            "type",
+            "properties",
+            "required",
+            "additionalProperties",
+            "title",
+            "description",
+            "items",
+        }
+        return set(payload).issubset(schema_keys)
+    return False
+
+
+def _observations_from_model_payload(
+    payload: dict[str, Any],
+    model_output_schema_name: str | None,
+) -> list[dict[str, Any]]:
+    observations: list[dict[str, Any]] = []
+    fields = payload.get("fields")
+    if isinstance(fields, list):
+        for item in fields:
+            if not isinstance(item, dict):
+                continue
+            name = item.get("name")
+            if not name:
+                continue
+            value = item.get("value")
+            observations.append(
+                _observation(
+                    field_name=str(name),
+                    value=value,
+                    family=model_output_schema_name,
+                    confidence=_number(item.get("confidence")),
+                    source_text=item.get("source_text"),
+                )
+            )
+        return observations
+    for key, value in payload.items():
+        if key == "confidence" or value in (None, ""):
+            continue
+        observations.append(
+            _observation(
+                field_name=str(key),
+                value=value,
+                family=model_output_schema_name,
+                confidence=None,
+                source_text=value,
+            )
+        )
+    return observations
+
+
+def _observation(
+    *,
+    field_name: str,
+    value: Any,
+    family: str | None,
+    confidence: float | None,
+    source_text: object,
+) -> dict[str, Any]:
+    bounded_source_text = _bounded_text(source_text, max_length=500)
+    return {
+        "family": family,
+        "field_name": field_name,
+        "value": value,
+        "value_type": _value_type(value),
+        "source_text": bounded_source_text,
+        "confidence": confidence,
+        "evidence": [_evidence(bounded_source_text if bounded_source_text else field_name)],
+    }
+
+
+def _value_type(value: Any) -> str:
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, int | float):
+        return "number"
+    if isinstance(value, dict | list):
+        return "json"
+    return "string"
+
+
+def _unwrapped_payload(payload: Any) -> tuple[dict[str, Any], list[str]]:
+    repairs: list[str] = []
+    if not isinstance(payload, dict):
+        repairs.append(f"coerced_{type(payload).__name__}_payload_to_observation_shell")
+        if isinstance(payload, list):
+            fields = [
+                {"name": f"item_{index + 1}", "value": item} for index, item in enumerate(payload)
+            ]
+            return {"fields": fields}, repairs
+        if payload is None:
+            return {}, repairs
+        return {"fields": [{"name": "raw_text", "value": str(payload)}]}, repairs
     normalized = payload.get("normalized")
     if isinstance(normalized, dict):
-        return normalized
-    return payload
+        repairs.append("unwrapped_normalized_payload")
+        return _merged_wrapper_payload(payload, normalized, wrapper_key="normalized"), repairs
+    data = payload.get("data")
+    if isinstance(data, dict):
+        repairs.append("unwrapped_data_payload")
+        return _merged_wrapper_payload(payload, data, wrapper_key="data"), repairs
+    return payload, repairs
+
+
+def _merged_wrapper_payload(
+    payload: dict[str, Any],
+    wrapped: dict[str, Any],
+    *,
+    wrapper_key: str,
+) -> dict[str, Any]:
+    merged = {key: value for key, value in payload.items() if key != wrapper_key}
+    merged.update(wrapped)
+    return merged
+
+
+def _bounded_text(value: object, *, max_length: int) -> str | None:
+    if value in (None, ""):
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    if len(text) <= max_length:
+        return text
+    return text[:max_length]
 
 
 def _money(value: Any) -> dict[str, Any] | None:

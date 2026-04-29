@@ -205,6 +205,64 @@ def test_granite_gateway_routes_payment_summary_to_kvp_schema_prompt() -> None:
     assert "payments" in client.request.response_json_schema["properties"]
 
 
+def test_granite_gateway_routes_retail_order_tables_to_receipt_line_schema() -> None:
+    client = FakeVisionClient(
+        source_engine="granite_vision_3b",
+        profile_name=GRANITE_VISION_PROFILE,
+    )
+    source = _source_with_page_image()
+    task = SemanticExtractionTask(
+        region_id=uuid4(),
+        annotation_id=uuid4(),
+        document_id=source.document_id,
+        semantic_type="retail_order_line_item_table",
+        granite_task="tables_json",
+        target_schema="receipt",
+        expected_fields=("description", "quantity", "amount"),
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+    )
+
+    GraniteVisionExtractionGateway(client=client).extract(
+        source,
+        schema_name="receipt",
+        route_profile="docling_plus_granite_structured",
+        semantic_task=task,
+    )
+
+    assert client.request is not None
+    assert "<tables_json>" in client.request.prompt
+    assert client.request.response_schema_name == "granite_receipt_line_items.v1"
+
+
+def test_granite_gateway_routes_title_seller_info_to_observation_schema() -> None:
+    client = FakeVisionClient(
+        source_engine="granite_vision_3b",
+        profile_name=GRANITE_VISION_PROFILE,
+    )
+    source = _source_with_page_image()
+    task = SemanticExtractionTask(
+        region_id=uuid4(),
+        annotation_id=uuid4(),
+        document_id=source.document_id,
+        semantic_type="seller_information_block",
+        granite_task="kvp",
+        target_schema="document_observation",
+        expected_fields=("seller_name", "property_address"),
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+    )
+
+    GraniteVisionExtractionGateway(client=client).extract(
+        source,
+        schema_name="document_observation",
+        route_profile="docling_plus_granite_structured",
+        semantic_task=task,
+    )
+
+    assert client.request is not None
+    assert client.request.response_schema_name == "granite_real_estate_title_seller_info.v1"
+    assert "seller_name" in client.request.prompt
+
+
 def test_granite_gateway_uses_larger_output_budget_for_live_structured_json() -> None:
     client = FakeVisionClient(
         source_engine="granite_vision_3b",

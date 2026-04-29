@@ -32,13 +32,36 @@ class OpenAIVisionGenerateClient:
             raise ModelProtocolError("Vision request profile does not match client profile.")
         start = time.monotonic()
         input_hashes = _validated_input_hashes(request)
-        payload = _openai_payload(request=request, profile=self.profile)
-        response = self._http.post_json(
-            "/v1/chat/completions",
-            payload,
-            timeout_seconds=request.timeout_seconds,
+        structured_output_requested = request.response_json_schema is not None
+        structured_output_used = structured_output_requested
+        fallback_reason: str | None = None
+        payload = _openai_payload(
+            request=request,
+            profile=self.profile,
+            use_structured_output=structured_output_requested,
         )
-        raw_text = _raw_message_content(response)
+        try:
+            response = self._http.post_json(
+                "/v1/chat/completions",
+                payload,
+                timeout_seconds=request.timeout_seconds,
+            )
+        except ModelProtocolError as exc:
+            if not structured_output_requested or not request.allow_structured_output_fallback:
+                raise
+            fallback_reason = str(exc)
+            structured_output_used = False
+            payload = _openai_payload(
+                request=request,
+                profile=self.profile,
+                use_structured_output=False,
+            )
+            response = self._http.post_json(
+                "/v1/chat/completions",
+                payload,
+                timeout_seconds=request.timeout_seconds,
+            )
+        raw_text, finish_reason = _raw_message_content(response)
         normalized, confidence = _structured_content(raw_text)
         return VisionGenerateResponse(
             profile_name=self.profile.name,
@@ -53,6 +76,10 @@ class OpenAIVisionGenerateClient:
             confidence_json=confidence,
             input_sha256=input_hashes,
             latency_ms=max(0, int((time.monotonic() - start) * 1000)),
+            finish_reason=finish_reason,
+            usage_json=_usage_json(response),
+            structured_output_used=structured_output_used,
+            structured_output_fallback_reason=fallback_reason,
         )
 
 
@@ -70,7 +97,12 @@ def _validated_input_hashes(request: VisionGenerateRequest) -> tuple[str, ...]:
     return tuple(hashes)
 
 
-def _openai_payload(*, request: VisionGenerateRequest, profile: ModelProfile) -> dict[str, Any]:
+def _openai_payload(
+    *,
+    request: VisionGenerateRequest,
+    profile: ModelProfile,
+    use_structured_output: bool,
+) -> dict[str, Any]:
     content: list[dict[str, object]] = [{"type": "text", "text": request.prompt}]
     for image in request.image_inputs:
         if not image.mime_type.startswith("image/"):
@@ -93,7 +125,7 @@ def _openai_payload(*, request: VisionGenerateRequest, profile: ModelProfile) ->
             "response_schema_name": request.response_schema_name,
         },
     }
-    if request.response_json_schema is not None:
+    if use_structured_output and request.response_json_schema is not None:
         schema_name = request.response_schema_name or "structured_response"
         payload["response_format"] = {
             "type": "json_schema",
@@ -109,22 +141,28 @@ def _openai_payload(*, request: VisionGenerateRequest, profile: ModelProfile) ->
     return payload
 
 
-def _raw_message_content(response: dict[str, Any]) -> str:
+def _raw_message_content(response: dict[str, Any]) -> tuple[str, str | None]:
     choices = response.get("choices")
     if not isinstance(choices, list) or not choices:
         raise ModelProtocolError("Vision model response is missing choices.")
     first = choices[0]
     if not isinstance(first, dict):
         raise ModelProtocolError("Vision model response choice must be an object.")
-    if first.get("finish_reason") == "length":
+    finish_reason = first.get("finish_reason")
+    if finish_reason == "length":
         raise ModelProtocolError("Vision model response was truncated before valid JSON completed.")
     message = first.get("message")
     if not isinstance(message, dict):
         raise ModelProtocolError("Vision model response choice is missing message.")
     content = message.get("content")
     if isinstance(content, str) and content.strip():
-        return content
+        return content, str(finish_reason) if finish_reason else None
     raise ModelProtocolError("Vision model response message content is empty.")
+
+
+def _usage_json(response: dict[str, Any]) -> dict[str, object]:
+    usage = response.get("usage")
+    return dict(usage) if isinstance(usage, dict) else {}
 
 
 def _structured_content(raw_text: str) -> tuple[dict[str, object], dict[str, object]]:

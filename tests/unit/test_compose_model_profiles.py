@@ -38,7 +38,8 @@ def test_model_profiles_are_safe_and_gpu_placed() -> None:
         assert environment["STRUCTURA_CUDA_VISIBLE_DEVICES"] == "0"
         assert any("/srv/structura/models" in volume for volume in service.get("volumes", []))
 
-    assert services["model-qwen"]["profiles"] == ["models-live", "qwen-hq-live"]
+    assert "models-live" not in services["model-qwen"]["profiles"]
+    assert services["model-qwen"]["profiles"] == ["qwen-hq-disabled"]
     assert services["model-embed"]["profiles"] == ["text-embed-live"]
     assert services["model-vl-embed"]["profiles"] == ["models-live", "visual-embed-live"]
     semantic_worker = services["worker-semantic-annotations"]
@@ -47,6 +48,7 @@ def test_model_profiles_are_safe_and_gpu_placed() -> None:
     assert semantic_worker["environment"]["STRUCTURA_MODEL_QWEN_HQ_URL"] == (
         "http://model-qwen:8100"
     )
+    assert semantic_worker["environment"]["STRUCTURA_QWEN8_ENABLED"] == "false"
     assert semantic_worker["environment"]["STRUCTURA_MODEL_QWEN_SEMANTIC_URL"] == (
         "http://model-qwen-semantic:8104"
     )
@@ -66,10 +68,20 @@ def test_live_model_profiles_have_concrete_blackwell_commands() -> None:
     qwen_semantic = services["model-qwen-semantic"]
     assert "voipmonitor/vllm:cu130" in qwen_semantic["image"]
     assert "start_qwen_vllm.sh" in " ".join(qwen_semantic["command"])
-    assert qwen_semantic["environment"]["STRUCTURA_VLLM_MODEL_ID"] == ("Qwen/Qwen3-VL-2B-Instruct")
+    assert qwen_semantic["environment"]["STRUCTURA_MODEL_PROFILE"] == (
+        "${STRUCTURA_QWEN_SEMANTIC_PROFILE:-qwen3-vl-4b-semantic:v1}"
+    )
+    assert qwen_semantic["environment"]["STRUCTURA_VLLM_MODEL_ID"] == ("Qwen/Qwen3-VL-4B-Instruct")
+    assert qwen_semantic["environment"]["STRUCTURA_VLLM_SERVED_MODEL_NAME"] == (
+        "Qwen/Qwen3-VL-4B-Instruct"
+    )
     assert qwen_semantic["environment"]["STRUCTURA_VLLM_PORT"] == "8104"
     assert qwen_semantic["environment"]["STRUCTURA_VLLM_MAX_MODEL_LEN"] == "16384"
-    assert qwen_semantic["environment"]["STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION"] == "0.50"
+    assert qwen_semantic["environment"]["STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION"] == "0.76"
+    assert qwen_semantic["environment"]["STRUCTURA_VLLM_MAX_NUM_SEQS"] == "2"
+    assert qwen_semantic["environment"]["STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT"] == (
+        '{"image":2,"video":0}'
+    )
 
     qwen_hq = services["model-qwen"]
     assert "voipmonitor/vllm:cu130" in qwen_hq["image"]
@@ -115,7 +127,8 @@ def test_phase8_5_smoke_supports_managed_model_validation() -> None:
     assert "BLACKWELL_CORE_SERVICES" in smoke
     assert "BLACKWELL_BASE_SERVICES" in smoke
     assert "BLACKWELL_COMPANION_SERVICES" in smoke
-    assert "model-qwen" in smoke
+    assert 'probe_health "model-qwen"' not in smoke
+    assert "BLACKWELL_HQ_SERVICES" not in smoke
     assert "model-vl-embed" in smoke
     assert "probe_text_embedding" in smoke
     assert "--skip-qwen" in smoke

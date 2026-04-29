@@ -23,7 +23,10 @@ def enqueue_semantic_annotation_job(
     source_semantic_region_id: UUID | None = None,
     rescue_failure_class: str | None = None,
     dedupe_existing: bool = False,
+    qwen8_enabled: bool = False,
 ) -> UUID:
+    if quality_mode in {"high_quality", "rescue"} and not qwen8_enabled:
+        raise ValueError("Qwen3-VL 8B high-quality/rescue mode is disabled.")
     if quality_mode == "high_quality" and requested_by == "system":
         raise ValueError("Qwen3-VL 8B high-quality pass requires explicit user or agent intent.")
     if quality_mode == "rescue" and requested_by == "system":

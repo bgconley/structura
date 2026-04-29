@@ -61,7 +61,8 @@
         "document_classification",
         "receipt",
         "invoice",
-        "medical_eob"
+        "medical_eob",
+        "document_observation"
       ]
     },
     "target_schema_version": {

@@ -7,7 +7,7 @@ from lib.extraction.heuristics import classify_text_signals
 from lib.extraction.models import ClassificationDecision, ExtractionSourceDocument
 from lib.extraction.schema_registry import ExtractionSchemaRegistry
 
-TARGET_EXTRACTION_SCHEMAS = {"receipt", "invoice", "medical_eob"}
+TARGET_EXTRACTION_SCHEMAS = {"receipt", "invoice", "medical_eob", "document_observation"}
 
 
 def classify_document(

@@ -75,6 +75,8 @@ def maybe_reconcile_semantic_annotation(
         regions=regions,
         document_fallback=document_fallback,
     )
+    if aggregate_json is None:
+        return None
     validation = validate_extraction_payload(schema_name, aggregate_json)
     validation = _force_aggregate_review(validation)
     aggregate_json["validation"] = validation.as_json()

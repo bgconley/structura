@@ -7,7 +7,19 @@ import pytest
 from lib.semantic_annotations import jobs as semantic_jobs
 
 
-def test_semantic_annotation_enqueue_can_dedupe_existing_queued_high_quality_job(
+def test_semantic_annotation_enqueue_rejects_high_quality_when_qwen8_disabled() -> None:
+    with pytest.raises(ValueError, match="disabled"):
+        semantic_jobs.enqueue_semantic_annotation_job(
+            NoExistingJobCursor(),
+            document_id=uuid4(),
+            household_id=uuid4(),
+            quality_mode="high_quality",
+            semantic_quality_mode="high_quality",
+            requested_by="user",
+        )
+
+
+def test_semantic_annotation_enqueue_can_dedupe_existing_queued_high_quality_job_when_enabled(
     monkeypatch,
 ) -> None:
     document_id = uuid4()
@@ -26,11 +38,27 @@ def test_semantic_annotation_enqueue_can_dedupe_existing_queued_high_quality_job
         household_id=household_id,
         quality_mode="high_quality",
         requested_by="user",
+        qwen8_enabled=True,
         dedupe_existing=True,
     )
 
     assert returned == existing_job_id
     assert any("status IN ('queued', 'running')" in query for query in cur.queries)
+
+
+def test_rescue_semantic_enqueue_rejects_when_qwen8_disabled() -> None:
+    with pytest.raises(ValueError, match="disabled"):
+        semantic_jobs.enqueue_semantic_annotation_job(
+            NoExistingJobCursor(),
+            document_id=uuid4(),
+            household_id=uuid4(),
+            quality_mode="rescue",
+            semantic_quality_mode="smart",
+            allow_8b_rescue=True,
+            requested_by="user",
+            source_semantic_region_id=uuid4(),
+            rescue_failure_class="missing_required_field",
+        )
 
 
 def test_rescue_semantic_enqueue_requires_persisted_user_permission() -> None:
@@ -45,6 +73,7 @@ def test_rescue_semantic_enqueue_requires_persisted_user_permission() -> None:
             requested_by="user",
             source_semantic_region_id=uuid4(),
             rescue_failure_class="missing_required_field",
+            qwen8_enabled=True,
         )
 
 
@@ -57,6 +86,7 @@ def test_high_quality_semantic_enqueue_requires_explicit_user_or_agent_intent() 
             quality_mode="high_quality",
             semantic_quality_mode="high_quality",
             requested_by="system",
+            qwen8_enabled=True,
         )
 
 
@@ -84,6 +114,7 @@ def test_rescue_semantic_enqueue_dedupes_region_failure_class(monkeypatch) -> No
         requested_by="user",
         requested_by_user_id=uuid4(),
         user_intent_reason="User allowed one rescue.",
+        qwen8_enabled=True,
         dedupe_existing=True,
     )
 

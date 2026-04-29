@@ -26,7 +26,7 @@ def reconcile_invoice_region_extractions(
     created_at: datetime,
     regions: list[RegionExtraction],
     document_fallback: dict[str, Any] | None = None,
-) -> dict[str, Any]:
+) -> dict[str, Any] | None:
     line_items: list[dict[str, Any]] = []
     invoice: dict[str, Any] = {}
     totals: dict[str, Any] = {}
@@ -64,6 +64,8 @@ def reconcile_invoice_region_extractions(
         _merge_money_fields(totals, payload.get("totals"))
 
     _merge_document_fallback(invoice, totals, document_fallback or {})
+    if not line_items and not invoice and not totals:
+        return None
     if not invoice.get("invoice_number"):
         invoice["invoice_number"] = "unknown"
     if "total" not in totals and "amount_paid" in totals:

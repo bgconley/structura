@@ -12,6 +12,7 @@ EXTRACTION_SCHEMA_FILES = {
     "receipt": "receipt.v1.schema.json",
     "invoice": "invoice.v1.schema.json",
     "medical_eob": "medical_eob.v1.schema.json",
+    "document_observation": "document_observation.v1.schema.json",
 }
 
 

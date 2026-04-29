@@ -72,6 +72,12 @@ def test_private_corpus_high_quality_flag_is_explicit(
 
     assert args.high_quality is True
     assert args.allow_8b_rescue is False
+    try:
+        runner._reject_disabled_qwen8_modes(args)
+    except SystemExit as exc:
+        assert "disabled" in str(exc)
+    else:
+        raise AssertionError("--high-quality must be rejected while Qwen8 is disabled")
 
 
 def test_private_corpus_allow_8b_rescue_is_separate_from_hq(
@@ -92,6 +98,40 @@ def test_private_corpus_allow_8b_rescue_is_separate_from_hq(
     assert args.high_quality is False
     assert args.allow_8b_rescue is True
     assert args.rescue_stress is False
+    try:
+        runner._reject_disabled_qwen8_modes(args)
+    except SystemExit as exc:
+        assert "disabled" in str(exc)
+    else:
+        raise AssertionError("--allow-8b-rescue must be rejected while Qwen8 is disabled")
+
+
+def test_private_corpus_manifest_argument_is_supported_without_committing_private_paths(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    runner = _load_private_corpus_runner()
+    pdf_path = tmp_path / "sample.pdf"
+    pdf_path.write_bytes(b"%PDF-1.7\n")
+    manifest_path = tmp_path / "phase8_5_canary_manifest.local.json"
+    manifest_path.write_text(
+        '{"documents":[{"path":"' + str(pdf_path) + '","expected_family":"receipt"}]}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run_phase8_5_private_corpus.py",
+            "--manifest",
+            str(manifest_path),
+        ],
+    )
+
+    args = runner._parse_args()
+
+    assert args.manifest == manifest_path
+    assert args.pdf == [pdf_path]
 
 
 def test_private_corpus_summary_does_not_select_removed_document_parse_status() -> None:

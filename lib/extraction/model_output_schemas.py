@@ -24,6 +24,19 @@ def model_output_schema_for_task(
 ) -> ModelOutputSchema | None:
     if semantic_task is None:
         return None
+    semantic_type = semantic_task.semantic_type
+    if semantic_type in {"receipt_line_item_table", "retail_order_line_item_table"}:
+        return load_model_output_schema("granite_receipt_line_items.v1")
+    if semantic_type in {"receipt_payment_summary"}:
+        return load_model_output_schema("granite_receipt_payment_summary.v1")
+    if semantic_type == "seller_information_block":
+        return load_model_output_schema("granite_real_estate_title_seller_info.v1")
+    if semantic_type in {"escrow_summary", "mortgage_payment_summary"}:
+        return load_model_output_schema("granite_mortgage_escrow_statement.v1")
+    if semantic_type in {"dispute_transaction_table", "dispute_reason_block"}:
+        return load_model_output_schema("granite_dispute_form.v1")
+    if semantic_type in {"generic_form_kvp", "unsupported_document_region"}:
+        return load_model_output_schema("granite_generic_kvp.v1")
     if schema_name == "invoice" and semantic_task.semantic_type == "invoice_line_item_table":
         return load_model_output_schema("granite_invoice_line_items.v1")
     if (

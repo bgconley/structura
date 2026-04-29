@@ -51,19 +51,19 @@ def test_fixture_gateway_has_explicit_fixture_provenance() -> None:
     assert result.manifest.regions[0].granite_task == "kvp"
 
 
-def test_live_qwen_smart_gateway_builds_truthful_qwen2b_manifest() -> None:
+def test_live_qwen_smart_gateway_builds_truthful_qwen4_manifest() -> None:
     source = _source_with_page_image()
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_2b",
+        source_engine="qwen3_vl_4b",
         normalized_json=_semantic_payload(source.pages[0].page_id),
     )
 
     result = QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
 
-    assert result.manifest.source_engine == "qwen3_vl_2b"
+    assert result.manifest.source_engine == "qwen3_vl_4b"
     assert result.manifest.profile_name == QWEN_SEMANTIC_PROFILE
-    assert result.manifest.prompt_version == "phase8_5-semantic-smart-v1"
+    assert result.manifest.prompt_version == "phase8_5-semantic-smart-v2"
     assert client.request is not None
     assert "Docling context" in client.request.prompt
     assert client.request.image_inputs[0].content == b"page-image"
@@ -77,7 +77,7 @@ def test_live_qwen_gateway_prompt_keeps_semantic_planning_but_not_tiny_region_li
     source = _source_with_page_image()
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_2b",
+        source_engine="qwen3_vl_4b",
         normalized_json=_semantic_payload(source.pages[0].page_id),
     )
 
@@ -91,6 +91,8 @@ def test_live_qwen_gateway_prompt_keeps_semantic_planning_but_not_tiny_region_li
     assert "expected_fields must contain field names only" in prompt
     assert "Return no more than 6 regions total" in prompt
     assert "do not enumerate every visible field" in prompt
+    assert "generic observations" in prompt
+    assert "do not force unfamiliar documents into invoice, receipt, or medical EOB" in prompt
     assert "compact semantic scout JSON" in prompt
     assert "canonical semantic manifest" not in prompt
     assert "at most two regions total" not in prompt
@@ -101,7 +103,7 @@ def test_live_qwen_smart_gateway_uses_compact_output_budget_for_16k_service() ->
     source = _source_with_page_image()
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_2b",
+        source_engine="qwen3_vl_4b",
         normalized_json=_semantic_payload(source.pages[0].page_id),
     )
 
@@ -382,7 +384,7 @@ def test_live_qwen_high_quality_gateway_merges_duplicate_page_annotations() -> N
     }
 
 
-def test_live_qwen_smart_gateway_chunks_pages_for_one_image_semantic_service() -> None:
+def test_live_qwen_smart_gateway_uses_two_image_qwen4_semantic_service() -> None:
     source = _source_with_two_page_images()
     page_by_hash = {page.image_sha256: page.page_id for page in source.pages if page.image_sha256}
 
@@ -394,18 +396,17 @@ def test_live_qwen_smart_gateway_chunks_pages_for_one_image_semantic_service() -
 
         def generate(self, request: VisionGenerateRequest) -> VisionGenerateResponse:
             self.requests.append(request)
-            image_hash = request.image_inputs[0].validated_sha256()
-            page_id = page_by_hash[image_hash]
+            page_ids = [page_by_hash[image.validated_sha256()] for image in request.image_inputs]
             return VisionGenerateResponse(
                 profile_name=QWEN_SEMANTIC_PROFILE,
                 model_name="fake-qwen",
                 model_version="test",
-                source_engine="qwen3_vl_2b",
+                source_engine="qwen3_vl_4b",
                 prompt_version=request.prompt_version,
                 raw_text="{}",
-                normalized_json=_semantic_payload(page_id),
+                normalized_json=_semantic_payload_for_pages(page_ids),
                 confidence_json={"overall": 0.8},
-                input_sha256=(image_hash,),
+                input_sha256=tuple(image.validated_sha256() for image in request.image_inputs),
                 latency_ms=1,
             )
 
@@ -416,11 +417,10 @@ def test_live_qwen_smart_gateway_chunks_pages_for_one_image_semantic_service() -
         quality_mode="smart",
     )
 
-    assert len(client.requests) == 2
-    assert [len(request.image_inputs) for request in client.requests] == [1, 1]
+    assert len(client.requests) == 1
+    assert [len(request.image_inputs) for request in client.requests] == [2]
     assert len(result.manifest.pages) == 2
     assert len(result.manifest.regions) == 2
-    assert result.manifest.confidence["chunk_count"] == 2
 
 
 def test_live_qwen_high_quality_gateway_chunks_pages_for_one_image_hq_service() -> None:
@@ -468,7 +468,7 @@ def test_live_qwen_gateway_rejects_malformed_model_output() -> None:
     source = _source_with_page_image()
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_2b",
+        source_engine="qwen3_vl_4b",
         normalized_json={"pages": [], "regions": [{"semantic_type": "not_allowed"}]},
     )
 
@@ -486,7 +486,7 @@ def test_live_qwen_gateway_rejects_schema_invalid_value_bearing_output() -> None
     region["value"] = "$42.00"
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_2b",
+        source_engine="qwen3_vl_4b",
         normalized_json=payload,
     )
 
@@ -504,7 +504,7 @@ def test_live_qwen_gateway_drops_invalid_expected_field_names_from_model_output(
     region["expected_fields"] = ["total_amount", "page_rolе"]
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_2b",
+        source_engine="qwen3_vl_4b",
         normalized_json=payload,
     )
 
@@ -555,7 +555,7 @@ def test_live_qwen_gateway_realigns_wrong_target_schema_to_source_family() -> No
     region["target_schema"] = "medical_eob"
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_2b",
+        source_engine="qwen3_vl_4b",
         normalized_json=payload,
     )
 
@@ -580,7 +580,7 @@ def test_live_qwen_gateway_uses_document_type_hint_before_unclassified_family() 
     region["target_schema"] = "medical_eob"
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_2b",
+        source_engine="qwen3_vl_4b",
         normalized_json=payload,
     )
 
@@ -607,7 +607,7 @@ def test_live_qwen_gateway_marks_unknown_docling_grounding_review_required() -> 
     }
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_2b",
+        source_engine="qwen3_vl_4b",
         normalized_json=payload,
     )
 
@@ -635,7 +635,7 @@ def test_live_qwen_gateway_marks_malformed_grounding_uuid_review_required() -> N
     }
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_2b",
+        source_engine="qwen3_vl_4b",
         normalized_json=payload,
     )
 
@@ -663,7 +663,7 @@ def test_live_qwen_gateway_clears_extraneous_grounding_ids() -> None:
     }
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_2b",
+        source_engine="qwen3_vl_4b",
         normalized_json=payload,
     )
 
@@ -684,7 +684,7 @@ def test_live_qwen_gateway_deduplicates_duplicate_model_regions() -> None:
     regions.append(dict(regions[0]))
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_2b",
+        source_engine="qwen3_vl_4b",
         normalized_json=payload,
     )
 
@@ -707,7 +707,7 @@ def test_live_qwen_smart_gateway_collapses_duplicate_canonical_page_annotations_
     pages.append(dict(pages[0]))
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_2b",
+        source_engine="qwen3_vl_4b",
         normalized_json=payload,
     )
 
@@ -743,7 +743,7 @@ def test_live_qwen_gateway_retries_once_after_truncated_model_output() -> None:
                 profile_name=QWEN_SEMANTIC_PROFILE,
                 model_name="fake-qwen",
                 model_version="test",
-                source_engine="qwen3_vl_2b",
+                source_engine="qwen3_vl_4b",
                 prompt_version=request.prompt_version,
                 raw_text="{}",
                 normalized_json=_semantic_payload(source.pages[0].page_id),
@@ -778,20 +778,46 @@ def test_qwen_semantic_client_uses_distinct_smart_and_high_quality_urls(
     qwen_gateway.QwenSemanticVisionClient.from_settings(settings)
 
     assert captured == [
-        ("qwen3-vl-2b-semantic:v1", "http://model-qwen-semantic:8104"),
+        ("qwen3-vl-4b-semantic:v1", "http://model-qwen-semantic:8104"),
+    ]
+
+
+def test_qwen_semantic_client_can_create_deferred_high_quality_client_when_enabled(
+    monkeypatch,
+) -> None:
+    captured: list[tuple[str, str]] = []
+
+    class RecordingClient:
+        def __init__(self, *, profile: Any, http_client_base_url: str) -> None:
+            captured.append((profile.name, http_client_base_url))
+
+    monkeypatch.setattr(qwen_gateway, "QwenVLClient", RecordingClient)
+    settings = qwen_gateway.Settings(
+        model_qwen_semantic_url="http://model-qwen-semantic:8104",
+        model_qwen_hq_url="http://model-qwen:8100",
+        qwen8_enabled=True,
+    )
+
+    qwen_gateway.QwenSemanticVisionClient.from_settings(settings)
+
+    assert captured == [
+        ("qwen3-vl-4b-semantic:v1", "http://model-qwen-semantic:8104"),
         ("qwen3-vl-8b-semantic-hq:v1", "http://model-qwen:8100"),
     ]
 
 
 def _semantic_payload(page_id) -> dict[str, object]:
-    return {
-        "schema_name": "semantic_annotation_model_output",
-        "schema_version": "v1",
-        "document_type": "invoice",
-        "pages": [
+    return _semantic_payload_for_pages([page_id])
+
+
+def _semantic_payload_for_pages(page_ids) -> dict[str, object]:
+    pages = []
+    regions = []
+    for index, page_id in enumerate(page_ids, start=1):
+        pages.append(
             {
                 "page_id": str(page_id),
-                "page_number": 1,
+                "page_number": index,
                 "page_role": "payment_summary",
                 "document_type_hint": "invoice",
                 "extraction_usefulness": "high",
@@ -803,8 +829,8 @@ def _semantic_payload(page_id) -> dict[str, object]:
                 "reason": "Invoice summary and totals are visible.",
                 "confidence": 0.91,
             }
-        ],
-        "regions": [
+        )
+        regions.append(
             {
                 "semantic_type": "billing_summary",
                 "priority": "high",
@@ -821,7 +847,13 @@ def _semantic_payload(page_id) -> dict[str, object]:
                 "reason": "Top of the page contains invoice totals.",
                 "confidence": 0.89,
             }
-        ],
+        )
+    return {
+        "schema_name": "semantic_annotation_model_output",
+        "schema_version": "v1",
+        "document_type": "invoice",
+        "pages": pages,
+        "regions": regions,
         "quality_flags": {"needs_high_quality_pass": False, "visual_degradation": False},
     }
 

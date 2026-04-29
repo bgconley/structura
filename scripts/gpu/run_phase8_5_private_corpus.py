@@ -35,6 +35,7 @@ def main() -> int:
     settings = get_settings()
     if settings.model_mode == "fixture":
         raise SystemExit("Refusing private corpus run with STRUCTURA_MODEL_MODE=fixture.")
+    _reject_disabled_qwen8_modes(args, qwen8_enabled=settings.qwen8_enabled)
     owner = _resolve_owner(args.household_id, args.user_id)
     if args.stop_workers:
         _stop_controlled_workers()
@@ -79,7 +80,12 @@ def main() -> int:
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run private PDFs through Phase 8.5 live VLMs.")
-    parser.add_argument("--pdf", action="append", type=Path, required=True)
+    parser.add_argument("--pdf", action="append", type=Path)
+    parser.add_argument(
+        "--manifest",
+        type=Path,
+        help='Local private corpus manifest. Expected shape: {"documents": [{"path": "..."}]}',
+    )
     parser.add_argument("--title-prefix", default="Phase 8.5 Private Corpus")
     parser.add_argument("--requested-by", default=CORPUS_REQUESTED_BY)
     parser.add_argument("--household-id", type=UUID)
@@ -102,7 +108,51 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--no-stop-workers", dest="stop_workers", action="store_false")
     parser.set_defaults(stop_workers=True)
-    return parser.parse_args()
+    args = parser.parse_args()
+    pdfs = list(args.pdf or [])
+    if args.manifest:
+        pdfs.extend(_load_manifest_pdf_paths(args.manifest))
+    if not pdfs:
+        parser.error("at least one --pdf or --manifest document path is required")
+    args.pdf = pdfs
+    return args
+
+
+def _load_manifest_pdf_paths(manifest_path: Path) -> list[Path]:
+    if not manifest_path.exists():
+        raise SystemExit(f"Private corpus manifest does not exist: {manifest_path}")
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    documents = payload.get("documents") if isinstance(payload, dict) else None
+    if not isinstance(documents, list):
+        raise SystemExit("Private corpus manifest must contain a documents array.")
+    paths: list[Path] = []
+    for index, item in enumerate(documents, start=1):
+        if not isinstance(item, dict) or not item.get("path"):
+            raise SystemExit(f"Manifest document {index} is missing a path.")
+        paths.append(Path(str(item["path"])))
+    return paths
+
+
+def _reject_disabled_qwen8_modes(
+    args: argparse.Namespace,
+    *,
+    qwen8_enabled: bool = False,
+) -> None:
+    if qwen8_enabled:
+        return
+    disabled_flags = []
+    if args.high_quality:
+        disabled_flags.append("--high-quality")
+    if args.allow_8b_rescue:
+        disabled_flags.append("--allow-8b-rescue")
+    if args.rescue_stress:
+        disabled_flags.append("--rescue-stress")
+    if disabled_flags:
+        joined = ", ".join(disabled_flags)
+        raise SystemExit(
+            f"{joined} is disabled because the Qwen3-VL 8B service is removed from "
+            "the active Phase 8.5 runtime."
+        )
 
 
 def _resolve_owner(household_id: UUID | None, user_id: UUID | None) -> tuple[UUID, UUID]:
@@ -290,6 +340,7 @@ def _enqueue_high_quality_semantic(
                 user_intent_reason="Private corpus runner was invoked with --high-quality.",
                 dedupe_existing=True,
                 priority=27,
+                qwen8_enabled=True,
             )
         conn.commit()
     print(
@@ -337,6 +388,7 @@ def _enqueue_rescue_stress_semantic(document_id: UUID, *, requested_by: str) -> 
                 user_intent_reason="Private corpus runner was invoked with --rescue-stress.",
                 dedupe_existing=True,
                 priority=26,
+                qwen8_enabled=True,
             )
         conn.commit()
     print(

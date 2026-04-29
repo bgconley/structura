@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-SUPPORTED_TARGET_SCHEMAS = frozenset({"invoice", "medical_eob", "receipt"})
+SUPPORTED_TARGET_SCHEMAS = frozenset({"invoice", "medical_eob", "receipt", "document_observation"})
 
 
 def preferred_target_schema(
@@ -15,11 +15,11 @@ def preferred_target_schema(
     model_target_schema: str | None,
 ) -> str | None:
     return (
-        classified_document_target_schema(document_family, document_metadata)
+        target_schema_from_semantic_type(semantic_type)
+        or classified_document_target_schema(document_family, document_metadata)
         or target_schema_from_document_hint(document_type_hint)
-        or target_schema_from_semantic_type(semantic_type)
-        or target_schema_from_document_hint(model_target_schema)
         or target_schema_from_document_hint(document_family)
+        or target_schema_from_document_hint(model_target_schema)
     )
 
 
@@ -45,8 +45,16 @@ def target_schema_from_document_hint(value: str | None) -> str | None:
         return normalized
     if normalized in {"insurance_denial", "medical_bill", "medical_claim"}:
         return "medical_eob"
-    if normalized in {"service_record", "payment_receipt"}:
+    if normalized in {"service_record", "payment_receipt", "retail_order"}:
         return "receipt"
+    if normalized in {
+        "real_estate_title",
+        "mortgage_escrow_statement",
+        "financial_dispute_form",
+        "generic_form",
+        "unsupported_document",
+    }:
+        return "document_observation"
     return None
 
 
@@ -56,7 +64,11 @@ def target_schema_from_semantic_type(value: str | None) -> str | None:
     normalized = value.strip().lower()
     if normalized.startswith("invoice_") or normalized == "invoice":
         return "invoice"
-    if normalized.startswith("receipt_") or normalized == "receipt":
+    if (
+        normalized.startswith("receipt_")
+        or normalized.startswith("retail_order_")
+        or normalized == "receipt"
+    ):
         return "receipt"
     if (
         normalized.startswith("medical_")
@@ -65,4 +77,14 @@ def target_schema_from_semantic_type(value: str | None) -> str | None:
         or "medical_eob" in normalized
     ):
         return "medical_eob"
+    if normalized in {
+        "seller_information_block",
+        "escrow_summary",
+        "mortgage_payment_summary",
+        "dispute_transaction_table",
+        "dispute_reason_block",
+        "generic_form_kvp",
+        "unsupported_document_region",
+    }:
+        return "document_observation"
     return None

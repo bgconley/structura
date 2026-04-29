@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 
@@ -29,6 +29,7 @@ class VisionGenerateRequest:
     temperature: float
     timeout_seconds: int
     response_json_schema: dict[str, Any] | None = None
+    allow_structured_output_fallback: bool = True
 
 
 @dataclass(frozen=True)
@@ -43,6 +44,10 @@ class VisionGenerateResponse:
     confidence_json: dict[str, object]
     input_sha256: tuple[str, ...]
     latency_ms: int
+    finish_reason: str | None = None
+    usage_json: dict[str, object] = field(default_factory=dict)
+    structured_output_used: bool = False
+    structured_output_fallback_reason: str | None = None
 
 
 @dataclass(frozen=True)

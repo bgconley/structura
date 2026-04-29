@@ -149,6 +149,34 @@ def test_semantic_annotation_model_output_schema_bounds_model_generated_arrays()
     assert defs["regionAnnotation"]["properties"]["expected_fields"]["maxItems"] == 8
 
 
+def test_semantic_annotation_schemas_include_expanded_qwen4_routing_vocabulary() -> None:
+    from lib.semantic_annotations.schema import (
+        semantic_annotation_manifest_schema,
+        semantic_annotation_model_output_schema,
+    )
+
+    for schema in (
+        semantic_annotation_manifest_schema(),
+        semantic_annotation_model_output_schema(),
+    ):
+        document_types = schema["properties"]["document_type"]["enum"]
+        region_types = schema["$defs"]["regionAnnotation"]["properties"]["semantic_type"]["enum"]
+        target_schemas = schema["$defs"]["regionAnnotation"]["properties"]["target_schema"]["enum"]
+
+        assert "retail_order" in document_types
+        assert "real_estate_title" in document_types
+        assert "mortgage_escrow_statement" in document_types
+        assert "financial_dispute_form" in document_types
+        assert "generic_form" in document_types
+        assert "unsupported_document" in document_types
+        assert "retail_order_line_item_table" in region_types
+        assert "seller_information_block" in region_types
+        assert "escrow_summary" in region_types
+        assert "dispute_transaction_table" in region_types
+        assert "generic_form_kvp" in region_types
+        assert "document_observation" in target_schemas
+
+
 def test_semantic_manifest_schema_is_not_the_model_generation_schema() -> None:
     from lib.semantic_annotations.schema import (
         semantic_annotation_manifest_schema,
@@ -183,11 +211,11 @@ def _manifest_with_region(region: SemanticRegionAnnotation) -> DocumentSemanticM
         document_id=uuid4(),
         household_id=uuid4(),
         quality_mode="smart",
-        profile_name="qwen3-vl-2b-semantic:v1",
-        source_engine="qwen3_vl_2b",
-        model_name="Qwen/Qwen3-VL-2B-Instruct",
+        profile_name="qwen3-vl-4b-semantic:v1",
+        source_engine="qwen3_vl_4b",
+        model_name="Qwen/Qwen3-VL-4B-Instruct",
         model_version="test",
-        prompt_version="phase8_5-semantic-smart-v1",
+        prompt_version="phase8_5-semantic-smart-v2",
         pages=[
             PageSemanticAnnotation(
                 page_id=page_id,
@@ -214,11 +242,11 @@ def _manifest_with_pages(
         document_id=uuid4(),
         household_id=uuid4(),
         quality_mode="smart",
-        profile_name="qwen3-vl-2b-semantic:v1",
-        source_engine="qwen3_vl_2b",
-        model_name="Qwen/Qwen3-VL-2B-Instruct",
+        profile_name="qwen3-vl-4b-semantic:v1",
+        source_engine="qwen3_vl_4b",
+        model_name="Qwen/Qwen3-VL-4B-Instruct",
         model_version="test",
-        prompt_version="phase8_5-semantic-smart-v1",
+        prompt_version="phase8_5-semantic-smart-v2",
         pages=[
             PageSemanticAnnotation(
                 page_id=page_id,
