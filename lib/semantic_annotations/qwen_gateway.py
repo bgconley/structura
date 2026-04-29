@@ -684,7 +684,10 @@ def _region_intent_key(region: SemanticRegionAnnotation) -> tuple[object, ...]:
 def _uuid_or_none(value: object) -> UUID | None:
     if not value:
         return None
-    return UUID(str(value))
+    try:
+        return UUID(str(value))
+    except ValueError:
+        return None
 
 
 def _canonical_payload_from_model_output(
