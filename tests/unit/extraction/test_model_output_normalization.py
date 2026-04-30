@@ -6,6 +6,8 @@ from lib.extraction.model_output_normalization import (
     normalize_granite_region_output,
     observation_dicts_from_payload,
 )
+from lib.extraction.models import ValidationReport
+from lib.extraction.normalization import observation_candidates_from_extraction
 from lib.extraction.validators import validate_extraction_payload
 
 
@@ -95,6 +97,39 @@ def test_receipt_line_item_model_output_maps_to_canonical_receipt_lines() -> Non
     assert metadata["mapper"] == "granite_receipt_line_items.v1"
 
 
+def test_service_record_flat_output_maps_to_canonical_receipt_lines() -> None:
+    document_id = uuid4()
+
+    normalized, metadata = normalize_granite_region_output(
+        document_id=document_id,
+        schema_name="receipt",
+        model_output_schema_name="granite_service_record_line_items.v1",
+        payload={
+            "service_description": [
+                "PERFORM 600 MILE RUNNING-IN CHECK ACCORDING TO BMWCHECKLIST.",
+                "MOUNT AND BALANCE FRONT AND REAR TIRES.DISPOSE OF OLD TIRES.",
+            ],
+            "labor_operation": ["0000600", "TIRE-SVC"],
+            "part_number": [":Gypoid axle oil G3", ":TIRE PR 4SC 160/60R15 67H"],
+            "quantity": ["1", "2"],
+            "unit_price": ["250.00", "182.99"],
+            "line_total": ["250.00", "365.98"],
+            "confidence": {"overall": 0.73},
+        },
+    )
+
+    assert normalized["schema_name"] == "receipt"
+    assert [item["description"] for item in normalized["line_items"]] == [
+        "PERFORM 600 MILE RUNNING-IN CHECK ACCORDING TO BMWCHECKLIST.",
+        "MOUNT AND BALANCE FRONT AND REAR TIRES.DISPOSE OF OLD TIRES.",
+        ":Gypoid axle oil G3",
+        ":TIRE PR 4SC 160/60R15 67H",
+    ]
+    assert normalized["line_items"][0]["amount"] == {"amount": 250.0, "currency": "USD"}
+    assert normalized["line_items"][2]["quantity"] == 1.0
+    assert metadata["mapper"] == "granite_service_record_line_items.v1"
+
+
 def test_unwrapped_data_payload_preserves_sibling_totals_for_invoice_line_items() -> None:
     document_id = uuid4()
 
@@ -153,3 +188,23 @@ def test_observation_source_text_is_bounded_to_schema_limit() -> None:
     assert report.checks[0]["status"] == "passed"
     observations = observation_dicts_from_payload(normalized)
     assert len(observations[0]["source_text"]) == 500
+
+
+def test_observation_candidate_confidence_rejects_out_of_range_model_values() -> None:
+    candidates = observation_candidates_from_extraction(
+        schema_name="document_observation",
+        payload={
+            "observations": [
+                {
+                    "field_name": "escrow_shortage",
+                    "value": "$250.00",
+                    "value_type": "string",
+                    "confidence": 250.0,
+                }
+            ]
+        },
+        validation=ValidationReport(needs_review=True, checks=[]),
+    )
+
+    assert len(candidates) == 1
+    assert candidates[0].confidence is None

@@ -270,14 +270,27 @@ def _update_document_classification(
     cur.execute(
         """
         UPDATE documents
-        SET document_family = %s,
-            document_subtype = %s,
-            family_confidence = %s,
+        SET document_family = CASE
+              WHEN metadata_json #> '{phase8_5,semantic_classification}' IS NOT NULL
+              THEN document_family ELSE %s::document_family_enum
+            END,
+            document_subtype = CASE
+              WHEN metadata_json #> '{phase8_5,semantic_classification}' IS NOT NULL
+              THEN document_subtype ELSE %s
+            END,
+            family_confidence = CASE
+              WHEN metadata_json #> '{phase8_5,semantic_classification}' IS NOT NULL
+              THEN family_confidence ELSE %s
+            END,
             sensitivity = CASE
+              WHEN metadata_json #> '{phase8_5,semantic_classification}' IS NOT NULL
+              THEN sensitivity
               WHEN %s = 'medical_eob' THEN 'medical'::sensitivity_enum
               ELSE sensitivity
             END,
             review_status = CASE
+              WHEN metadata_json #> '{phase8_5,semantic_classification}' IS NOT NULL
+              THEN review_status
               WHEN %s THEN 'needs_review'::review_status_enum
               WHEN review_status = 'unreviewed' THEN 'auto_accepted'::review_status_enum
               ELSE review_status

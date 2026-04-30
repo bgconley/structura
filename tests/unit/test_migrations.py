@@ -15,7 +15,7 @@ def test_baseline_migration_scripts_are_present_and_ordered() -> None:
     plan = baseline_migration_plan("database")
 
     assert plan.scripts[0].name == "001_extensions.sql"
-    assert plan.scripts[-1].name == "080_phase8_5_semantic_type_expansion.sql"
+    assert plan.scripts[-1].name == "081_phase8_5_semantic_family_reconciliation.sql"
     assert all(script.exists() for script in plan.scripts)
 
 
@@ -175,3 +175,21 @@ def test_phase8_5_semantic_type_expansion_migration_is_baseline_migration() -> N
     assert "retail_order_line_item_table" in sql
     assert "seller_information_block" in sql
     assert "unsupported_document_region" in sql
+
+
+def test_phase8_5_semantic_family_reconciliation_migration_is_baseline_migration() -> None:
+    plan = baseline_migration_plan("database")
+    names = [script.name for script in plan.scripts]
+
+    assert "081_phase8_5_semantic_family_reconciliation.sql" in names
+
+    sql = Path("database/081_phase8_5_semantic_family_reconciliation.sql").read_text(
+        encoding="utf-8"
+    )
+    assert "ALTER TYPE document_family_enum ADD VALUE IF NOT EXISTS 'retail_order'" in sql
+    assert "ALTER TYPE document_family_enum ADD VALUE IF NOT EXISTS 'service_record'" in sql
+    assert "ALTER TYPE document_family_enum ADD VALUE IF NOT EXISTS 'real_estate_title'" in sql
+    assert (
+        "ALTER TYPE document_family_enum ADD VALUE IF NOT EXISTS 'mortgage_escrow_statement'"
+        in sql
+    )

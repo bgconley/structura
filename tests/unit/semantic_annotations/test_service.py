@@ -7,7 +7,7 @@ from uuid import UUID, uuid4
 import pytest
 
 from lib.contracts.registry import ContractRegistry
-from lib.extraction.models import ExtractionSourceDocument, ParsedPageText
+from lib.extraction.models import ExtractionSourceDocument, ParsedPageText, ParsedTableText
 from lib.semantic_annotations.models import (
     DocumentSemanticManifest,
     PageSemanticAnnotation,
@@ -69,7 +69,6 @@ def test_semantic_service_rejects_rescue_permission_when_qwen8_disabled() -> Non
     household_id = uuid4()
     page_id = uuid4()
     annotation_id = uuid4()
-    region_id = uuid4()
     user_id = uuid4()
     source = _source(document_id=document_id, household_id=household_id, page_id=page_id)
     manifest = _manifest(document_id=document_id, household_id=household_id, page_id=page_id)
@@ -79,9 +78,9 @@ def test_semantic_service_rejects_rescue_permission_when_qwen8_disabled() -> Non
         SemanticAnnotationService(
             source_loader=lambda loaded_document_id: source,
             gateway=StaticGateway(manifest),
-            manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
+            manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+                persisted_manifest,
                 annotation_id=annotation_id,
-                region_ids=(region_id,),
             ),
             jobs=jobs,
         ).annotate_document(
@@ -101,7 +100,6 @@ def test_semantic_service_propagates_explicit_rescue_permission_when_qwen8_enabl
     household_id = uuid4()
     page_id = uuid4()
     annotation_id = uuid4()
-    region_id = uuid4()
     user_id = uuid4()
     source = _source(document_id=document_id, household_id=household_id, page_id=page_id)
     manifest = _manifest(document_id=document_id, household_id=household_id, page_id=page_id)
@@ -110,9 +108,9 @@ def test_semantic_service_propagates_explicit_rescue_permission_when_qwen8_enabl
     SemanticAnnotationService(
         source_loader=lambda loaded_document_id: source,
         gateway=StaticGateway(manifest),
-        manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
             annotation_id=annotation_id,
-            region_ids=(region_id,),
         ),
         jobs=jobs,
         qwen8_enabled=True,
@@ -137,7 +135,6 @@ def test_semantic_service_prefers_document_family_over_region_target_schema() ->
     household_id = uuid4()
     page_id = uuid4()
     annotation_id = uuid4()
-    region_id = uuid4()
     source = _source(document_id=document_id, household_id=household_id, page_id=page_id)
     manifest = _manifest(
         document_id=document_id,
@@ -150,9 +147,9 @@ def test_semantic_service_prefers_document_family_over_region_target_schema() ->
     SemanticAnnotationService(
         source_loader=lambda loaded_document_id: source,
         gateway=StaticGateway(manifest),
-        manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
             annotation_id=annotation_id,
-            region_ids=(region_id,),
         ),
         jobs=jobs,
     ).annotate_document(document_id, quality_mode="smart", requested_by="system")
@@ -166,7 +163,6 @@ def test_semantic_service_corrects_line_item_table_task_before_enqueue() -> None
     household_id = uuid4()
     page_id = uuid4()
     annotation_id = uuid4()
-    region_id = uuid4()
     source = _source(document_id=document_id, household_id=household_id, page_id=page_id)
     manifest = _manifest(
         document_id=document_id,
@@ -181,9 +177,9 @@ def test_semantic_service_corrects_line_item_table_task_before_enqueue() -> None
     SemanticAnnotationService(
         source_loader=lambda loaded_document_id: source,
         gateway=StaticGateway(manifest),
-        manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
             annotation_id=annotation_id,
-            region_ids=(region_id,),
         ),
         jobs=jobs,
     ).annotate_document(document_id, quality_mode="smart", requested_by="system")
@@ -202,7 +198,6 @@ def test_semantic_service_uses_qwen_document_type_before_phase4_family() -> None
     household_id = uuid4()
     page_id = uuid4()
     annotation_id = uuid4()
-    region_id = uuid4()
     source = _source(
         document_id=document_id,
         household_id=household_id,
@@ -224,9 +219,9 @@ def test_semantic_service_uses_qwen_document_type_before_phase4_family() -> None
     SemanticAnnotationService(
         source_loader=lambda loaded_document_id: source,
         gateway=StaticGateway(manifest),
-        manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
             annotation_id=annotation_id,
-            region_ids=(region_id,),
         ),
         jobs=jobs,
     ).annotate_document(document_id, quality_mode="smart", requested_by="system")
@@ -241,7 +236,6 @@ def test_semantic_service_uses_semantic_type_before_unclassified_family() -> Non
     household_id = uuid4()
     page_id = uuid4()
     annotation_id = uuid4()
-    region_id = uuid4()
     source = _source(
         document_id=document_id,
         household_id=household_id,
@@ -259,9 +253,9 @@ def test_semantic_service_uses_semantic_type_before_unclassified_family() -> Non
     SemanticAnnotationService(
         source_loader=lambda loaded_document_id: source,
         gateway=StaticGateway(manifest),
-        manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
             annotation_id=annotation_id,
-            region_ids=(region_id,),
         ),
         jobs=jobs,
     ).annotate_document(document_id, quality_mode="smart", requested_by="system")
@@ -275,7 +269,6 @@ def test_semantic_service_downgrades_unanchored_eob_region_to_observation() -> N
     household_id = uuid4()
     page_id = uuid4()
     annotation_id = uuid4()
-    region_id = uuid4()
     source = _source(
         document_id=document_id,
         household_id=household_id,
@@ -296,9 +289,9 @@ def test_semantic_service_downgrades_unanchored_eob_region_to_observation() -> N
     SemanticAnnotationService(
         source_loader=lambda loaded_document_id: source,
         gateway=StaticGateway(manifest),
-        manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
             annotation_id=annotation_id,
-            region_ids=(region_id,),
         ),
         jobs=jobs,
     ).annotate_document(document_id, quality_mode="smart", requested_by="system")
@@ -315,7 +308,6 @@ def test_semantic_service_downgrades_weak_receipt_guess_when_title_anchors_domin
     household_id = uuid4()
     page_id = uuid4()
     annotation_id = uuid4()
-    region_id = uuid4()
     source = _source(
         document_id=document_id,
         household_id=household_id,
@@ -340,9 +332,9 @@ def test_semantic_service_downgrades_weak_receipt_guess_when_title_anchors_domin
     SemanticAnnotationService(
         source_loader=lambda loaded_document_id: source,
         gateway=StaticGateway(manifest),
-        manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
             annotation_id=annotation_id,
-            region_ids=(region_id,),
         ),
         jobs=jobs,
     ).annotate_document(document_id, quality_mode="smart", requested_by="system")
@@ -352,6 +344,261 @@ def test_semantic_service_downgrades_weak_receipt_guess_when_title_anchors_domin
     assert payload["metadata"]["schema_fit"]["requested_target_schema"] == "receipt"
     assert payload["metadata"]["schema_fit"]["reason"] == "conflicting_docling_observation_anchors"
     assert payload["metadata"]["schema_fit"]["downgraded"] is True
+
+
+def test_semantic_service_uses_docling_table_targets_when_qwen_emits_no_regions() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    table_id = uuid4()
+    annotation_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="generic",
+        title="BMW CE-04 run in service",
+        original_filename="bmw-service.pdf",
+        text=(
+            "Repair order service labor parts VIN mileage motorcycle "
+            "payment received service advisor"
+        ),
+        tables=[
+            ParsedTableText(
+                table_id=table_id,
+                page_number=1,
+                table_index=1,
+                table_markdown=(
+                    "| Operation | Description | Qty | Amount |\n"
+                    "| Run-in service | Labor and parts | 1 | 301.00 |"
+                ),
+            )
+        ],
+    )
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        regions=[],
+        document_type="generic_form",
+    )
+    jobs = RecordingJobs()
+    persisted_manifests: list[DocumentSemanticManifest] = []
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+            captured=persisted_manifests,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    assert len(persisted_manifests) == 1
+    persisted_regions = persisted_manifests[0].regions
+    assert [region.semantic_type for region in persisted_regions] == [
+        "service_record_line_item_table"
+    ]
+    assert persisted_regions[0].grounding.table_id == table_id
+    ContractRegistry.load("contracts").validate_schema_instance(
+        "semantic_annotation_manifest.v1.schema.json",
+        persisted_manifests[0].manifest,
+    )
+
+    assert len(jobs.created) == 1
+    payload = jobs.created[0]["payload"]
+    assert payload["target_schema_name"] == "receipt"
+    assert payload["semantic_type"] == "service_record_line_item_table"
+    assert payload["semantic_granite_task"] == "tables_json"
+    assert payload["metadata"]["region_source"] == "docling_structural"
+    assert payload["metadata"]["docling_structural_target"]["source"] == "docling_table"
+
+
+def test_semantic_service_routes_escrow_docling_tables_as_observations_not_receipts() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    table_id = uuid4()
+    annotation_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="generic",
+        title="UWM Final Escrow Statement",
+        original_filename="UWM Final Escrow Statement 4-29-24.pdf",
+        text="UWM mortgage escrow shortage surplus paid payment tax statement",
+        tables=[
+            ParsedTableText(
+                table_id=table_id,
+                page_number=1,
+                table_index=1,
+                table_markdown=(
+                    "| Escrow item | Amount |\n"
+                    "| Shortage | $120.00 |\n"
+                    "| New payment | $2,100.00 |"
+                ),
+            )
+        ],
+    )
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        regions=[],
+        document_type="mortgage_escrow_statement",
+    )
+    jobs = RecordingJobs()
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    assert len(jobs.created) == 1
+    payload = jobs.created[0]["payload"]
+    assert payload["target_schema_name"] == "document_observation"
+    assert payload["semantic_type"] == "generic_form_kvp"
+    assert payload["semantic_granite_task"] == "tables_json"
+    assert payload["metadata"]["region_source"] == "docling_structural"
+    assert payload["metadata"]["docling_structural_target"]["family"] == "generic_table"
+
+
+def test_semantic_service_uses_docling_observation_targets_when_qwen_emits_no_regions() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="receipt",
+        title="Phenix Title Seller Info",
+        original_filename="Phenix Title Seller Info 032924.pdf",
+        text=(
+            "Phenix Title Seller Information Form seller proceeds "
+            "title company closing settlement wiring details"
+        ),
+    )
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        regions=[],
+        document_type="receipt",
+    )
+    jobs = RecordingJobs()
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    assert len(jobs.created) == 1
+    payload = jobs.created[0]["payload"]
+    assert payload["target_schema_name"] == "document_observation"
+    assert payload["semantic_type"] == "seller_information_block"
+    assert payload["semantic_granite_task"] == "kvp"
+    assert payload["metadata"]["region_source"] == "docling_structural"
+    assert payload["metadata"]["schema_fit"]["reason"] == "observation_schema"
+
+
+def test_semantic_service_uses_only_dominant_docling_observation_family() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="receipt",
+        title="Phenix Title Seller Info",
+        original_filename="Phenix Title Seller Info 032924.pdf",
+        text=(
+            "Phenix Title seller seller seller title company closing settlement "
+            "escrow payment"
+        ),
+    )
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        regions=[],
+        document_type="real_estate_title",
+    )
+    jobs = RecordingJobs()
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    assert len(jobs.created) == 1
+    payload = jobs.created[0]["payload"]
+    assert payload["semantic_type"] == "seller_information_block"
+    assert payload["metadata"]["docling_structural_target"]["family"] == "real_estate_title"
+
+
+def test_semantic_service_dedupes_repeated_regions_before_enqueue() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    element_id = uuid4()
+    annotation_id = uuid4()
+    region_ids = tuple(uuid4() for _ in range(3))
+    source = _source(document_id=document_id, household_id=household_id, page_id=page_id)
+    regions = [
+        SemanticRegionAnnotation(
+            semantic_type="seller_information_block",
+            priority="high",
+            granite_task="kvp",
+            target_schema="document_observation",
+            expected_fields=("seller_name",),
+            grounding=SemanticGroundingRef(kind="element", element_id=element_id),
+            confidence=0.8 + (index * 0.01),
+        )
+        for index in range(3)
+    ]
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        regions=regions,
+        document_type="real_estate_title",
+    )
+    jobs = RecordingJobs()
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
+            annotation_id=annotation_id,
+            region_ids=region_ids,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    assert len(jobs.created) == 1
+    assert jobs.created[0]["payload"]["semantic_region_id"] == str(region_ids[2])
 
 
 def test_semantic_service_does_not_queue_ignored_or_unmatched_regions() -> None:
@@ -622,14 +869,17 @@ def _source(
     household_id: UUID,
     page_id: UUID,
     family: str = "invoice",
+    title: str = "Invoice",
+    original_filename: str | None = "invoice.pdf",
     text: str = "Invoice line items",
     metadata: dict[str, Any] | None = None,
+    tables: list[ParsedTableText] | None = None,
 ) -> ExtractionSourceDocument:
     return ExtractionSourceDocument(
         document_id=document_id,
         household_id=household_id,
-        title="Invoice",
-        original_filename="invoice.pdf",
+        title=title,
+        original_filename=original_filename,
         mime_type="application/pdf",
         family=family,
         subtype=None,
@@ -649,7 +899,7 @@ def _source(
             )
         ],
         elements=[],
-        tables=[],
+        tables=list(tables or []),
     )
 
 
@@ -695,13 +945,17 @@ def _manifest(
             PageSemanticAnnotation(
                 page_id=page_id,
                 page_number=1,
-                page_role="invoice_summary",
+                page_role="line_items",
                 has_structured_targets=True,
             )
         ],
         regions=regions,
         confidence={"overall": 0.9},
-        manifest={"document_type": document_type},
+        manifest=_semantic_manifest_payload(
+            document_type=document_type,
+            page_id=page_id,
+            regions=regions,
+        ),
         input_page_hashes=("c" * 64,),
     )
 
@@ -727,12 +981,86 @@ def _manifest_with_regions(
             PageSemanticAnnotation(
                 page_id=page_id,
                 page_number=1,
-                page_role="invoice_summary",
+                page_role="line_items",
                 has_structured_targets=True,
             )
         ],
         regions=regions,
         confidence={"overall": 0.9},
-        manifest={"document_type": document_type},
+        manifest=_semantic_manifest_payload(
+            document_type=document_type,
+            page_id=page_id,
+            regions=regions,
+        ),
         input_page_hashes=("c" * 64,),
     )
+
+
+def _persist_dynamic_manifest(
+    manifest: DocumentSemanticManifest,
+    *,
+    annotation_id: UUID,
+    captured: list[DocumentSemanticManifest] | None = None,
+) -> PersistedSemanticManifest:
+    if captured is not None:
+        captured.append(manifest)
+    return PersistedSemanticManifest(
+        annotation_id=annotation_id,
+        region_ids=tuple(uuid4() for _ in manifest.regions),
+    )
+
+
+def _semantic_manifest_payload(
+    *,
+    document_type: str,
+    page_id: UUID,
+    regions: list[SemanticRegionAnnotation],
+) -> dict[str, Any]:
+    return {
+        "schema_name": "semantic_annotation_manifest",
+        "schema_version": "v1",
+        "document_type": document_type,
+        "pages": [
+            {
+                "page_id": str(page_id),
+                "page_number": 1,
+                "page_role": "line_items",
+                "document_type_hint": None,
+                "extraction_usefulness": "unknown",
+                "is_boilerplate": False,
+                "has_structured_targets": True,
+                "ambiguous": False,
+                "escalation_required": False,
+                "escalation_reasons": [],
+                "reason": None,
+                "confidence": None,
+            }
+        ],
+        "regions": [_region_payload(region) for region in regions],
+        "quality_flags": {
+            "needs_high_quality_pass": False,
+            "visual_degradation": False,
+        },
+        "confidence": {"overall": 0.9},
+    }
+
+
+def _region_payload(region: SemanticRegionAnnotation) -> dict[str, Any]:
+    return {
+        "semantic_type": region.semantic_type,
+        "priority": region.priority,
+        "granite_task": region.granite_task,
+        "target_schema": region.target_schema,
+        "expected_fields": list(region.expected_fields),
+        "grounding": {
+            "kind": region.grounding.kind,
+            "page_id": str(region.grounding.page_id) if region.grounding.page_id else None,
+            "element_id": (
+                str(region.grounding.element_id) if region.grounding.element_id else None
+            ),
+            "table_id": str(region.grounding.table_id) if region.grounding.table_id else None,
+        },
+        "review_required": region.review_required,
+        "reason": region.reason,
+        "confidence": region.confidence,
+    }

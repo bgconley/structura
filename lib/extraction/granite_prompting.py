@@ -51,6 +51,8 @@ def granite_prompt(
             f"{base}"
             f"{task_context}"
             "Extract only the line/service rows visible in the grounded table or region. "
+            "For line-item contracts, populate line_items with row objects; do not return "
+            "standalone quantity or amount arrays instead of rows. "
             "Use the JSON Schema below as the output contract. "
             "Return null for fields you cannot find. "
             "Return ONLY valid JSON matching the schema instance, not the schema itself. "
@@ -102,11 +104,50 @@ def _table_context(source: ExtractionSourceDocument, task: SemanticExtractionTas
                 f"{table.table_markdown[:1600]}"
             )
         elif table.table_json:
+            table_text = _render_table_json(table.table_json)
             rendered.append(
-                f"Table page={table.page_number} index={table.table_index} JSON:\n"
-                f"{json.dumps(table.table_json, sort_keys=True)[:1600]}"
+                f"Table page={table.page_number} index={table.table_index} rows:\n"
+                f"{table_text[:2400]}"
             )
     return "\n".join(rendered)
+
+
+def _render_table_json(table_json: dict[str, object]) -> str:
+    grid = _table_grid(table_json)
+    if grid:
+        lines = []
+        for row in grid[:80]:
+            cells = [_cell_text(cell) for cell in row]
+            text_cells = [cell for cell in cells if cell]
+            if text_cells:
+                lines.append(" | ".join(text_cells))
+        if lines:
+            return "\n".join(lines)
+    return json.dumps(table_json, sort_keys=True)
+
+
+def _table_grid(table_json: dict[str, object]) -> list[list[object]]:
+    data = table_json.get("data")
+    if isinstance(data, dict):
+        grid = data.get("grid")
+        if isinstance(grid, list):
+            return [row for row in grid if isinstance(row, list)]
+    grid = table_json.get("grid")
+    if isinstance(grid, list):
+        return [row for row in grid if isinstance(row, list)]
+    rows = table_json.get("rows")
+    if isinstance(rows, list):
+        return [row for row in rows if isinstance(row, list)]
+    return []
+
+
+def _cell_text(cell: object) -> str:
+    if isinstance(cell, dict):
+        text = cell.get("text")
+        if text is None:
+            text = cell.get("value")
+        return " ".join(str(text or "").split())
+    return " ".join(str(cell).split())
 
 
 def _page_context(source: ExtractionSourceDocument, task: SemanticExtractionTask) -> str:

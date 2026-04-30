@@ -96,7 +96,7 @@ def observation_candidates_from_extraction(
                 value_type=str(item.get("value_type") or "string"),
                 value=item.get("value"),
                 evidence=_evidence(item),
-                confidence=_number_or_none(item.get("confidence")),
+                confidence=_confidence_or_none(item.get("confidence")),
                 validation=validation.as_json(),
                 status="needs_review",
                 metadata={"source_text": item.get("source_text")},
@@ -526,6 +526,13 @@ def _number_or_none(value: Any) -> float | None:
         return _number(value)
     except (TypeError, ValueError):
         return None
+
+
+def _confidence_or_none(value: Any) -> float | None:
+    confidence = _number_or_none(value)
+    if confidence is None or not 0.0 <= confidence <= 1.0:
+        return None
+    return confidence
 
 
 def _date(value: Any) -> date | None:

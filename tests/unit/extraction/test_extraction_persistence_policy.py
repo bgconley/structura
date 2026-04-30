@@ -5,8 +5,13 @@ from uuid import uuid4
 from lib.extraction.extraction_repository import (
     _status_for_persisted_extraction,
     _supersede_current_extractions,
+    _update_document_classification,
 )
-from lib.extraction.models import ValidationReport
+from lib.extraction.models import (
+    ClassificationDecision,
+    ExtractionSourceDocument,
+    ValidationReport,
+)
 from lib.extraction.normalization import line_item_candidates_from_extraction
 
 
@@ -150,6 +155,42 @@ def test_supersede_current_extractions_is_scoped_to_semantic_region() -> None:
         "semantic_region",
         region_id,
     )
+
+
+def test_phase4_classification_update_preserves_authoritative_semantic_family() -> None:
+    cur = RecordingCursor()
+    source = ExtractionSourceDocument(
+        document_id=uuid4(),
+        household_id=uuid4(),
+        title="Phenix Title Seller Info",
+        original_filename="phenix.pdf",
+        mime_type="application/pdf",
+        family="real_estate_title",
+        subtype=None,
+        sensitivity="normal",
+        document_date=None,
+        counterparty_display=None,
+        primary_folder_id=None,
+        metadata={},
+        pages=[],
+        elements=[],
+        tables=[],
+    )
+    decision = ClassificationDecision(
+        payload={
+            "family": "receipt",
+            "subtype": None,
+            "confidence": {"overall": 0.8},
+        },
+        needs_review=False,
+    )
+
+    _update_document_classification(cur, decision, source, "auto_accepted")
+
+    sql, _params = cur.queries[0]
+    assert "metadata_json #> '{phase8_5,semantic_classification}' IS NOT NULL" in sql
+    assert "document_family ELSE %s::document_family_enum" in sql
+    assert "family_confidence ELSE %s" in sql
 
 
 class RecordingCursor:

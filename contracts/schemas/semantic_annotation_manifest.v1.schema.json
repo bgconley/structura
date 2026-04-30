@@ -70,6 +70,44 @@
       "maxItems": 6,
       "items": { "type": "string", "maxLength": 160 }
     },
+    "docling_structural_targets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "added_region_count", "suggested_family_hints"],
+      "properties": {
+        "version": { "type": "string", "maxLength": 80 },
+        "added_region_count": { "type": "integer", "minimum": 0, "maximum": 12 },
+        "suggested_family_hints": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "enum": [
+              "medical_eob",
+              "insurance_denial",
+              "medical_bill",
+              "invoice",
+              "receipt",
+              "retail_order",
+              "service_record",
+              "real_estate_title",
+              "mortgage_escrow_statement",
+              "financial_dispute_form",
+              "travel_receipt",
+              "restaurant_receipt",
+              "generic_form",
+              "unsupported_document",
+              "no_extraction_target",
+              "legal",
+              "tax",
+              "financial",
+              "other",
+              "unknown"
+            ]
+          }
+        }
+      }
+    },
     "confidence": { "$ref": "#/$defs/confidenceObject" }
   },
   "$defs": {

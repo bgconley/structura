@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/model_outputs/granite_service_record_line_items.v1.schema.json",
+  "title": "Granite Service Record Line Items v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["line_items"],
+  "properties": {
+    "line_items": {
+      "type": "array",
+      "maxItems": 60,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["description"],
+        "properties": {
+          "ordinal": {"type": ["integer", "null"], "minimum": 1},
+          "description": {"type": "string", "minLength": 1, "maxLength": 360},
+          "service_description": {"type": ["string", "null"], "maxLength": 360},
+          "labor_operation": {"type": ["string", "null"], "maxLength": 120},
+          "part_number": {"type": ["string", "null"], "maxLength": 120},
+          "quantity": {"type": ["number", "string", "null"]},
+          "unit": {"type": ["string", "null"], "maxLength": 40},
+          "unit_price": {"type": ["number", "string", "null"]},
+          "line_total": {"type": ["number", "string", "null"]},
+          "amount": {"type": ["number", "string", "null"]},
+          "category_hint": {"type": ["string", "null"], "maxLength": 80},
+          "source_text": {"type": ["string", "null"], "maxLength": 500}
+        }
+      }
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "subtotal": {"type": ["number", "string", "null"]},
+        "tax": {"type": ["number", "string", "null"]},
+        "total": {"type": ["number", "string", "null"]}
+      }
+    },
+    "confidence": {"type": "object", "additionalProperties": true}
+  }
+}

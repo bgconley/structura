@@ -360,6 +360,30 @@ def test_extraction_service_does_not_enqueue_rescue_if_persist_fails() -> None:
     assert jobs.created == []
 
 
+def test_live_classification_does_not_enqueue_broad_document_extraction(monkeypatch) -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    source = _source(document_id=document_id, household_id=household_id)
+    jobs = RecordingJobs()
+
+    monkeypatch.setattr(
+        "lib.extraction.service.get_settings",
+        lambda: type("Settings", (), {"model_mode": "live", "qwen8_enabled": False})(),
+    )
+    monkeypatch.setattr(
+        "lib.extraction.service.persist_classification",
+        lambda *_args, **_kwargs: uuid4(),
+    )
+
+    result = ExtractionService(
+        source_loader=lambda loaded_document_id: source,
+        jobs=jobs,
+    ).classify_document(document_id)
+
+    assert result.queued_extraction_job_id is None
+    assert jobs.created == []
+
+
 class RecordingGateway:
     def __init__(self, *, needs_review: bool = False) -> None:
         self.semantic_task: SemanticExtractionTask | None = None

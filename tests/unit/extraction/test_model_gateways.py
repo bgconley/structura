@@ -10,6 +10,7 @@ from lib.extraction.models import (
     ExtractionSourceDocument,
     ParsedElementText,
     ParsedPageText,
+    ParsedTableText,
 )
 from lib.model_runtime.contracts import VisionGenerateRequest, VisionGenerateResponse
 from lib.model_runtime.profiles import GRANITE_VISION_PROFILE, QWEN_VL_PROFILE
@@ -232,6 +233,89 @@ def test_granite_gateway_routes_retail_order_tables_to_receipt_line_schema() -> 
     assert client.request is not None
     assert client.request.prompt.startswith("<tables_json>")
     assert client.request.response_schema_name == "granite_receipt_line_items.v1"
+
+
+def test_granite_gateway_routes_service_record_tables_to_service_record_schema() -> None:
+    client = FakeVisionClient(
+        source_engine="granite_vision_3b",
+        profile_name=GRANITE_VISION_PROFILE,
+    )
+    source = _source_with_page_image()
+    task = SemanticExtractionTask(
+        region_id=uuid4(),
+        annotation_id=uuid4(),
+        document_id=source.document_id,
+        semantic_type="service_record_line_item_table",
+        granite_task="tables_json",
+        target_schema="receipt",
+        expected_fields=("service_description", "labor_operation", "line_total"),
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+    )
+
+    GraniteVisionExtractionGateway(client=client).extract(
+        source,
+        schema_name="receipt",
+        route_profile="docling_plus_granite_structured",
+        semantic_task=task,
+    )
+
+    assert client.request is not None
+    assert client.request.prompt.startswith("<tables_json>")
+    assert client.request.response_schema_name == "granite_service_record_line_items.v1"
+    assert client.request.response_json_schema is not None
+    assert client.request.response_json_schema["required"] == ["line_items"]
+
+
+def test_granite_gateway_renders_docling_table_json_as_readable_rows() -> None:
+    client = FakeVisionClient(
+        source_engine="granite_vision_3b",
+        profile_name=GRANITE_VISION_PROFILE,
+    )
+    source = _source_with_page_image()
+    table_id = uuid4()
+    source.tables.append(
+        ParsedTableText(
+            table_id=table_id,
+            page_number=1,
+            table_index=1,
+            table_json={
+                "data": {
+                    "grid": [
+                        [
+                            {"text": "DESCRIPTION OF SERVICE AND PARTS"},
+                            {"text": "AMOUNT"},
+                        ],
+                        [
+                            {"text": "600 mile running-in check"},
+                            {"text": "$250.00"},
+                        ],
+                    ]
+                }
+            },
+        )
+    )
+    task = SemanticExtractionTask(
+        region_id=uuid4(),
+        annotation_id=uuid4(),
+        document_id=source.document_id,
+        semantic_type="service_record_line_item_table",
+        granite_task="tables_json",
+        target_schema="receipt",
+        expected_fields=("service_description", "line_total"),
+        grounding=SemanticGroundingRef(kind="table", table_id=table_id),
+    )
+
+    GraniteVisionExtractionGateway(client=client).extract(
+        source,
+        schema_name="receipt",
+        route_profile="docling_plus_granite_structured",
+        semantic_task=task,
+    )
+
+    assert client.request is not None
+    assert "DESCRIPTION OF SERVICE AND PARTS | AMOUNT" in client.request.prompt
+    assert "600 mile running-in check | $250.00" in client.request.prompt
+    assert '"bbox"' not in client.request.prompt
 
 
 def test_granite_gateway_routes_title_seller_info_to_observation_schema() -> None:

@@ -188,4 +188,4 @@ def _structured_content(raw_text: str) -> tuple[dict[str, object], dict[str, obj
     direct_payload.pop("confidence", None)
     if direct_payload:
         return direct_payload, confidence
-    raise ModelProtocolError("Vision model JSON content is missing normalized object.")
+    return {}, confidence

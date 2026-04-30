@@ -61,3 +61,45 @@ def test_granite_client_returns_structured_visual_extraction_provenance() -> Non
     assert response.profile_name == GRANITE_VISION_PROFILE
     assert response.normalized_json == {"tables": [{"columns": ["date", "amount"], "rows": 2}]}
     assert response.confidence_json == {"table_structure": 0.82}
+
+
+def test_granite_client_treats_confidence_only_json_as_empty_extraction() -> None:
+    image_sha256 = hashlib.sha256(b"page-image").hexdigest()
+
+    client = GraniteVisionClient(
+        profile=get_model_profile(GRANITE_VISION_PROFILE),
+        http_client_base_url="http://model-granite:8101",
+        transport=httpx.MockTransport(
+            lambda _request: httpx.Response(
+                200,
+                json={
+                    "model": "ibm-granite/granite-4.0-3b-vision",
+                    "choices": [
+                        {
+                            "message": {
+                                "content": json.dumps({"confidence": {"overall": 0.0}})
+                            }
+                        }
+                    ],
+                },
+            )
+        ),
+    )
+
+    response = client.generate(
+        VisionGenerateRequest(
+            profile_name=GRANITE_VISION_PROFILE,
+            prompt_version="phase8_5-granite-structured-v1",
+            prompt="extract table structure",
+            image_inputs=(
+                ModelImageInput(content=b"page-image", mime_type="image/png", sha256=image_sha256),
+            ),
+            response_schema_name="document_observation",
+            max_output_tokens=1024,
+            temperature=0.0,
+            timeout_seconds=30,
+        )
+    )
+
+    assert response.normalized_json == {}
+    assert response.confidence_json == {"overall": 0.0}

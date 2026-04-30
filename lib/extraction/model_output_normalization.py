@@ -42,6 +42,10 @@ def normalize_granite_region_output(
         metadata["mapper"] = model_output_schema_name
         metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
         return normalized, metadata
+    if model_output_schema_name == "granite_service_record_line_items.v1":
+        normalized, metadata = _service_record_line_items_output(document_id, model_payload)
+        metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
+        return normalized, metadata
     if model_output_schema_name == "granite_receipt_payment_summary.v1":
         normalized, metadata = _receipt_payment_output(document_id, model_payload)
         metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
@@ -251,6 +255,69 @@ def _receipt_line_items_output(
     }
 
 
+def _service_record_line_items_output(
+    document_id: UUID,
+    payload: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    records = _invoice_line_item_records(payload)
+    line_items = _canonical_receipt_line_items(records)
+    repairs = ["mapped_model_output_to_canonical_service_record_line_items"]
+    if not line_items:
+        line_items = _service_record_flat_line_items(payload)
+        repairs.append("mapped_flat_service_record_fields_to_line_items")
+    confidence = payload.get("confidence") if isinstance(payload.get("confidence"), dict) else {}
+    transaction: dict[str, Any] = {}
+    raw_totals = payload.get("totals")
+    totals: dict[str, Any] = raw_totals if isinstance(raw_totals, dict) else {}
+    for source_key, target_key in (
+        ("subtotal", "subtotal"),
+        ("tax", "tax"),
+        ("tax_total", "tax"),
+        ("total", "total"),
+    ):
+        amount = _money(totals.get(source_key) or payload.get(source_key))
+        if amount:
+            transaction[target_key] = amount
+    normalized: dict[str, Any] = {
+        "schema_name": "receipt",
+        "schema_version": "v1",
+        "document_id": str(document_id),
+        "merchant": _receipt_merchant(payload),
+        "transaction": transaction,
+        "line_items": line_items,
+        "confidence": confidence,
+        "created_at": datetime.now(UTC).isoformat(),
+        "metadata": {"document_family": "service_record"},
+    }
+    return normalized, {
+        "mapper": "granite_service_record_line_items.v1",
+        "repairs": repairs,
+        "rejected_fields": _rejected_fields(
+            payload,
+            {
+                "line_items",
+                "service_description",
+                "labor_operation",
+                "part_number",
+                "parts",
+                "quantity",
+                "unit",
+                "unit_price",
+                "line_total",
+                "amount",
+                "totals",
+                "subtotal",
+                "tax",
+                "tax_total",
+                "total",
+                "confidence",
+                "merchant",
+                "merchant_name",
+            },
+        ),
+    }
+
+
 def _receipt_payment_output(
     document_id: UUID,
     payload: dict[str, Any],
@@ -415,6 +482,93 @@ def _flat_invoice_line_items(payload: dict[str, Any]) -> list[dict[str, Any]]:
         amount = _money(parts_costs[index] if index < len(parts_costs) else None)
         items.append(_line_item(len(items) + 1, description, amount, "part"))
     return items
+
+
+def _service_record_flat_line_items(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    service_descriptions = _string_list(payload.get("service_description"))
+    labor_operations = _string_list(payload.get("labor_operation"))
+    part_numbers = _string_list(payload.get("part_number") or payload.get("parts"))
+    quantities = _string_list(payload.get("quantity"))
+    unit_prices = _string_list(payload.get("unit_price"))
+    line_totals = _string_list(payload.get("line_total") or payload.get("amount"))
+    units = _string_list(payload.get("unit"))
+    items: list[dict[str, Any]] = []
+    for index, description in enumerate(service_descriptions):
+        items.append(
+            _service_record_line_item(
+                ordinal=len(items) + 1,
+                description=description,
+                category_hint="service",
+                quantity=quantities[index] if index < len(quantities) else None,
+                unit=units[index] if index < len(units) else None,
+                unit_price=unit_prices[index] if index < len(unit_prices) else None,
+                amount=line_totals[index] if index < len(line_totals) else None,
+                source_text=_join_source_text(
+                    description,
+                    labor_operation=(
+                        labor_operations[index] if index < len(labor_operations) else None
+                    ),
+                ),
+            )
+        )
+    for index, part_number in enumerate(part_numbers):
+        amount_index = len(service_descriptions) + index
+        items.append(
+            _service_record_line_item(
+                ordinal=len(items) + 1,
+                description=part_number,
+                category_hint="part",
+                quantity=quantities[index] if index < len(quantities) else None,
+                unit=units[index] if index < len(units) else None,
+                unit_price=unit_prices[index] if index < len(unit_prices) else None,
+                amount=(
+                    line_totals[amount_index]
+                    if amount_index < len(line_totals)
+                    else (line_totals[index] if index < len(line_totals) else None)
+                ),
+                source_text=part_number,
+            )
+        )
+    return [item for item in items if item["description"]]
+
+
+def _service_record_line_item(
+    *,
+    ordinal: int,
+    description: str,
+    category_hint: str,
+    quantity: Any,
+    unit: Any,
+    unit_price: Any,
+    amount: Any,
+    source_text: str,
+) -> dict[str, Any]:
+    normalized: dict[str, Any] = {
+        "ordinal": ordinal,
+        "description": description,
+        "category_hint": category_hint,
+        "evidence": [_evidence(source_text)],
+    }
+    parsed_quantity = _number(quantity)
+    parsed_unit_price = _money(unit_price)
+    parsed_amount = _money(amount)
+    if parsed_quantity is not None:
+        normalized["quantity"] = parsed_quantity
+    if unit not in (None, ""):
+        normalized["unit"] = str(unit)
+    if parsed_unit_price is not None:
+        normalized["unit_price"] = parsed_unit_price
+    if parsed_amount is not None:
+        normalized["amount"] = parsed_amount
+    return normalized
+
+
+def _join_source_text(description: str, **parts: Any) -> str:
+    values = [description]
+    for key, value in parts.items():
+        if value not in (None, ""):
+            values.append(f"{key}: {value}")
+    return " | ".join(values)
 
 
 def _line_item(

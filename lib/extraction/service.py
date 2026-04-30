@@ -58,6 +58,13 @@ class ClassificationResult:
     queued_extraction_job_id: UUID | None
 
 
+def _classifier_document_extract_enabled() -> bool:
+    # Live Phase 8.5 extraction must be region-scoped from Qwen/Docling semantic
+    # targets. The Phase 4 classifier can still persist classification evidence,
+    # but it must not launch broad document-level Granite requests.
+    return get_settings().model_mode == "fixture"
+
+
 class ExtractionService:
     def __init__(
         self,
@@ -95,7 +102,7 @@ class ExtractionService:
         decision = classify_document(source, registry=self.registry)
         extraction_id = persist_classification(decision, source=source)
         queued_job_id = None
-        if decision.family in TARGET_EXTRACTION_SCHEMAS:
+        if decision.family in TARGET_EXTRACTION_SCHEMAS and _classifier_document_extract_enabled():
             priority = 35
             job_id = uuid4()
             job = self.jobs.create_job(

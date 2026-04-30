@@ -25,6 +25,8 @@ def model_output_schema_for_task(
     if semantic_task is None:
         return None
     semantic_type = semantic_task.semantic_type
+    if semantic_type == "service_record_line_item_table":
+        return load_model_output_schema("granite_service_record_line_items.v1")
     if semantic_type in {"receipt_line_item_table", "retail_order_line_item_table"}:
         return load_model_output_schema("granite_receipt_line_items.v1")
     if semantic_type in {"receipt_payment_summary"}:

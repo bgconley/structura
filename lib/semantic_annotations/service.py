@@ -11,6 +11,9 @@ from lib.extraction.models import ExtractionSourceDocument
 from lib.extraction.repository import load_extraction_source
 from lib.jobs import JobService, create_job_with_cursor
 from lib.jobs.event_payloads import build_extract_document_job_payload
+from lib.semantic_annotations.docling_targets import (
+    augment_result_with_docling_structural_targets,
+)
 from lib.semantic_annotations.fixture_gateway import FixtureSemanticAnnotationGateway
 from lib.semantic_annotations.models import (
     DocumentSemanticManifest,
@@ -28,6 +31,12 @@ from lib.semantic_annotations.repository import (
     persist_semantic_manifest_with_cursor,
 )
 from lib.semantic_annotations.schema_fit import SchemaFitDecision, schema_fit_for_region
+from lib.semantic_annotations.semantic_family import (
+    SemanticDocumentFamilyDecision,
+    apply_semantic_document_family_decision_with_cursor,
+    semantic_document_family_decision,
+    source_with_semantic_family,
+)
 from lib.semantic_annotations.task_routing import corrected_granite_task_for_semantic_type
 
 MAX_GRANITE_TASKS_BY_QUALITY_MODE = {
@@ -124,10 +133,15 @@ class SemanticAnnotationService:
         if source.document_id != document_id:
             raise SemanticAnnotationServiceError("Loaded source document ID mismatch.")
         manifest_result = self.gateway.annotate(source, quality_mode=quality_mode)
+        manifest_result = augment_result_with_docling_structural_targets(source, manifest_result)
+        family_decision = semantic_document_family_decision(source, manifest_result.manifest)
+        effective_source = source_with_semantic_family(source, family_decision)
         if self._use_default_atomic_uow:
             return self._persist_and_enqueue_atomically(
                 source,
+                effective_source,
                 manifest_result,
+                family_decision,
                 requested_by=requested_by,
                 allow_8b_rescue=allow_8b_rescue,
                 requested_by_user_id=requested_by_user_id,
@@ -135,7 +149,7 @@ class SemanticAnnotationService:
             )
         persisted = self.manifest_persister(manifest_result.manifest)
         queued_job_ids = self._enqueue_granite_jobs(
-            source,
+            effective_source,
             manifest_result,
             persisted,
             requested_by=requested_by,
@@ -152,7 +166,9 @@ class SemanticAnnotationService:
     def _persist_and_enqueue_atomically(
         self,
         source: ExtractionSourceDocument,
+        effective_source: ExtractionSourceDocument,
         manifest_result: SemanticAnnotationResult,
+        family_decision: SemanticDocumentFamilyDecision,
         *,
         requested_by: str,
         allow_8b_rescue: bool,
@@ -165,9 +181,14 @@ class SemanticAnnotationService:
                     cur,
                     manifest_result.manifest,
                 )
-                queued_job_ids = self._enqueue_granite_jobs_with_cursor(
+                apply_semantic_document_family_decision_with_cursor(
                     cur,
                     source,
+                    family_decision,
+                )
+                queued_job_ids = self._enqueue_granite_jobs_with_cursor(
+                    cur,
+                    effective_source,
                     manifest_result,
                     persisted,
                     requested_by=requested_by,
@@ -419,19 +440,47 @@ def _granite_job_specs(
                 priority=_priority_for_region(repaired_region),
                 ordinal=ordinal,
                 schema_fit=schema_fit,
-                metadata=repair_metadata,
+                metadata={**repaired_region.metadata, **repair_metadata},
             )
         )
     limit = MAX_GRANITE_TASKS_BY_QUALITY_MODE.get(
         manifest_result.manifest.quality_mode,
         MAX_GRANITE_TASKS_BY_QUALITY_MODE["smart"],
     )
-    return tuple(sorted(specs, key=_granite_job_sort_key)[:limit])
+    return tuple(_dedupe_granite_job_specs(sorted(specs, key=_granite_job_sort_key))[:limit])
 
 
 def _granite_job_sort_key(spec: GraniteJobSpec) -> tuple[object, ...]:
     confidence = spec.region.confidence if spec.region.confidence is not None else 0.0
     return (spec.priority, -confidence, spec.ordinal)
+
+
+def _dedupe_granite_job_specs(specs: list[GraniteJobSpec]) -> list[GraniteJobSpec]:
+    deduped: list[GraniteJobSpec] = []
+    seen: set[tuple[object, ...]] = set()
+    for spec in specs:
+        key = _granite_job_dedupe_key(spec.region)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(spec)
+    return deduped
+
+
+def _granite_job_dedupe_key(region: SemanticRegionAnnotation) -> tuple[object, ...]:
+    grounding = region.grounding
+    page_level_intent: tuple[str, ...] = ()
+    if grounding.element_id is None and grounding.table_id is None:
+        page_level_intent = tuple(region.expected_fields)
+    return (
+        region.semantic_type,
+        region.granite_task,
+        grounding.kind,
+        grounding.page_id,
+        grounding.element_id,
+        grounding.table_id,
+        page_level_intent,
+    )
 
 
 def _region_for_granite_job(

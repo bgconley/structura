@@ -5,8 +5,14 @@ from typing import Any
 
 from lib.extraction.models import ExtractionSourceDocument
 from lib.semantic_annotations.docling_audit import family_anchor_hits
+from lib.semantic_annotations.docling_targets import DOCLING_STRUCTURAL_REGION_SOURCE
 from lib.semantic_annotations.models import SemanticRegionAnnotation
-from lib.semantic_annotations.target_schema_policy import preferred_target_schema
+from lib.semantic_annotations.target_schema_policy import (
+    classified_document_target_schema,
+    preferred_target_schema,
+    target_schema_from_document_hint,
+    target_schema_from_semantic_type,
+)
 
 _TARGET_SCHEMA_EVIDENCE_FAMILIES = {
     "invoice": frozenset({"invoice"}),
@@ -72,12 +78,10 @@ def schema_fit_for_region(
     region: SemanticRegionAnnotation,
     document_type_hint: str | None,
 ) -> SchemaFitDecision:
-    requested = preferred_target_schema(
-        document_family=source.family,
-        document_metadata=source.metadata,
+    requested = _requested_target_schema(
+        source=source,
+        region=region,
         document_type_hint=document_type_hint,
-        semantic_type=region.semantic_type,
-        model_target_schema=region.target_schema,
     )
     if requested is None:
         return SchemaFitDecision(
@@ -100,8 +104,9 @@ def schema_fit_for_region(
     evidence_families = _evidence_families_from_hits(anchor_hits)
     allowed_evidence_families = _TARGET_SCHEMA_EVIDENCE_FAMILIES[requested]
     document_type = _normalized(document_type_hint)
+    is_docling_structural = region.metadata.get("region_source") == DOCLING_STRUCTURAL_REGION_SOURCE
     if (
-        document_type in _OBSERVATION_DOCUMENT_TYPES
+        (document_type in _OBSERVATION_DOCUMENT_TYPES and not is_docling_structural)
         or region.semantic_type in _OBSERVATION_SEMANTIC_TYPES
     ):
         return SchemaFitDecision(
@@ -145,6 +150,29 @@ def schema_fit_for_region(
 
 def _evidence_families(source: ExtractionSourceDocument) -> tuple[str, ...]:
     return _evidence_families_from_hits(family_anchor_hits(source))
+
+
+def _requested_target_schema(
+    *,
+    source: ExtractionSourceDocument,
+    region: SemanticRegionAnnotation,
+    document_type_hint: str | None,
+) -> str | None:
+    if region.metadata.get("region_source") == DOCLING_STRUCTURAL_REGION_SOURCE:
+        return (
+            target_schema_from_semantic_type(region.semantic_type)
+            or target_schema_from_document_hint(region.target_schema)
+            or target_schema_from_document_hint(document_type_hint)
+            or classified_document_target_schema(source.family, source.metadata)
+            or target_schema_from_document_hint(source.family)
+        )
+    return preferred_target_schema(
+        document_family=source.family,
+        document_metadata=source.metadata,
+        document_type_hint=document_type_hint,
+        semantic_type=region.semantic_type,
+        model_target_schema=region.target_schema,
+    )
 
 
 def _evidence_families_from_hits(anchor_hits: dict[str, tuple[str, ...]]) -> tuple[str, ...]:
