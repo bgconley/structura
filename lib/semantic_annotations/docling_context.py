@@ -43,48 +43,50 @@ def build_docling_context(
         )
         for page in focus_pages
     ]
-    context = {
-        "document": {
-            "documentId": str(source.document_id),
-            "family": source.family,
-            "subtype": source.subtype,
-            "title": source.title,
-            "originalFilename": source.original_filename,
-            "counterpartyDisplay": source.counterparty_display,
-            "quality": source.metadata.get("phase8", {}).get("quality", {}),
-            "pageCount": len(source.pages),
-            "elementCount": len(source.elements),
-            "tableCount": len(source.tables),
-            "lexicalAnchors": list(audit.lexical_anchors),
-            "anchorCounts": audit.anchor_counts,
-            "suggestedFamilyHints": list(audit.suggested_family_hints),
-            "familyTension": list(audit.family_tension),
-            "firstPageSnippet": _snippet(source.pages[0].text, PAGE_SNIPPET_CHARS)
-            if source.pages
-            else "",
-            "lastPageSnippet": _snippet(source.pages[-1].text, PAGE_SNIPPET_CHARS)
-            if source.pages
-            else "",
-            "pageOutline": [
-                {
-                    "pageId": str(page.page_id),
-                    "pageNumber": page.page_number,
-                    "outlineRole": _outline_role(
-                        page.page_number,
-                        page_count=len(source.pages),
-                        focus_page_numbers=focus_page_numbers,
-                    ),
-                    "textSnippet": _snippet(page.text, PAGE_SNIPPET_CHARS),
-                    "elementCount": len(elements_by_page.get(page.page_number, [])),
-                    "tableCount": len(tables_by_page.get(page.page_number, [])),
-                }
-                for page in source.pages
-            ],
-            "tableInventory": [
-                _table_inventory_context(table, table_audit_by_id.get(str(table.table_id)))
-                for table in source.tables
-            ],
-        },
+    document_context: dict[str, Any] = {
+        "documentId": str(source.document_id),
+        "family": source.family,
+        "subtype": source.subtype,
+        "title": source.title,
+        "originalFilename": source.original_filename,
+        "counterpartyDisplay": source.counterparty_display,
+        "quality": source.metadata.get("phase8", {}).get("quality", {}),
+        "pageCount": len(source.pages),
+        "elementCount": len(source.elements),
+        "tableCount": len(source.tables),
+        "lexicalAnchors": list(audit.lexical_anchors),
+        "anchorCounts": audit.anchor_counts,
+        "suggestedFamilyHints": list(audit.suggested_family_hints),
+        "familyTension": list(audit.family_tension),
+        "firstPageSnippet": _snippet(source.pages[0].text, PAGE_SNIPPET_CHARS)
+        if source.pages
+        else "",
+        "lastPageSnippet": _snippet(source.pages[-1].text, PAGE_SNIPPET_CHARS)
+        if source.pages
+        else "",
+        "pageOutline": [
+            {
+                "pageId": str(page.page_id),
+                "pageNumber": page.page_number,
+                "outlineRole": _outline_role(
+                    page.page_number,
+                    page_count=len(source.pages),
+                    focus_page_numbers=focus_page_numbers,
+                ),
+                "textSnippet": _snippet(page.text, PAGE_SNIPPET_CHARS),
+                "elementCount": len(elements_by_page.get(page.page_number, [])),
+                "tableCount": len(tables_by_page.get(page.page_number, [])),
+            }
+            for page in source.pages
+        ],
+        "tableInventory": [
+            _table_inventory_context(table, table_audit_by_id.get(str(table.table_id)))
+            for table in source.tables
+        ],
+        "focusPageContract": _focus_page_contract(focus_pages, focus_page_numbers),
+    }
+    context: dict[str, Any] = {
+        "document": document_context,
         "focusPages": focus_context,
     }
     if include_pages_alias:
@@ -155,6 +157,18 @@ def _table_inventory_context(
         "hasTableJson": bool(table.table_json),
         "tableSignal": audit_summary.table_signal if audit_summary is not None else "unknown",
         "weakSignalReason": audit_summary.weak_signal_reason if audit_summary is not None else None,
+    }
+
+
+def _focus_page_contract(
+    focus_pages: list[ParsedPageText],
+    focus_page_numbers: set[int] | None,
+) -> dict[str, Any]:
+    return {
+        "allowedPageIds": [str(page.page_id) for page in focus_pages],
+        "allowedPageNumbers": [page.page_number for page in focus_pages],
+        "pagesArrayMustMatchFocusPages": focus_page_numbers is not None,
+        "pageOutlineIsContextOnly": focus_page_numbers is not None,
     }
 
 

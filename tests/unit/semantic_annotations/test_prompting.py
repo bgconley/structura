@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from uuid import uuid4
 
 from lib.extraction.models import ExtractionSourceDocument, ParsedPageText
@@ -25,6 +26,21 @@ def test_semantic_planner_prompt_is_recall_oriented_without_canonical_facts() ->
     assert "Return no more than 6 regions total" not in prompt
     assert "highest-value Granite routing targets" not in prompt
     assert "do not enumerate every visible field" not in prompt
+
+
+def test_semantic_planner_prompt_marks_full_outline_as_context_only_for_focus_pages() -> None:
+    source = _source()
+    prompt = build_semantic_planner_prompt(source, focus_page_numbers={1})
+
+    assert "document.pageOutline is context-only" in prompt
+    assert "pages[] must contain exactly the focusPages/input image pages" in prompt
+    context = json.loads(prompt.split("Docling context: ", 1)[1])
+    assert context["document"]["focusPageContract"] == {
+        "allowedPageIds": [str(source.pages[0].page_id)],
+        "allowedPageNumbers": [1],
+        "pagesArrayMustMatchFocusPages": True,
+        "pageOutlineIsContextOnly": True,
+    }
 
 
 def test_semantic_planner_prompt_includes_compact_class_examples_not_private_docs() -> None:

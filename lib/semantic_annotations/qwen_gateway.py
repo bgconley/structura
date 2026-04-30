@@ -58,8 +58,6 @@ from lib.storage import ObjectStorage
 
 MAX_SEMANTIC_MODEL_ATTEMPTS = 2
 SMART_SEMANTIC_MAX_OUTPUT_TOKENS = 6144
-SEMANTIC_PAGE_COVERAGE_FRAGMENT = "page coverage must exactly match docling pages"
-SINGLE_PAGE_FALLBACK_MAX_IMAGES = 1
 PAGE_PLANNER_METADATA_FIELDS = (
     "page_family_hints",
     "continuation_group",
@@ -140,26 +138,12 @@ class QwenSemanticAnnotationGateway:
         prompt_version = _prompt_version_for_mode(quality_mode)
         max_images = _max_image_inputs_for_profile(profile_name)
         if len(source.pages) <= max_images:
-            try:
-                manifest = self._generate_manifest_for_source(
-                    source,
-                    quality_mode=quality_mode,
-                    profile_name=profile_name,
-                    prompt_version=prompt_version,
-                )
-            except ModelProtocolError as exc:
-                fallback_reason = _single_page_fallback_reason(exc, source, max_images=max_images)
-                if fallback_reason is None:
-                    raise
-                manifest = self._annotate_in_page_windows(
-                    source,
-                    quality_mode=quality_mode,
-                    profile_name=profile_name,
-                    prompt_version=prompt_version,
-                    max_images=SINGLE_PAGE_FALLBACK_MAX_IMAGES,
-                    fallback_reason=fallback_reason,
-                    primary_max_images=max_images,
-                )
+            manifest = self._generate_manifest_for_source(
+                source,
+                quality_mode=quality_mode,
+                profile_name=profile_name,
+                prompt_version=prompt_version,
+            )
         else:
             manifest = self._annotate_in_page_windows(
                 source,
@@ -179,63 +163,29 @@ class QwenSemanticAnnotationGateway:
         profile_name: str,
         prompt_version: str,
         max_images: int,
-        fallback_reason: str | None = None,
-        primary_max_images: int | None = None,
     ) -> DocumentSemanticManifest:
         partials: list[DocumentSemanticManifest] = []
-        fallback_reasons: list[str] = []
         for index in range(0, len(source.pages), max_images):
             chunk_source = _source_for_pages(source, source.pages[index : index + max_images])
-            try:
-                partials.append(
-                    self._generate_manifest_for_source(
-                        chunk_source,
-                        quality_mode=quality_mode,
-                        profile_name=profile_name,
-                        prompt_version=prompt_version,
-                        context_source=source,
-                        focus_page_numbers={page.page_number for page in chunk_source.pages},
-                    )
-                )
-            except ModelProtocolError as exc:
-                fallback_reason_for_error = _single_page_fallback_reason(
-                    exc,
+            partials.append(
+                self._generate_manifest_for_source(
                     chunk_source,
-                    max_images=max_images,
+                    quality_mode=quality_mode,
+                    profile_name=profile_name,
+                    prompt_version=prompt_version,
+                    context_source=source,
+                    focus_page_numbers={page.page_number for page in chunk_source.pages},
                 )
-                if fallback_reason_for_error is None:
-                    raise
-                fallback_reasons.append(fallback_reason_for_error)
-                for page in chunk_source.pages:
-                    page_source = _source_for_pages(source, [page])
-                    partials.append(
-                        self._generate_manifest_for_source(
-                            page_source,
-                            quality_mode=quality_mode,
-                            profile_name=profile_name,
-                            prompt_version=prompt_version,
-                            context_source=source,
-                            focus_page_numbers={page.page_number},
-                        )
-                    )
+            )
         if not partials:
             raise ModelProtocolError("Semantic annotation requires page image assets.")
-        manifest = merge_partial_manifests(
+        return merge_partial_manifests(
             source,
             partials,
             quality_mode=quality_mode,
             profile_name=profile_name,
             prompt_version=prompt_version,
         )
-        resolved_fallback_reason = fallback_reason or (
-            fallback_reasons[0] if fallback_reasons else None
-        )
-        if resolved_fallback_reason:
-            manifest.confidence["fallback_reason"] = resolved_fallback_reason
-            manifest.confidence["fallback_max_images"] = SINGLE_PAGE_FALLBACK_MAX_IMAGES
-            manifest.confidence["primary_max_images"] = primary_max_images or max_images
-            manifest.manifest["confidence"] = manifest.confidence
-        return manifest
 
     def _generate_manifest_for_source(
         self,
@@ -266,8 +216,6 @@ class QwenSemanticAnnotationGateway:
                 return manifest
             except (ModelProtocolError, SemanticAnnotationValidationError) as exc:
                 last_error = exc
-                if _single_page_fallback_reason(exc, source, max_images=len(source.pages)):
-                    break
                 if attempt + 1 >= MAX_SEMANTIC_MODEL_ATTEMPTS or not _is_retryable_error(exc):
                     break
         if last_error is None:
@@ -777,33 +725,3 @@ def _is_retryable_error(exc: Exception) -> bool:
             "invalid semantic annotation output",
         )
     )
-
-
-def _should_fallback_to_single_page_windows(
-    exc: Exception,
-    source: ExtractionSourceDocument,
-    *,
-    max_images: int,
-) -> bool:
-    return _single_page_fallback_reason(exc, source, max_images=max_images) is not None
-
-
-def _single_page_fallback_reason(
-    exc: Exception,
-    source: ExtractionSourceDocument,
-    *,
-    max_images: int,
-) -> str | None:
-    message = str(exc).lower()
-    if not (
-        max_images > SINGLE_PAGE_FALLBACK_MAX_IMAGES
-        and len(source.pages) > SINGLE_PAGE_FALLBACK_MAX_IMAGES
-    ):
-        return None
-    if SEMANTIC_PAGE_COVERAGE_FRAGMENT in message:
-        return "multi_image_page_coverage"
-    if "maximum context length" in message or "context length" in message:
-        return "multi_image_context_length"
-    if "truncated" in message:
-        return "multi_image_output_truncated"
-    return None

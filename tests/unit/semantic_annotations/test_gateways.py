@@ -519,11 +519,11 @@ def test_live_qwen_smart_gateway_uses_four_image_qwen3_vl_4b_fan_in() -> None:
     assert all("Invoice total $42" in request.prompt for request in client.requests)
 
 
-def test_live_qwen_smart_gateway_falls_back_to_one_page_windows_after_coverage_failure() -> None:
+def test_live_qwen_smart_gateway_rejects_coverage_failure_without_one_page_fallback() -> None:
     source = _source_with_two_page_images()
     page_by_hash = {page.image_sha256: page.page_id for page in source.pages if page.image_sha256}
 
-    class CoverageFallbackClient:
+    class CoverageFailureClient:
         requests: list[VisionGenerateRequest]
 
         def __init__(self) -> None:
@@ -547,34 +547,21 @@ def test_live_qwen_smart_gateway_falls_back_to_one_page_windows_after_coverage_f
                 latency_ms=1,
             )
 
-    client = CoverageFallbackClient()
+    client = CoverageFailureClient()
 
-    result = QwenSemanticAnnotationGateway(client=client).annotate(
-        source,
-        quality_mode="smart",
-    )
+    with pytest.raises(ModelProtocolError, match="page coverage"):
+        QwenSemanticAnnotationGateway(client=client).annotate(
+            source,
+            quality_mode="smart",
+        )
 
-    assert [len(request.image_inputs) for request in client.requests] == [2, 1, 1]
-    assert len(result.manifest.pages) == 2
-    assert len(result.manifest.regions) == 2
-    assert result.manifest.confidence["chunk_count"] == 2
-    assert result.manifest.confidence["fallback_reason"] == "multi_image_page_coverage"
-    assert result.manifest.confidence["fallback_max_images"] == 1
-    prompt_contexts = [_docling_context_from_prompt(request.prompt) for request in client.requests]
-    fallback_contexts = prompt_contexts[1:]
-    assert [context["document"]["pageCount"] for context in fallback_contexts] == [2, 2]
-    assert [
-        [page["pageNumber"] for page in context["focusPages"]] for context in fallback_contexts
-    ] == [[1], [2]]
-    assert all("Invoice cover" in request.prompt for request in client.requests)
-    assert all("Invoice total $42" in request.prompt for request in client.requests)
+    assert [len(request.image_inputs) for request in client.requests] == [2]
 
 
-def test_live_qwen_smart_gateway_falls_back_after_context_length_failure() -> None:
+def test_live_qwen_smart_gateway_rejects_context_length_without_one_page_fallback() -> None:
     source = _source_with_two_page_images()
-    page_by_hash = {page.image_sha256: page.page_id for page in source.pages if page.image_sha256}
 
-    class ContextLengthFallbackClient:
+    class ContextLengthFailureClient:
         requests: list[VisionGenerateRequest]
 
         def __init__(self) -> None:
@@ -588,38 +575,22 @@ def test_live_qwen_smart_gateway_falls_back_after_context_length_failure() -> No
                     "However, you requested 6144 output tokens and your prompt contains "
                     "at least 14500 input tokens."
                 )
-            page_ids = [page_by_hash[image.validated_sha256()] for image in request.image_inputs]
-            return VisionGenerateResponse(
-                profile_name=QWEN_SEMANTIC_PROFILE,
-                model_name="fake-qwen",
-                model_version="test",
-                source_engine="qwen3_vl_4b",
-                prompt_version=request.prompt_version,
-                raw_text="{}",
-                normalized_json=_semantic_payload_for_pages(page_ids),
-                confidence_json={"overall": 0.8},
-                input_sha256=tuple(image.validated_sha256() for image in request.image_inputs),
-                latency_ms=1,
-            )
 
-    client = ContextLengthFallbackClient()
+    client = ContextLengthFailureClient()
 
-    result = QwenSemanticAnnotationGateway(client=client).annotate(
-        source,
-        quality_mode="smart",
-    )
+    with pytest.raises(ModelProtocolError, match="maximum context length"):
+        QwenSemanticAnnotationGateway(client=client).annotate(
+            source,
+            quality_mode="smart",
+        )
 
-    assert [len(request.image_inputs) for request in client.requests] == [2, 1, 1]
-    assert len(result.manifest.pages) == 2
-    assert result.manifest.confidence["fallback_reason"] == "multi_image_context_length"
-    assert result.manifest.confidence["fallback_max_images"] == 1
+    assert [len(request.image_inputs) for request in client.requests] == [2]
 
 
-def test_live_qwen_smart_gateway_falls_back_after_multi_image_truncation() -> None:
+def test_live_qwen_smart_gateway_rejects_truncation_without_one_page_fallback() -> None:
     source = _source_with_two_page_images()
-    page_by_hash = {page.image_sha256: page.page_id for page in source.pages if page.image_sha256}
 
-    class TruncationFallbackClient:
+    class TruncationFailureClient:
         requests: list[VisionGenerateRequest]
 
         def __init__(self) -> None:
@@ -631,34 +602,19 @@ def test_live_qwen_smart_gateway_falls_back_after_multi_image_truncation() -> No
                 raise ModelProtocolError(
                     "Vision model response was truncated before valid JSON completed."
                 )
-            page_ids = [page_by_hash[image.validated_sha256()] for image in request.image_inputs]
-            return VisionGenerateResponse(
-                profile_name=QWEN_SEMANTIC_PROFILE,
-                model_name="fake-qwen",
-                model_version="test",
-                source_engine="qwen3_vl_4b",
-                prompt_version=request.prompt_version,
-                raw_text="{}",
-                normalized_json=_semantic_payload_for_pages(page_ids),
-                confidence_json={"overall": 0.8},
-                input_sha256=tuple(image.validated_sha256() for image in request.image_inputs),
-                latency_ms=1,
-            )
 
-    client = TruncationFallbackClient()
+    client = TruncationFailureClient()
 
-    result = QwenSemanticAnnotationGateway(client=client).annotate(
-        source,
-        quality_mode="smart",
-    )
+    with pytest.raises(ModelProtocolError, match="truncated"):
+        QwenSemanticAnnotationGateway(client=client).annotate(
+            source,
+            quality_mode="smart",
+        )
 
-    assert [len(request.image_inputs) for request in client.requests] == [2, 1, 1]
-    assert len(result.manifest.pages) == 2
-    assert result.manifest.confidence["fallback_reason"] == "multi_image_output_truncated"
-    assert result.manifest.confidence["fallback_max_images"] == 1
+    assert [len(request.image_inputs) for request in client.requests] == [2, 2]
 
 
-def test_live_qwen_smart_gateway_filters_context_only_pages_in_fallback() -> None:
+def test_live_qwen_smart_gateway_filters_context_only_pages_inside_requested_window() -> None:
     source = _source_with_two_page_images()
     all_page_ids = [page.page_id for page in source.pages]
 
@@ -670,10 +626,6 @@ def test_live_qwen_smart_gateway_filters_context_only_pages_in_fallback() -> Non
 
         def generate(self, request: VisionGenerateRequest) -> VisionGenerateResponse:
             self.requests.append(request)
-            if len(request.image_inputs) > 1:
-                raise ModelProtocolError(
-                    "Vision model response was truncated before valid JSON completed."
-                )
             return VisionGenerateResponse(
                 profile_name=QWEN_SEMANTIC_PROFILE,
                 model_name="fake-qwen",
@@ -694,32 +646,16 @@ def test_live_qwen_smart_gateway_filters_context_only_pages_in_fallback() -> Non
         quality_mode="smart",
     )
 
-    assert [len(request.image_inputs) for request in client.requests] == [2, 1, 1]
+    assert [len(request.image_inputs) for request in client.requests] == [2]
     assert [page.page_id for page in result.manifest.pages] == all_page_ids
     assert [region.grounding.page_id for region in result.manifest.regions] == all_page_ids
-    chunks = result.manifest.confidence["chunks"]
-    assert isinstance(chunks, list)
-    first_normalization = chunks[0]["normalization"]
-    second_normalization = chunks[1]["normalization"]
-    assert first_normalization == {
-        "output_scope_filter_policy": "filter_to_requested_docling_pages",
-        "out_of_window_pages_dropped": 1,
-        "out_of_window_page_ids": [str(source.pages[1].page_id)],
-        "out_of_window_regions_dropped": 1,
-    }
-    assert second_normalization == {
-        "output_scope_filter_policy": "filter_to_requested_docling_pages",
-        "out_of_window_pages_dropped": 1,
-        "out_of_window_page_ids": [str(source.pages[0].page_id)],
-        "out_of_window_regions_dropped": 1,
-    }
 
 
-def test_live_qwen_smart_gateway_falls_back_per_failed_four_page_window() -> None:
+def test_live_qwen_smart_gateway_chunks_long_documents_without_one_page_fallback() -> None:
     source = _source_with_many_page_images(5)
     page_by_hash = {page.image_sha256: page.page_id for page in source.pages if page.image_sha256}
 
-    class WindowFallbackClient:
+    class WindowChunkClient:
         requests: list[VisionGenerateRequest]
 
         def __init__(self) -> None:
@@ -728,8 +664,6 @@ def test_live_qwen_smart_gateway_falls_back_per_failed_four_page_window() -> Non
         def generate(self, request: VisionGenerateRequest) -> VisionGenerateResponse:
             self.requests.append(request)
             page_ids = [page_by_hash[image.validated_sha256()] for image in request.image_inputs]
-            if len(request.image_inputs) > 1:
-                page_ids = page_ids[:1]
             return VisionGenerateResponse(
                 profile_name=QWEN_SEMANTIC_PROFILE,
                 model_name="fake-qwen",
@@ -743,18 +677,16 @@ def test_live_qwen_smart_gateway_falls_back_per_failed_four_page_window() -> Non
                 latency_ms=1,
             )
 
-    client = WindowFallbackClient()
+    client = WindowChunkClient()
 
     result = QwenSemanticAnnotationGateway(client=client).annotate(
         source,
         quality_mode="smart",
     )
 
-    assert [len(request.image_inputs) for request in client.requests] == [4, 1, 1, 1, 1, 1]
+    assert [len(request.image_inputs) for request in client.requests] == [4, 1]
     assert len(result.manifest.pages) == 5
-    assert result.manifest.confidence["fallback_reason"] == "multi_image_page_coverage"
-    assert result.manifest.confidence["fallback_max_images"] == 1
-    assert result.manifest.confidence["primary_max_images"] == 4
+    assert "fallback_reason" not in result.manifest.confidence
 
 
 def test_live_qwen_high_quality_gateway_chunks_pages_for_one_image_hq_service() -> None:
