@@ -34,6 +34,7 @@ def test_semantic_planner_prompt_marks_full_outline_as_context_only_for_focus_pa
 
     assert "document.pageOutline is context-only" in prompt
     assert "pages[] must contain exactly the focusPages/input image pages" in prompt
+    assert "For blank or no-target focus pages" in prompt
     context = json.loads(prompt.split("Docling context: ", 1)[1])
     assert context["document"]["focusPageContract"] == {
         "allowedPageIds": [str(source.pages[0].page_id)],

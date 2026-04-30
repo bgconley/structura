@@ -558,6 +558,56 @@ def test_live_qwen_smart_gateway_rejects_coverage_failure_without_one_page_fallb
     assert [len(request.image_inputs) for request in client.requests] == [2]
 
 
+def test_live_qwen_smart_gateway_fills_missing_blank_focus_page_without_fallback() -> None:
+    source = _source_with_blank_second_page()
+
+    class MissingBlankPageClient:
+        requests: list[VisionGenerateRequest]
+
+        def __init__(self) -> None:
+            self.requests = []
+
+        def generate(self, request: VisionGenerateRequest) -> VisionGenerateResponse:
+            self.requests.append(request)
+            return VisionGenerateResponse(
+                profile_name=QWEN_SEMANTIC_PROFILE,
+                model_name="fake-qwen",
+                model_version="test",
+                source_engine="qwen3_vl_4b",
+                prompt_version=request.prompt_version,
+                raw_text="{}",
+                normalized_json=_semantic_payload_for_pages([source.pages[0].page_id]),
+                confidence_json={"overall": 0.8},
+                input_sha256=tuple(image.validated_sha256() for image in request.image_inputs),
+                latency_ms=1,
+            )
+
+    client = MissingBlankPageClient()
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(
+        source,
+        quality_mode="smart",
+    )
+
+    assert [len(request.image_inputs) for request in client.requests] == [2]
+    assert [page.page_id for page in result.manifest.pages] == [
+        source.pages[0].page_id,
+        source.pages[1].page_id,
+    ]
+    assert result.manifest.pages[1].extraction_usefulness == "none"
+    assert result.manifest.pages[1].is_boilerplate is True
+    assert result.manifest.pages[1].has_structured_targets is False
+    assert result.manifest.pages[1].reason == (
+        "Docling reported a blank/no-signal focus page omitted by the model."
+    )
+    assert result.manifest.confidence["normalization"] == {
+        "output_scope_filter_policy": "filter_to_requested_docling_pages",
+        "missing_blank_focus_pages_filled": 1,
+        "missing_blank_focus_page_ids": [str(source.pages[1].page_id)],
+        "missing_blank_focus_page_policy": "fill_no_extraction_target_page_only",
+    }
+
+
 def test_live_qwen_smart_gateway_rejects_context_length_without_one_page_fallback() -> None:
     source = _source_with_two_page_images()
 
@@ -1266,6 +1316,25 @@ def _source_with_page_image_and_element() -> ExtractionSourceDocument:
 
 def _source_with_two_page_images() -> ExtractionSourceDocument:
     return _source_with_many_page_images(2)
+
+
+def _source_with_blank_second_page() -> ExtractionSourceDocument:
+    source = _source_with_two_page_images()
+    blank_content = b"blank-page"
+    return replace(
+        source,
+        pages=[
+            source.pages[0],
+            ParsedPageText(
+                page_id=source.pages[1].page_id,
+                page_number=2,
+                text="",
+                image_bytes=blank_content,
+                image_mime_type="image/png",
+                image_sha256=hashlib.sha256(blank_content).hexdigest(),
+            ),
+        ],
+    )
 
 
 def _source_with_many_page_images(page_count: int) -> ExtractionSourceDocument:

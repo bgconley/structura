@@ -1099,7 +1099,7 @@
       "error_message": "Full Phase 8.5 corpus run failed on Qwen3-VL-4B semantic annotation after a 4-page primary response missed focused Docling pages and one-page fallback leaked context-only page outline entries.",
       "file": "lib/semantic_annotations/qwen_gateway.py",
       "root_cause": "The fallback path hid the primary Smart Parse contract issue. Qwen was allowed to see full-document pageOutline while returning focused-window pages, and the prompt did not explicitly require output pages/regions to match focusPages or require blank/no-target pages to be represented.",
-      "fix": "Removed one-page fallback from Smart Parse, added an explicit focusPageContract to Docling context, tightened the Qwen prompt so document.pageOutline is context-only, and updated tests so coverage/context/truncation failures do not degrade into fallback behavior.",
+      "fix": "Removed one-page fallback from Smart Parse, added an explicit focusPageContract to Docling context, tightened the Qwen prompt so document.pageOutline is context-only, and added bounded structural normalization that fills only Docling-proven blank/no-signal omitted focus pages as no-target page annotations with telemetry. Coverage/context/truncation failures no longer degrade into fallback behavior.",
       "tags": ["phase-8.5", "qwen3-vl-4b", "semantic-routing", "docling", "page-coverage"],
       "related_bugs": ["bug-088", "bug-089", "bug-091"],
       "occurrences": 1,
