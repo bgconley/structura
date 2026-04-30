@@ -284,15 +284,48 @@ def _score_document(
     regions: list[Any] = regions_raw if isinstance(regions_raw, list) else []
     pages_raw = semantic.get("page_document_hints")
     pages: list[Any] = pages_raw if isinstance(pages_raw, list) else []
+    confidence_raw = semantic.get("confidence")
+    confidence: dict[str, Any] = confidence_raw if isinstance(confidence_raw, dict) else {}
+    normalization_raw = confidence.get("normalization")
+    normalization: dict[str, Any] = normalization_raw if isinstance(normalization_raw, dict) else {}
+    normalization_keys = set(normalization)
     semantic_types = {
         str(region.get("semantic_type"))
         for region in regions
         if isinstance(region, dict) and region.get("semantic_type")
     }
+    document_type_candidates_raw = semantic.get("document_type_candidates")
+    document_type_candidates = {
+        str(candidate.get("document_type"))
+        for candidate in (
+            document_type_candidates_raw if isinstance(document_type_candidates_raw, list) else []
+        )
+        if isinstance(candidate, dict) and candidate.get("document_type")
+    }
+    page_roles = {
+        str(page.get("page_role"))
+        for page in pages
+        if isinstance(page, dict) and page.get("page_role")
+    }
+    extraction_usefulness = {
+        str(page.get("extraction_usefulness"))
+        for page in pages
+        if isinstance(page, dict) and page.get("extraction_usefulness")
+    }
     target_schemas = {
         str(region.get("target_schema"))
         for region in regions
         if isinstance(region, dict) and region.get("target_schema")
+    }
+    source_signals = {
+        str(region.get("source_signal"))
+        for region in regions
+        if isinstance(region, dict) and region.get("source_signal")
+    }
+    extraction_scopes = {
+        str(region.get("extraction_scope"))
+        for region in regions
+        if isinstance(region, dict) and region.get("extraction_scope")
     }
     continuation_groups = {
         str(item.get("continuation_group"))
@@ -329,6 +362,21 @@ def _score_document(
             "forbidden_document_type",
             semantic.get("document_type"),
             _string_set(expectation.get("forbidden_document_types")),
+        ),
+        _check_contains_all(
+            "required_document_type_candidates",
+            document_type_candidates,
+            _string_set(expectation.get("required_document_type_candidates")),
+        ),
+        _check_contains_all(
+            "required_page_roles",
+            page_roles,
+            _string_set(expectation.get("required_page_roles")),
+        ),
+        _check_contains_all(
+            "required_extraction_usefulness",
+            extraction_usefulness,
+            _string_set(expectation.get("required_extraction_usefulness")),
         ),
         _check_contains_all(
             "required_semantic_types",
@@ -376,6 +424,21 @@ def _score_document(
             "required_full_page_image_semantic_types",
             full_page_image_semantic_types,
             _string_set(expectation.get("required_full_page_image_semantic_types")),
+        ),
+        _check_contains_all(
+            "required_source_signals",
+            source_signals,
+            _string_set(expectation.get("required_source_signals")),
+        ),
+        _check_contains_all(
+            "required_extraction_scopes",
+            extraction_scopes,
+            _string_set(expectation.get("required_extraction_scopes")),
+        ),
+        _check_disjoint(
+            "forbidden_normalization_keys",
+            normalization_keys,
+            _string_set(expectation.get("forbidden_normalization_keys")),
         ),
     ]
     checks.extend(

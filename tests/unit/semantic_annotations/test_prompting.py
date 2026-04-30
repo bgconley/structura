@@ -9,12 +9,14 @@ from lib.semantic_annotations.prompting import build_semantic_planner_prompt
 def test_semantic_planner_prompt_is_recall_oriented_without_canonical_facts() -> None:
     prompt = build_semantic_planner_prompt(_source())
 
-    assert "semantic planner" in prompt
-    assert "semantic planning, not extraction" in prompt
+    assert "semantic document-understanding layer" in prompt
+    assert "semantic inventory and extraction intent, not canonical extraction" in prompt
     assert "do not output field values" in prompt
     assert "canonical facts" in prompt
     assert "Emit all materially extractable regions" in prompt
-    assert "First account for every input page image" in prompt
+    assert "First inventory every input page image" in prompt
+    assert "Inspect layout, table structure, visual grouping" in prompt
+    assert "full-page, table, element, or crop context" in prompt
     assert "bounded recall is preferred over sparse omission" in prompt
     assert "Docling page_id, element_id, and table_id" in prompt
     assert "Emit document_type_candidates with competing family scores" in prompt
@@ -25,30 +27,33 @@ def test_semantic_planner_prompt_is_recall_oriented_without_canonical_facts() ->
     assert "do not enumerate every visible field" not in prompt
 
 
-def test_semantic_planner_prompt_includes_compact_hard_class_examples() -> None:
+def test_semantic_planner_prompt_includes_compact_class_examples_not_private_docs() -> None:
     prompt = build_semantic_planner_prompt(_source())
 
-    assert "BMW service invoice" in prompt
-    assert "BH retail order" in prompt
-    assert "medical denial" in prompt
-    assert "title seller information form" in prompt
-    assert "escrow statement" in prompt
-    assert "generic low-signal scan" in prompt
+    assert "vehicle_service_invoice" in prompt
+    assert "retail_order" in prompt
+    assert "medical_denial" in prompt
+    assert "title_seller_information_form" in prompt
+    assert "escrow_statement" in prompt
+    assert "generic_low_signal_form" in prompt
     assert "service_record_line_item_table" in prompt
     assert "receipt_payment_summary" in prompt
-    assert "Vehicle or motorcycle repair orders" in prompt
-    assert "route their service and parts rows as service_record_line_item_table" in prompt
-    assert "emit a vehicle_or_asset_block" in prompt
-    assert "continuation_group=service_lines" in prompt
-    assert "requires_full_page_image=true" in prompt
+    assert "continuation_group" in prompt
+    assert "requires_full_page_image" in prompt
+    assert "BMW service invoice" not in prompt
+    assert "BH retail order" not in prompt
+    assert "Vehicle or motorcycle repair orders" not in prompt
+    assert "Every service_record_line_item_table" not in prompt
+    assert "continuation_group=service_lines" not in prompt
+    assert "requires_full_page_image=true" not in prompt
 
 
 def _source() -> ExtractionSourceDocument:
     return ExtractionSourceDocument(
         document_id=uuid4(),
         household_id=uuid4(),
-        title="BMW service invoice",
-        original_filename="bmw.pdf",
+        title="Representative vehicle service invoice",
+        original_filename="vehicle-service.pdf",
         mime_type="application/pdf",
         family="service_record",
         subtype=None,

@@ -1075,11 +1075,23 @@
       "error_message": "BMW service invoice semantic canary completed page coverage but still emitted only one generic invoice line-item region and missed service-record/payment routing expectations.",
       "file": "lib/semantic_annotations/docling_audit.py",
       "root_cause": "The Docling audit had no service_record anchor family, while real_estate_title could become a suggested family from one title/seller-like hit. Qwen therefore saw weak or conflicting family evidence for a vehicle service record and stayed with generic invoice semantics despite the Smart Parse v3 few-shot.",
-      "fix": "Added service_record anchors for repair orders, R/O, labor, parts, mileage/VIN, vehicle, and motorcycle language; tightened real_estate_title suggested/conflict thresholds to require stronger evidence; mapped service_record semantic types to receipt target schema; added explicit service-record prompt rules for service/parts rows, vehicle blocks, and payment summaries; and repaired service-line planner metadata for service_lines/full-page-image routing.",
+      "fix": "Added broad service_record anchors for repair orders, R/O, labor, parts, mileage/VIN, vehicle, and motorcycle language; tightened real_estate_title suggested/conflict thresholds to require stronger evidence; mapped service_record semantic types to receipt target schema; then superseded the narrow service-record prompt rules and service-line metadata repair with the generalized Qwen semantic-understanding contract so service examples remain representative rather than bespoke.",
       "tags": ["phase-8.5", "qwen3-vl-4b", "semantic-routing", "docling", "bmw"],
       "related_bugs": ["bug-087"],
       "occurrences": 1,
       "last_seen": "2026-04-29T17:35:00-04:00"
+    },
+    {
+      "id": "bug-091",
+      "timestamp": "2026-04-29T18:20:00-04:00",
+      "error_message": "The Phase 8.5 Qwen optimization path drifted toward treating one private service invoice as a bespoke prompt and normalization target.",
+      "file": "lib/semantic_annotations/prompting.py",
+      "root_cause": "The follow-on Smart Parse v3 pass correctly moved Qwen toward higher recall, but it also added document-instance example names, service-record-specific imperative prompt text, and normalization that injected continuation/full-page-image intent for one semantic family.",
+      "fix": "Reframed Qwen3-VL-4B as a semantic document-understanding layer rather than a minor router, replaced document-instance examples with document-class examples, removed semantic-intent injection from normalization, and expanded the semantic canary scorecard to check document-family candidates, page roles, source signals, and extraction scopes.",
+      "tags": ["phase-8.5", "qwen3-vl-4b", "semantic-understanding", "anti-overfit", "normalization"],
+      "related_bugs": ["bug-087", "bug-090"],
+      "occurrences": 1,
+      "last_seen": "2026-04-29T18:20:00-04:00"
     }
   ]
 }

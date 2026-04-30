@@ -182,13 +182,8 @@ def _canonical_payload_normalized_for_source(
     )
     normalized_payload = dict(payload)
     normalized_payload["pages"] = merged_pages
-    repaired = _canonical_payload_with_planner_repairs(normalized_payload)
-    filtered = _canonical_payload_filtered_to_source(repaired.payload, source=source)
-    normalization = _merged_normalization(
-        normalization,
-        repaired.normalization,
-        filtered.normalization,
-    )
+    filtered = _canonical_payload_filtered_to_source(normalized_payload, source=source)
+    normalization = _merged_normalization(normalization, filtered.normalization)
     return ValidatedModelOutputPayload(payload=filtered.payload, normalization=normalization)
 
 
@@ -198,52 +193,6 @@ def _merged_normalization(*parts: dict[str, object]) -> dict[str, object]:
         if part:
             merged.update(part)
     return merged
-
-
-def _canonical_payload_with_planner_repairs(
-    payload: dict[str, object],
-) -> ValidatedModelOutputPayload:
-    regions = payload.get("regions")
-    if not isinstance(regions, list):
-        return ValidatedModelOutputPayload(payload=payload, normalization={})
-
-    repaired_regions: list[object] = []
-    continuation_repaired = 0
-    full_page_image_repaired = 0
-    for region in regions:
-        if not isinstance(region, dict):
-            repaired_regions.append(region)
-            continue
-        repaired = dict(region)
-        if repaired.get("semantic_type") == "service_record_line_item_table":
-            if not repaired.get("continuation_group"):
-                repaired["continuation_group"] = "service_lines"
-                continuation_repaired += 1
-            source_signal = str(repaired.get("source_signal") or "")
-            if (
-                repaired.get("granite_task") == "tables_json"
-                and source_signal in {"mixed", "visual"}
-                and repaired.get("requires_full_page_image") is not True
-            ):
-                repaired["requires_full_page_image"] = True
-                full_page_image_repaired += 1
-        repaired_regions.append(repaired)
-
-    if not continuation_repaired and not full_page_image_repaired:
-        return ValidatedModelOutputPayload(payload=payload, normalization={})
-
-    normalized_payload = dict(payload)
-    normalized_payload["regions"] = repaired_regions
-    normalization: dict[str, object] = {}
-    if continuation_repaired:
-        normalization["service_record_line_item_continuation_group_repaired"] = (
-            continuation_repaired
-        )
-    if full_page_image_repaired:
-        normalization["service_record_line_item_full_page_image_repaired"] = (
-            full_page_image_repaired
-        )
-    return ValidatedModelOutputPayload(payload=normalized_payload, normalization=normalization)
 
 
 def _canonical_payload_filtered_to_source(

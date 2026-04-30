@@ -97,7 +97,9 @@ def test_live_qwen_gateway_prompt_keeps_semantic_planning_but_not_tiny_region_li
     prompt = client.request.prompt
     assert "Return valid JSON only" in prompt
     assert "Docling page_id, element_id, and table_id" in prompt
-    assert "semantic planning, not extraction" in prompt
+    assert "semantic document-understanding layer" in prompt
+    assert "semantic inventory and extraction intent, not canonical extraction" in prompt
+    assert "Inspect layout, table structure, visual grouping" in prompt
     assert "expected_fields must contain field names only" in prompt
     assert "Emit all materially extractable regions" in prompt
     assert "Use no more than 12 regions total" in prompt
@@ -1091,7 +1093,7 @@ def test_live_qwen_smart_gateway_collapses_duplicate_canonical_page_annotations_
     assert result.manifest.pages[0].metadata["normalization"] == normalization
 
 
-def test_live_qwen_gateway_repairs_service_record_line_item_planner_metadata() -> None:
+def test_live_qwen_gateway_does_not_inject_service_record_semantic_intent() -> None:
     source = _source_with_page_image()
     page_id = source.pages[0].page_id
     payload = _semantic_payload(page_id)
@@ -1124,16 +1126,12 @@ def test_live_qwen_gateway_repairs_service_record_line_item_planner_metadata() -
 
     result = QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
 
-    repaired_region = result.manifest.regions[0]
-    assert repaired_region.semantic_type == "service_record_line_item_table"
-    assert repaired_region.target_schema == "receipt"
-    assert repaired_region.metadata["continuation_group"] == "service_lines"
-    assert repaired_region.metadata["requires_full_page_image"] is True
-    normalization = result.manifest.confidence["normalization"]
-    assert normalization == {
-        "service_record_line_item_continuation_group_repaired": 1,
-        "service_record_line_item_full_page_image_repaired": 1,
-    }
+    region_result = result.manifest.regions[0]
+    assert region_result.semantic_type == "service_record_line_item_table"
+    assert region_result.target_schema == "receipt"
+    assert "continuation_group" not in region_result.metadata
+    assert region_result.metadata["requires_full_page_image"] is False
+    assert "normalization" not in result.manifest.confidence
 
 
 def test_live_qwen_gateway_retries_once_after_truncated_model_output() -> None:

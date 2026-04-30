@@ -24,14 +24,18 @@ def build_semantic_planner_prompt(
     )
     context_json = json.dumps(context, sort_keys=True, separators=(",", ":"))
     return (
-        "You are Structura's semantic planner for Docling-grounded documents. "
+        "You are Structura's semantic document-understanding layer for "
+        "Docling-grounded documents. "
         "Return valid JSON only as compact semantic_annotation_model_output JSON matching "
-        "the provided JSON Schema. This is semantic planning, not extraction: do not "
-        "output field values, money amounts, dates, names, addresses, or canonical facts. "
+        "the provided JSON Schema. This is semantic inventory and extraction intent, "
+        "not canonical extraction: do not output field values, money amounts, dates, "
+        "names, addresses, or canonical facts. "
         "Use Docling page_id, element_id, and table_id from the context instead of "
         "inventing coordinates; visual_bbox_hint is advisory only and never replaces "
-        "Docling grounding. First account for every input page image, then select "
-        "grounded Granite extraction targets from that inventory. Emit all materially "
+        "Docling grounding. First inventory every input page image, then select "
+        "grounded Granite extraction intent from that inventory. Inspect layout, "
+        "table structure, visual grouping, repeated headers, cross-page continuations, "
+        "OCR-like visible text, and Docling text/table signals. Emit all materially "
         "extractable regions that could change downstream factual coverage; bounded "
         "recall is preferred over sparse omission. Use no more than 12 regions total "
         "per request and usually no more than 3 materially extractable regions per page. "
@@ -47,21 +51,14 @@ def build_semantic_planner_prompt(
         "only, using snake_case names such as total_amount or patient_responsibility. "
         "If Docling table signal is weak but the page visually contains a line-item "
         "or tabular structure, still emit the region, set source_signal to visual or "
-        "mixed, set requires_full_page_image=true, and record docling_table_signal=weak. "
-        "Preserve continuation_group for service lines, order items, medical services, "
-        "or payment sections that continue across pages. Vehicle or motorcycle repair "
-        "orders, service invoices, R/O pages, mileage/VIN service pages, labor/parts "
-        "tables, and paid service receipts are service_record documents even when the "
-        "page also says invoice; route their service and parts rows as "
-        "service_record_line_item_table with target_schema receipt, and route payment "
-        "or paid-total areas as receipt_payment_summary. For service records, emit a "
-        "vehicle_or_asset_block for VIN, mileage, vehicle, R/O number, or service "
-        "advisor identity blocks when present; this is a routing target, not a fact "
-        "extraction. Every service_record_line_item_table region should use "
-        "continuation_group=service_lines, and weak or visually reconstructed service "
-        "tables should set requires_full_page_image=true. Use target_schema medical_eob "
+        "mixed, set requires_full_page_image when full page context is needed, and "
+        "record docling_table_signal=weak. Preserve continuation_group for any line "
+        "items, services, ordered goods, medical services, forms, or payment sections "
+        "that continue across pages. Recommend whether Granite should receive "
+        "full-page, table, element, or crop context through extraction_scope and "
+        "requires_full_page_image. Use target_schema medical_eob "
         "for EOB, insurance, denial, and medical billing documents; invoice for bills "
-        "and invoices; receipt for receipts, retail orders, and service records; "
+        "and invoices; receipt for receipts, retail orders, and paid service records; "
         "document_observation for generic observations, seller/title information, "
         "escrow summaries, dispute forms, and useful unsupported forms; otherwise null. "
         "Do not force unfamiliar documents into invoice, receipt, or medical_eob. "
@@ -82,7 +79,7 @@ def build_semantic_planner_prompt(
 def _few_shot_examples() -> list[dict[str, object]]:
     return [
         {
-            "case": "BMW service invoice",
+            "case": "vehicle_service_invoice",
             "document_type": "service_record",
             "pages": [
                 {"page_role": "line_items", "continuation_group": "service_lines"},
@@ -126,7 +123,7 @@ def _few_shot_examples() -> list[dict[str, object]]:
             ],
         },
         {
-            "case": "BH retail order",
+            "case": "retail_order",
             "document_type": "retail_order",
             "regions": [
                 {
@@ -144,7 +141,7 @@ def _few_shot_examples() -> list[dict[str, object]]:
             ],
         },
         {
-            "case": "medical denial",
+            "case": "medical_denial",
             "document_type": "insurance_denial",
             "regions": [
                 {
@@ -162,7 +159,7 @@ def _few_shot_examples() -> list[dict[str, object]]:
             ],
         },
         {
-            "case": "title seller information form",
+            "case": "title_seller_information_form",
             "document_type": "real_estate_title",
             "regions": [
                 {
@@ -174,7 +171,7 @@ def _few_shot_examples() -> list[dict[str, object]]:
             ],
         },
         {
-            "case": "escrow statement",
+            "case": "escrow_statement",
             "document_type": "mortgage_escrow_statement",
             "regions": [
                 {
@@ -186,7 +183,7 @@ def _few_shot_examples() -> list[dict[str, object]]:
             ],
         },
         {
-            "case": "generic low-signal scan",
+            "case": "generic_low_signal_form",
             "document_type": "unsupported_document",
             "regions": [
                 {

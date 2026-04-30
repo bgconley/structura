@@ -41,8 +41,8 @@ def test_semantic_canary_parser_supports_expectations_json() -> None:
 def test_semantic_canary_scores_document_family_and_regions() -> None:
     report = {
         "document_id": str(uuid4()),
-        "filename": "BMW CE-04 600mi run in service and tire service 04-23.pdf",
-        "title": "BMW service",
+        "filename": "vehicle-service-class.pdf",
+        "title": "vehicle service representative",
         "docling": {
             "page_count": 3,
             "suggested_family_hints": [],
@@ -51,7 +51,29 @@ def test_semantic_canary_scores_document_family_and_regions() -> None:
         },
         "semantic": {
             "document_type": "service_record",
-            "page_document_hints": [{"page_number": 1}, {"page_number": 2}, {"page_number": 3}],
+            "document_type_candidates": [
+                {"document_type": "service_record", "confidence": 0.84},
+                {"document_type": "receipt", "confidence": 0.42},
+            ],
+            "page_document_hints": [
+                {
+                    "page_number": 1,
+                    "page_role": "line_items",
+                    "extraction_usefulness": "high",
+                    "docling_table_signal": "weak",
+                },
+                {
+                    "page_number": 2,
+                    "page_role": "line_items",
+                    "extraction_usefulness": "high",
+                    "docling_table_signal": "weak",
+                },
+                {
+                    "page_number": 3,
+                    "page_role": "payment_summary",
+                    "extraction_usefulness": "medium",
+                },
+            ],
             "regions": [
                 {
                     "semantic_type": "service_record_line_item_table",
@@ -59,28 +81,38 @@ def test_semantic_canary_scores_document_family_and_regions() -> None:
                     "continuation_group": "service_lines",
                     "requires_full_page_image": True,
                     "source_signal": "mixed",
+                    "extraction_scope": "page",
                 },
                 {
                     "semantic_type": "receipt_payment_summary",
                     "target_schema": "receipt",
+                    "source_signal": "text",
+                    "extraction_scope": "element",
                 },
                 {
                     "semantic_type": "vehicle_or_asset_block",
                     "target_schema": "document_observation",
+                    "source_signal": "mixed",
+                    "extraction_scope": "page",
                 },
             ],
         },
     }
     expectations = {
         "documents": {
-            "BMW CE-04 600mi run in service and tire service 04-23.pdf": {
+            "vehicle-service-class.pdf": {
                 "expected_document_types": ["service_record", "receipt"],
                 "forbidden_document_types": ["medical_eob"],
+                "required_document_type_candidates": ["service_record"],
+                "required_page_roles": ["line_items", "payment_summary"],
+                "required_extraction_usefulness": ["high"],
                 "required_semantic_types": ["service_record_line_item_table"],
                 "required_target_schemas": ["receipt"],
                 "required_continuation_groups": ["service_lines"],
                 "required_docling_table_signals": ["weak"],
                 "required_full_page_image_semantic_types": ["service_record_line_item_table"],
+                "required_source_signals": ["mixed"],
+                "required_extraction_scopes": ["page"],
                 "required_region_attributes": [
                     {
                         "semantic_type": "service_record_line_item_table",
@@ -98,6 +130,108 @@ def test_semantic_canary_scores_document_family_and_regions() -> None:
 
     assert scorecard["passed"] is True
     assert scorecard["documents"][0]["passed"] is True
+
+
+def test_semantic_canary_scores_missing_qwen_inventory_behavior() -> None:
+    report = {
+        "document_id": str(uuid4()),
+        "filename": "retail-order-class.pdf",
+        "title": "retail order representative",
+        "docling": {
+            "page_count": 2,
+            "suggested_family_hints": ["retail_order"],
+            "lexical_anchors": ["order"],
+            "table_summaries": [],
+        },
+        "semantic": {
+            "document_type": "retail_order",
+            "document_type_candidates": [],
+            "page_document_hints": [{"page_number": 1}, {"page_number": 2}],
+            "regions": [
+                {
+                    "semantic_type": "retail_order_line_item_table",
+                    "target_schema": "receipt",
+                }
+            ],
+        },
+    }
+    expectations = {
+        "documents": {
+            "retail-order-class.pdf": {
+                "expected_document_types": ["retail_order"],
+                "required_document_type_candidates": ["retail_order"],
+                "required_page_roles": ["line_items"],
+                "required_source_signals": ["mixed", "table"],
+                "required_extraction_scopes": ["table", "page"],
+                "require_page_coverage": True,
+            }
+        }
+    }
+
+    scorecard = semantic_canary._score_documents([report], expectations)
+
+    assert scorecard["passed"] is False
+    checks = scorecard["documents"][0]["checks"]
+    assert any(
+        check["name"] == "required_document_type_candidates" and not check["passed"]
+        for check in checks
+    )
+    assert any(check["name"] == "required_page_roles" and not check["passed"] for check in checks)
+    assert any(
+        check["name"] == "required_source_signals" and not check["passed"] for check in checks
+    )
+    assert any(
+        check["name"] == "required_extraction_scopes" and not check["passed"] for check in checks
+    )
+
+
+def test_semantic_canary_scores_forbidden_semantic_intent_normalization() -> None:
+    report = {
+        "document_id": str(uuid4()),
+        "filename": "vehicle-service-class.pdf",
+        "title": "vehicle service representative",
+        "docling": {
+            "page_count": 1,
+            "suggested_family_hints": ["service_record"],
+            "lexical_anchors": ["service"],
+            "table_summaries": [],
+        },
+        "semantic": {
+            "document_type": "service_record",
+            "page_document_hints": [{"page_number": 1, "page_role": "line_items"}],
+            "regions": [
+                {
+                    "semantic_type": "service_record_line_item_table",
+                    "target_schema": "receipt",
+                    "source_signal": "mixed",
+                    "extraction_scope": "page",
+                }
+            ],
+            "confidence": {
+                "normalization": {"service_record_line_item_continuation_group_repaired": 1}
+            },
+        },
+    }
+    expectations = {
+        "documents": {
+            "vehicle-service-class.pdf": {
+                "expected_document_types": ["service_record"],
+                "forbidden_normalization_keys": [
+                    "service_record_line_item_continuation_group_repaired",
+                    "service_record_line_item_full_page_image_repaired",
+                ],
+                "require_page_coverage": True,
+            }
+        }
+    }
+
+    scorecard = semantic_canary._score_documents([report], expectations)
+
+    assert scorecard["passed"] is False
+    checks = scorecard["documents"][0]["checks"]
+    assert any(
+        check["name"] == "forbidden_normalization_keys" and not check["passed"] for check in checks
+    )
 
 
 def test_semantic_canary_scores_forbidden_masquerade_failure() -> None:

@@ -2,23 +2,36 @@
   "schema_name": "phase8_5_semantic_canary_expectations",
   "schema_version": "v1",
   "documents": {
-    "BH Photo desktop tripod order.pdf": {
+    "retail-order-class.pdf": {
       "expected_document_types": ["retail_order", "receipt"],
       "forbidden_document_types": ["medical_eob", "insurance_denial", "medical_bill"],
+      "required_document_type_candidates": ["retail_order"],
+      "required_page_roles": ["line_items", "payment_summary"],
       "required_semantic_types": ["retail_order_line_item_table"],
       "required_target_schemas": ["receipt"],
+      "required_source_signals": ["mixed", "table"],
+      "required_extraction_scopes": ["table", "page"],
       "min_region_count": 2,
       "min_page_count": 1,
       "require_page_coverage": true,
       "required_docling_family_hints": ["retail_order"]
     },
-    "BMW CE-04 600mi run in service and tire service 04-23.pdf": {
+    "vehicle-service-invoice-class.pdf": {
       "expected_document_types": ["service_record", "receipt", "invoice"],
       "forbidden_document_types": ["medical_eob", "insurance_denial", "medical_bill"],
+      "required_document_type_candidates": ["service_record"],
+      "required_page_roles": ["line_items", "payment_summary"],
+      "required_extraction_usefulness": ["high"],
       "required_semantic_types": ["service_record_line_item_table"],
       "required_target_schemas": ["receipt"],
       "required_continuation_groups": ["service_lines"],
       "required_full_page_image_semantic_types": ["service_record_line_item_table"],
+      "required_source_signals": ["mixed"],
+      "required_extraction_scopes": ["page"],
+      "forbidden_normalization_keys": [
+        "service_record_line_item_continuation_group_repaired",
+        "service_record_line_item_full_page_image_repaired"
+      ],
       "required_region_attributes": [
         {
           "semantic_type": "service_record_line_item_table",
@@ -30,26 +43,32 @@
       "min_page_count": 3,
       "require_page_coverage": true
     },
-    "MRI Anthem Denial 01-26.pdf": {
+    "medical-denial-class.pdf": {
       "expected_document_types": ["medical_eob", "insurance_denial", "medical_bill"],
+      "required_document_type_candidates": ["insurance_denial"],
+      "required_page_roles": ["denial_or_decision"],
       "required_semantic_types": ["denial_or_coverage_decision"],
       "required_target_schemas": ["medical_eob"],
       "min_region_count": 2,
       "require_page_coverage": true,
       "required_docling_family_hints": ["medical_eob"]
     },
-    "Phenix Title Seller Info 032924.pdf": {
+    "title-seller-information-class.pdf": {
       "expected_document_types": ["real_estate_title", "generic_form"],
       "forbidden_document_types": ["medical_eob", "insurance_denial", "medical_bill", "receipt"],
+      "required_document_type_candidates": ["real_estate_title"],
+      "required_page_roles": ["contact_or_identity", "mixed"],
       "required_semantic_types": ["seller_information_block"],
       "required_target_schemas": ["document_observation"],
       "min_region_count": 1,
       "require_page_coverage": true,
       "required_docling_family_hints": ["real_estate_title"]
     },
-    "UWM Final Escrow Statement 4-29-24.pdf": {
+    "mortgage-escrow-statement-class.pdf": {
       "expected_document_types": ["mortgage_escrow_statement", "generic_form"],
       "forbidden_document_types": ["medical_eob", "insurance_denial", "medical_bill", "receipt"],
+      "required_document_type_candidates": ["mortgage_escrow_statement"],
+      "required_page_roles": ["payment_summary", "mixed"],
       "required_semantic_types": ["escrow_summary"],
       "required_target_schemas": ["document_observation"],
       "min_region_count": 1,
