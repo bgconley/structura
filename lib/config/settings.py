@@ -4,7 +4,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -61,6 +61,22 @@ class Settings(BaseSettings):
     model_input_scratch_root: Path = Path("/srv/structura/tmp/model-inputs")
     model_http_timeout_seconds: int = 60
     model_max_image_bytes: int = 10 * 1024 * 1024
+
+    @model_validator(mode="after")
+    def reject_historical_live_semantic_profiles(self) -> Settings:
+        historical_profiles = {
+            "qwen3-vl-2b-semantic:v1",
+            "qwen3-vl-4b-semantic:v1",
+        }
+        if self.model_mode in {"live", "required"} and (
+            self.qwen_semantic_profile in historical_profiles
+        ):
+            raise ValueError(
+                "Live Phase 8.5 Smart Parse must use "
+                "qwen3-vl-8b-fp8-semantic:v1; got "
+                f"{self.qwen_semantic_profile}."
+            )
+        return self
 
     @property
     def canonical_objects_root(self) -> Path:

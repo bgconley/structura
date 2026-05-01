@@ -177,6 +177,7 @@ def _semantic_manifest_payload(manifest: DocumentSemanticManifest) -> dict[str, 
                 "escalationRequired": page.escalation_required,
                 "reason": page.reason,
                 "confidence": page.confidence,
+                "metadata": page.metadata,
             }
             for page in manifest.pages
         ],
@@ -190,6 +191,7 @@ def _semantic_manifest_payload(manifest: DocumentSemanticManifest) -> dict[str, 
                 "reviewRequired": region.review_required,
                 "reason": region.reason,
                 "confidence": region.confidence,
+                "metadata": region.metadata,
                 "grounding": {
                     "kind": region.grounding.kind,
                     "pageId": str(region.grounding.page_id) if region.grounding.page_id else None,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import replace
 from datetime import date, datetime
 from typing import Any
@@ -460,7 +461,7 @@ def _eob_line_items(
                 evidence=_evidence(item),
                 candidate_group="medical_eob.service_lines",
                 code=item.get("procedure_code"),
-                service_date=item.get("service_date"),
+                service_date=_date(item.get("service_date")),
                 gross_amount=_money_amount(item.get("billed_amount")),
                 net_amount=_money_amount(item.get("patient_responsibility")),
                 currency=_money_currency(item.get("patient_responsibility")),
@@ -658,9 +659,15 @@ def _money_currency(value: Any) -> str | None:
 
 
 def _number(value: Any) -> float | None:
-    if value is None:
+    if value in (None, ""):
         return None
-    return float(value)
+    if isinstance(value, int | float):
+        return float(value)
+    if isinstance(value, str):
+        match = re.search(r"-?\d[\d,]*(?:\.\d+)?", value)
+        if match:
+            return float(match.group(0).replace(",", ""))
+    return None
 
 
 def _number_or_none(value: Any) -> float | None:

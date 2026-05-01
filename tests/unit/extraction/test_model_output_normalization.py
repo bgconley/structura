@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from uuid import uuid4
 
+from lib.extraction.evidence import has_concrete_evidence
+from lib.extraction.evidence_context import EvidenceContext
 from lib.extraction.model_output_normalization import (
     normalize_granite_region_output,
     observation_dicts_from_payload,
@@ -70,6 +72,56 @@ def test_generic_kvp_output_maps_to_reviewable_observations() -> None:
     ]
     assert metadata["mapper"] == "granite_real_estate_title_seller_info.v1"
     assert observation_dicts_from_payload(normalized)[0]["value"] == "Brennan Conley"
+
+
+def test_granite_line_item_evidence_uses_region_grounding_context() -> None:
+    document_id = uuid4()
+    annotation_id = uuid4()
+    region_id = uuid4()
+    page_id = uuid4()
+    table_id = uuid4()
+
+    normalized, _metadata = normalize_granite_region_output(
+        document_id=document_id,
+        schema_name="invoice",
+        model_output_schema_name="granite_invoice_line_items.v1",
+        payload={"line_items": [{"description": "Alignment service", "amount": "$99.00"}]},
+        evidence_context=EvidenceContext(
+            source_engine="granite_vision_3b",
+            document_id=document_id,
+            semantic_annotation_id=annotation_id,
+            semantic_region_id=region_id,
+            page_id=page_id,
+            page_number=3,
+            table_id=table_id,
+        ),
+    )
+
+    evidence = normalized["line_items"][0]["evidence"][0]
+    assert evidence["page_number"] == 3
+    assert evidence["page_id"] == str(page_id)
+    assert evidence["table_id"] == str(table_id)
+    assert evidence["semantic_region_id"] == str(region_id)
+    assert evidence["semantic_annotation_id"] == str(annotation_id)
+    assert has_concrete_evidence([evidence]) is True
+
+
+def test_observation_mapper_drops_schema_and_prompt_echo_fields() -> None:
+    document_id = uuid4()
+
+    normalized, _metadata = normalize_granite_region_output(
+        document_id=document_id,
+        schema_name="document_observation",
+        model_output_schema_name="granite_generic_kvp.v1",
+        payload={
+            "properties": {"seller_name": {"type": "string"}},
+            "instructions": "Return only JSON matching this schema",
+            "seller_name": "Jane Seller",
+        },
+    )
+
+    observations = observation_dicts_from_payload(normalized)
+    assert [item["field_name"] for item in observations] == ["seller_name"]
 
 
 def test_receipt_line_item_model_output_maps_to_canonical_receipt_lines() -> None:

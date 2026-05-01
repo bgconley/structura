@@ -15,6 +15,7 @@ from lib.jobs.event_payloads import build_extract_document_job_payload
 from lib.semantic_annotations.docling_targets import (
     augment_result_with_docling_structural_targets,
 )
+from lib.semantic_annotations.extraction_plan import GraniteJobSpec, plan_granite_jobs
 from lib.semantic_annotations.fixture_gateway import FixtureSemanticAnnotationGateway
 from lib.semantic_annotations.models import (
     DocumentSemanticManifest,
@@ -41,11 +42,6 @@ from lib.semantic_annotations.semantic_family import (
 )
 from lib.semantic_annotations.task_routing import corrected_granite_task_for_semantic_type
 
-MAX_GRANITE_TASKS_BY_QUALITY_MODE = {
-    "smart": 6,
-    "high_quality": 8,
-    "rescue": 1,
-}
 _LINE_ITEM_SEMANTIC_TYPES = {
     "covered_services_line_item_table",
     "invoice_line_item_table",
@@ -330,17 +326,6 @@ def _validate_active_semantic_mode(
         )
 
 
-@dataclass(frozen=True)
-class GraniteJobSpec:
-    region: SemanticRegionAnnotation
-    region_id: UUID
-    target_schema: str
-    priority: int
-    ordinal: int
-    schema_fit: SchemaFitDecision
-    metadata: dict[str, object]
-
-
 def default_semantic_annotation_gateway() -> SemanticAnnotationGateway:
     settings = get_settings()
     if settings.model_mode == "fixture":
@@ -440,44 +425,10 @@ def _granite_job_specs(
                 metadata={**repaired_region.metadata, **repair_metadata},
             )
         )
-    limit = MAX_GRANITE_TASKS_BY_QUALITY_MODE.get(
-        manifest_result.manifest.quality_mode,
-        MAX_GRANITE_TASKS_BY_QUALITY_MODE["smart"],
-    )
-    return tuple(_dedupe_granite_job_specs(sorted(specs, key=_granite_job_sort_key))[:limit])
-
-
-def _granite_job_sort_key(spec: GraniteJobSpec) -> tuple[object, ...]:
-    confidence = spec.region.confidence if spec.region.confidence is not None else 0.0
-    return (spec.priority, -confidence, spec.ordinal)
-
-
-def _dedupe_granite_job_specs(specs: list[GraniteJobSpec]) -> list[GraniteJobSpec]:
-    deduped: list[GraniteJobSpec] = []
-    seen: set[tuple[object, ...]] = set()
-    for spec in specs:
-        key = _granite_job_dedupe_key(spec.region)
-        if key in seen:
-            continue
-        seen.add(key)
-        deduped.append(spec)
-    return deduped
-
-
-def _granite_job_dedupe_key(region: SemanticRegionAnnotation) -> tuple[object, ...]:
-    grounding = region.grounding
-    page_level_intent: tuple[str, ...] = ()
-    if grounding.element_id is None and grounding.table_id is None:
-        page_level_intent = tuple(region.expected_fields)
-    return (
-        region.semantic_type,
-        region.granite_task,
-        grounding.kind,
-        grounding.page_id,
-        grounding.element_id,
-        grounding.table_id,
-        page_level_intent,
-    )
+    return plan_granite_jobs(
+        specs,
+        quality_mode=manifest_result.manifest.quality_mode,
+    ).selected
 
 
 def _region_for_granite_job(

@@ -5,6 +5,7 @@ from uuid import UUID
 
 from psycopg.types.json import Jsonb
 
+from lib.extraction.errors import ExtractionRepositoryError
 from lib.extraction.models import ObservationCandidateFact
 
 
@@ -19,7 +20,7 @@ def insert_observation_candidate(
     source_semantic_region_id: UUID | None,
     semantic_type: str | None,
     model_output_schema_name: str | None,
-) -> None:
+) -> dict[str, Any]:
     cur.execute(
         """
         INSERT INTO extraction_observations
@@ -34,6 +35,7 @@ def insert_observation_candidate(
           %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb,
           %s, %s::jsonb, %s::jsonb, %s, %s::jsonb
         )
+        RETURNING *
         """,
         (
             document_id,
@@ -54,3 +56,7 @@ def insert_observation_candidate(
             Jsonb(candidate.metadata),
         ),
     )
+    row = cur.fetchone()
+    if not row:
+        raise ExtractionRepositoryError("Observation candidate insert failed.")
+    return dict(row)

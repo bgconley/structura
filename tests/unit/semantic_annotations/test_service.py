@@ -425,13 +425,23 @@ def test_semantic_service_routes_escrow_docling_tables_as_observations_not_recei
         jobs=jobs,
     ).annotate_document(document_id, quality_mode="smart", requested_by="system")
 
-    assert len(jobs.created) == 1
-    payload = jobs.created[0]["payload"]
-    assert payload["target_schema_name"] == "document_observation"
-    assert payload["semantic_type"] == "generic_form_kvp"
-    assert payload["semantic_granite_task"] == "tables_json"
-    assert payload["metadata"]["region_source"] == "docling_structural"
-    assert payload["metadata"]["docling_structural_target"]["family"] == "generic_table"
+    assert len(jobs.created) == 2
+    payloads = [job["payload"] for job in jobs.created]
+    table_payload = next(
+        payload for payload in payloads if payload["semantic_granite_task"] == "tables_json"
+    )
+    observation_payload = next(
+        payload for payload in payloads if payload["semantic_granite_task"] == "kvp"
+    )
+    assert table_payload["target_schema_name"] == "document_observation"
+    assert table_payload["semantic_type"] == "generic_form_kvp"
+    assert table_payload["metadata"]["region_source"] == "docling_structural"
+    assert table_payload["metadata"]["docling_structural_target"]["family"] == "generic_table"
+    assert observation_payload["target_schema_name"] == "document_observation"
+    assert observation_payload["semantic_type"] == "escrow_summary"
+    assert observation_payload["metadata"]["docling_structural_target"]["source"] == (
+        "docling_page_anchors"
+    )
 
 
 def test_semantic_service_uses_docling_observation_targets_when_qwen_emits_no_regions() -> None:

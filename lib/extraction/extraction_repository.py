@@ -123,11 +123,12 @@ def _persist_extraction_rows(
     with db_connection() as conn:
         with conn.cursor() as cur:
             _lock_document(cur, source.document_id)
-            _supersede_current_assets(
-                cur,
-                source.document_id,
-                ("raw_model_output", "normalized_extraction_json"),
-            )
+            if run_scope.extraction_scope in {"document", "aggregate"}:
+                _supersede_current_assets(
+                    cur,
+                    source.document_id,
+                    ("raw_model_output", "normalized_extraction_json"),
+                )
             raw_asset_id = _insert_artifact_asset(
                 cur,
                 document_id=source.document_id,
@@ -175,7 +176,7 @@ def _persist_extraction_rows(
                 )
                 for candidate in field_candidates
             ]
-            for line_item in line_item_candidates:
+            inserted_line_item_candidates = [
                 insert_line_item_candidate(
                     cur,
                     source.document_id,
@@ -183,7 +184,9 @@ def _persist_extraction_rows(
                     extraction.route.source_engine,
                     line_item,
                 )
-            for observation in observation_candidates:
+                for line_item in line_item_candidates
+            ]
+            inserted_observation_candidates = [
                 insert_observation_candidate(
                     cur,
                     source.document_id,
@@ -195,6 +198,8 @@ def _persist_extraction_rows(
                     semantic_type=run_scope.semantic_type,
                     model_output_schema_name=extraction.model_output_schema_name,
                 )
+                for observation in observation_candidates
+            ]
             canonical_count = promote_candidates(
                 cur,
                 source=source,
@@ -203,13 +208,29 @@ def _persist_extraction_rows(
                 validation=validation,
                 schema_name=extraction.schema_name,
             )
-            review_task_count = create_review_tasks(
-                cur,
-                source=source,
-                extraction_id=extraction_id,
-                candidates=inserted_candidates,
-                validation=validation,
-                schema_name=extraction.schema_name,
+            review_task_count = (
+                create_review_tasks(
+                    cur,
+                    source=source,
+                    extraction_id=extraction_id,
+                    candidates=inserted_candidates,
+                    validation=validation,
+                    schema_name=extraction.schema_name,
+                )
+                + _create_line_item_review_tasks(
+                    cur,
+                    source=source,
+                    extraction_id=extraction_id,
+                    candidates=inserted_line_item_candidates,
+                    validation=validation,
+                    run_scope=run_scope,
+                )
+                + _create_observation_review_tasks(
+                    cur,
+                    source=source,
+                    extraction_id=extraction_id,
+                    candidates=inserted_observation_candidates,
+                )
             )
             update_document_rollups(cur, source.document_id)
             refresh_document_chunk_projection(cur, source.document_id)
@@ -223,6 +244,72 @@ def _persist_extraction_rows(
         canonical_count=canonical_count,
         review_task_count=review_task_count,
     )
+
+
+def _create_line_item_review_tasks(
+    cur: Any,
+    *,
+    source: ExtractionSourceDocument,
+    extraction_id: UUID,
+    candidates: list[dict[str, Any]],
+    validation: ValidationReport,
+    run_scope: ExtractionRunScope,
+) -> int:
+    created = 0
+    for candidate in candidates:
+        if not (
+            validation.needs_review
+            or candidate.get("status") == "needs_review"
+            or run_scope.extraction_scope != "document"
+        ):
+            continue
+        line_item_type = str(candidate.get("line_item_type") or "generic")
+        ordinal = int(candidate.get("ordinal") or created + 1)
+        upsert_review_task(
+            cur,
+            document_id=source.document_id,
+            extraction_id=extraction_id,
+            task_type="line_item_review",
+            reason=f"{line_item_type} line item {ordinal} requires review.",
+            priority=72,
+            metadata={
+                "fieldPath": f"line_items.{line_item_type}.{ordinal}",
+                "lineItemCandidateId": str(candidate["id"]),
+                "lineItemType": line_item_type,
+                "ordinal": ordinal,
+            },
+        )
+        created += 1
+    return created
+
+
+def _create_observation_review_tasks(
+    cur: Any,
+    *,
+    source: ExtractionSourceDocument,
+    extraction_id: UUID,
+    candidates: list[dict[str, Any]],
+) -> int:
+    created = 0
+    for candidate in candidates:
+        family = str(candidate.get("observation_family") or "document_observation")
+        field_name = str(candidate.get("field_name") or "observation")
+        upsert_review_task(
+            cur,
+            document_id=source.document_id,
+            extraction_id=extraction_id,
+            task_type="observation_review",
+            reason=f"{family}.{field_name} requires review.",
+            priority=65,
+            metadata={
+                "fieldPath": f"observations.{family}.{field_name}",
+                "observationId": str(candidate["id"]),
+                "observationFamily": family,
+                "fieldName": field_name,
+            },
+        )
+        created += 1
+    return created
 
 
 def _insert_classification_extraction(

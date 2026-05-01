@@ -61,6 +61,8 @@ export type DocumentDetail = DocumentSummary & {
   fields: unknown[];
   lineItems: unknown[];
   extractions: unknown[];
+  semanticRegionExtractions: unknown[];
+  observations: unknown[];
   relationships: DocumentRelationship[];
   tags: string[];
   folderIds: string[];
@@ -90,6 +92,7 @@ export type SemanticAnnotationManifest = {
     escalationRequired?: boolean;
     reason?: string | null;
     confidence?: number | null;
+    metadata?: Record<string, unknown>;
   }>;
   regions: Array<{
     semanticType: string;
@@ -100,6 +103,7 @@ export type SemanticAnnotationManifest = {
     reviewRequired?: boolean;
     reason?: string | null;
     confidence?: number | null;
+    metadata?: Record<string, unknown>;
     grounding: {
       kind: string;
       pageId?: string | null;

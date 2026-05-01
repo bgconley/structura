@@ -75,10 +75,16 @@ def is_concrete_evidence_ref(item: Evidence) -> bool:
         return False
     if item.get("bbox") is not None or item.get("element_id") is not None:
         return True
+    if item.get("page_id") is not None and item.get("semantic_region_id") is not None:
+        return True
     if item.get("table_id") is not None and item.get("row_index") is not None:
+        return True
+    if item.get("table_id") is not None and item.get("semantic_region_id") is not None:
         return True
     if item.get("text_span") is not None:
         return True
+    if item.get("source_engine") in {"granite_vision_3b", "qwen3_vl_8b"}:
+        return False
     return bool(item.get("source_text"))
 
 

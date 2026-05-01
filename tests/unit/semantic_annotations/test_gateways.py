@@ -865,7 +865,7 @@ def test_live_qwen_gateway_repairs_missing_target_schema_from_qwen_document_type
     assert repaired_region.review_required is True
 
 
-def test_live_qwen_gateway_falls_back_to_phase4_when_qwen_document_type_is_absent() -> None:
+def test_live_qwen_gateway_does_not_fall_back_to_phase4_when_qwen_document_type_is_absent() -> None:
     source = replace(
         _source_with_page_image_and_element(),
         metadata={"phase4": {"classification": {"family": "medical_eob"}}},
@@ -894,7 +894,7 @@ def test_live_qwen_gateway_falls_back_to_phase4_when_qwen_document_type_is_absen
     )
 
     repaired_region = result.manifest.regions[0]
-    assert repaired_region.target_schema == "medical_eob"
+    assert repaired_region.target_schema is None
     assert repaired_region.review_required is True
 
 

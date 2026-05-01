@@ -112,6 +112,65 @@ def get_document_detail(document_id: UUID, access: DocumentAccessContext) -> Doc
                 (document_id,),
             )
             extraction_rows = cur.fetchall()
+            cur.execute(
+                """
+                SELECT
+                  id,
+                  schema_name,
+                  schema_version,
+                  status::text AS status,
+                  source_engine::text AS source_engine,
+                  model_name,
+                  model_version,
+                  confidence,
+                  review_status::text AS review_status,
+                  extraction_scope,
+                  semantic_annotation_id,
+                  source_semantic_region_id,
+                  semantic_type,
+                  granite_task,
+                  model_output_schema_name,
+                  model_output_schema_version,
+                  normalized_json,
+                  normalization_json,
+                  metadata_json,
+                  created_at
+                FROM document_extractions
+                WHERE document_id = %s
+                  AND is_current
+                  AND extraction_scope = 'semantic_region'
+                ORDER BY created_at DESC
+                """,
+                (document_id,),
+            )
+            semantic_region_extraction_rows = cur.fetchall()
+            cur.execute(
+                """
+                SELECT
+                  id,
+                  extraction_id,
+                  semantic_annotation_id,
+                  source_semantic_region_id,
+                  semantic_type,
+                  source_engine::text AS source_engine,
+                  model_output_schema_name,
+                  observation_family,
+                  field_name,
+                  value_type,
+                  value_json,
+                  confidence,
+                  evidence_json,
+                  validation_json,
+                  status,
+                  metadata_json,
+                  created_at
+                FROM extraction_observations
+                WHERE document_id = %s
+                ORDER BY created_at DESC
+                """,
+                (document_id,),
+            )
+            observation_rows = cur.fetchall()
 
     summary = document_summary_from_row(row)
     relationships = RelationshipService().list_relationships(
@@ -155,6 +214,10 @@ def get_document_detail(document_id: UUID, access: DocumentAccessContext) -> Doc
             "pages": [page.model_dump(by_alias=True) for page in pages],
             "assets": [asset.model_dump(by_alias=True) for asset in assets],
             "extractions": [_extraction_payload(row) for row in extraction_rows],
+            "semanticRegionExtractions": [
+                _semantic_region_extraction_payload(row) for row in semantic_region_extraction_rows
+            ],
+            "observations": [_observation_payload(row) for row in observation_rows],
             "relationships": [
                 relationship.model_dump(by_alias=True) for relationship in relationships
             ],
@@ -255,6 +318,46 @@ def _extraction_payload(row: dict[str, object]) -> dict[str, object]:
         "confidence": row.get("confidence"),
         "reviewStatus": row.get("review_status"),
         "extractionScope": row.get("extraction_scope"),
+        "createdAt": row.get("created_at"),
+    }
+
+
+def _semantic_region_extraction_payload(row: dict[str, object]) -> dict[str, object]:
+    payload = _extraction_payload(row)
+    payload.update(
+        {
+            "semanticAnnotationId": row.get("semantic_annotation_id"),
+            "sourceSemanticRegionId": row.get("source_semantic_region_id"),
+            "semanticType": row.get("semantic_type"),
+            "graniteTask": row.get("granite_task"),
+            "modelOutputSchemaName": row.get("model_output_schema_name"),
+            "modelOutputSchemaVersion": row.get("model_output_schema_version"),
+            "normalized": row.get("normalized_json") or {},
+            "normalization": row.get("normalization_json") or {},
+            "metadata": row.get("metadata_json") or {},
+        }
+    )
+    return payload
+
+
+def _observation_payload(row: dict[str, object]) -> dict[str, object]:
+    return {
+        "id": row["id"],
+        "extractionId": row.get("extraction_id"),
+        "semanticAnnotationId": row.get("semantic_annotation_id"),
+        "sourceSemanticRegionId": row.get("source_semantic_region_id"),
+        "semanticType": row.get("semantic_type"),
+        "sourceEngine": row.get("source_engine"),
+        "modelOutputSchemaName": row.get("model_output_schema_name"),
+        "observationFamily": row.get("observation_family"),
+        "fieldName": row.get("field_name"),
+        "valueType": row.get("value_type"),
+        "value": row.get("value_json"),
+        "confidence": row.get("confidence"),
+        "evidence": row.get("evidence_json") or [],
+        "validation": row.get("validation_json") or {},
+        "status": row.get("status"),
+        "metadata": row.get("metadata_json") or {},
         "createdAt": row.get("created_at"),
     }
 

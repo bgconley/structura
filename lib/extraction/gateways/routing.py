@@ -7,16 +7,19 @@ from lib.extraction.gateways.qwen_vl import QwenVLExtractionGateway
 from lib.extraction.models import ExtractionSourceDocument, GatewayExtraction
 from lib.model_runtime.clients.granite_vision import GraniteVisionClient
 from lib.model_runtime.clients.qwen_vl import QwenVLClient
-from lib.model_runtime.http_client import ModelRuntimeError
+from lib.model_runtime.http_client import ModelProtocolError
 from lib.model_runtime.profiles import get_model_profile
 from lib.semantic_annotations.models import SemanticExtractionTask
 
 QWEN_ROUTE_PROFILES = {"qwen_primary_review_required"}
+DISABLED_ROUTE_PROFILES = {
+    "granite_then_qwen_fallback_review_required",
+    "qwen_primary_review_required",
+}
 GRANITE_ROUTE_PROFILES = {
     "docling_plus_structured_extraction",
     "docling_plus_granite_structured",
     "granite_primary_review_required",
-    "granite_then_qwen_fallback_review_required",
 }
 STRUCTURED_SCHEMAS = {"receipt", "invoice", "medical_eob"}
 
@@ -41,15 +44,13 @@ class ModelRoutingExtractionGateway:
         route_profile: str,
         semantic_task: SemanticExtractionTask | None = None,
     ) -> GatewayExtraction:
+        if route_profile in DISABLED_ROUTE_PROFILES:
+            raise ModelProtocolError(
+                f"Route profile {route_profile} is disabled in Phase 8.5 production. "
+                "Qwen is semantic-only; extraction must be Granite or deterministic fixture."
+            )
         if route_profile in QWEN_ROUTE_PROFILES:
             return self.qwen.extract(
-                source,
-                schema_name=schema_name,
-                route_profile=route_profile,
-                semantic_task=semantic_task,
-            )
-        if route_profile == "granite_then_qwen_fallback_review_required":
-            return self._granite_then_qwen(
                 source,
                 schema_name=schema_name,
                 route_profile=route_profile,
@@ -68,29 +69,6 @@ class ModelRoutingExtractionGateway:
             route_profile=route_profile,
             semantic_task=semantic_task,
         )
-
-    def _granite_then_qwen(
-        self,
-        source: ExtractionSourceDocument,
-        *,
-        schema_name: str,
-        route_profile: str,
-        semantic_task: SemanticExtractionTask | None = None,
-    ) -> GatewayExtraction:
-        try:
-            return self.granite.extract(
-                source,
-                schema_name=schema_name,
-                route_profile=route_profile,
-                semantic_task=semantic_task,
-            )
-        except ModelRuntimeError:
-            return self.qwen.extract(
-                source,
-                schema_name=schema_name,
-                route_profile=route_profile,
-                semantic_task=semantic_task,
-            )
 
 
 def default_extraction_gateway() -> ExtractionGateway:

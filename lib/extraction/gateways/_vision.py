@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from lib.extraction.evidence_context import evidence_context_for_task
 from lib.extraction.granite_budgets import GraniteTaskBudget
 from lib.extraction.granite_prompting import granite_prompt
 from lib.extraction.model_output_normalization import normalize_granite_region_output
@@ -92,6 +93,11 @@ class VisionExtractionGateway:
                 model_output_schema.name if model_output_schema is not None else None
             ),
             payload=dict(response.normalized_json),
+            evidence_context=evidence_context_for_task(
+                source=source,
+                semantic_task=semantic_task,
+                source_engine=response.source_engine,
+            ),
         )
         return GatewayExtraction(
             schema_name=schema_name,

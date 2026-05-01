@@ -676,7 +676,7 @@ def _cancel_job_row(
     row = cur.fetchone()
     if not row:
         raise JobServiceError("Job cancellation failed.")
-    return row
+    return cast(Mapping[str, Any], row)
 
 
 def _candidate_cancel_job_ids(
@@ -713,7 +713,7 @@ def _candidate_cancel_job_ids(
         SELECT j.id
         FROM pipeline_jobs j
         LEFT JOIN documents d ON d.id = j.document_id
-        WHERE {' AND '.join(clauses)}
+        WHERE {" AND ".join(clauses)}
         ORDER BY j.priority DESC, j.created_at ASC
         LIMIT %s
         """,

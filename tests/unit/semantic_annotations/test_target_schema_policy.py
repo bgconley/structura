@@ -52,6 +52,19 @@ def test_qwen_document_type_hint_beats_phase4_classifier_hint() -> None:
     )
 
 
+def test_phase4_classifier_family_is_not_a_semantic_target_schema_fallback() -> None:
+    assert (
+        preferred_target_schema(
+            document_family="medical_eob",
+            document_metadata={"phase4": {"classification": {"family": "medical_eob"}}},
+            document_type_hint=None,
+            semantic_type=None,
+            model_target_schema=None,
+        )
+        is None
+    )
+
+
 def test_qwen_observation_document_type_beats_bad_region_schema_hint() -> None:
     assert (
         preferred_target_schema(

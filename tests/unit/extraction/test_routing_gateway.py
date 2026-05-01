@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import pytest
+
 from lib.config import get_settings
 from lib.extraction.gateway import DoclingHeuristicGateway
 from lib.extraction.gateways.granite_vision import GraniteVisionExtractionGateway
@@ -10,6 +12,7 @@ from lib.extraction.gateways.routing import (
     ModelRoutingExtractionGateway,
     default_extraction_gateway,
 )
+from lib.model_runtime.http_client import ModelProtocolError
 from tests.unit.extraction.test_model_gateways import FakeVisionClient, _source_with_page_image
 
 
@@ -22,7 +25,7 @@ class RecordingDeterministicGateway(DoclingHeuristicGateway):
         return super().extract(*args, **kwargs)
 
 
-def test_routing_gateway_uses_qwen_for_handwriting_route() -> None:
+def test_routing_gateway_rejects_live_qwen_extraction_route() -> None:
     qwen_client = FakeVisionClient(source_engine="qwen3_vl_8b", profile_name="qwen")
     granite_client = FakeVisionClient(source_engine="granite_vision_3b", profile_name="granite")
     deterministic = RecordingDeterministicGateway()
@@ -32,14 +35,14 @@ def test_routing_gateway_uses_qwen_for_handwriting_route() -> None:
         granite=GraniteVisionExtractionGateway(client=granite_client),
     )
 
-    result = gateway.extract(
-        _source_with_page_image(),
-        schema_name="invoice",
-        route_profile="qwen_primary_review_required",
-    )
+    with pytest.raises(ModelProtocolError, match="semantic-only"):
+        gateway.extract(
+            _source_with_page_image(),
+            schema_name="invoice",
+            route_profile="qwen_primary_review_required",
+        )
 
-    assert result.route.source_engine == "qwen3_vl_8b"
-    assert qwen_client.request is not None
+    assert qwen_client.request is None
     assert granite_client.request is None
     assert deterministic.called is False
 

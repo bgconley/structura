@@ -1808,6 +1808,9 @@ components:
         confidence:
           type: number
           nullable: true
+        metadata:
+          type: object
+          additionalProperties: true
     SemanticRegionAnnotation:
       type: object
       additionalProperties: false
@@ -1845,6 +1848,9 @@ components:
         confidence:
           type: number
           nullable: true
+        metadata:
+          type: object
+          additionalProperties: true
         grounding:
           $ref: '#/components/schemas/SemanticGroundingRef'
     SemanticGroundingRef:
@@ -1957,6 +1963,18 @@ components:
             type: array
             items:
               $ref: '#/components/schemas/ExtractionSummary'
+          semanticRegionExtractions:
+            type: array
+            items:
+              type: object
+              additionalProperties: true
+            description: Current Phase 8.5 semantic-region extraction rows with grounded model output and normalization metadata.
+          observations:
+            type: array
+            items:
+              type: object
+              additionalProperties: true
+            description: Reviewable extraction observations produced by document-observation model-output adapters.
           fields:
             type: array
             items:

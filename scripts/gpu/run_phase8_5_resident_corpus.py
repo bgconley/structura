@@ -98,8 +98,7 @@ def main() -> int:
     if timed_out:
         return 2
     if args.fail_on_target_dead_letter and any(
-        row["queue_name"] in TARGET_FAILURE_QUEUES
-        for row in _dead_letter_counts(document_ids)
+        row["queue_name"] in TARGET_FAILURE_QUEUES for row in _dead_letter_counts(document_ids)
     ):
         return 1
     return 0
@@ -275,8 +274,7 @@ def _terminal_state(
     ]
     progress = _document_progress(document_ids)
     complete_shape = all(
-        int(row["pages"] or 0) > 0 and int(row["semantic_succeeded"] or 0) > 0
-        for row in progress
+        int(row["pages"] or 0) > 0 and int(row["semantic_succeeded"] or 0) > 0 for row in progress
     )
     return not active and complete_shape, active, target_dead_letters, progress
 
@@ -399,7 +397,8 @@ def _fetch_report(document_ids: list[UUID], *, run_id: str, title_prefix: str) -
                     """,
                     (document_id,),
                 )
-                document = dict(cur.fetchone())
+                document_row = cur.fetchone()
+                document = dict(document_row) if document_row is not None else {}
                 documents.append(
                     {
                         "document": document,

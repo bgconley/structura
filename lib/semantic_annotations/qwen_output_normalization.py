@@ -592,6 +592,7 @@ def _normalized_alternate_page(
     page_needs_high_quality: bool,
     page_grounding_repaired: bool,
 ) -> dict[str, object]:
+    del source
     has_structured_targets = any(
         region.get("granite_task") not in {None, "ignore"} for region in page_regions
     )
@@ -606,8 +607,7 @@ def _normalized_alternate_page(
         "page_number": page_number,
         "page_role": _normalized_choice(item.get("page_role"), _PAGE_ROLES)
         or ("mixed" if has_structured_targets else "unknown"),
-        "document_type_hint": _document_type_or_none(item.get("document_type_hint"))
-        or _document_type_or_none(source.family),
+        "document_type_hint": _document_type_or_none(item.get("document_type_hint")),
         "extraction_usefulness": _normalized_choice(
             item.get("extraction_usefulness"),
             _EXTRACTION_USEFULNESS,
@@ -742,13 +742,8 @@ def _document_type_from_payload_or_source(
     payload: dict[str, object],
     source: ExtractionSourceDocument,
 ) -> str:
-    return (
-        _document_type_or_none(payload.get("document_type"))
-        or _document_type_or_none(
-            source.family,
-        )
-        or "other"
-    )
+    del source
+    return _document_type_or_none(payload.get("document_type")) or "unknown"
 
 
 def _document_type_or_none(value: object) -> str | None:

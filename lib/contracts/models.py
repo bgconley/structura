@@ -520,6 +520,11 @@ class DocumentDetail(DocumentSummary):
     pages: list[DocumentPage]
     assets: list[DocumentAsset]
     extractions: list[dict[str, Any]]
+    semantic_region_extractions: list[dict[str, Any]] = Field(
+        default_factory=list,
+        alias="semanticRegionExtractions",
+    )
+    observations: list[dict[str, Any]] = Field(default_factory=list)
     relationships: list[DocumentRelationship]
     fields: list[dict[str, Any]]
     line_items: list[dict[str, Any]] = Field(alias="lineItems")

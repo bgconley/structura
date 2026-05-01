@@ -206,8 +206,10 @@ def test_granite_gateway_routes_payment_summary_to_kvp_schema_prompt() -> None:
     )
 
     assert client.request is not None
-    assert "Return a JSON object matching this schema" in client.request.prompt
-    assert "Return null for fields you cannot find" in client.request.prompt
+    assert "response schema supplied by the API" in client.request.prompt
+    assert "JSON Schema:" not in client.request.prompt
+    assert '"properties"' not in client.request.prompt
+    assert "Return null or an empty list when evidence is not visible" in client.request.prompt
     assert client.request.response_schema_name == "granite_payment_summary.v1"
     assert client.request.response_json_schema is not None
     assert "payments" in client.request.response_json_schema["properties"]

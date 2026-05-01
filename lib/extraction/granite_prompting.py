@@ -63,34 +63,30 @@ def granite_prompt(
             f"{docling_context}"
         )
 
-    schema_text = json.dumps(model_output_schema.schema, indent=2, sort_keys=True)
     if _is_table_region(semantic_task):
         return (
             "<tables_json>\n"
             f"{base}"
             f"{task_context}"
-            "Extract only the line/service rows visible in the grounded table or region. "
-            "For line-item contracts, populate line_items with row objects; do not return "
-            "standalone quantity or amount arrays instead of rows. "
-            "If visible rows are not present, return an empty line_items array instead of prose. "
+            "Extract only values visible in the grounded table or page region. "
+            "Use Docling table rows as supplemental context, but do not output grid metadata, "
+            "cell coordinates, schema keys, prompt text, or explanatory prose. "
             "Do not infer line items from totals, disclaimers, or payment text. "
-            "Use the JSON Schema below as the output contract. "
             "Return null for fields you cannot find. "
-            "Return ONLY valid JSON matching the schema instance, not the schema itself. "
-            f"JSON Schema:\n{schema_text}"
+            f"{_compact_shape_for_schema(model_output_schema.name)} "
+            "Return ONLY a valid JSON object matching the response schema supplied by the API."
             f"{docling_context}"
         )
     return (
         f"{base}{task_context}"
-        "Extract only the requested observation fields. "
+        "Extract only the requested observation fields that are directly visible. "
         "Do not transcribe paragraphs or unrelated receipt/legal/payment text. "
+        "Do not output schema_name, schema_version, properties, required, metadata, "
+        "prompt text, or instructions unless those are literally visible document fields. "
         "Return null or an empty list when evidence is not visible. "
-        "Prefer fewer grounded values over broad summaries.\n"
-        "Return a JSON object matching this schema:\n\n"
-        f"{schema_text}\n\n"
-        "Return null for fields you cannot find.\n"
-        "Return ONLY valid JSON.\n"
-        "Return an instance of the JSON with extracted values, not the schema itself."
+        "Prefer fewer grounded values over broad summaries. "
+        f"{_compact_shape_for_schema(model_output_schema.name)} "
+        "Return ONLY a valid JSON object matching the response schema supplied by the API."
         f"{docling_context}"
     )
 
@@ -239,3 +235,27 @@ def _line_item_shape(model_output_schema: ModelOutputSchema) -> str:
         '"quantity":null,"unit_price":null,"amount":null}],"totals":{},'
         '"confidence":{}}.'
     )
+
+
+def _compact_shape_for_schema(schema_name: str) -> str:
+    if schema_name == "granite_generic_kvp.v1":
+        return (
+            'Use shape {"fields":[{"name":"visible_field","value":"visible value",'
+            '"confidence":0.0,"source_text":"short visible text"}],"confidence":{}}.'
+        )
+    if schema_name == "granite_dispute_form.v1":
+        return (
+            'Use shape {"transactions":[{"transaction_date":null,"merchant":null,'
+            '"amount":null,"reason":null}],"fields":[],"confidence":{}}.'
+        )
+    if schema_name == "granite_real_estate_title_seller_info.v1":
+        return (
+            'Use shape {"fields":[{"name":"seller_name","value":null,'
+            '"confidence":0.0,"source_text":null}],"confidence":{}}.'
+        )
+    if schema_name == "granite_mortgage_escrow_statement.v1":
+        return (
+            'Use shape {"fields":[{"name":"escrow_field","value":null,'
+            '"confidence":0.0,"source_text":null}],"confidence":{}}.'
+        )
+    return "Use the compact object shape defined by the supplied API response schema."

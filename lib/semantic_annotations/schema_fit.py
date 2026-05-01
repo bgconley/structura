@@ -11,7 +11,6 @@ from lib.semantic_annotations.docling_audit import (
 from lib.semantic_annotations.docling_targets import DOCLING_STRUCTURAL_REGION_SOURCE
 from lib.semantic_annotations.models import SemanticRegionAnnotation
 from lib.semantic_annotations.target_schema_policy import (
-    classified_document_target_schema,
     preferred_target_schema,
     target_schema_from_document_hint,
     target_schema_from_semantic_type,
@@ -109,9 +108,8 @@ def schema_fit_for_region(
     document_type = _normalized(document_type_hint)
     is_docling_structural = region.metadata.get("region_source") == DOCLING_STRUCTURAL_REGION_SOURCE
     if (
-        (document_type in _OBSERVATION_DOCUMENT_TYPES and not is_docling_structural)
-        or region.semantic_type in _OBSERVATION_SEMANTIC_TYPES
-    ):
+        document_type in _OBSERVATION_DOCUMENT_TYPES and not is_docling_structural
+    ) or region.semantic_type in _OBSERVATION_SEMANTIC_TYPES:
         return SchemaFitDecision(
             target_schema="document_observation",
             requested_target_schema=requested,
@@ -166,8 +164,6 @@ def _requested_target_schema(
             target_schema_from_semantic_type(region.semantic_type)
             or target_schema_from_document_hint(region.target_schema)
             or target_schema_from_document_hint(document_type_hint)
-            or classified_document_target_schema(source.family, source.metadata)
-            or target_schema_from_document_hint(source.family)
         )
     return preferred_target_schema(
         document_family=source.family,
@@ -207,8 +203,7 @@ def _conflicting_observation_families(
     conflicts = [
         family
         for family in _OBSERVATION_CONFLICT_FAMILIES
-        if len(anchor_hits.get(family, ()))
-        >= _OBSERVATION_CONFLICT_REQUIRED_ANCHOR_COUNTS[family]
+        if len(anchor_hits.get(family, ())) >= _OBSERVATION_CONFLICT_REQUIRED_ANCHOR_COUNTS[family]
         and family_has_required_hint_fit(family, anchor_hits.get(family, ()))
     ]
     return tuple(sorted(conflicts))

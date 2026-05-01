@@ -71,7 +71,7 @@ def insert_line_item_candidate(
     extraction_id: UUID,
     source_engine: str,
     candidate: LineItemCandidateFact,
-) -> None:
+) -> dict[str, Any]:
     cur.execute(
         """
         INSERT INTO line_item_candidates
@@ -86,6 +86,7 @@ def insert_line_item_candidate(
           %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
           %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s
         )
+        RETURNING *
         """,
         (
             document_id,
@@ -114,6 +115,10 @@ def insert_line_item_candidate(
             candidate.status,
         ),
     )
+    row = cur.fetchone()
+    if not row:
+        raise ExtractionRepositoryError("Line item candidate insert failed.")
+    return cast(dict[str, Any], row)
 
 
 def typed_value_columns(value_type: str, value: Any) -> dict[str, Any]:

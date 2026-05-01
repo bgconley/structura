@@ -14,7 +14,7 @@ import sys
 import uuid
 from pathlib import Path
 from types import TracebackType
-from typing import Any, Self
+from typing import Any, Literal, Self
 
 DEFAULT_CORPUS_LOCK_PATH = Path("/tmp/structura_phase8_5_private_corpus.lock")
 CORPUS_CONTAINER_LABEL = "structura.phase8_5_private_corpus"
@@ -85,7 +85,7 @@ class CorpusRunGuard:
         exc_type: type[BaseException] | None,
         exc_value: BaseException | None,
         traceback: TracebackType | None,
-    ) -> bool:
+    ) -> Literal[False]:
         del exc_type, exc_value, traceback
         if self.run_id:
             self.cleanup_current_run_containers()

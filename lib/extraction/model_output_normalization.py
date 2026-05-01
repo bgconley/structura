@@ -5,6 +5,8 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from lib.extraction.evidence_context import EvidenceContext
+
 _NON_LINE_ITEM_HEADINGS = {
     "customer information",
     "transaction information",
@@ -12,6 +14,35 @@ _NON_LINE_ITEM_HEADINGS = {
     "service department hours",
     "payment information",
 }
+_DROP_FLAT_OBSERVATION_KEYS = {
+    "$schema",
+    "$defs",
+    "type",
+    "properties",
+    "required",
+    "additionalproperties",
+    "items",
+    "title",
+    "description",
+    "schema_name",
+    "schema_version",
+    "document_id",
+    "created_at",
+    "metadata",
+    "validation",
+    "confidence",
+    "prompt",
+    "instructions",
+}
+_ECHO_PHRASES = (
+    "return only",
+    "json schema",
+    "matching this schema",
+    "do not copy these instructions",
+    "semantic task from qwen",
+    "<tables_json>",
+    "additionalproperties",
+)
 
 
 def normalize_granite_region_output(
@@ -20,10 +51,15 @@ def normalize_granite_region_output(
     schema_name: str,
     model_output_schema_name: str | None,
     payload: Any,
+    evidence_context: EvidenceContext | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     model_payload, wrapper_repairs = _unwrapped_payload(payload)
     if model_output_schema_name == "granite_invoice_line_items.v1":
-        normalized, metadata = _invoice_line_items_output(document_id, model_payload)
+        normalized, metadata = _invoice_line_items_output(
+            document_id,
+            model_payload,
+            evidence_context=evidence_context,
+        )
         metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
         return normalized, metadata
     if model_output_schema_name == "granite_payment_summary.v1":
@@ -31,23 +67,39 @@ def normalize_granite_region_output(
         metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
         return normalized, metadata
     if model_output_schema_name == "granite_medical_service_lines.v1":
-        normalized, metadata = _medical_service_lines_output(document_id, model_payload)
+        normalized, metadata = _medical_service_lines_output(
+            document_id,
+            model_payload,
+            evidence_context=evidence_context,
+        )
         metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
         return normalized, metadata
     if model_output_schema_name in {
         "granite_receipt_line_items.v1",
         "granite_retail_order.v1",
     }:
-        normalized, metadata = _receipt_line_items_output(document_id, model_payload)
+        normalized, metadata = _receipt_line_items_output(
+            document_id,
+            model_payload,
+            evidence_context=evidence_context,
+        )
         metadata["mapper"] = model_output_schema_name
         metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
         return normalized, metadata
     if model_output_schema_name == "granite_service_record_line_items.v1":
-        normalized, metadata = _service_record_line_items_output(document_id, model_payload)
+        normalized, metadata = _service_record_line_items_output(
+            document_id,
+            model_payload,
+            evidence_context=evidence_context,
+        )
         metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
         return normalized, metadata
     if model_output_schema_name == "granite_receipt_payment_summary.v1":
-        normalized, metadata = _receipt_payment_output(document_id, model_payload)
+        normalized, metadata = _receipt_payment_output(
+            document_id,
+            model_payload,
+            evidence_context=evidence_context,
+        )
         metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
         return normalized, metadata
     if schema_name == "document_observation" or model_output_schema_name in {
@@ -60,22 +112,31 @@ def normalize_granite_region_output(
             document_id,
             model_payload,
             model_output_schema_name=model_output_schema_name,
+            evidence_context=evidence_context,
         )
         metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
         return normalized, metadata
     if schema_name == "invoice" and _has_flat_invoice_line_items(model_payload):
-        normalized, metadata = _invoice_line_items_output(document_id, model_payload)
+        normalized, metadata = _invoice_line_items_output(
+            document_id,
+            model_payload,
+            evidence_context=evidence_context,
+        )
         metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
         return normalized, metadata
     return model_payload, {"mapper": None, "repairs": wrapper_repairs, "rejected_fields": []}
 
 
-def invoice_line_item_dicts_from_payload(payload: dict[str, Any]) -> list[dict[str, Any]]:
+def invoice_line_item_dicts_from_payload(
+    payload: dict[str, Any],
+    *,
+    evidence_context: EvidenceContext | None = None,
+) -> list[dict[str, Any]]:
     model_payload, _repairs = _unwrapped_payload(payload)
     records = _invoice_line_item_records(model_payload)
     if records:
-        return _canonical_invoice_line_items(records)
-    return _flat_invoice_line_items(model_payload)
+        return _canonical_invoice_line_items(records, evidence_context=evidence_context)
+    return _flat_invoice_line_items(model_payload, evidence_context=evidence_context)
 
 
 def invoice_payment_summary_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
@@ -137,8 +198,13 @@ def invoice_payment_summary_from_payload(payload: dict[str, Any]) -> dict[str, A
 def _invoice_line_items_output(
     document_id: UUID,
     payload: dict[str, Any],
+    *,
+    evidence_context: EvidenceContext | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    line_items = invoice_line_item_dicts_from_payload(payload)
+    line_items = invoice_line_item_dicts_from_payload(
+        payload,
+        evidence_context=evidence_context,
+    )
     confidence = payload.get("confidence") if isinstance(payload.get("confidence"), dict) else {}
     normalized: dict[str, Any] = {
         "schema_name": "invoice",
@@ -196,14 +262,23 @@ def _invoice_payment_output(
 def _medical_service_lines_output(
     document_id: UUID,
     payload: dict[str, Any],
+    *,
+    evidence_context: EvidenceContext | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     confidence = payload.get("confidence") if isinstance(payload.get("confidence"), dict) else {}
+    service_lines = payload.get("service_lines") or []
+    if isinstance(service_lines, list):
+        service_lines = [
+            _with_evidence_context(item, evidence_context)
+            for item in service_lines
+            if isinstance(item, dict)
+        ]
     return (
         {
             "schema_name": "medical_eob",
             "schema_version": "v1",
             "document_id": str(document_id),
-            "service_lines": payload.get("service_lines") or [],
+            "service_lines": service_lines,
             "confidence": confidence,
             "created_at": datetime.now(UTC).isoformat(),
         },
@@ -218,10 +293,18 @@ def _medical_service_lines_output(
 def _receipt_line_items_output(
     document_id: UUID,
     payload: dict[str, Any],
+    *,
+    evidence_context: EvidenceContext | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    line_items = _canonical_receipt_line_items(_invoice_line_item_records(payload))
+    line_items = _canonical_receipt_line_items(
+        _invoice_line_item_records(payload),
+        evidence_context=evidence_context,
+    )
     if not line_items:
-        line_items = _canonical_receipt_line_items(payload.get("line_items") or [])
+        line_items = _canonical_receipt_line_items(
+            payload.get("line_items") or [],
+            evidence_context=evidence_context,
+        )
     confidence = payload.get("confidence") if isinstance(payload.get("confidence"), dict) else {}
     transaction: dict[str, Any] = {}
     raw_totals = payload.get("totals")
@@ -239,7 +322,7 @@ def _receipt_line_items_output(
         "schema_name": "receipt",
         "schema_version": "v1",
         "document_id": str(document_id),
-        "merchant": _receipt_merchant(payload),
+        "merchant": _receipt_merchant(payload, evidence_context=evidence_context),
         "transaction": transaction,
         "line_items": line_items,
         "confidence": confidence,
@@ -258,12 +341,14 @@ def _receipt_line_items_output(
 def _service_record_line_items_output(
     document_id: UUID,
     payload: dict[str, Any],
+    *,
+    evidence_context: EvidenceContext | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     records = _invoice_line_item_records(payload)
-    line_items = _canonical_receipt_line_items(records)
+    line_items = _canonical_receipt_line_items(records, evidence_context=evidence_context)
     repairs = ["mapped_model_output_to_canonical_service_record_line_items"]
     if not line_items:
-        line_items = _service_record_flat_line_items(payload)
+        line_items = _service_record_flat_line_items(payload, evidence_context=evidence_context)
         repairs.append("mapped_flat_service_record_fields_to_line_items")
     confidence = payload.get("confidence") if isinstance(payload.get("confidence"), dict) else {}
     transaction: dict[str, Any] = {}
@@ -282,7 +367,7 @@ def _service_record_line_items_output(
         "schema_name": "receipt",
         "schema_version": "v1",
         "document_id": str(document_id),
-        "merchant": _receipt_merchant(payload),
+        "merchant": _receipt_merchant(payload, evidence_context=evidence_context),
         "transaction": transaction,
         "line_items": line_items,
         "confidence": confidence,
@@ -321,6 +406,8 @@ def _service_record_line_items_output(
 def _receipt_payment_output(
     document_id: UUID,
     payload: dict[str, Any],
+    *,
+    evidence_context: EvidenceContext | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     confidence = payload.get("confidence") if isinstance(payload.get("confidence"), dict) else {}
     transaction: dict[str, Any] = {}
@@ -342,7 +429,7 @@ def _receipt_payment_output(
         "schema_name": "receipt",
         "schema_version": "v1",
         "document_id": str(document_id),
-        "merchant": _receipt_merchant(payload),
+        "merchant": _receipt_merchant(payload, evidence_context=evidence_context),
         "transaction": transaction,
         "line_items": [],
         "confidence": confidence,
@@ -374,13 +461,18 @@ def _document_observation_output(
     payload: dict[str, Any],
     *,
     model_output_schema_name: str | None,
+    evidence_context: EvidenceContext | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     repairs: list[str] = []
     observations: list[dict[str, Any]] = []
     if _looks_like_schema_echo(payload):
         repairs.append("schema_echo_rejected")
     else:
-        observations = _observations_from_model_payload(payload, model_output_schema_name)
+        observations = _observations_from_model_payload(
+            payload,
+            model_output_schema_name,
+            evidence_context=evidence_context,
+        )
         if "fields" in payload:
             repairs.append("mapped_fields_array_to_observations")
         else:
@@ -414,7 +506,11 @@ def observation_dicts_from_payload(payload: dict[str, Any]) -> list[dict[str, An
     return [dict(item) for item in observations if isinstance(item, dict)]
 
 
-def _canonical_invoice_line_items(items: list[Any]) -> list[dict[str, Any]]:
+def _canonical_invoice_line_items(
+    items: list[Any],
+    *,
+    evidence_context: EvidenceContext | None,
+) -> list[dict[str, Any]]:
     normalized: list[dict[str, Any]] = []
     for item in items:
         if not isinstance(item, dict):
@@ -439,13 +535,17 @@ def _canonical_invoice_line_items(items: list[Any]) -> list[dict[str, Any]]:
                 if (item.get("gl_hint") or item.get("category_hint"))
                 else {}
             ),
-            "evidence": [_evidence(_line_item_source_text(item, description))],
+            "evidence": [_evidence(_line_item_source_text(item, description), evidence_context)],
         }
         normalized.append(normalized_item)
     return normalized
 
 
-def _canonical_receipt_line_items(items: Any) -> list[dict[str, Any]]:
+def _canonical_receipt_line_items(
+    items: Any,
+    *,
+    evidence_context: EvidenceContext | None,
+) -> list[dict[str, Any]]:
     if not isinstance(items, list):
         return []
     normalized: list[dict[str, Any]] = []
@@ -463,13 +563,17 @@ def _canonical_receipt_line_items(items: Any) -> list[dict[str, Any]]:
             **({"unit_price": _money(item.get("unit_price"))} if item.get("unit_price") else {}),
             **({"amount": amount} if amount else {}),
             **({"sku": item.get("sku")} if item.get("sku") else {}),
-            "evidence": [_evidence(_line_item_source_text(item, description))],
+            "evidence": [_evidence(_line_item_source_text(item, description), evidence_context)],
         }
         normalized.append(normalized_item)
     return normalized
 
 
-def _flat_invoice_line_items(payload: dict[str, Any]) -> list[dict[str, Any]]:
+def _flat_invoice_line_items(
+    payload: dict[str, Any],
+    *,
+    evidence_context: EvidenceContext | None,
+) -> list[dict[str, Any]]:
     service_descriptions = _string_list(payload.get("service_description"))
     parts = _string_list(payload.get("parts"))
     labor_costs = _string_list(payload.get("labor_cost"))
@@ -477,14 +581,34 @@ def _flat_invoice_line_items(payload: dict[str, Any]) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     for index, description in enumerate(service_descriptions):
         amount = _money(labor_costs[index] if index < len(labor_costs) else None)
-        items.append(_line_item(len(items) + 1, description, amount, "service"))
+        items.append(
+            _line_item(
+                len(items) + 1,
+                description,
+                amount,
+                "service",
+                evidence_context=evidence_context,
+            )
+        )
     for index, description in enumerate(parts):
         amount = _money(parts_costs[index] if index < len(parts_costs) else None)
-        items.append(_line_item(len(items) + 1, description, amount, "part"))
+        items.append(
+            _line_item(
+                len(items) + 1,
+                description,
+                amount,
+                "part",
+                evidence_context=evidence_context,
+            )
+        )
     return items
 
 
-def _service_record_flat_line_items(payload: dict[str, Any]) -> list[dict[str, Any]]:
+def _service_record_flat_line_items(
+    payload: dict[str, Any],
+    *,
+    evidence_context: EvidenceContext | None,
+) -> list[dict[str, Any]]:
     service_descriptions = _string_list(payload.get("service_description"))
     labor_operations = _string_list(payload.get("labor_operation"))
     part_numbers = _string_list(payload.get("part_number") or payload.get("parts"))
@@ -509,6 +633,7 @@ def _service_record_flat_line_items(payload: dict[str, Any]) -> list[dict[str, A
                         labor_operations[index] if index < len(labor_operations) else None
                     ),
                 ),
+                evidence_context=evidence_context,
             )
         )
     for index, part_number in enumerate(part_numbers):
@@ -527,6 +652,7 @@ def _service_record_flat_line_items(payload: dict[str, Any]) -> list[dict[str, A
                     else (line_totals[index] if index < len(line_totals) else None)
                 ),
                 source_text=part_number,
+                evidence_context=evidence_context,
             )
         )
     return [item for item in items if item["description"]]
@@ -542,12 +668,13 @@ def _service_record_line_item(
     unit_price: Any,
     amount: Any,
     source_text: str,
+    evidence_context: EvidenceContext | None,
 ) -> dict[str, Any]:
     normalized: dict[str, Any] = {
         "ordinal": ordinal,
         "description": description,
         "category_hint": category_hint,
-        "evidence": [_evidence(source_text)],
+        "evidence": [_evidence(source_text, evidence_context)],
     }
     parsed_quantity = _number(quantity)
     parsed_unit_price = _money(unit_price)
@@ -576,12 +703,14 @@ def _line_item(
     description: str,
     amount: dict[str, Any] | None,
     category_hint: str,
+    *,
+    evidence_context: EvidenceContext | None,
 ) -> dict[str, Any]:
     item: dict[str, Any] = {
         "ordinal": ordinal,
         "description": description,
         "category_hint": category_hint,
-        "evidence": [_evidence(description)],
+        "evidence": [_evidence(description, evidence_context)],
     }
     if amount:
         item["amount"] = amount
@@ -623,12 +752,19 @@ def _invoice_line_item_records(payload: dict[str, Any]) -> list[Any]:
     return []
 
 
-def _receipt_merchant(payload: dict[str, Any]) -> dict[str, Any]:
+def _receipt_merchant(
+    payload: dict[str, Any],
+    *,
+    evidence_context: EvidenceContext | None,
+) -> dict[str, Any]:
     merchant_name = payload.get("merchant_name") or payload.get("merchant")
     if isinstance(merchant_name, dict):
         return merchant_name
     if merchant_name:
-        return {"display_name": str(merchant_name), "evidence": [_evidence(merchant_name)]}
+        return {
+            "display_name": str(merchant_name),
+            "evidence": [_evidence(merchant_name, evidence_context)],
+        }
     return {}
 
 
@@ -713,6 +849,8 @@ def _looks_like_schema_echo(payload: dict[str, Any]) -> bool:
 def _observations_from_model_payload(
     payload: dict[str, Any],
     model_output_schema_name: str | None,
+    *,
+    evidence_context: EvidenceContext | None,
 ) -> list[dict[str, Any]]:
     observations: list[dict[str, Any]] = []
     fields = payload.get("fields")
@@ -721,9 +859,9 @@ def _observations_from_model_payload(
             if not isinstance(item, dict):
                 continue
             name = item.get("name")
-            if not name:
-                continue
             value = item.get("value")
+            if not name or _should_drop_observation(name, value):
+                continue
             observations.append(
                 _observation(
                     field_name=str(name),
@@ -731,11 +869,12 @@ def _observations_from_model_payload(
                     family=model_output_schema_name,
                     confidence=_number(item.get("confidence")),
                     source_text=item.get("source_text"),
+                    evidence_context=evidence_context,
                 )
             )
         return observations
     for key, value in payload.items():
-        if key == "confidence" or value in (None, ""):
+        if _should_drop_observation(key, value):
             continue
         observations.append(
             _observation(
@@ -744,6 +883,7 @@ def _observations_from_model_payload(
                 family=model_output_schema_name,
                 confidence=None,
                 source_text=value,
+                evidence_context=evidence_context,
             )
         )
     return observations
@@ -756,6 +896,7 @@ def _observation(
     family: str | None,
     confidence: float | None,
     source_text: object,
+    evidence_context: EvidenceContext | None,
 ) -> dict[str, Any]:
     bounded_source_text = _bounded_text(source_text, max_length=500)
     return {
@@ -765,8 +906,38 @@ def _observation(
         "value_type": _value_type(value),
         "source_text": bounded_source_text,
         "confidence": confidence,
-        "evidence": [_evidence(bounded_source_text if bounded_source_text else field_name)],
+        "evidence": [
+            _evidence(
+                bounded_source_text if bounded_source_text else field_name,
+                evidence_context,
+            )
+        ],
     }
+
+
+def _should_drop_observation(key: object, value: object) -> bool:
+    normalized_key = str(key or "").strip().lower()
+    if normalized_key in _DROP_FLAT_OBSERVATION_KEYS:
+        return True
+    if value in (None, ""):
+        return True
+    if isinstance(value, (list, dict)) and not value:
+        return True
+    return _contains_instruction_echo(key) or _contains_instruction_echo(value)
+
+
+def _contains_instruction_echo(value: object) -> bool:
+    if isinstance(value, str):
+        text = value.lower()
+        return any(phrase in text for phrase in _ECHO_PHRASES)
+    if isinstance(value, dict):
+        return any(
+            _contains_instruction_echo(key) or _contains_instruction_echo(item)
+            for key, item in value.items()
+        )
+    if isinstance(value, list):
+        return any(_contains_instruction_echo(item) for item in value)
+    return False
 
 
 def _value_type(value: Any) -> str:
@@ -853,14 +1024,67 @@ def _string_list(value: Any) -> list[str]:
     return []
 
 
-def _evidence(source_text: object) -> dict[str, Any]:
-    text = str(source_text).strip()
-    return {
-        "page_number": 1,
-        "source_engine": "granite_vision_3b",
+def _evidence(
+    source_text: object,
+    evidence_context: EvidenceContext | None,
+) -> dict[str, Any]:
+    text = str(source_text or "").strip()
+    evidence: dict[str, Any] = {
+        "source_engine": (
+            evidence_context.source_engine if evidence_context else "granite_vision_3b"
+        ),
         "source_text": text,
         "confidence": 0.72,
     }
+    if evidence_context:
+        evidence["document_id"] = str(evidence_context.document_id)
+        if evidence_context.page_number is not None:
+            evidence["page_number"] = evidence_context.page_number
+        if evidence_context.page_id is not None:
+            evidence["page_id"] = str(evidence_context.page_id)
+        if evidence_context.table_id is not None:
+            evidence["table_id"] = str(evidence_context.table_id)
+        if evidence_context.element_id is not None:
+            evidence["element_id"] = str(evidence_context.element_id)
+        if evidence_context.semantic_region_id is not None:
+            evidence["semantic_region_id"] = str(evidence_context.semantic_region_id)
+        if evidence_context.semantic_annotation_id is not None:
+            evidence["semantic_annotation_id"] = str(evidence_context.semantic_annotation_id)
+    return {key: value for key, value in evidence.items() if value not in (None, "")}
+
+
+def _with_evidence_context(
+    item: dict[str, Any],
+    evidence_context: EvidenceContext | None,
+) -> dict[str, Any]:
+    copied = dict(item)
+    evidence = copied.get("evidence")
+    if isinstance(evidence, list) and evidence:
+        copied["evidence"] = [
+            _merge_evidence_context(entry, evidence_context)
+            for entry in evidence
+            if isinstance(entry, dict)
+        ]
+    else:
+        source_text = (
+            copied.get("source_text")
+            or copied.get("service_description")
+            or copied.get("description")
+            or copied.get("procedure_code")
+            or copied.get("ordinal")
+        )
+        copied["evidence"] = [_evidence(source_text, evidence_context)]
+    return copied
+
+
+def _merge_evidence_context(
+    item: dict[str, Any],
+    evidence_context: EvidenceContext | None,
+) -> dict[str, Any]:
+    if evidence_context is None:
+        return dict(item)
+    grounded = _evidence(item.get("source_text") or "", evidence_context)
+    return {**item, **{key: value for key, value in grounded.items() if key != "source_text"}}
 
 
 def _rejected_fields(payload: dict[str, Any], accepted: set[str]) -> list[str]:

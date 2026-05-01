@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 from typing import Any
 from uuid import UUID
 
 from lib.extraction.models import ExtractionSourceDocument, ParsedTableText
-from lib.semantic_annotations.docling_audit import DoclingAudit, build_docling_audit
+from lib.semantic_annotations.docling_audit import (
+    DoclingAudit,
+    build_docling_audit,
+    family_anchor_hits_from_text,
+    family_has_suggested_hint,
+)
 from lib.semantic_annotations.manifest_merge import page_manifest_json, region_manifest_json
 from lib.semantic_annotations.models import (
     DocumentSemanticManifest,
@@ -175,12 +181,23 @@ def _docling_structural_regions(
         and region.granite_task is not None
         and region.granite_task != "ignore"
     }
+    existing_semantic_types = {
+        region.semantic_type
+        for region in manifest.regions
+        if region.granite_task is not None and region.granite_task != "ignore"
+    }
     table_audit_by_id = {summary.table_id: summary for summary in audit.table_summaries}
-    table_family = _selected_table_family(audit)
     for table in source.tables:
+        if len(regions) >= MAX_DOCLING_STRUCTURAL_TARGETS:
+            break
         if table.table_id in existing_table_ids:
             continue
         table_summary = table_audit_by_id.get(table.table_id)
+        table_family = _selected_table_family_for_table(
+            source=source,
+            table=table,
+            audit=audit,
+        )
         table_region = _table_region(
             table,
             audit=audit,
@@ -190,16 +207,30 @@ def _docling_structural_regions(
         if table_region is None:
             continue
         regions.append(table_region)
-        if len(regions) >= MAX_DOCLING_STRUCTURAL_TARGETS:
-            return regions
-    if regions:
-        return regions
 
-    existing_semantic_types = {
-        region.semantic_type
-        for region in manifest.regions
-        if region.granite_task is not None and region.granite_task != "ignore"
-    }
+    if len(regions) >= MAX_DOCLING_STRUCTURAL_TARGETS:
+        return _dedupe_docling_regions(regions)[:MAX_DOCLING_STRUCTURAL_TARGETS]
+
+    existing_semantic_types = existing_semantic_types | {region.semantic_type for region in regions}
+    regions.extend(
+        _docling_observation_regions(
+            source=source,
+            audit=audit,
+            existing_semantic_types=existing_semantic_types,
+            remaining=MAX_DOCLING_STRUCTURAL_TARGETS - len(regions),
+        )
+    )
+    return _dedupe_docling_regions(regions)[:MAX_DOCLING_STRUCTURAL_TARGETS]
+
+
+def _docling_observation_regions(
+    *,
+    source: ExtractionSourceDocument,
+    audit: DoclingAudit,
+    existing_semantic_types: set[str],
+    remaining: int,
+) -> list[SemanticRegionAnnotation]:
+    regions: list[SemanticRegionAnnotation] = []
     dominant_observation_family = _dominant_observation_family(audit)
     observation_families = (
         (dominant_observation_family,)
@@ -225,8 +256,7 @@ def _docling_structural_regions(
                 grounding=SemanticGroundingRef(kind="page", page_id=page_id),
                 review_required=True,
                 reason=(
-                    f"Docling anchors indicate {family} content even though Qwen emitted no "
-                    "target."
+                    f"Docling anchors indicate {family} content even though Qwen emitted no target."
                 ),
                 confidence=_confidence_for_family(audit, family),
                 metadata=_base_metadata(
@@ -239,7 +269,7 @@ def _docling_structural_regions(
                 ),
             )
         )
-        if len(regions) >= MAX_DOCLING_STRUCTURAL_TARGETS:
+        if len(regions) >= remaining:
             break
     return regions
 
@@ -325,6 +355,80 @@ def _selected_table_family(audit: DoclingAudit) -> str | None:
         if family in hints:
             return family
     return None
+
+
+def _selected_table_family_for_table(
+    *,
+    source: ExtractionSourceDocument,
+    table: ParsedTableText,
+    audit: DoclingAudit,
+) -> str | None:
+    local_hits = family_anchor_hits_from_text(_normalized_local_table_text(source, table))
+    dominant_observation_family = _dominant_observation_family(audit)
+    if dominant_observation_family is not None:
+        observation_count = audit.anchor_counts.get(dominant_observation_family, 0)
+        for family in _TABLE_FAMILY_PRIORITY:
+            if (
+                family in _STRONG_TABLE_FAMILIES
+                and family_has_suggested_hint(family, local_hits.get(family, ()))
+                and len(local_hits.get(family, ())) >= observation_count + 1
+            ):
+                return family
+        return None
+    for family in _TABLE_FAMILY_PRIORITY:
+        if family_has_suggested_hint(family, local_hits.get(family, ())):
+            return family
+    return _selected_table_family(audit)
+
+
+def _normalized_local_table_text(
+    source: ExtractionSourceDocument,
+    table: ParsedTableText,
+) -> str:
+    page_text = " ".join(
+        page.text for page in source.pages if page.page_number == table.page_number and page.text
+    )
+    table_text = " ".join(
+        part
+        for part in (
+            table.table_markdown or "",
+            _render_table_json_for_anchoring(table.table_json),
+        )
+        if part
+    )
+    return f"{page_text}\n{table_text}"
+
+
+def _render_table_json_for_anchoring(table_json: dict[str, Any]) -> str:
+    if not table_json:
+        return ""
+    try:
+        return json.dumps(table_json, sort_keys=True)
+    except TypeError:
+        return str(table_json)
+
+
+def _dedupe_docling_regions(
+    regions: list[SemanticRegionAnnotation],
+) -> list[SemanticRegionAnnotation]:
+    deduped: list[SemanticRegionAnnotation] = []
+    seen: set[tuple[object, ...]] = set()
+    for region in regions:
+        grounding = region.grounding
+        key = (
+            region.semantic_type,
+            region.granite_task,
+            grounding.kind,
+            grounding.page_id,
+            grounding.element_id,
+            grounding.table_id,
+            tuple(region.expected_fields),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(region)
+    return deduped
 
 
 def _dominant_observation_family(audit: DoclingAudit) -> str | None:

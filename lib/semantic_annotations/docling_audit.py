@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import asdict, dataclass
 from typing import Any
 from uuid import UUID
@@ -63,14 +64,39 @@ FAMILY_ANCHORS: dict[str, dict[str, tuple[str, ...]]] = {
     },
 }
 
-REQUIRED_HINT_ANCHORS: dict[str, frozenset[str]] = {
-    "financial_dispute_form": frozenset(
-        {
-            "dispute",
-            "unauthorized",
-            "chargeback",
-            "fraud",
-        }
+
+@dataclass(frozen=True)
+class AnchorSpec:
+    required_any: frozenset[str] = frozenset()
+    required_all: frozenset[str] = frozenset()
+    negative_any: tuple[str, ...] = ()
+    threshold: int = 2
+
+
+ANCHOR_SPECS: dict[str, AnchorSpec] = {
+    "medical_eob": AnchorSpec(threshold=2),
+    "invoice": AnchorSpec(required_any=frozenset({"invoice", "amount_due"}), threshold=2),
+    "receipt": AnchorSpec(
+        required_any=frozenset({"receipt", "subtotal", "paid"}),
+        negative_any=("explanation of benefits", "claim number"),
+        threshold=2,
+    ),
+    "service_record": AnchorSpec(
+        required_any=frozenset({"repair_order", "service"}),
+        threshold=3,
+    ),
+    "retail_order": AnchorSpec(required_any=frozenset({"order", "ship_to", "bh_photo"})),
+    "real_estate_title": AnchorSpec(
+        required_any=frozenset({"title", "seller", "closing"}),
+        threshold=2,
+    ),
+    "mortgage_escrow_statement": AnchorSpec(
+        required_any=frozenset({"escrow"}),
+        threshold=2,
+    ),
+    "financial_dispute_form": AnchorSpec(
+        required_any=frozenset({"dispute", "unauthorized", "chargeback", "fraud"}),
+        threshold=2,
     ),
 }
 
@@ -164,21 +190,26 @@ def family_anchor_hits(source: ExtractionSourceDocument) -> dict[str, tuple[str,
             ]
         )
     )
-    return _anchor_hits(audit_text)
+    return family_anchor_hits_from_text(audit_text)
+
+
+def family_anchor_hits_from_text(text: str) -> dict[str, tuple[str, ...]]:
+    return _anchor_hits(_normalized_text(text))
 
 
 def family_has_required_hint_fit(family: str, anchors: tuple[str, ...]) -> bool:
-    required = REQUIRED_HINT_ANCHORS.get(family)
-    if not required:
-        return True
-    return bool(required.intersection(anchors))
+    spec = ANCHOR_SPECS.get(family, AnchorSpec())
+    anchor_set = set(anchors)
+    if spec.required_all and not spec.required_all.issubset(anchor_set):
+        return False
+    if spec.required_any and not spec.required_any.intersection(anchor_set):
+        return False
+    return True
 
 
 def family_has_suggested_hint(family: str, anchors: tuple[str, ...]) -> bool:
-    return len(anchors) >= _hint_threshold(family) and family_has_required_hint_fit(
-        family,
-        anchors,
-    )
+    spec = ANCHOR_SPECS.get(family, AnchorSpec())
+    return len(anchors) >= spec.threshold and family_has_required_hint_fit(family, anchors)
 
 
 def _page_snippets(source: ExtractionSourceDocument) -> list[PageAuditSnippet]:
@@ -255,20 +286,22 @@ def _table_json_row_count(table_json: dict[str, Any]) -> int:
 def _anchor_hits(text: str) -> dict[str, tuple[str, ...]]:
     hits: dict[str, tuple[str, ...]] = {}
     for family, anchors in FAMILY_ANCHORS.items():
+        spec = ANCHOR_SPECS.get(family, AnchorSpec())
+        if any(_contains_phrase(text, phrase) for phrase in spec.negative_any):
+            continue
         family_hits = [
             anchor
             for anchor, patterns in anchors.items()
-            if any(pattern in text for pattern in patterns)
+            if any(_contains_phrase(text, pattern) for pattern in patterns)
         ]
         if family_hits:
             hits[family] = tuple(sorted(family_hits))
     return hits
 
 
-def _hint_threshold(family: str) -> int:
-    if family == "mortgage_escrow_statement":
-        return 1
-    return 2
+def _contains_phrase(text: str, phrase: str) -> bool:
+    normalized = re.escape(_normalized_text(phrase))
+    return re.search(rf"(?<!\w){normalized}(?!\w)", text) is not None
 
 
 def _family_tension(suggested_family_hints: tuple[str, ...]) -> tuple[str, ...]:
