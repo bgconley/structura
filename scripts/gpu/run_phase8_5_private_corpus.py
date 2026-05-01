@@ -17,7 +17,6 @@ sys.path.insert(0, str(ROOT))
 
 from lib.config import get_settings  # noqa: E402
 from lib.db.connection import db_connection  # noqa: E402
-from lib.semantic_annotations.jobs import enqueue_semantic_annotation_job  # noqa: E402
 from scripts.gpu.phase8_5_corpus_run_guard import (  # noqa: E402
     DEFAULT_CORPUS_LOCK_PATH,
     CorpusRunGuard,
@@ -56,7 +55,6 @@ def _run_corpus(args: argparse.Namespace) -> int:
     settings = get_settings()
     if settings.model_mode == "fixture":
         raise SystemExit("Refusing private corpus run with STRUCTURA_MODEL_MODE=fixture.")
-    _reject_disabled_qwen8_modes(args, qwen8_enabled=settings.qwen8_enabled)
     owner = _resolve_owner(args.household_id, args.user_id)
     if args.stop_workers:
         _stop_controlled_workers()
@@ -66,24 +64,9 @@ def _run_corpus(args: argparse.Namespace) -> int:
     for pdf_path in args.pdf:
         document_id = _ingest_pdf(pdf_path, owner=owner, title_prefix=args.title_prefix)
         _run_docling(document_id, timeout_seconds=args.docling_timeout_seconds)
-        if args.allow_8b_rescue:
-            _mark_standard_semantic_pass_rescue_permitted(
-                document_id,
-                requested_by=args.requested_by,
-            )
         _cancel_text_embedding_jobs(document_id)
         _drain_semantic(document_id, label="smart")
-        if args.high_quality:
-            _enqueue_high_quality_semantic(
-                document_id,
-                requested_by=args.requested_by,
-                allow_8b_rescue=args.allow_8b_rescue,
-            )
-            _drain_semantic(document_id, label="high_quality")
-        if args.rescue_stress:
-            _enqueue_rescue_stress_semantic(document_id, requested_by=args.requested_by)
-            _drain_semantic(document_id, label="rescue_stress")
-        extraction_failures = _drain_extraction_and_rescue(document_id)
+        extraction_failures = _drain_extraction(document_id)
         if extraction_failures:
             had_extraction_failures = True
         _cancel_text_embedding_jobs(document_id)
@@ -127,21 +110,6 @@ def _parse_args() -> argparse.Namespace:
             "another run owns this lock."
         ),
     )
-    parser.add_argument(
-        "--high-quality",
-        action="store_true",
-        help="Explicitly run a user-selected Qwen3-VL 8B high-quality pass.",
-    )
-    parser.add_argument(
-        "--allow-8b-rescue",
-        action="store_true",
-        help="Persist permission for one bounded Qwen3-VL 8B rescue if policy allows it.",
-    )
-    parser.add_argument(
-        "--rescue-stress",
-        action="store_true",
-        help="Synthetic rescue stress mode; not part of standard private corpus validation.",
-    )
     parser.add_argument("--no-stop-workers", dest="stop_workers", action="store_false")
     parser.set_defaults(stop_workers=True)
     args = parser.parse_args()
@@ -167,28 +135,6 @@ def _load_manifest_pdf_paths(manifest_path: Path) -> list[Path]:
             raise SystemExit(f"Manifest document {index} is missing a path.")
         paths.append(Path(str(item["path"])))
     return paths
-
-
-def _reject_disabled_qwen8_modes(
-    args: argparse.Namespace,
-    *,
-    qwen8_enabled: bool = False,
-) -> None:
-    if qwen8_enabled:
-        return
-    disabled_flags = []
-    if args.high_quality:
-        disabled_flags.append("--high-quality")
-    if args.allow_8b_rescue:
-        disabled_flags.append("--allow-8b-rescue")
-    if args.rescue_stress:
-        disabled_flags.append("--rescue-stress")
-    if disabled_flags:
-        joined = ", ".join(disabled_flags)
-        raise SystemExit(
-            f"{joined} is disabled because the Qwen3-VL 8B service is removed from "
-            "the active Phase 8.5 runtime."
-        )
 
 
 def _resolve_owner(household_id: UUID | None, user_id: UUID | None) -> tuple[UUID, UUID]:
@@ -327,122 +273,8 @@ def _drain_semantic(document_id: UUID, *, label: str) -> None:
     _require_no_failed_jobs(document_id, queue_name="semantic-annotations")
 
 
-def _mark_standard_semantic_pass_rescue_permitted(
-    document_id: UUID,
-    *,
-    requested_by: str,
-) -> None:
-    user_intent_reason = "Private corpus runner was invoked with --allow-8b-rescue."
-    with db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                UPDATE pipeline_jobs
-                SET payload_json = payload_json
-                    || jsonb_build_object(
-                        'semantic_quality_mode', 'smart',
-                        'allow_8b_rescue', true,
-                        'requested_by', %s::text,
-                        'user_intent_reason', %s::text
-                    ),
-                    updated_at = now()
-                WHERE document_id = %s
-                  AND queue_name = 'semantic-annotations'
-                  AND job_type = 'semantic_annotate'
-                  AND status = 'queued'
-                  AND payload_json ->> 'quality_mode' = 'smart'
-                """,
-                (requested_by, user_intent_reason, document_id),
-            )
-        conn.commit()
-
-
-def _enqueue_high_quality_semantic(
-    document_id: UUID,
-    *,
-    requested_by: str,
-    allow_8b_rescue: bool,
-) -> None:
-    with db_connection() as conn:
-        with conn.cursor() as cur:
-            job_id = enqueue_semantic_annotation_job(
-                cur,
-                document_id=document_id,
-                quality_mode="high_quality",
-                semantic_quality_mode="high_quality",
-                allow_8b_rescue=allow_8b_rescue,
-                requested_by=requested_by,
-                reason="phase8_5.private_corpus_high_quality_pass",
-                user_intent_reason="Private corpus runner was invoked with --high-quality.",
-                dedupe_existing=True,
-                priority=27,
-                qwen8_enabled=True,
-            )
-        conn.commit()
-    print(
-        json.dumps(
-            {
-                "stage": "high_quality_enqueued",
-                "document_id": str(document_id),
-                "job_id": str(job_id),
-            },
-            sort_keys=True,
-        ),
-        flush=True,
-    )
-
-
-def _enqueue_rescue_stress_semantic(document_id: UUID, *, requested_by: str) -> None:
-    with db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT payload_json ->> 'semantic_region_id' AS semantic_region_id
-                FROM pipeline_jobs
-                WHERE document_id = %s
-                  AND queue_name = 'extraction'
-                  AND job_type = 'extract'
-                  AND payload_json ? 'semantic_region_id'
-                ORDER BY created_at ASC
-                LIMIT 1
-                """,
-                (document_id,),
-            )
-            row = cur.fetchone()
-            if not row or not row["semantic_region_id"]:
-                return
-            job_id = enqueue_semantic_annotation_job(
-                cur,
-                document_id=document_id,
-                quality_mode="rescue",
-                semantic_quality_mode="smart",
-                allow_8b_rescue=True,
-                requested_by=requested_by,
-                reason="phase8_5.private_corpus_rescue_stress",
-                source_semantic_region_id=UUID(str(row["semantic_region_id"])),
-                rescue_failure_class="rescue_stress",
-                user_intent_reason="Private corpus runner was invoked with --rescue-stress.",
-                dedupe_existing=True,
-                priority=26,
-                qwen8_enabled=True,
-            )
-        conn.commit()
-    print(
-        json.dumps(
-            {
-                "stage": "rescue_stress_enqueued",
-                "document_id": str(document_id),
-                "job_id": str(job_id),
-            },
-            sort_keys=True,
-        ),
-        flush=True,
-    )
-
-
-def _drain_extraction_and_rescue(document_id: UUID) -> list[dict[str, Any]]:
+def _drain_extraction(document_id: UUID) -> list[dict[str, Any]]:
     extraction_jobs = 0
-    semantic_jobs = 0
     for _ in range(12):
         extracted = _drain(
             lambda: _process_one_worker_job(
@@ -455,20 +287,8 @@ def _drain_extraction_and_rescue(document_id: UUID) -> list[dict[str, Any]]:
             ),
             max_jobs=24,
         )
-        semantic = _drain(
-            lambda: _process_one_worker_job(
-                "worker-semantic-annotations",
-                "workers.semantic_annotations.worker",
-                "process_next_semantic_annotation_job",
-                worker_name="phase8-5-private-semantic-rescue",
-                document_id=document_id,
-                live_model_env=True,
-            ),
-            max_jobs=8,
-        )
         extraction_jobs += extracted
-        semantic_jobs += semantic
-        if extracted == 0 and semantic == 0:
+        if extracted == 0:
             break
     print(
         json.dumps(
@@ -476,7 +296,6 @@ def _drain_extraction_and_rescue(document_id: UUID) -> list[dict[str, Any]]:
                 "stage": "extraction",
                 "document_id": str(document_id),
                 "extraction_jobs": extraction_jobs,
-                "rescue_semantic_jobs": semantic_jobs,
             },
             sort_keys=True,
         ),

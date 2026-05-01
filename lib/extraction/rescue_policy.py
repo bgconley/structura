@@ -6,13 +6,12 @@ from typing import Literal
 from lib.extraction.models import ValidationReport
 from lib.semantic_annotations.models import SemanticExtractionTask
 
-RescueOutcome = Literal["review_only", "rescue_permitted_once", "pipeline_failed"]
+RescueOutcome = Literal["review_only", "pipeline_failed"]
 
 
 @dataclass(frozen=True)
 class RescuePolicyContext:
     allow_8b_rescue: bool
-    qwen8_enabled: bool
     validation: ValidationReport
     semantic_task: SemanticExtractionTask | None
     candidate_count: int
@@ -49,24 +48,13 @@ class RescuePolicy:
                 failure_class=failure_class,
                 reason="User did not permit Qwen3-VL 8B rescue.",
             )
-        if not context.qwen8_enabled:
-            return RescuePolicyDecision(
-                outcome="review_only",
-                failure_class=failure_class,
-                reason="Qwen3-VL 8B rescue is disabled for this runtime profile.",
-            )
-        if _recoverable_by_semantic_rescue(context, failure_class):
-            return RescuePolicyDecision(
-                outcome="rescue_permitted_once",
-                failure_class=failure_class,
-                reason=(
-                    "User permitted one Qwen3-VL 8B rescue for this recoverable extraction issue."
-                ),
-            )
         return RescuePolicyDecision(
             outcome="review_only",
             failure_class=failure_class,
-            reason="Issue should be reviewed without Qwen3-VL 8B rescue.",
+            reason=(
+                "Separate semantic rescue has been removed from the active runtime; "
+                "review preserves the extraction evidence."
+            ),
         )
 
 
@@ -93,19 +81,3 @@ def _failure_class(context: RescuePolicyContext) -> str:
     ):
         return "low_confidence_only"
     return "needs_review"
-
-
-def _recoverable_by_semantic_rescue(
-    context: RescuePolicyContext,
-    failure_class: str,
-) -> bool:
-    if context.semantic_task is None:
-        return False
-    return failure_class in {
-        "empty_required_target",
-        "missing_required_field",
-        "unreconciled_totals",
-        "ambiguous_semantic_region",
-        "poor_layout_signal",
-        "misclassified_semantic_region",
-    }

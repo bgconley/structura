@@ -45,7 +45,7 @@ def test_qwen_semantic_profile_uses_qwen3_vl_8b_fp8_for_default_smart_parse() ->
     assert smart.visual_token_max_per_image == 2560
 
 
-def test_qwen2b_qwen4b_and_deferred_qwen8_profiles_are_not_required_live() -> None:
+def test_historical_qwen_profiles_are_not_required_live() -> None:
     historical_smart = get_model_profile(QWEN_HISTORICAL_SEMANTIC_2B_PROFILE)
     historical_qwen4b = get_model_profile(QWEN_HISTORICAL_SEMANTIC_4B_PROFILE)
     high_quality = get_model_profile(QWEN_SEMANTIC_HQ_PROFILE)
@@ -94,13 +94,13 @@ def test_unknown_profile_fails_closed() -> None:
 
 def test_configured_model_profiles_resolve_settings_values() -> None:
     profiles = configured_model_profiles(
-        qwen_profile=QWEN_VL_PROFILE,
+        qwen_semantic_profile=QWEN_VL_PROFILE,
         granite_profile=GRANITE_VISION_PROFILE,
         text_embed_profile=TEXT_EMBED_PROFILE,
         visual_embed_profile=VISUAL_EMBED_PROFILE,
     )
 
-    assert profiles.qwen.name == QWEN_VL_PROFILE
+    assert profiles.qwen_semantic.name == QWEN_VL_PROFILE
     assert profiles.granite.name == GRANITE_VISION_PROFILE
     assert profiles.text_embedding.output_dimensions == 1536
     assert profiles.visual_embedding.output_dimensions == 2048

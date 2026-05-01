@@ -16,7 +16,6 @@ from lib.model_runtime.contracts import (
 )
 from lib.model_runtime.http_client import ModelProtocolError
 from lib.model_runtime.profiles import (
-    QWEN_SEMANTIC_HQ_PROFILE,
     QWEN_SEMANTIC_PROFILE,
     get_model_profile,
 )
@@ -88,11 +87,8 @@ class QwenSemanticVisionClient:
         self,
         *,
         smart: SemanticVisionClientProtocol,
-        high_quality: SemanticVisionClientProtocol | None = None,
     ) -> None:
         self._clients = {QWEN_SEMANTIC_PROFILE: smart}
-        if high_quality is not None:
-            self._clients[QWEN_SEMANTIC_HQ_PROFILE] = high_quality
 
     @classmethod
     def from_settings(cls, settings: Settings) -> QwenSemanticVisionClient:
@@ -100,14 +96,6 @@ class QwenSemanticVisionClient:
             smart=QwenVLClient(
                 profile=get_model_profile(QWEN_SEMANTIC_PROFILE),
                 http_client_base_url=str(settings.model_qwen_semantic_url),
-            ),
-            high_quality=(
-                QwenVLClient(
-                    profile=get_model_profile(QWEN_SEMANTIC_HQ_PROFILE),
-                    http_client_base_url=str(settings.model_qwen_hq_url),
-                )
-                if settings.qwen8_enabled
-                else None
             ),
         )
 
@@ -263,8 +251,6 @@ class QwenSemanticAnnotationGateway:
 
 
 def _profile_for_mode(quality_mode: str) -> str:
-    if quality_mode in {"high_quality", "rescue"}:
-        return QWEN_SEMANTIC_HQ_PROFILE
     return QWEN_SEMANTIC_PROFILE
 
 
@@ -294,8 +280,6 @@ def _max_output_tokens_for_profile(profile_name: str) -> int:
 
 def _timeout_seconds_for_profile(profile_name: str) -> int:
     settings = get_settings()
-    if profile_name == QWEN_SEMANTIC_HQ_PROFILE:
-        return settings.model_qwen_hq_timeout_seconds
     if profile_name == QWEN_SEMANTIC_PROFILE:
         return settings.model_qwen_semantic_timeout_seconds
     return settings.model_http_timeout_seconds

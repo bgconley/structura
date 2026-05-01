@@ -128,7 +128,7 @@ def test_live_qwen_smart_gateway_uses_compact_output_budget_for_16k_service() ->
     assert client.request.max_output_tokens == 6144
 
 
-def test_live_qwen_high_quality_gateway_uses_qwen8b_profile() -> None:
+def test_live_qwen_high_quality_gateway_uses_high_quality_prompt_version() -> None:
     source = _source_with_page_image()
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_HQ_PROFILE,
@@ -145,10 +145,11 @@ def test_live_qwen_high_quality_gateway_uses_qwen8b_profile() -> None:
     assert result.manifest.profile_name == QWEN_SEMANTIC_HQ_PROFILE
     assert result.manifest.prompt_version == "phase8_5-semantic-high-quality-v1"
     assert client.request is not None
-    assert client.request.timeout_seconds == 180
-    assert client.request.max_output_tokens == 4096
+    assert client.request.profile_name == QWEN_SEMANTIC_PROFILE
+    assert client.request.timeout_seconds == 300
+    assert client.request.max_output_tokens == 6144
     assert client.request.response_schema_name == "semantic_annotation_model_output"
-    assert client.request.response_json_schema is None
+    assert client.request.response_json_schema is not None
 
 
 def test_live_qwen_high_quality_gateway_normalizes_page_annotations_shape() -> None:
@@ -739,7 +740,7 @@ def test_live_qwen_smart_gateway_chunks_long_documents_without_one_page_fallback
     assert "fallback_reason" not in result.manifest.confidence
 
 
-def test_live_qwen_high_quality_gateway_chunks_pages_for_one_image_hq_service() -> None:
+def test_live_qwen_high_quality_gateway_uses_active_semantic_fan_in() -> None:
     source = _source_with_two_page_images()
     page_by_hash = {page.image_sha256: page.page_id for page in source.pages if page.image_sha256}
 
@@ -751,8 +752,11 @@ def test_live_qwen_high_quality_gateway_chunks_pages_for_one_image_hq_service() 
 
         def generate(self, request: VisionGenerateRequest) -> VisionGenerateResponse:
             self.requests.append(request)
-            image_hash = request.image_inputs[0].validated_sha256()
-            page_id = page_by_hash[image_hash]
+            page_ids = [
+                page_by_hash[image.validated_sha256()]
+                for image in request.image_inputs
+                if image.validated_sha256() in page_by_hash
+            ]
             return VisionGenerateResponse(
                 profile_name=QWEN_SEMANTIC_HQ_PROFILE,
                 model_name="fake-qwen",
@@ -760,9 +764,9 @@ def test_live_qwen_high_quality_gateway_chunks_pages_for_one_image_hq_service() 
                 source_engine="qwen3_vl_8b",
                 prompt_version=request.prompt_version,
                 raw_text="{}",
-                normalized_json=_semantic_payload(page_id),
+                normalized_json=_semantic_payload_for_pages(page_ids),
                 confidence_json={"overall": 0.82},
-                input_sha256=(image_hash,),
+                input_sha256=tuple(image.validated_sha256() for image in request.image_inputs),
                 latency_ms=1,
             )
 
@@ -773,11 +777,11 @@ def test_live_qwen_high_quality_gateway_chunks_pages_for_one_image_hq_service() 
         quality_mode="high_quality",
     )
 
-    assert len(client.requests) == 2
-    assert [len(request.image_inputs) for request in client.requests] == [1, 1]
+    assert len(client.requests) == 1
+    assert [len(request.image_inputs) for request in client.requests] == [2]
     assert len(result.manifest.pages) == 2
     assert result.manifest.profile_name == QWEN_SEMANTIC_HQ_PROFILE
-    assert result.manifest.confidence["chunk_count"] == 2
+    assert "chunk_count" not in result.manifest.confidence
 
 
 def test_live_qwen_gateway_rejects_malformed_model_output() -> None:
@@ -1150,7 +1154,7 @@ def test_live_qwen_gateway_retries_once_after_truncated_model_output() -> None:
     assert len(client.requests) == 2
 
 
-def test_qwen_semantic_client_uses_distinct_smart_and_high_quality_urls(
+def test_qwen_semantic_client_uses_only_active_smart_semantic_url(
     monkeypatch,
 ) -> None:
     captured: list[tuple[str, str]] = []
@@ -1162,37 +1166,12 @@ def test_qwen_semantic_client_uses_distinct_smart_and_high_quality_urls(
     monkeypatch.setattr(qwen_gateway, "QwenVLClient", RecordingClient)
     settings = qwen_gateway.Settings(
         model_qwen_semantic_url="http://model-qwen-semantic:8104",
-        model_qwen_hq_url="http://model-qwen:8100",
     )
 
     qwen_gateway.QwenSemanticVisionClient.from_settings(settings)
 
     assert captured == [
         ("qwen3-vl-8b-fp8-semantic:v1", "http://model-qwen-semantic:8104"),
-    ]
-
-
-def test_qwen_semantic_client_can_create_deferred_high_quality_client_when_enabled(
-    monkeypatch,
-) -> None:
-    captured: list[tuple[str, str]] = []
-
-    class RecordingClient:
-        def __init__(self, *, profile: Any, http_client_base_url: str) -> None:
-            captured.append((profile.name, http_client_base_url))
-
-    monkeypatch.setattr(qwen_gateway, "QwenVLClient", RecordingClient)
-    settings = qwen_gateway.Settings(
-        model_qwen_semantic_url="http://model-qwen-semantic:8104",
-        model_qwen_hq_url="http://model-qwen:8100",
-        qwen8_enabled=True,
-    )
-
-    qwen_gateway.QwenSemanticVisionClient.from_settings(settings)
-
-    assert captured == [
-        ("qwen3-vl-8b-fp8-semantic:v1", "http://model-qwen-semantic:8104"),
-        ("qwen3-vl-8b-semantic-hq:v1", "http://model-qwen:8100"),
     ]
 
 

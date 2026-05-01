@@ -43,15 +43,12 @@ def test_private_corpus_default_actor_matches_semantic_job_contract(
 
     args = runner._parse_args()
 
-    assert args.high_quality is False
-    assert args.allow_8b_rescue is False
-    assert args.rescue_stress is False
     payload = build_semantic_annotate_document_job_payload(
         job_id=uuid4(),
         document_id=uuid4(),
         quality_mode="smart",
         semantic_quality_mode="smart",
-        allow_8b_rescue=args.allow_8b_rescue,
+        allow_8b_rescue=False,
         requested_by=args.requested_by,
         reason="phase8_5.private_corpus_standard_smart_pass",
     )
@@ -59,57 +56,6 @@ def test_private_corpus_default_actor_matches_semantic_job_contract(
     assert payload["quality_mode"] == "smart"
     assert payload["semantic_quality_mode"] == "smart"
     assert payload["allow_8b_rescue"] is False
-
-
-def test_private_corpus_high_quality_flag_is_explicit(
-    monkeypatch,
-    tmp_path,
-) -> None:
-    runner = _load_private_corpus_runner()
-    pdf_path = tmp_path / "sample.pdf"
-    pdf_path.write_bytes(b"%PDF-1.7\n")
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        ["run_phase8_5_private_corpus.py", "--pdf", str(pdf_path), "--high-quality"],
-    )
-
-    args = runner._parse_args()
-
-    assert args.high_quality is True
-    assert args.allow_8b_rescue is False
-    try:
-        runner._reject_disabled_qwen8_modes(args)
-    except SystemExit as exc:
-        assert "disabled" in str(exc)
-    else:
-        raise AssertionError("--high-quality must be rejected while Qwen8 is disabled")
-
-
-def test_private_corpus_allow_8b_rescue_is_separate_from_hq(
-    monkeypatch,
-    tmp_path,
-) -> None:
-    runner = _load_private_corpus_runner()
-    pdf_path = tmp_path / "sample.pdf"
-    pdf_path.write_bytes(b"%PDF-1.7\n")
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        ["run_phase8_5_private_corpus.py", "--pdf", str(pdf_path), "--allow-8b-rescue"],
-    )
-
-    args = runner._parse_args()
-
-    assert args.high_quality is False
-    assert args.allow_8b_rescue is True
-    assert args.rescue_stress is False
-    try:
-        runner._reject_disabled_qwen8_modes(args)
-    except SystemExit as exc:
-        assert "disabled" in str(exc)
-    else:
-        raise AssertionError("--allow-8b-rescue must be rejected while Qwen8 is disabled")
 
 
 def test_private_corpus_manifest_argument_is_supported_without_committing_private_paths(
@@ -270,7 +216,7 @@ def test_private_corpus_extraction_drain_marks_model_timeout_as_fatal(
     )
 
     try:
-        runner._drain_extraction_and_rescue(document_id)
+        runner._drain_extraction(document_id)
     except SystemExit as exc:
         assert exc.code == 2
     else:

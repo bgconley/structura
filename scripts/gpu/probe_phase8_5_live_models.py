@@ -23,8 +23,6 @@ class ProbeTarget:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Probe Structura Phase 8.5 live models.")
-    parser.add_argument("--qwen-url", default="http://127.0.0.1:8100")
-    parser.add_argument("--qwen-model", default="Qwen/Qwen3-VL-8B-Instruct")
     parser.add_argument("--qwen-semantic-url", default="http://127.0.0.1:8104")
     parser.add_argument("--qwen-semantic-model", default="Qwen/Qwen3-VL-8B-Instruct-FP8")
     parser.add_argument("--granite-url", default="http://127.0.0.1:8101")
@@ -33,7 +31,6 @@ def main() -> int:
     parser.add_argument("--text-embed-model", default="Qwen/Qwen3-Embedding-4B")
     parser.add_argument("--visual-embed-url", default="http://127.0.0.1:8103")
     parser.add_argument("--visual-embed-model", default="Qwen/Qwen3-VL-Embedding-2B")
-    parser.add_argument("--skip-qwen", action="store_true")
     parser.add_argument("--skip-qwen-semantic", action="store_true")
     parser.add_argument("--skip-granite", action="store_true")
     parser.add_argument("--skip-text-embed", action="store_true")
@@ -41,11 +38,6 @@ def main() -> int:
     parser.add_argument("--timeout", type=float, default=120.0)
     args = parser.parse_args()
 
-    if not args.skip_qwen:
-        probe_vision_generate(
-            ProbeTarget("model-qwen", args.qwen_url, args.qwen_model),
-            timeout=args.timeout,
-        )
     if not args.skip_qwen_semantic:
         probe_vision_generate(
             ProbeTarget(

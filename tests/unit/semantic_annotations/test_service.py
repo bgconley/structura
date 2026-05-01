@@ -64,7 +64,7 @@ def test_semantic_service_persists_manifest_and_queues_grounded_granite_jobs() -
     assert payload["allow_8b_rescue"] is False
 
 
-def test_semantic_service_rejects_rescue_permission_when_qwen8_disabled() -> None:
+def test_semantic_service_rejects_removed_rescue_permission() -> None:
     document_id = uuid4()
     household_id = uuid4()
     page_id = uuid4()
@@ -74,7 +74,7 @@ def test_semantic_service_rejects_rescue_permission_when_qwen8_disabled() -> Non
     manifest = _manifest(document_id=document_id, household_id=household_id, page_id=page_id)
     jobs = RecordingJobs()
 
-    with pytest.raises(SemanticAnnotationServiceError, match="disabled"):
+    with pytest.raises(SemanticAnnotationServiceError, match="removed"):
         SemanticAnnotationService(
             source_loader=lambda loaded_document_id: source,
             gateway=StaticGateway(manifest),
@@ -93,41 +93,6 @@ def test_semantic_service_rejects_rescue_permission_when_qwen8_disabled() -> Non
         )
 
     assert jobs.created == []
-
-
-def test_semantic_service_propagates_explicit_rescue_permission_when_qwen8_enabled() -> None:
-    document_id = uuid4()
-    household_id = uuid4()
-    page_id = uuid4()
-    annotation_id = uuid4()
-    user_id = uuid4()
-    source = _source(document_id=document_id, household_id=household_id, page_id=page_id)
-    manifest = _manifest(document_id=document_id, household_id=household_id, page_id=page_id)
-    jobs = RecordingJobs()
-
-    SemanticAnnotationService(
-        source_loader=lambda loaded_document_id: source,
-        gateway=StaticGateway(manifest),
-        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
-            persisted_manifest,
-            annotation_id=annotation_id,
-        ),
-        jobs=jobs,
-        qwen8_enabled=True,
-    ).annotate_document(
-        document_id,
-        quality_mode="smart",
-        requested_by="user",
-        allow_8b_rescue=True,
-        requested_by_user_id=user_id,
-        user_intent_reason="User allowed one 8B rescue.",
-    )
-
-    payload = jobs.created[0]["payload"]
-    assert payload["semantic_quality_mode"] == "smart"
-    assert payload["allow_8b_rescue"] is True
-    assert payload["requested_by_user_id"] == str(user_id)
-    assert payload["user_intent_reason"] == "User allowed one 8B rescue."
 
 
 def test_semantic_service_prefers_document_family_over_region_target_schema() -> None:
@@ -436,9 +401,7 @@ def test_semantic_service_routes_escrow_docling_tables_as_observations_not_recei
                 page_number=1,
                 table_index=1,
                 table_markdown=(
-                    "| Escrow item | Amount |\n"
-                    "| Shortage | $120.00 |\n"
-                    "| New payment | $2,100.00 |"
+                    "| Escrow item | Amount |\n| Shortage | $120.00 |\n| New payment | $2,100.00 |"
                 ),
             )
         ],
@@ -528,10 +491,7 @@ def test_semantic_service_uses_only_dominant_docling_observation_family() -> Non
         family="receipt",
         title="Phenix Title Seller Info",
         original_filename="Phenix Title Seller Info 032924.pdf",
-        text=(
-            "Phenix Title seller seller seller title company closing settlement "
-            "escrow payment"
-        ),
+        text=("Phenix Title seller seller seller title company closing settlement escrow payment"),
     )
     manifest = _manifest_with_regions(
         document_id=document_id,
@@ -706,42 +666,27 @@ def test_semantic_service_does_not_queue_ignored_or_unmatched_regions() -> None:
     assert jobs.created == []
 
 
-def test_semantic_service_caps_high_quality_granite_fanout() -> None:
+def test_semantic_service_rejects_removed_high_quality_mode() -> None:
     document_id = uuid4()
     household_id = uuid4()
     page_id = uuid4()
-    annotation_id = uuid4()
-    region_ids = tuple(uuid4() for _ in range(12))
     source = _source(document_id=document_id, household_id=household_id, page_id=page_id)
     manifest = _manifest(
         document_id=document_id,
         household_id=household_id,
         page_id=page_id,
         quality_mode="high_quality",
-        region_count=12,
     )
     jobs = RecordingJobs()
 
-    result = SemanticAnnotationService(
-        source_loader=lambda loaded_document_id: source,
-        gateway=StaticGateway(manifest),
-        manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
-            annotation_id=annotation_id,
-            region_ids=region_ids,
-        ),
-        jobs=jobs,
-        qwen8_enabled=True,
-    ).annotate_document(document_id, quality_mode="high_quality", requested_by="user")
+    with pytest.raises(SemanticAnnotationServiceError, match="removed"):
+        SemanticAnnotationService(
+            source_loader=lambda loaded_document_id: source,
+            gateway=StaticGateway(manifest),
+            jobs=jobs,
+        ).annotate_document(document_id, quality_mode="high_quality", requested_by="user")
 
-    assert len(jobs.created) == 8
-    assert len(result.queued_granite_job_ids) == 8
-    assert (
-        [
-            job["payload"]["semantic_region_id"]  # type: ignore[index]
-            for job in jobs.created
-        ]
-        == [str(region_id) for region_id in region_ids[:8]]
-    )
+    assert jobs.created == []
 
 
 def test_semantic_service_caps_smart_fanout_to_six_regions() -> None:
@@ -832,48 +777,39 @@ def test_semantic_service_prioritizes_line_items_over_header_regions() -> None:
     assert len(jobs.created) == 6
 
 
-def test_semantic_service_caps_rescue_granite_fanout_to_single_retry() -> None:
+def test_semantic_service_rejects_removed_rescue_mode() -> None:
     document_id = uuid4()
     household_id = uuid4()
     page_id = uuid4()
-    annotation_id = uuid4()
-    region_ids = tuple(uuid4() for _ in range(6))
     source = _source(document_id=document_id, household_id=household_id, page_id=page_id)
     manifest = _manifest(
         document_id=document_id,
         household_id=household_id,
         page_id=page_id,
         quality_mode="rescue",
-        region_count=6,
     )
     jobs = RecordingJobs()
 
-    result = SemanticAnnotationService(
-        source_loader=lambda loaded_document_id: source,
-        gateway=StaticGateway(manifest),
-        manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
-            annotation_id=annotation_id,
-            region_ids=region_ids,
-        ),
-        jobs=jobs,
-        qwen8_enabled=True,
-    ).annotate_document(
-        document_id,
-        quality_mode="rescue",
-        requested_by="user",
-        allow_8b_rescue=True,
-        user_intent_reason="User allowed one 8B rescue.",
-    )
+    with pytest.raises(SemanticAnnotationServiceError, match="removed"):
+        SemanticAnnotationService(
+            source_loader=lambda loaded_document_id: source,
+            gateway=StaticGateway(manifest),
+            jobs=jobs,
+        ).annotate_document(
+            document_id,
+            quality_mode="rescue",
+            requested_by="user",
+            allow_8b_rescue=True,
+            user_intent_reason="User allowed one 8B rescue.",
+        )
 
-    assert len(jobs.created) == 1
-    assert result.queued_granite_job_ids == (jobs.created_job_id,)
-    assert jobs.created[0]["payload"]["semantic_rescue"] is True  # type: ignore[index]
+    assert jobs.created == []
 
 
 def test_semantic_service_rejects_rescue_without_persisted_permission() -> None:
     document_id = uuid4()
 
-    with pytest.raises(SemanticAnnotationServiceError, match="persisted user permission"):
+    with pytest.raises(SemanticAnnotationServiceError, match="removed"):
         SemanticAnnotationService(
             source_loader=lambda loaded_document_id: _source(
                 document_id=loaded_document_id,
@@ -888,14 +824,13 @@ def test_semantic_service_rejects_rescue_without_persisted_permission() -> None:
                     quality_mode="rescue",
                 )
             ),
-            qwen8_enabled=True,
         ).annotate_document(document_id, quality_mode="rescue", requested_by="system")
 
 
-def test_semantic_service_rejects_high_quality_when_qwen8_disabled() -> None:
+def test_semantic_service_rejects_high_quality_after_legacy_path_removed() -> None:
     document_id = uuid4()
 
-    with pytest.raises(SemanticAnnotationServiceError, match="disabled"):
+    with pytest.raises(SemanticAnnotationServiceError, match="removed"):
         SemanticAnnotationService(
             source_loader=lambda loaded_document_id: _source(
                 document_id=loaded_document_id,

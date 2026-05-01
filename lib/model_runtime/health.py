@@ -8,8 +8,6 @@ import httpx
 from lib.config import Settings, get_settings
 from lib.model_runtime.profiles import (
     GRANITE_VISION_PROFILE,
-    QWEN_SEMANTIC_HQ_PROFILE,
-    QWEN_VL_PROFILE,
     TEXT_EMBED_PROFILE,
     VISUAL_EMBED_PROFILE,
 )
@@ -20,14 +18,6 @@ def configured_model_health_snapshots(
 ) -> list[dict[str, Any]]:
     resolved = settings or get_settings()
     return [
-        _snapshot(
-            service_name="model-qwen",
-            mode=resolved.model_mode,
-            profile_name=(
-                resolved.qwen_hq_profile or resolved.qwen_profile or QWEN_SEMANTIC_HQ_PROFILE
-            ),
-            endpoint_role="qwen-vl-high-quality",
-        ),
         _snapshot(
             service_name="model-qwen-semantic",
             mode=resolved.model_mode,
@@ -63,12 +53,6 @@ def probed_model_health_snapshots(
 ) -> list[dict[str, Any]]:
     resolved = settings or get_settings()
     endpoints = [
-        (
-            "model-qwen",
-            resolved.model_qwen_hq_url or resolved.model_qwen_url,
-            resolved.qwen_hq_profile or resolved.qwen_profile or QWEN_VL_PROFILE,
-            "qwen-vl-high-quality",
-        ),
         (
             "model-qwen-semantic",
             resolved.model_qwen_semantic_url,

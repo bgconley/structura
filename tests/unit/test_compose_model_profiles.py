@@ -22,7 +22,6 @@ def test_app_runtime_services_include_host_operator_group() -> None:
         "worker-watched-folders",
         "worker-relationships",
         "worker-analysis",
-        "model-qwen-placeholder",
         "model-granite-placeholder",
         "model-embed-placeholder",
         "model-vl-embed-placeholder",
@@ -34,8 +33,9 @@ def test_model_profiles_are_safe_and_gpu_placed() -> None:
     compose = yaml.safe_load(Path("compose.yaml").read_text())
     services = compose["services"]
 
+    assert "model-qwen" not in services
+    assert "model-qwen-placeholder" not in services
     expected_gpu_bindings = {
-        "model-qwen": "${STRUCTURA_MODEL_QWEN_GPU:-0}",
         "model-qwen-semantic": "${STRUCTURA_MODEL_QWEN_SEMANTIC_GPU:-0}",
         "model-granite": "${STRUCTURA_MODEL_GRANITE_GPU:-1}",
         "model-embed": "${STRUCTURA_MODEL_EMBED_GPU:-1}",
@@ -63,22 +63,15 @@ def test_model_profiles_are_safe_and_gpu_placed() -> None:
         assert environment["STRUCTURA_CUDA_VISIBLE_DEVICES"] == "0"
         assert any("/srv/structura/models" in volume for volume in service.get("volumes", []))
 
-    assert "models-live" not in services["model-qwen"]["profiles"]
-    assert services["model-qwen"]["profiles"] == ["qwen-hq-disabled"]
     assert services["model-embed"]["profiles"] == ["text-embed-live"]
     assert services["model-vl-embed"]["profiles"] == ["models-live", "visual-embed-live"]
     semantic_worker = services["worker-semantic-annotations"]
     assert "workers.semantic_annotations.worker" in semantic_worker["command"]
     assert "semantic" in semantic_worker["profiles"]
-    assert semantic_worker["environment"]["STRUCTURA_MODEL_QWEN_HQ_URL"] == (
-        "http://model-qwen:8100"
-    )
-    assert semantic_worker["environment"]["STRUCTURA_QWEN8_ENABLED"] == "false"
     assert semantic_worker["environment"]["STRUCTURA_MODEL_QWEN_SEMANTIC_URL"] == (
         "http://model-qwen-semantic:8104"
     )
     for name in (
-        "model-qwen-placeholder",
         "model-granite-placeholder",
         "model-embed-placeholder",
         "model-vl-embed-placeholder",
@@ -115,19 +108,6 @@ def test_live_model_profiles_have_concrete_blackwell_commands() -> None:
     )
     assert qwen_semantic["environment"]["STRUCTURA_VLLM_DISABLE_PREFIX_CACHING"] == "true"
 
-    qwen_hq = services["model-qwen"]
-    assert "voipmonitor/vllm:cu130" in qwen_hq["image"]
-    assert "start_qwen_vllm.sh" in " ".join(qwen_hq["command"])
-    assert qwen_hq["environment"]["STRUCTURA_VLLM_MODEL_ID"] == (
-        "${STRUCTURA_VLLM_QWEN_MODEL_ID:-lhoang8500/Qwen3-VL-8B-Instruct-NVFP4}"
-    )
-    assert qwen_hq["environment"]["STRUCTURA_VLLM_SERVED_MODEL_NAME"] == (
-        "Qwen/Qwen3-VL-8B-Instruct"
-    )
-    assert qwen_hq["environment"]["STRUCTURA_VLLM_PORT"] == "8100"
-    assert qwen_hq["environment"]["STRUCTURA_VLLM_MAX_MODEL_LEN"] == "32768"
-    assert qwen_hq["environment"]["STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION"] == "0.54"
-
     granite = services["model-granite"]
     assert "voipmonitor/vllm:cu130" in granite["image"]
     assert "start_granite_vllm.sh" in " ".join(granite["command"])
@@ -163,12 +143,10 @@ def test_phase8_5_smoke_supports_managed_model_validation() -> None:
     assert "BLACKWELL_HQ_SERVICES" not in smoke
     assert "model-vl-embed" in smoke
     assert "probe_text_embedding" in smoke
-    assert "--skip-qwen" in smoke
     assert "--skip-visual-embed" in smoke
     assert "rm -sf" in smoke
 
     for flag in (
-        "--skip-qwen",
         "--skip-qwen-semantic",
         "--skip-granite",
         "--skip-text-embed",

@@ -8,7 +8,6 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from apps.api.structura_api.dependencies import current_principal, require_csrf
 from lib.auth import AuthPrincipal
 from lib.contracts import AcceptedJob
-from lib.db.connection import db_connection
 from lib.documents.access_policy import DocumentAccessContext
 from lib.documents.ingestion import (
     DocumentIngestionError,
@@ -19,7 +18,6 @@ from lib.documents.ingestion import (
 from lib.documents.list_repository import DocumentListFilters, list_document_summaries
 from lib.documents.read_model import get_document_detail
 from lib.extraction.repository import ExtractionRepositoryError, require_document_readable
-from lib.semantic_annotations.jobs import enqueue_semantic_annotation_job
 from lib.semantic_annotations.models import DocumentSemanticManifest, QualityMode
 from lib.semantic_annotations.repository import load_current_manifest_by_mode
 
@@ -132,81 +130,6 @@ def get_current_semantic_annotation(
     }
 
 
-@router.post(
-    "/documents/{documentId}/semantic-annotations/high-quality",
-    response_model=AcceptedJob,
-    status_code=status.HTTP_202_ACCEPTED,
-)
-def create_high_quality_semantic_annotation(
-    documentId: UUID,
-    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
-) -> AcceptedJob:
-    if not principal.household_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
-    if not _qwen8_enabled():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Qwen8 disabled for the current runtime profile.",
-        )
-    _require_document_readable_or_404(documentId, principal)
-    with db_connection() as conn:
-        with conn.cursor() as cur:
-            job_id = enqueue_semantic_annotation_job(
-                cur,
-                document_id=documentId,
-                household_id=principal.household_id,
-                quality_mode="high_quality",
-                semantic_quality_mode="high_quality",
-                allow_8b_rescue=False,
-                requested_by="user",
-                requested_by_user_id=principal.user_id,
-                user_intent_reason="User explicitly selected High Quality Parse.",
-                priority=26,
-                reason="phase8_5.user_high_quality_pass",
-                dedupe_existing=True,
-                qwen8_enabled=True,
-            )
-        conn.commit()
-    return AcceptedJob.model_validate({"jobId": job_id, "status": "queued"})
-
-
-@router.post(
-    "/documents/{documentId}/semantic-annotations/allow-8b-rescue",
-    response_model=AcceptedJob,
-    status_code=status.HTTP_202_ACCEPTED,
-)
-def create_allow_8b_rescue_semantic_annotation(
-    documentId: UUID,
-    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
-) -> AcceptedJob:
-    if not principal.household_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
-    if not _qwen8_enabled():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Qwen8 disabled for the current runtime profile.",
-        )
-    _require_document_readable_or_404(documentId, principal)
-    with db_connection() as conn:
-        with conn.cursor() as cur:
-            job_id = enqueue_semantic_annotation_job(
-                cur,
-                document_id=documentId,
-                household_id=principal.household_id,
-                quality_mode="smart",
-                semantic_quality_mode="smart",
-                allow_8b_rescue=True,
-                requested_by="user",
-                requested_by_user_id=principal.user_id,
-                user_intent_reason="User allowed one Qwen3-VL 8B rescue if policy requires it.",
-                priority=34,
-                reason="phase8_5.user_allowed_8b_rescue",
-                dedupe_existing=True,
-            )
-        conn.commit()
-    return AcceptedJob.model_validate({"jobId": job_id, "status": "queued"})
-
-
 def _require_document_readable_or_404(
     document_id: UUID,
     principal: AuthPrincipal,
@@ -228,12 +151,6 @@ def _document_access_context(principal: AuthPrincipal) -> DocumentAccessContext:
         user_id=principal.user_id,
         household_role=principal.household_role,
     )
-
-
-def _qwen8_enabled() -> bool:
-    from lib.config import get_settings
-
-    return get_settings().qwen8_enabled
 
 
 def _semantic_manifest_payload(manifest: DocumentSemanticManifest) -> dict[str, object]:

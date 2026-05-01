@@ -98,14 +98,14 @@ def default_extraction_gateway() -> ExtractionGateway:
     deterministic = DoclingHeuristicGateway()
     if settings.model_mode == "fixture":
         return deterministic
-    qwen_profile = get_model_profile(settings.qwen_profile)
+    qwen_profile = get_model_profile(settings.qwen_semantic_profile)
     granite_profile = get_model_profile(settings.granite_profile)
     return ModelRoutingExtractionGateway(
         deterministic=deterministic,
         qwen=QwenVLExtractionGateway(
             client=QwenVLClient(
                 profile=qwen_profile,
-                http_client_base_url=settings.model_qwen_url,
+                http_client_base_url=settings.model_qwen_semantic_url,
             )
         ),
         granite=GraniteVisionExtractionGateway(

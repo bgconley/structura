@@ -292,8 +292,6 @@ paths:
                 $ref: '#/components/schemas/DocumentDetail'
         '401':
           description: Not authenticated
-        '409':
-          description: Qwen8 high-quality mode is disabled for the current runtime profile
         '404':
           description: Document not found
   /api/v1/documents/{documentId}/semantic-annotations/current:
@@ -314,8 +312,6 @@ paths:
           type: string
           enum:
           - smart
-          - high_quality
-          - rescue
           default: smart
       responses:
         '200':
@@ -324,54 +320,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SemanticAnnotationCurrentResponse'
-        '401':
-          description: Not authenticated
-        '409':
-          description: Qwen8 rescue mode is disabled for the current runtime profile
-        '404':
-          description: Document not found
-  /api/v1/documents/{documentId}/semantic-annotations/high-quality:
-    post:
-      tags:
-      - Documents
-      summary: Queue an explicit user-selected Qwen3-VL 8B high-quality semantic pass
-      parameters:
-      - in: path
-        name: documentId
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '202':
-          description: High-quality semantic annotation queued
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AcceptedJob'
-        '401':
-          description: Not authenticated
-        '404':
-          description: Document not found
-  /api/v1/documents/{documentId}/semantic-annotations/allow-8b-rescue:
-    post:
-      tags:
-      - Documents
-      summary: Queue a smart parse with explicit permission for one bounded Qwen3-VL 8B rescue
-      parameters:
-      - in: path
-        name: documentId
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '202':
-          description: Smart semantic annotation with one-rescue permission queued
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AcceptedJob'
         '401':
           description: Not authenticated
         '404':
@@ -1762,8 +1710,6 @@ components:
           type: string
           enum:
           - smart
-          - high_quality
-          - rescue
         current:
           anyOf:
           - $ref: '#/components/schemas/SemanticAnnotationManifest'
@@ -1787,8 +1733,6 @@ components:
           type: string
           enum:
           - smart
-          - high_quality
-          - rescue
         profileName:
           type: string
         sourceEngine:

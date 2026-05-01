@@ -20,6 +20,17 @@ MODEL_HEALTH_TARGETS = {
     "model-granite": "http://127.0.0.1:8101",
     "model-vl-embed": "http://127.0.0.1:8103",
 }
+MODEL_ENV_TARGETS = {
+    "model-qwen-semantic": {
+        "STRUCTURA_VLLM_MODEL_ID": "Qwen/Qwen3-VL-8B-Instruct-FP8",
+        "STRUCTURA_VLLM_SERVED_MODEL_NAME": "Qwen/Qwen3-VL-8B-Instruct-FP8",
+        "STRUCTURA_MODEL_PROFILE": "qwen3-vl-8b-fp8-semantic:v1",
+    },
+    "model-granite": {
+        "STRUCTURA_GRANITE_MODEL_ID": "ibm-granite/granite-4.0-3b-vision",
+        "STRUCTURA_MODEL_PROFILE": "granite-4.0-3b-vision-bf16:v1",
+    },
+}
 
 
 @dataclass(frozen=True)
@@ -43,6 +54,8 @@ def main() -> int:
         results.append(_check_service_live_mode(service, required=True))
     for service in OPTIONAL_LIVE_SERVICES:
         results.append(_check_service_live_mode(service, required=False))
+    for service, expected_env in MODEL_ENV_TARGETS.items():
+        results.append(_check_model_service_env(service, expected_env))
     if not args.skip_model_health:
         for service, url in MODEL_HEALTH_TARGETS.items():
             results.append(
@@ -75,14 +88,6 @@ def _check_service_live_mode(service: str, *, required: bool) -> CheckResult:
             False,
             f"STRUCTURA_MODEL_MODE must be live, got {model_mode!r}",
         )
-    qwen8_enabled = env.get("STRUCTURA_QWEN8_ENABLED")
-    if service in {"api", "worker-extraction", "worker-semantic-annotations"}:
-        if qwen8_enabled != "false":
-            return CheckResult(
-                service,
-                False,
-                f"STRUCTURA_QWEN8_ENABLED must be false, got {qwen8_enabled!r}",
-            )
     if service in {"api", "worker-extraction", "worker-semantic-annotations"}:
         qwen_url = env.get("STRUCTURA_MODEL_QWEN_SEMANTIC_URL")
         if qwen_url != "http://model-qwen-semantic:8104":
@@ -100,6 +105,21 @@ def _check_service_live_mode(service: str, *, required: bool) -> CheckResult:
                 f"STRUCTURA_MODEL_GRANITE_URL is unexpected: {granite_url!r}",
             )
     return CheckResult(service, True, "live model env verified")
+
+
+def _check_model_service_env(service: str, expected: dict[str, str]) -> CheckResult:
+    try:
+        env = _compose_exec_env(service)
+    except subprocess.CalledProcessError as exc:
+        return CheckResult(service, False, f"unable to inspect model container env: {exc}")
+    mismatches = [
+        f"{key}={env.get(key)!r} expected {value!r}"
+        for key, value in expected.items()
+        if env.get(key) != value
+    ]
+    if mismatches:
+        return CheckResult(service, False, "; ".join(mismatches))
+    return CheckResult(service, True, "model identity env verified")
 
 
 def _compose_exec_env(service: str) -> dict[str, str]:

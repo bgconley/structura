@@ -23,18 +23,12 @@ def enqueue_semantic_annotation_job(
     source_semantic_region_id: UUID | None = None,
     rescue_failure_class: str | None = None,
     dedupe_existing: bool = False,
-    qwen8_enabled: bool = False,
 ) -> UUID:
-    if quality_mode in {"high_quality", "rescue"} and not qwen8_enabled:
-        raise ValueError("Qwen3-VL 8B high-quality/rescue mode is disabled.")
-    if quality_mode == "high_quality" and requested_by == "system":
-        raise ValueError("Qwen3-VL 8B high-quality pass requires explicit user or agent intent.")
-    if quality_mode == "rescue" and requested_by == "system":
-        raise ValueError("Qwen3-VL 8B rescue requires explicit user or agent intent.")
-    if quality_mode == "rescue" and not allow_8b_rescue:
-        raise ValueError("Qwen3-VL 8B rescue requires persisted user permission.")
-    if quality_mode == "rescue" and source_semantic_region_id is None:
-        raise ValueError("Qwen3-VL 8B rescue requires a source semantic region.")
+    if quality_mode in {"high_quality", "rescue"} or allow_8b_rescue:
+        raise ValueError(
+            "Separate high-quality/rescue semantic passes have been removed from "
+            "the active runtime. Smart Parse already uses Qwen3-VL-8B FP8."
+        )
     if household_id is None:
         cur.execute("SELECT household_id FROM documents WHERE id = %s", (document_id,))
         row = cur.fetchone()

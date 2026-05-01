@@ -14,7 +14,7 @@ STRUCTURA_MODEL_MODE=live PYTHON=/tank/venvs/structura/bin/python bash scripts/g
 On the current 2x 24GB Blackwell node, `models-live` is the co-resident VLM
 profile with role-weighted context budgets:
 
-- GPU0: Qwen3-VL 8B HQ/rescue at 32K context, then Qwen3-VL 2B semantic at 16K.
+- GPU0: Qwen3-VL-8B-Instruct-FP8 Smart Parse semantic service at 32K context.
 - GPU1: Granite 4.0 3B Vision at 16K context, then Qwen3-VL-Embedding 2B at 2K.
 - Qwen3-Embedding-4B text embeddings remain offload/on-demand on the two-Blackwell
   node; prefer the RTX 3090 node for always-available text embeddings once
@@ -32,8 +32,8 @@ bash scripts/gpu/phase8_5_model_smoke.sh
 ```
 
 The smoke gate waits for first-load health and performs minimal live inference
-requests against Qwen HQ/rescue, Qwen semantic, Granite, visual embeddings, and
-text embeddings before evaluating the private corpus manifest.
+requests against Qwen Smart Parse, Granite, visual embeddings, and text
+embeddings before evaluating the private corpus manifest.
 
 The Blackwell runtime uses explicit Docker Compose GPU reservations rather than
 only `gpus: all`. Each live model container is assigned a host GPU with
@@ -44,12 +44,10 @@ values before model inspection.
 
 The default memory/context settings are intentionally conservative:
 
-- Qwen3-VL 8B HQ/rescue: 32K context, image-only, low concurrency; highest
-  allocation because it handles high-quality/rescue semantic adjudication.
+- Qwen3-VL-8B-Instruct-FP8 Smart Parse: 32K context, image-only, low concurrency;
+  highest allocation because it owns semantic inventory and routing.
 - Granite 4.0 3B Vision: 16K context, image-only, low concurrency; targeted
   crops/regions should keep extraction prompts narrower than full-document Qwen.
-- Qwen3-VL 2B semantic: 16K context, image-only, low concurrency; semantic
-  annotation should stay compact and Docling-grounded.
 - Visual embeddings: 2K context with native 2048-dimensional Qwen3-VL-Embedding
   output. It rejects the OpenAI `dimensions` override, so do not configure
   Structura visual embeddings as 1024-dimensional unless a different backend is

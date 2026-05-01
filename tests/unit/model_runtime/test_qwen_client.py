@@ -41,7 +41,7 @@ def test_qwen_client_builds_multimodal_payload_and_returns_truthful_provenance()
 
     client = QwenVLClient(
         profile=get_model_profile(QWEN_VL_PROFILE),
-        http_client_base_url="http://model-qwen:8100",
+        http_client_base_url="http://model-qwen-semantic:8104",
         transport=httpx.MockTransport(handler),
     )
     response = client.generate(
@@ -83,7 +83,7 @@ def test_qwen_client_builds_multimodal_payload_and_returns_truthful_provenance()
 def test_qwen_client_rejects_malformed_model_content() -> None:
     client = QwenVLClient(
         profile=get_model_profile(QWEN_VL_PROFILE),
-        http_client_base_url="http://model-qwen:8100",
+        http_client_base_url="http://model-qwen-semantic:8104",
         transport=httpx.MockTransport(
             lambda _request: httpx.Response(
                 200,
@@ -130,7 +130,7 @@ def test_qwen_client_sends_json_schema_structured_output_payload() -> None:
 
     client = QwenVLClient(
         profile=get_model_profile(QWEN_VL_PROFILE),
-        http_client_base_url="http://model-qwen:8100",
+        http_client_base_url="http://model-qwen-semantic:8104",
         transport=httpx.MockTransport(handler),
     )
 
@@ -188,7 +188,7 @@ def test_qwen_client_falls_back_when_structured_output_request_is_rejected() -> 
 
     client = QwenVLClient(
         profile=get_model_profile(QWEN_VL_PROFILE),
-        http_client_base_url="http://model-qwen:8100",
+        http_client_base_url="http://model-qwen-semantic:8104",
         transport=httpx.MockTransport(handler),
     )
 
@@ -232,7 +232,7 @@ def test_qwen_client_can_use_legacy_structured_outputs_payload_when_requested() 
 
     client = QwenVLClient(
         profile=get_model_profile(QWEN_VL_PROFILE),
-        http_client_base_url="http://model-qwen:8100",
+        http_client_base_url="http://model-qwen-semantic:8104",
         transport=httpx.MockTransport(handler),
     )
 
@@ -260,7 +260,7 @@ def test_qwen_client_can_use_legacy_structured_outputs_payload_when_requested() 
 def test_qwen_client_rejects_truncated_structured_content() -> None:
     client = QwenVLClient(
         profile=get_model_profile(QWEN_VL_PROFILE),
-        http_client_base_url="http://model-qwen:8100",
+        http_client_base_url="http://model-qwen-semantic:8104",
         transport=httpx.MockTransport(
             lambda _request: httpx.Response(
                 200,
@@ -302,7 +302,7 @@ def test_qwen_client_rejects_truncated_structured_content() -> None:
 def test_qwen_client_accepts_direct_normalized_object_for_live_model_tolerance() -> None:
     client = QwenVLClient(
         profile=get_model_profile(QWEN_VL_PROFILE),
-        http_client_base_url="http://model-qwen:8100",
+        http_client_base_url="http://model-qwen-semantic:8104",
         transport=httpx.MockTransport(
             lambda _request: httpx.Response(
                 200,

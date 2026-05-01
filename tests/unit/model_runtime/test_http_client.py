@@ -23,7 +23,7 @@ def test_model_http_client_rejects_missing_or_non_http_base_url() -> None:
 
 def test_model_http_client_rejects_absolute_request_paths() -> None:
     client = ModelHttpClient(
-        base_url="http://model-qwen:8100",
+        base_url="http://model-qwen-semantic:8104",
         transport=httpx.MockTransport(lambda _request: httpx.Response(200, json={"ok": True})),
     )
 
@@ -33,7 +33,7 @@ def test_model_http_client_rejects_absolute_request_paths() -> None:
 
 def test_model_http_client_rejects_redirects_instead_of_following_them() -> None:
     client = ModelHttpClient(
-        base_url="http://model-qwen:8100",
+        base_url="http://model-qwen-semantic:8104",
         transport=httpx.MockTransport(
             lambda _request: httpx.Response(302, headers={"location": "http://127.0.0.1/admin"})
         ),
@@ -45,7 +45,7 @@ def test_model_http_client_rejects_redirects_instead_of_following_them() -> None
 
 def test_model_http_client_maps_timeout_and_service_errors() -> None:
     timeout_client = ModelHttpClient(
-        base_url="http://model-qwen:8100",
+        base_url="http://model-qwen-semantic:8104",
         transport=httpx.MockTransport(
             lambda _request: (_ for _ in ()).throw(httpx.ReadTimeout("slow model"))
         ),
@@ -54,7 +54,7 @@ def test_model_http_client_maps_timeout_and_service_errors() -> None:
         timeout_client.post_json("/v1/chat/completions", {"messages": []})
 
     service_client = ModelHttpClient(
-        base_url="http://model-qwen:8100",
+        base_url="http://model-qwen-semantic:8104",
         transport=httpx.MockTransport(lambda _request: httpx.Response(503, json={"error": "busy"})),
     )
     with pytest.raises(ModelServiceError) as exc_info:
@@ -64,20 +64,20 @@ def test_model_http_client_maps_timeout_and_service_errors() -> None:
 
 def test_model_http_client_returns_json_and_rejects_oversized_or_invalid_json() -> None:
     ok_client = ModelHttpClient(
-        base_url="http://model-qwen:8100",
+        base_url="http://model-qwen-semantic:8104",
         transport=httpx.MockTransport(lambda _request: httpx.Response(200, json={"status": "ok"})),
     )
     assert ok_client.post_json("/health", {}) == {"status": "ok"}
 
     invalid_client = ModelHttpClient(
-        base_url="http://model-qwen:8100",
+        base_url="http://model-qwen-semantic:8104",
         transport=httpx.MockTransport(lambda _request: httpx.Response(200, text="not-json")),
     )
     with pytest.raises(ModelProtocolError, match="JSON"):
         invalid_client.post_json("/health", {})
 
     oversized_client = ModelHttpClient(
-        base_url="http://model-qwen:8100",
+        base_url="http://model-qwen-semantic:8104",
         max_response_bytes=4,
         transport=httpx.MockTransport(lambda _request: httpx.Response(200, json={"status": "ok"})),
     )

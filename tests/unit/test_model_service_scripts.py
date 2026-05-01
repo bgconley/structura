@@ -23,6 +23,8 @@ def test_phase8_5_live_bringup_forces_live_model_mode() -> None:
     assert 'export STRUCTURA_MODEL_MODE="${STRUCTURA_MODEL_MODE:-live}"' in script
     assert "phase8_5_live_runtime_preflight.py" in script
     assert "--force-recreate" in script
+    assert "REMOVED_LEGACY_CONTAINERS" in script
+    assert "structura-model-qwen-1" in script
     assert "worker-semantic-annotations" in script
     assert "worker-extraction" in script
 
@@ -31,7 +33,8 @@ def test_phase8_5_live_runtime_preflight_checks_container_modes() -> None:
     script = Path("scripts/gpu/phase8_5_live_runtime_preflight.py").read_text()
 
     assert "REQUIRED_LIVE_SERVICES" in script
+    assert "MODEL_ENV_TARGETS" in script
     assert "STRUCTURA_MODEL_MODE" in script
-    assert "STRUCTURA_QWEN8_ENABLED" in script
+    assert "Qwen/Qwen3-VL-8B-Instruct-FP8" in script
     assert "model-qwen-semantic" in script
     assert "model-granite" in script

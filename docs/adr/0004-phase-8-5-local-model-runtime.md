@@ -17,8 +17,9 @@ outputs, fake provenance, or unverified structure extraction.
 - Phase 8.5 is mandatory before Phase 9 analysis.
 - Qwen3-VL-8B-Instruct-FP8 semantic planning and Granite 4.0 3B Vision extraction
   are the default Phase 8.5 live-model priorities. The separate `model-qwen`
-  high-quality/rescue service remains disabled/deferred and must not be invoked
-  as a hidden second pass.
+  high-quality/rescue service and `STRUCTURA_QWEN8_ENABLED` flag have been removed
+  from the active runtime; uncertain output routes to review states instead of a
+  hidden second pass.
 - Live Qwen/Granite/visual VLM services use the `voipmonitor/vllm:cu130` Blackwell-oriented vLLM
   image family unless benchmark evidence proves a better pinned image. Firecrawl-backed research
   found the voipmonitor RTX 6000 Pro docs describe that image as recommended for vLLM on SM120
@@ -36,9 +37,9 @@ outputs, fake provenance, or unverified structure extraction.
   `gpu_memory_utilization=0.88`, disables prefix caching, and keeps page images at
   planner resolution through Qwen's 32x visual-token guidance: 256 minimum and 2560
   maximum visual tokens per image.
-- `model-qwen` is disabled/deferred in the active runtime. The HQ/rescue contracts
-  remain visible for future evaluation, but default application logic must not
-  silently invoke a separate second-pass Qwen service.
+- `model-qwen` is not part of the active runtime. Smart Parse is the only Qwen
+  semantic path; future model bakeoffs must use separate, explicit services or
+  harnesses instead of reintroducing hidden HQ/rescue behavior.
 - `model-granite` owns structured bills, invoices, receipts, EOBs, tables, charts, forms, and
   semantic KVP extraction. It is the highest-priority GPU1 VLM at 16K because it receives targeted
   Docling-grounded crops/regions, not whole-document prompts.

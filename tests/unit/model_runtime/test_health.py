@@ -22,7 +22,6 @@ def test_model_health_snapshots_report_mode_and_profiles_without_private_payload
 
     names = {snapshot["service_name"] for snapshot in snapshots}
     assert names == {
-        "model-qwen",
         "model-qwen-semantic",
         "model-granite",
         "model-embed",
@@ -45,7 +44,7 @@ def test_model_health_probe_reports_live_service_readiness_without_sensitive_pay
     get_settings.cache_clear()
 
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.port == 8100:
+        if request.url.port == 8104:
             return httpx.Response(200, json={"status": "ok"})
         return httpx.Response(503, json={"status": "starting"})
 
@@ -58,7 +57,7 @@ def test_model_health_probe_reports_live_service_readiness_without_sensitive_pay
         get_settings.cache_clear()
 
     by_name = {snapshot["service_name"]: snapshot for snapshot in snapshots}
-    assert by_name["model-qwen"]["status"] == "ok"
+    assert by_name["model-qwen-semantic"]["status"] == "ok"
     assert by_name["model-granite"]["status"] == "unavailable"
     assert by_name["model-granite"]["checked_at"] is not None
     rendered = repr(snapshots)

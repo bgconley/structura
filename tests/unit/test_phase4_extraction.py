@@ -27,7 +27,7 @@ def test_phase4_classifier_identifies_invoice_from_canonical_text() -> None:
     assert decision.confidence >= 0.8
 
 
-def test_phase8_qwen_route_eligible_marks_review_without_auto_qwen8b_route() -> None:
+def test_phase8_qwen_route_eligible_marks_review_without_auto_model_escalation() -> None:
     source = _source(
         """
         Seller: Acme Repairs

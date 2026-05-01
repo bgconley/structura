@@ -19,11 +19,7 @@ import {
 } from "./organizationApi";
 import {getParseDebug} from "./parseDebugApi";
 import {createSavedSearch, runSearch} from "./searchApi";
-import {
-  getCurrentSemanticAnnotation,
-  queueAllow8bRescueSemanticAnnotation,
-  queueHighQualitySemanticAnnotation,
-} from "./semanticAnnotationApi";
+import {getCurrentSemanticAnnotation} from "./semanticAnnotationApi";
 import type {
   DocumentDetail,
   DocumentListResponse,
@@ -139,30 +135,6 @@ export default function App() {
       );
     } finally {
       setIsSemanticAnnotationLoading(false);
-    }
-  }
-
-  async function handleQueueHighQualityPass(documentId: string) {
-    setSemanticAnnotationError(null);
-    try {
-      const job = await queueHighQualitySemanticAnnotation(documentId);
-      setSemanticAnnotationError(`High Quality semantic pass queued as ${job.jobId}.`);
-    } catch (exc) {
-      setSemanticAnnotationError(
-        exc instanceof Error ? exc.message : "Unable to queue High Quality pass",
-      );
-    }
-  }
-
-  async function handleAllow8bRescue(documentId: string) {
-    setSemanticAnnotationError(null);
-    try {
-      const job = await queueAllow8bRescueSemanticAnnotation(documentId);
-      setSemanticAnnotationError(`Allow 8B Rescue pass queued as ${job.jobId}.`);
-    } catch (exc) {
-      setSemanticAnnotationError(
-        exc instanceof Error ? exc.message : "Unable to allow 8B rescue",
-      );
     }
   }
 
@@ -440,8 +412,6 @@ export default function App() {
             semanticAnnotationError={semanticAnnotationError}
             isSemanticAnnotationLoading={isSemanticAnnotationLoading}
             onLoadSemanticAnnotation={handleLoadSemanticAnnotation}
-            onQueueHighQualityPass={handleQueueHighQualityPass}
-            onAllow8bRescue={handleAllow8bRescue}
           />
         ) : (
           <Inbox

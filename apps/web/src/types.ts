@@ -69,7 +69,7 @@ export type DocumentDetail = DocumentSummary & {
 };
 
 export type SemanticAnnotationManifest = {
-  qualityMode: "smart" | "high_quality" | "rescue";
+  qualityMode: "smart";
   profileName: string;
   sourceEngine: string;
   modelName: string;

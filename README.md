@@ -58,10 +58,10 @@ Use `make integration-test` for DB-backed integration validation. It creates a d
 
 Use `make golden-corpus` for the sanitized deterministic benchmark manifest. Use `python scripts/run_golden_corpus.py --require-model-backed --manifest <path>` for model-backed release-candidate corpus evidence once real model adapters are configured. Use `make backup-restore-rehearsal` with `STRUCTURA_INTEGRATION_BASE_DATABASE_URL` to run a disposable PostgreSQL migration/restore rehearsal.
 
-Model placeholders are behind a separate profile. They are health placeholders only; they do not provide Qwen, Granite, or embedding inference:
+Model placeholders are behind a separate profile. They are health placeholders only; they do not provide Granite or embedding inference:
 
 ```bash
-docker compose --profile models-placeholder up model-qwen-placeholder model-granite-placeholder model-embed-placeholder model-vl-embed-placeholder
+docker compose --profile models-placeholder up model-granite-placeholder model-embed-placeholder model-vl-embed-placeholder
 ```
 
 Live Phase 8.5 model services are behind explicit profiles. Compose defaults use

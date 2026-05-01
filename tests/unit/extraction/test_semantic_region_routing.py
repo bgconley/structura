@@ -7,7 +7,6 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from lib.contracts.registry import ContractRegistry
 from lib.extraction.models import (
     ExtractionSourceDocument,
     GatewayExtraction,
@@ -230,9 +229,7 @@ def test_extraction_service_does_not_rescue_needs_review_without_user_permission
     assert jobs.created == []
 
 
-def test_extraction_service_does_not_queue_rescue_when_qwen8_disabled_even_with_permission() -> (
-    None
-):
+def test_extraction_service_does_not_queue_removed_rescue_path_even_with_permission() -> None:
     document_id = uuid4()
     household_id = uuid4()
     region_id = uuid4()
@@ -268,59 +265,6 @@ def test_extraction_service_does_not_queue_rescue_when_qwen8_disabled_even_with_
     )
 
     assert jobs.created == []
-
-
-def test_extraction_service_queues_rescue_with_user_permission_when_qwen8_enabled() -> None:
-    document_id = uuid4()
-    household_id = uuid4()
-    region_id = uuid4()
-    source = _source(document_id=document_id, household_id=household_id)
-    task = SemanticExtractionTask(
-        region_id=region_id,
-        annotation_id=uuid4(),
-        document_id=document_id,
-        semantic_type="invoice_line_item_table",
-        granite_task="tables_json",
-        target_schema="invoice",
-        expected_fields=("line_items", "total_amount"),
-        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
-    )
-    jobs = RecordingJobs()
-    user_id = uuid4()
-
-    ExtractionService(
-        gateway=RecordingGateway(needs_review=True),
-        source_loader=lambda loaded_document_id: source,
-        semantic_task_loader=lambda loaded_region_id: task,
-        persister=lambda *args, **kwargs: _persisted(),
-        jobs=jobs,
-        qwen8_enabled=True,
-    ).extract_document(
-        document_id,
-        schema_name="invoice",
-        route_profile="docling_plus_granite_structured",
-        semantic_region_id=region_id,
-        allow_8b_rescue=True,
-        requested_by="user",
-        requested_by_user_id=user_id,
-        user_intent_reason="User allowed one 8B rescue.",
-    )
-
-    assert jobs.created[0]["job_type"] == "semantic_annotate"
-    assert jobs.created[0]["queue_name"] == "semantic-annotations"
-    payload = jobs.created[0]["payload"]
-    ContractRegistry.load("contracts").validate_event_instance(
-        "semantic_annotate_document_job.v1.schema.json",
-        payload,
-    )
-    assert payload["job_id"] == str(jobs.created[0]["job_id"])
-    assert payload["quality_mode"] == "rescue"
-    assert payload["semantic_quality_mode"] == "smart"
-    assert payload["allow_8b_rescue"] is True
-    assert payload["requested_by_user_id"] == str(user_id)
-    assert payload["user_intent_reason"] == "User allowed one 8B rescue."
-    assert payload["source_semantic_region_id"] == str(region_id)
-    assert payload["metadata"]["failure_class"] == "unreconciled_totals"
 
 
 def test_extraction_service_does_not_enqueue_rescue_if_persist_fails() -> None:
@@ -368,7 +312,7 @@ def test_live_classification_does_not_enqueue_broad_document_extraction(monkeypa
 
     monkeypatch.setattr(
         "lib.extraction.service.get_settings",
-        lambda: type("Settings", (), {"model_mode": "live", "qwen8_enabled": False})(),
+        lambda: type("Settings", (), {"model_mode": "live"})(),
     )
     monkeypatch.setattr(
         "lib.extraction.service.persist_classification",

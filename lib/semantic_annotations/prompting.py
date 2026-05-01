@@ -73,7 +73,7 @@ def build_semantic_planner_prompt(
         "and ignore for boilerplate/no-target regions. Mark unmatched_region, "
         "review_required=true, and low confidence when a useful target cannot be "
         "grounded to Docling IDs. Set needs_high_quality_pass only as a diagnostic "
-        "review signal; it must not imply automatic Qwen8 escalation. Keep each reason "
+        "review signal; it must not imply automatic model escalation. Keep each reason "
         "to one short sentence and dedupe repeated headers/boilerplate. "
         "Few-shot planner examples: "
         f"{json.dumps(_few_shot_examples(), sort_keys=True, separators=(',', ':'))} "

@@ -6,7 +6,6 @@ from typing import Protocol
 from uuid import UUID, uuid4
 
 from lib.config import get_settings
-from lib.db.connection import db_connection
 from lib.extraction.classification import TARGET_EXTRACTION_SCHEMAS, classify_document
 from lib.extraction.gateway import ExtractionGateway
 from lib.extraction.gateways.routing import default_extraction_gateway
@@ -29,11 +28,7 @@ from lib.extraction.rescue_policy import RescuePolicy, RescuePolicyContext
 from lib.extraction.schema_registry import ExtractionSchemaRegistry
 from lib.extraction.validators import validate_extraction_payload
 from lib.jobs import JobService
-from lib.jobs.event_payloads import (
-    build_extract_document_job_payload,
-    build_semantic_annotate_document_job_payload,
-)
-from lib.semantic_annotations.jobs import enqueue_semantic_annotation_job
+from lib.jobs.event_payloads import build_extract_document_job_payload
 from lib.semantic_annotations.models import SemanticExtractionTask
 from lib.semantic_annotations.repository import load_semantic_extraction_task
 from lib.semantic_annotations.task_routing import corrected_granite_task_for_semantic_type
@@ -78,7 +73,6 @@ class ExtractionService:
         ),
         persister: Callable[..., PersistedExtraction] = persist_extraction_run,
         rescue_policy: RescuePolicy | None = None,
-        qwen8_enabled: bool | None = None,
     ) -> None:
         self.registry = registry or ExtractionSchemaRegistry()
         self.gateway = gateway or default_extraction_gateway()
@@ -87,9 +81,6 @@ class ExtractionService:
         self.semantic_task_loader = semantic_task_loader
         self.persister = persister
         self.rescue_policy = rescue_policy or RescuePolicy()
-        self.qwen8_enabled = (
-            get_settings().qwen8_enabled if qwen8_enabled is None else qwen8_enabled
-        )
 
     def classify_document(
         self,
@@ -143,7 +134,7 @@ class ExtractionService:
     ) -> PersistedExtraction:
         if allow_8b_rescue and requested_by == "system":
             raise ExtractionServiceError(
-                "Qwen3-VL 8B rescue requires explicit user or agent intent."
+                "Separate semantic rescue has been removed from the active runtime."
             )
         source = self.source_loader(document_id)
         if schema_name not in TARGET_EXTRACTION_SCHEMAS:
@@ -192,10 +183,9 @@ class ExtractionService:
             observation_candidates=observation_candidates,
             semantic_task=semantic_task,
         )
-        rescue_decision = self.rescue_policy.decide(
+        self.rescue_policy.decide(
             RescuePolicyContext(
                 allow_8b_rescue=allow_8b_rescue,
-                qwen8_enabled=self.qwen8_enabled,
                 validation=validation,
                 semantic_task=semantic_task,
                 candidate_count=(
@@ -204,16 +194,6 @@ class ExtractionService:
                 prior_rescue_attempted=False,
             )
         )
-        if rescue_decision.outcome == "rescue_permitted_once" and semantic_task is not None:
-            self._enqueue_rescue_semantic_pass(
-                source,
-                semantic_task,
-                failure_class=rescue_decision.failure_class,
-                allow_8b_rescue=allow_8b_rescue,
-                requested_by=requested_by,
-                requested_by_user_id=requested_by_user_id,
-                user_intent_reason=user_intent_reason,
-            )
         return persisted
 
     def _semantic_task_for_document(
@@ -244,59 +224,3 @@ class ExtractionService:
         if metadata != task.metadata:
             repaired_task = replace(repaired_task, metadata=metadata)
         return repaired_task
-
-    def _enqueue_rescue_semantic_pass(
-        self,
-        source: ExtractionSourceDocument,
-        semantic_task: SemanticExtractionTask,
-        *,
-        failure_class: str,
-        allow_8b_rescue: bool,
-        requested_by: str,
-        requested_by_user_id: UUID | None,
-        user_intent_reason: str | None,
-    ) -> None:
-        if isinstance(self.jobs, JobService):
-            with db_connection() as conn:
-                with conn.cursor() as cur:
-                    enqueue_semantic_annotation_job(
-                        cur,
-                        document_id=source.document_id,
-                        household_id=source.household_id,
-                        quality_mode="rescue",
-                        semantic_quality_mode="smart",
-                        allow_8b_rescue=allow_8b_rescue,
-                        requested_by=requested_by,
-                        requested_by_user_id=requested_by_user_id,
-                        user_intent_reason=user_intent_reason,
-                        reason="phase8_5.validation_failed_rescue",
-                        source_semantic_region_id=semantic_task.region_id,
-                        rescue_failure_class=failure_class,
-                        dedupe_existing=True,
-                        priority=26,
-                        qwen8_enabled=self.qwen8_enabled,
-                    )
-                conn.commit()
-            return
-        job_id = uuid4()
-        self.jobs.create_job(
-            job_id=job_id,
-            job_type="semantic_annotate",
-            household_id=source.household_id,
-            document_id=source.document_id,
-            payload=build_semantic_annotate_document_job_payload(
-                job_id=job_id,
-                document_id=source.document_id,
-                quality_mode="rescue",
-                semantic_quality_mode="smart",
-                allow_8b_rescue=allow_8b_rescue,
-                requested_by=requested_by,
-                requested_by_user_id=requested_by_user_id,
-                user_intent_reason=user_intent_reason,
-                reason="phase8_5.validation_failed_rescue",
-                source_semantic_region_id=semantic_task.region_id,
-                metadata={"failure_class": failure_class},
-            ),
-            priority=26,
-            queue_name="semantic-annotations",
-        )

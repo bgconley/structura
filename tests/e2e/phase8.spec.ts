@@ -46,7 +46,7 @@ test("Phase 8 difficult-document visual retrieval and review cues are visible", 
   });
 });
 
-test("Phase 8.5 Smart Parse manifest is visible and Qwen8 controls are deferred", async ({page}) => {
+test("Phase 8.5 Smart Parse manifest is visible with the active Qwen semantic path", async ({page}) => {
   await page.goto("/");
   await page.getByRole("button", {name: /Search/}).click();
   await page.getByLabel("Corpus search query").fill("handwritten degraded intake");
@@ -64,9 +64,11 @@ test("Phase 8.5 Smart Parse manifest is visible and Qwen8 controls are deferred"
   await expect(page.locator(".semantic-annotation-panel")).toContainText("receipt_line_item_table");
   await expect(page.locator(".semantic-annotation-panel")).toContainText("tables_json");
 
-  await expect(page.getByRole("button", {name: "High Quality Pass"})).toBeDisabled();
-  await expect(page.getByRole("button", {name: "Allow 8B Rescue"})).toBeDisabled();
-  await expect(page.locator(".semantic-annotation-panel")).toContainText("Qwen8 disabled");
+  await expect(page.getByRole("button", {name: "High Quality Pass"})).toHaveCount(0);
+  await expect(page.getByRole("button", {name: "Allow 8B Rescue"})).toHaveCount(0);
+  await expect(page.locator(".semantic-annotation-panel")).toContainText(
+    "Smart Parse uses Qwen3-VL-8B FP8",
+  );
 });
 
 test("Phase 8 evidence viewer stays open when a stale visual search completes", async ({page}) => {

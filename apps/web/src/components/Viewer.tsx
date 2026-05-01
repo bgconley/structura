@@ -34,8 +34,6 @@ export function Viewer({
   semanticAnnotationError,
   isSemanticAnnotationLoading,
   onLoadSemanticAnnotation,
-  onQueueHighQualityPass,
-  onAllow8bRescue,
 }: {
   document: DocumentDetail | null;
   summary?: DocumentSummary;
@@ -55,8 +53,6 @@ export function Viewer({
   semanticAnnotationError: string | null;
   isSemanticAnnotationLoading: boolean;
   onLoadSemanticAnnotation: (documentId: string) => void;
-  onQueueHighQualityPass: (documentId: string) => Promise<void>;
-  onAllow8bRescue: (documentId: string) => Promise<void>;
 }) {
   const active = document ?? summary;
   const original = document?.assets.find((asset) => asset.assetRole === "original");
@@ -184,8 +180,6 @@ export function Viewer({
           error={semanticAnnotationError}
           isLoading={isSemanticAnnotationLoading}
           onLoad={() => onLoadSemanticAnnotation(String(active.id))}
-          onHighQuality={() => onQueueHighQualityPass(String(active.id))}
-          onAllow8bRescue={() => onAllow8bRescue(String(active.id))}
         />
       </aside>
     </section>
@@ -197,15 +191,11 @@ function SemanticAnnotationPanel({
   error,
   isLoading,
   onLoad,
-  onHighQuality,
-  onAllow8bRescue,
 }: {
   manifest: SemanticAnnotationManifest | null;
   error: string | null;
   isLoading: boolean;
   onLoad: () => void;
-  onHighQuality: () => Promise<void>;
-  onAllow8bRescue: () => Promise<void>;
 }) {
   return (
     <section className="semantic-annotation-panel">
@@ -217,14 +207,8 @@ function SemanticAnnotationPanel({
         <button type="button" onClick={onLoad} disabled={isLoading}>
           {isLoading ? "Loading..." : "Load Smart Parse"}
         </button>
-        <button type="button" onClick={() => void onHighQuality()} disabled>
-          High Quality Pass
-        </button>
-        <button type="button" onClick={() => void onAllow8bRescue()} disabled>
-          Allow 8B Rescue
-        </button>
       </div>
-      <p className="debug-copy">Qwen8 disabled for this Phase 8.5 runtime.</p>
+      <p className="debug-copy">Smart Parse uses Qwen3-VL-8B FP8 for semantic planning.</p>
       {error ? <p className="form-error">{error}</p> : null}
       {manifest ? (
         <div className="semantic-annotation-summary">

@@ -2,7 +2,6 @@
 set -euo pipefail
 
 export STRUCTURA_MODEL_MODE="${STRUCTURA_MODEL_MODE:-live}"
-export STRUCTURA_QWEN8_ENABLED="${STRUCTURA_QWEN8_ENABLED:-false}"
 export STRUCTURA_EMBEDDING_VISUAL_ENABLED="${STRUCTURA_EMBEDDING_VISUAL_ENABLED:-true}"
 
 REBUILD=0
@@ -53,6 +52,10 @@ REBUILD_SERVICES=(
   worker-semantic-annotations
   worker-visual-embeddings
 )
+REMOVED_LEGACY_CONTAINERS=(
+  structura-model-qwen-1
+  structura-model-qwen-placeholder-1
+)
 
 compose_live() {
   docker compose "${COMPOSE_PROFILES[@]}" "$@"
@@ -62,6 +65,7 @@ if [[ "$REBUILD" == "1" ]]; then
   compose_live build "${REBUILD_SERVICES[@]}"
 fi
 
+docker rm -f "${REMOVED_LEGACY_CONTAINERS[@]}" >/dev/null 2>&1 || true
 compose_live up -d "${LIVE_MODEL_SERVICES[@]}"
 compose_live up -d --no-deps --force-recreate "${APP_SERVICES[@]}"
 

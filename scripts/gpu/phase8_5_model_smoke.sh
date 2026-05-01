@@ -63,7 +63,6 @@ probe_health() {
 
 probe_live_models() {
   "${PYTHON:-python3}" scripts/gpu/probe_phase8_5_live_models.py \
-    --skip-qwen \
     --qwen-semantic-url "${QWEN_SEMANTIC_URL}" \
     --qwen-semantic-model "${STRUCTURA_MODEL_QWEN_SEMANTIC_MODEL:-Qwen/Qwen3-VL-8B-Instruct-FP8}" \
     --granite-url "${GRANITE_URL}" \
@@ -104,7 +103,6 @@ probe_text_embedding() {
   compose_model up -d --force-recreate model-embed
   probe_health "model-embed" "${TEXT_EMBED_URL}"
   probe_live_models \
-    --skip-qwen \
     --skip-qwen-semantic \
     --skip-granite \
     --skip-visual-embed
