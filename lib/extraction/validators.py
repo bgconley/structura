@@ -38,6 +38,45 @@ def validate_extraction_payload(
     return ValidationReport(needs_review=needs_review, checks=checks)
 
 
+def validate_semantic_region_payload(
+    payload: dict[str, Any],
+    *,
+    model_output_schema_name: str | None,
+) -> ValidationReport:
+    checks: list[dict[str, Any]] = [
+        _check(
+            "region_scope.validation_routing",
+            "passed",
+            "Semantic-region output was not validated against a full canonical document schema.",
+        )
+    ]
+    if model_output_schema_name:
+        checks.append(
+            _check(
+                "region_scope.model_output_contract_selected",
+                "passed",
+                f"Region extraction selected model-output contract {model_output_schema_name}.",
+            )
+        )
+    else:
+        checks.append(
+            _check(
+                "region_scope.model_output_contract_selected",
+                "warning",
+                "Region extraction did not declare a model-output contract.",
+            )
+        )
+    checks.append(_evidence_check(payload))
+    checks.append(
+        _check(
+            "region_scope.model_candidate_review_required",
+            "warning",
+            "Model-backed semantic-region candidates require review before canonical use.",
+        )
+    )
+    return ValidationReport(needs_review=True, checks=checks)
+
+
 def _receipt_checks(payload: dict[str, Any]) -> list[dict[str, Any]]:
     transaction = payload.get("transaction") or {}
     checks = [

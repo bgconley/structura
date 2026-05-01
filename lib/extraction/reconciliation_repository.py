@@ -65,12 +65,14 @@ def maybe_reconcile_semantic_annotation(
         return None
 
     source = load_extraction_source(document_id)
+    seller = (
+        {"display_name": source.counterparty_display, "party_type": "company"}
+        if source.counterparty_display
+        else {}
+    )
     aggregate_json = reconcile_invoice_region_extractions(
         document_id=document_id,
-        seller={
-            "display_name": source.counterparty_display or source.title or "unknown",
-            "party_type": "company",
-        },
+        seller=seller,
         created_at=datetime.now(UTC),
         regions=regions,
         document_fallback=document_fallback,

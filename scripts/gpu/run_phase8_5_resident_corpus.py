@@ -444,8 +444,19 @@ ORDER BY created_at DESC
 
 _SEMANTIC_REGIONS_SQL = """
 SELECT COALESCE(p.page_number, dp.page_number) AS page_number,
+       r.id AS semantic_region_id,
+       r.annotation_id AS semantic_annotation_id,
        r.semantic_type, r.priority, r.granite_task, r.target_schema,
        r.grounding_kind, r.review_required, r.reason, r.confidence,
+       jsonb_build_object(
+         'kind', r.grounding_kind,
+         'page_number', COALESCE(p.page_number, dp.page_number),
+         'page_id', r.page_id,
+         'element_id', r.element_id,
+         'table_id', r.table_id,
+         'docling_table_id', r.table_id,
+         'bbox', r.metadata_json -> 'visual_bbox_hint'
+       ) AS grounding,
        r.metadata_json ->> 'importance' AS importance,
        r.metadata_json ->> 'must_extract_reason' AS must_extract_reason
 FROM semantic_region_annotations r
@@ -461,9 +472,12 @@ ORDER BY COALESCE(p.page_number, dp.page_number) NULLS LAST,
 
 _EXTRACTIONS_SQL = """
 SELECT schema_name, schema_version, extraction_scope, semantic_type, granite_task,
+       semantic_annotation_id, source_semantic_region_id,
        model_output_schema_name, source_engine::text AS source_engine, model_name,
        prompt_version, status::text AS status, review_status::text AS review_status,
-       confidence, is_current, validation_json, normalization_json
+       confidence, is_current, validation_json, normalization_json,
+       metadata_json -> 'visualInputPlan' AS visual_plan,
+       metadata_json -> 'visualInputAttempts' AS visual_input_attempts
 FROM document_extractions
 WHERE document_id = %s
 ORDER BY created_at

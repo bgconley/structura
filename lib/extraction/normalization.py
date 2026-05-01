@@ -7,6 +7,11 @@ from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
+from lib.extraction.candidate_quality import (
+    reject_line_item,
+    reject_observation,
+    reject_scalar_candidate,
+)
 from lib.extraction.evidence import has_concrete_evidence
 from lib.extraction.model_output_normalization import (
     invoice_line_item_dicts_from_payload,
@@ -95,6 +100,9 @@ def observation_candidates_from_extraction(
         if not field_name:
             continue
         value = item.get("value")
+        rejected, _reason = reject_observation(str(field_name), value)
+        if rejected:
+            continue
         if _empty_observation_value(value) or _grid_only_observation(field_name, value):
             continue
         candidates.append(
@@ -360,6 +368,9 @@ def _candidate(
 ) -> list[CandidateFact]:
     if value in (None, ""):
         return []
+    rejected, _reason = reject_scalar_candidate(value)
+    if rejected:
+        return []
     evidence = _evidence(owner)
     return [
         CandidateFact(
@@ -415,6 +426,9 @@ def _line_items(
     for item in items:
         if not isinstance(item, dict) or not item.get("description"):
             continue
+        rejected, _reason = reject_line_item(item)
+        if rejected:
+            continue
         raw_amount = item.get("amount")
         amount = raw_amount if isinstance(raw_amount, dict) else {}
         facts.append(
@@ -452,6 +466,9 @@ def _eob_line_items(
     facts: list[LineItemCandidateFact] = []
     for item in items:
         if not isinstance(item, dict) or not item.get("service_description"):
+            continue
+        rejected, _reason = reject_line_item(item)
+        if rejected:
             continue
         facts.append(
             LineItemCandidateFact(

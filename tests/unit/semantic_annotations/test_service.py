@@ -8,6 +8,7 @@ import pytest
 
 from lib.contracts.registry import ContractRegistry
 from lib.extraction.models import ExtractionSourceDocument, ParsedPageText, ParsedTableText
+from lib.semantic_annotations.docling_targets import DOCLING_STRUCTURAL_REGION_SOURCE
 from lib.semantic_annotations.models import (
     DocumentSemanticManifest,
     PageSemanticAnnotation,
@@ -442,6 +443,52 @@ def test_semantic_service_routes_escrow_docling_tables_as_observations_not_recei
     assert observation_payload["metadata"]["docling_structural_target"]["source"] == (
         "docling_page_anchors"
     )
+
+
+def test_semantic_service_drops_incompatible_docling_structural_target() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    table_id = uuid4()
+    annotation_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="generic",
+        text="receipt subtotal total paid merchant",
+    )
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        document_type="receipt",
+        regions=[
+            SemanticRegionAnnotation(
+                semantic_type="invoice_line_item_table",
+                priority="critical",
+                granite_task="tables_json",
+                target_schema="invoice",
+                expected_fields=("line_items",),
+                grounding=SemanticGroundingRef(kind="table", page_id=page_id, table_id=table_id),
+                confidence=0.62,
+                metadata={"region_source": DOCLING_STRUCTURAL_REGION_SOURCE},
+            )
+        ],
+    )
+    jobs = RecordingJobs()
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    assert jobs.created == []
 
 
 def test_semantic_service_uses_docling_observation_targets_when_qwen_emits_no_regions() -> None:

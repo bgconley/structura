@@ -26,7 +26,7 @@ from lib.extraction.repository import (
 )
 from lib.extraction.rescue_policy import RescuePolicy, RescuePolicyContext
 from lib.extraction.schema_registry import ExtractionSchemaRegistry
-from lib.extraction.validators import validate_extraction_payload
+from lib.extraction.validators import validate_extraction_payload, validate_semantic_region_payload
 from lib.jobs import JobService
 from lib.jobs.event_payloads import build_extract_document_job_payload
 from lib.semantic_annotations.models import SemanticExtractionTask
@@ -150,10 +150,17 @@ class ExtractionService:
             route_profile=route_profile,
             semantic_task=semantic_task,
         )
-        validation = validate_extraction_payload(
-            schema_name,
-            gateway_result.normalized_json,
-            registry=self.registry,
+        validation = (
+            validate_semantic_region_payload(
+                gateway_result.normalized_json,
+                model_output_schema_name=gateway_result.model_output_schema_name,
+            )
+            if semantic_task is not None
+            else validate_extraction_payload(
+                schema_name,
+                gateway_result.normalized_json,
+                registry=self.registry,
+            )
         )
         gateway_result.normalized_json["validation"] = validation.as_json()
         field_candidates = field_candidates_from_extraction(

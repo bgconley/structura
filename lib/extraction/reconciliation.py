@@ -10,6 +10,15 @@ from lib.extraction.model_output_normalization import (
     invoice_payment_summary_from_payload,
 )
 
+FORBIDDEN_CANONICAL_PLACEHOLDERS = {
+    "unknown",
+    "n/a",
+    "none",
+    "null",
+    "missing",
+    "not found",
+}
+
 
 @dataclass(frozen=True)
 class RegionExtraction:
@@ -67,7 +76,11 @@ def reconcile_invoice_region_extractions(
     if not line_items and not invoice and not totals:
         return None
     if not invoice.get("invoice_number"):
-        invoice["invoice_number"] = "unknown"
+        metadata.setdefault("missing_fields", []).append("invoice.invoice_number")
+        return None
+    if not _party_has_non_placeholder_name(seller):
+        metadata.setdefault("missing_fields", []).append("seller.display_name")
+        return None
     if "total" not in totals and "amount_paid" in totals:
         totals["total"] = totals["amount_paid"]
 
@@ -117,6 +130,7 @@ def _merge_document_fallback(
 ) -> None:
     if not invoice.get("invoice_number"):
         invoice_number = fallback.get("invoice_number") or fallback.get("invoice_no")
+        invoice_number = _clean_canonical_scalar(invoice_number)
         if invoice_number:
             invoice["invoice_number"] = str(invoice_number)
     if not invoice.get("issued_on"):
@@ -143,3 +157,14 @@ def _local_date(value: object) -> str | None:
 
 def _renumber(line_items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [{**item, "ordinal": index} for index, item in enumerate(line_items, start=1)]
+
+
+def _clean_canonical_scalar(value: object) -> object | None:
+    if isinstance(value, str) and value.strip().lower() in FORBIDDEN_CANONICAL_PLACEHOLDERS:
+        return None
+    return value
+
+
+def _party_has_non_placeholder_name(value: dict[str, Any]) -> bool:
+    display_name = _clean_canonical_scalar(value.get("display_name"))
+    return isinstance(display_name, str) and bool(display_name.strip())

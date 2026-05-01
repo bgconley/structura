@@ -121,6 +121,50 @@ def test_invoice_region_reconciliation_uses_document_level_invoice_fallback() ->
     assert aggregate["invoice"]["issued_on"] == "2023-04-25"
 
 
+def test_invoice_region_reconciliation_does_not_fabricate_required_fields() -> None:
+    aggregate = reconcile_invoice_region_extractions(
+        document_id=uuid4(),
+        seller={"display_name": "MAX BMW", "party_type": "company"},
+        created_at=datetime.now(UTC),
+        regions=[
+            RegionExtraction(
+                extraction_id=uuid4(),
+                semantic_region_id=uuid4(),
+                semantic_type="invoice_line_item_table",
+                normalized_json={
+                    "line_items": [
+                        {
+                            "description": "PERFORM 600 MILE RUNNING-IN CHECK",
+                            "amount": {"amount": 250.00, "currency": "USD"},
+                        }
+                    ],
+                    "totals": {"total": {"amount": 250.00, "currency": "USD"}},
+                },
+            ),
+        ],
+    )
+
+    assert aggregate is None
+
+
+def test_invoice_region_reconciliation_requires_non_placeholder_seller() -> None:
+    aggregate = reconcile_invoice_region_extractions(
+        document_id=uuid4(),
+        seller={},
+        created_at=datetime.now(UTC),
+        regions=[
+            RegionExtraction(
+                extraction_id=uuid4(),
+                semantic_region_id=uuid4(),
+                semantic_type="payment_summary",
+                normalized_json={"invoice": {"invoice_number": "6046058/1"}},
+            )
+        ],
+    )
+
+    assert aggregate is None
+
+
 def test_invoice_region_reconciliation_skips_non_invoice_observation_regions() -> None:
     aggregate = reconcile_invoice_region_extractions(
         document_id=uuid4(),

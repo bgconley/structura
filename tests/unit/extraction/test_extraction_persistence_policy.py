@@ -3,16 +3,23 @@ from __future__ import annotations
 from uuid import uuid4
 
 from lib.extraction.extraction_repository import (
+    _review_status_for_extraction,
     _status_for_persisted_extraction,
     _supersede_current_extractions,
     _update_document_classification,
 )
 from lib.extraction.models import (
     ClassificationDecision,
+    ExtractionRunScope,
     ExtractionSourceDocument,
+    GatewayExtraction,
+    ModelRoute,
     ValidationReport,
 )
-from lib.extraction.normalization import line_item_candidates_from_extraction
+from lib.extraction.normalization import (
+    line_item_candidates_from_extraction,
+    observation_candidates_from_extraction,
+)
 
 
 def test_schema_validation_review_does_not_mark_persisted_extraction_failed() -> None:
@@ -28,6 +35,36 @@ def test_schema_validation_review_does_not_mark_persisted_extraction_failed() ->
     )
 
     assert _status_for_persisted_extraction(validation) == "completed"
+
+
+def test_model_backed_semantic_region_extraction_review_status_is_conservative() -> None:
+    extraction = GatewayExtraction(
+        schema_name="document_observation",
+        schema_version="v1",
+        route=ModelRoute(
+            source_engine="granite_vision_3b",
+            model_name="granite",
+            model_version="v1",
+            prompt_version="prompt",
+            route_profile="route",
+        ),
+        normalized_json={},
+        raw_output_json={},
+    )
+    validation = ValidationReport(needs_review=False, checks=[])
+
+    status = _review_status_for_extraction(
+        extraction=extraction,
+        validation=validation,
+        run_scope=ExtractionRunScope.semantic_region(
+            semantic_annotation_id=uuid4(),
+            source_semantic_region_id=uuid4(),
+            semantic_type="generic_form_kvp",
+            granite_task="kvp",
+        ),
+    )
+
+    assert status == "needs_review"
 
 
 def test_bmw_style_flat_granite_invoice_fields_create_line_item_candidates() -> None:
@@ -131,6 +168,70 @@ def test_bmw_wrapped_granite_invoice_lines_create_line_item_candidates() -> None
     assert candidates[0].net_amount == 51.00
     assert candidates[1].net_amount == 465.66
     assert candidates[1].service_date.isoformat() == "2023-04-25"
+
+
+def test_prompt_echo_line_items_are_rejected_before_candidate_creation() -> None:
+    validation = ValidationReport(needs_review=True, checks=[])
+    payload = {
+        "line_items": [
+            {
+                "description": "Identify and extract the schema of all the tables in the image",
+                "quantity": "1.0000",
+                "unit_price": {"amount": 1.0, "currency": "USD"},
+                "amount": {"amount": 1.0, "currency": "USD"},
+                "unit": "rows",
+            },
+            {
+                "description": "Pellegrino Sparkler 16oz Bottle",
+                "amount": {"amount": 5.0, "currency": "USD"},
+            },
+        ]
+    }
+
+    candidates = line_item_candidates_from_extraction(
+        schema_name="receipt",
+        payload=payload,
+        validation=validation,
+        source_engine="granite_vision_3b",
+    )
+
+    assert [candidate.description for candidate in candidates] == [
+        "Pellegrino Sparkler 16oz Bottle"
+    ]
+
+
+def test_placeholder_observations_are_rejected_before_candidate_creation() -> None:
+    validation = ValidationReport(needs_review=True, checks=[])
+    payload = {
+        "observations": [
+            {
+                "field_name": "visible_field",
+                "value": "visible value",
+                "value_type": "string",
+            },
+            {
+                "field_name": "appeal_deadline",
+                "value": "2026-03-01",
+                "value_type": "date",
+                "evidence": [{"page_id": str(uuid4()), "semantic_region_id": str(uuid4())}],
+            },
+            {
+                "field_name": "denial_reason",
+                "value": "null",
+                "value_type": "string",
+            },
+        ]
+    }
+
+    candidates = observation_candidates_from_extraction(
+        schema_name="document_observation",
+        payload=payload,
+        validation=validation,
+    )
+
+    assert [(candidate.field_name, candidate.value) for candidate in candidates] == [
+        ("appeal_deadline", "2026-03-01")
+    ]
 
 
 def test_supersede_current_extractions_is_scoped_to_semantic_region() -> None:

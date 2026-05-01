@@ -118,7 +118,11 @@ def _persist_extraction_rows(
     raw_object: StoredObject,
     normalized_object: StoredObject,
 ) -> PersistedExtraction:
-    review_status = "needs_review" if validation.needs_review else "auto_accepted"
+    review_status = _review_status_for_extraction(
+        extraction=extraction,
+        validation=validation,
+        run_scope=run_scope,
+    )
     status = _status_for_persisted_extraction(validation)
     with db_connection() as conn:
         with conn.cursor() as cur:
@@ -630,6 +634,22 @@ def _status_for_persisted_extraction(validation: ValidationReport) -> str:
     # Validation failures are document-quality/review outcomes, not worker failures.
     del validation
     return "completed"
+
+
+def _review_status_for_extraction(
+    *,
+    extraction: GatewayExtraction,
+    validation: ValidationReport,
+    run_scope: ExtractionRunScope,
+) -> str:
+    if (
+        run_scope.extraction_scope == "semantic_region"
+        and extraction.route.source_engine != "system"
+    ):
+        return "needs_review"
+    if run_scope.extraction_scope == "aggregate":
+        return "needs_review"
+    return "needs_review" if validation.needs_review else "auto_accepted"
 
 
 def _overall_confidence(payload: dict[str, Any]) -> float | None:

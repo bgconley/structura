@@ -52,6 +52,19 @@ _OBSERVATION_SEMANTIC_TYPES = {
     "generic_form_kvp",
     "unsupported_document_region",
 }
+_CURRENT_SCHEMA_COMPATIBLE_TARGETS = {
+    "receipt": frozenset({"receipt", "document_observation"}),
+    "retail_order": frozenset({"receipt", "document_observation"}),
+    "service_record": frozenset({"receipt", "document_observation"}),
+    "medical_eob": frozenset({"medical_eob", "document_observation"}),
+    "healthcare_coverage_decision": frozenset({"medical_eob", "document_observation"}),
+    "real_estate_title": frozenset({"document_observation"}),
+    "mortgage_escrow_statement": frozenset({"document_observation"}),
+    "financial_dispute_form": frozenset({"document_observation"}),
+    "unsupported_document": frozenset(),
+    "generic_form": frozenset({"receipt", "document_observation"}),
+    "generic": frozenset({"document_observation"}),
+}
 
 
 @dataclass(frozen=True)
@@ -107,6 +120,18 @@ def schema_fit_for_region(
     allowed_evidence_families = _TARGET_SCHEMA_EVIDENCE_FAMILIES[requested]
     document_type = _normalized(document_type_hint)
     is_docling_structural = region.metadata.get("region_source") == DOCLING_STRUCTURAL_REGION_SOURCE
+    if is_docling_structural and not _target_schema_is_compatible(
+        document_type=document_type,
+        target_schema=requested,
+    ):
+        return SchemaFitDecision(
+            target_schema=None,
+            requested_target_schema=requested,
+            evidence_families=evidence_families,
+            document_type_hint=document_type,
+            reason="docling_structural_target_incompatible_with_document_type",
+            downgraded=True,
+        )
     if (
         document_type in _OBSERVATION_DOCUMENT_TYPES and not is_docling_structural
     ) or region.semantic_type in _OBSERVATION_SEMANTIC_TYPES:
@@ -214,3 +239,17 @@ def _normalized(value: str | None) -> str | None:
         return None
     normalized = value.strip().lower()
     return normalized or None
+
+
+def _target_schema_is_compatible(
+    *,
+    document_type: str | None,
+    target_schema: str,
+) -> bool:
+    if document_type is None:
+        return True
+    allowed = _CURRENT_SCHEMA_COMPATIBLE_TARGETS.get(
+        document_type,
+        frozenset({document_type, "document_observation"}),
+    )
+    return target_schema in allowed

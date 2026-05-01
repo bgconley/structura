@@ -6,7 +6,7 @@ from lib.extraction.classification import classify_document
 from lib.extraction.evidence import EvidenceResolver, has_concrete_evidence
 from lib.extraction.heuristics import invoice_payload
 from lib.extraction.models import ExtractionSourceDocument, ParsedElementText, ParsedPageText
-from lib.extraction.validators import validate_extraction_payload
+from lib.extraction.validators import validate_extraction_payload, validate_semantic_region_payload
 
 
 def test_phase4_classifier_identifies_invoice_from_canonical_text() -> None:
@@ -72,6 +72,34 @@ def test_phase4_receipt_validation_flags_arithmetic_mismatch() -> None:
     assert report.needs_review
     assert any(
         check["code"] == "receipt.total_arithmetic" and check["status"] == "failed"
+        for check in report.checks
+    )
+
+
+def test_semantic_region_validation_does_not_require_full_canonical_receipt() -> None:
+    report = validate_semantic_region_payload(
+        {
+            "schema_name": "receipt",
+            "schema_version": "v1",
+            "document_id": str(uuid4()),
+            "line_items": [
+                {
+                    "description": "Coffee",
+                    "amount": {"amount": 4.25, "currency": "USD"},
+                    "evidence": [{"page_id": str(uuid4()), "semantic_region_id": str(uuid4())}],
+                }
+            ],
+        },
+        model_output_schema_name="granite_receipt_line_items.v1",
+    )
+
+    assert report.needs_review
+    assert not any(
+        check["code"] == "json_schema" and check["status"] == "failed"
+        for check in report.checks
+    )
+    assert any(
+        check["code"] == "region_scope.validation_routing" and check["status"] == "passed"
         for check in report.checks
     )
 
