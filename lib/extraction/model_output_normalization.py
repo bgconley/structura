@@ -5,6 +5,10 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from lib.extraction.evidence_concretizer import (
+    concretize_normalized_evidence,
+    evidence_ref_from_context,
+)
 from lib.extraction.evidence_context import EvidenceContext
 
 _NON_LINE_ITEM_HEADINGS = {
@@ -60,20 +64,17 @@ def normalize_granite_region_output(
             model_payload,
             evidence_context=evidence_context,
         )
-        metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
-        return normalized, metadata
+        return _finalized_output(normalized, metadata, wrapper_repairs, evidence_context)
     if model_output_schema_name == "granite_payment_summary.v1":
         normalized, metadata = _invoice_payment_output(document_id, model_payload)
-        metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
-        return normalized, metadata
+        return _finalized_output(normalized, metadata, wrapper_repairs, evidence_context)
     if model_output_schema_name == "granite_medical_service_lines.v1":
         normalized, metadata = _medical_service_lines_output(
             document_id,
             model_payload,
             evidence_context=evidence_context,
         )
-        metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
-        return normalized, metadata
+        return _finalized_output(normalized, metadata, wrapper_repairs, evidence_context)
     if model_output_schema_name in {
         "granite_receipt_line_items.v1",
         "granite_retail_order.v1",
@@ -84,24 +85,28 @@ def normalize_granite_region_output(
             evidence_context=evidence_context,
         )
         metadata["mapper"] = model_output_schema_name
-        metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
-        return normalized, metadata
+        return _finalized_output(normalized, metadata, wrapper_repairs, evidence_context)
     if model_output_schema_name == "granite_service_record_line_items.v1":
         normalized, metadata = _service_record_line_items_output(
             document_id,
             model_payload,
             evidence_context=evidence_context,
         )
-        metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
-        return normalized, metadata
+        return _finalized_output(normalized, metadata, wrapper_repairs, evidence_context)
     if model_output_schema_name == "granite_receipt_payment_summary.v1":
         normalized, metadata = _receipt_payment_output(
             document_id,
             model_payload,
             evidence_context=evidence_context,
         )
-        metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
-        return normalized, metadata
+        return _finalized_output(normalized, metadata, wrapper_repairs, evidence_context)
+    if model_output_schema_name == "granite_healthcare_coverage_decision.v1":
+        normalized, metadata = _healthcare_coverage_decision_output(
+            document_id,
+            model_payload,
+            evidence_context=evidence_context,
+        )
+        return _finalized_output(normalized, metadata, wrapper_repairs, evidence_context)
     if schema_name == "document_observation" or model_output_schema_name in {
         "granite_real_estate_title_seller_info.v1",
         "granite_mortgage_escrow_statement.v1",
@@ -114,17 +119,34 @@ def normalize_granite_region_output(
             model_output_schema_name=model_output_schema_name,
             evidence_context=evidence_context,
         )
-        metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
-        return normalized, metadata
+        return _finalized_output(normalized, metadata, wrapper_repairs, evidence_context)
     if schema_name == "invoice" and _has_flat_invoice_line_items(model_payload):
         normalized, metadata = _invoice_line_items_output(
             document_id,
             model_payload,
             evidence_context=evidence_context,
         )
-        metadata["repairs"] = [*wrapper_repairs, *metadata["repairs"]]
-        return normalized, metadata
-    return model_payload, {"mapper": None, "repairs": wrapper_repairs, "rejected_fields": []}
+        return _finalized_output(normalized, metadata, wrapper_repairs, evidence_context)
+    return _finalized_output(
+        model_payload,
+        {"mapper": None, "repairs": [], "rejected_fields": []},
+        wrapper_repairs,
+        evidence_context,
+    )
+
+
+def _finalized_output(
+    normalized: dict[str, Any],
+    metadata: dict[str, Any],
+    wrapper_repairs: list[str],
+    evidence_context: EvidenceContext | None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    repairs = [*wrapper_repairs, *metadata.get("repairs", [])]
+    if evidence_context is not None:
+        normalized = concretize_normalized_evidence(normalized, evidence_context)
+        repairs.append("attached_region_evidence_context")
+    metadata["repairs"] = repairs
+    return normalized, metadata
 
 
 def invoice_line_item_dicts_from_payload(
@@ -827,6 +849,88 @@ def _has_flat_invoice_line_items(payload: dict[str, Any]) -> bool:
     )
 
 
+def _healthcare_coverage_decision_output(
+    document_id: UUID,
+    payload: dict[str, Any],
+    *,
+    evidence_context: EvidenceContext | None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    observations: list[dict[str, Any]] = []
+    for item in payload.get("facts") or []:
+        if not isinstance(item, dict):
+            continue
+        name = item.get("name")
+        value = item.get("value")
+        if not name or _should_drop_observation(name, value):
+            continue
+        observations.append(
+            _observation(
+                field_name=str(name),
+                value=value,
+                family="granite_healthcare_coverage_decision.v1",
+                confidence=_number(item.get("confidence")),
+                source_text=item.get("source_text") or value,
+                evidence_context=evidence_context,
+            )
+        )
+
+    for index, item in enumerate(payload.get("contacts") or [], start=1):
+        if not isinstance(item, dict):
+            continue
+        for key, value in item.items():
+            if key in {"confidence", "source_text"} or _should_drop_observation(key, value):
+                continue
+            observations.append(
+                _observation(
+                    field_name=f"contact_{index}.{key}",
+                    value=value,
+                    family="granite_healthcare_coverage_decision.v1",
+                    confidence=_number(item.get("confidence")),
+                    source_text=item.get("source_text") or value,
+                    evidence_context=evidence_context,
+                )
+            )
+
+    for index, item in enumerate(payload.get("service_lines") or [], start=1):
+        if not isinstance(item, dict):
+            continue
+        for key, value in item.items():
+            if key in {"confidence", "source_text"} or _should_drop_observation(key, value):
+                continue
+            observations.append(
+                _observation(
+                    field_name=f"service_line_{index}.{key}",
+                    value=value,
+                    family="granite_healthcare_coverage_decision.v1",
+                    confidence=_number(item.get("confidence")),
+                    source_text=item.get("source_text") or value,
+                    evidence_context=evidence_context,
+                )
+            )
+
+    return (
+        {
+            "schema_name": "document_observation",
+            "schema_version": "v1",
+            "document_id": str(document_id),
+            "observations": observations,
+            "confidence": (
+                payload.get("confidence") if isinstance(payload.get("confidence"), dict) else {}
+            ),
+            "created_at": datetime.now(UTC).isoformat(),
+            "metadata": {"model_output_schema_name": "granite_healthcare_coverage_decision.v1"},
+        },
+        {
+            "mapper": "granite_healthcare_coverage_decision.v1",
+            "repairs": ["mapped_healthcare_coverage_decision_to_observations"],
+            "rejected_fields": _rejected_fields(
+                payload,
+                {"facts", "contacts", "service_lines", "warnings", "confidence"},
+            ),
+        },
+    )
+
+
 def _looks_like_schema_echo(payload: dict[str, Any]) -> bool:
     if "$schema" in payload or "$defs" in payload:
         return True
@@ -1029,48 +1133,13 @@ def _evidence(
     evidence_context: EvidenceContext | None,
 ) -> dict[str, Any]:
     text = str(source_text or "").strip()
-    evidence: dict[str, Any] = {
-        "source_engine": (
-            evidence_context.source_engine if evidence_context else "granite_vision_3b"
-        ),
+    if evidence_context is not None:
+        return evidence_ref_from_context(evidence_context=evidence_context, source_text=text)
+    return {
+        "source_engine": "granite_vision_3b",
         "source_text": text,
         "confidence": 0.72,
     }
-    if evidence_context:
-        evidence["document_id"] = str(evidence_context.document_id)
-        if evidence_context.page_number is not None:
-            evidence["page_number"] = evidence_context.page_number
-        if evidence_context.page_id is not None:
-            evidence["page_id"] = str(evidence_context.page_id)
-        if evidence_context.table_id is not None:
-            evidence["table_id"] = str(evidence_context.table_id)
-        if evidence_context.element_id is not None:
-            evidence["element_id"] = str(evidence_context.element_id)
-        if evidence_context.semantic_region_id is not None:
-            evidence["semantic_region_id"] = str(evidence_context.semantic_region_id)
-        if evidence_context.semantic_annotation_id is not None:
-            evidence["semantic_annotation_id"] = str(evidence_context.semantic_annotation_id)
-        if evidence_context.visual_input_scope is not None:
-            evidence["visual_input_scope"] = evidence_context.visual_input_scope
-        if evidence_context.visual_input_sha256 is not None:
-            evidence["visual_input_sha256"] = evidence_context.visual_input_sha256
-        if evidence_context.source_page_image_sha256 is not None:
-            evidence["source_page_image_sha256"] = evidence_context.source_page_image_sha256
-        if evidence_context.bbox is not None:
-            evidence["bbox"] = evidence_context.bbox
-        if evidence_context.bbox_basis is not None:
-            evidence["bbox_basis"] = evidence_context.bbox_basis
-        if evidence_context.original_bbox is not None:
-            evidence["original_bbox"] = evidence_context.original_bbox
-        if evidence_context.expanded_bbox is not None:
-            evidence["expanded_bbox"] = evidence_context.expanded_bbox
-        if evidence_context.rotation_policy is not None:
-            evidence["rotation_policy"] = evidence_context.rotation_policy
-        if evidence_context.crop_quality is not None:
-            evidence["crop_quality"] = evidence_context.crop_quality
-        if evidence_context.visual_input_attempt is not None:
-            evidence["visual_input_attempt"] = evidence_context.visual_input_attempt
-    return {key: value for key, value in evidence.items() if value not in (None, "")}
 
 
 def _with_evidence_context(

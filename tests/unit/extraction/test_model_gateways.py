@@ -217,6 +217,38 @@ def test_granite_gateway_routes_payment_summary_to_kvp_schema_prompt() -> None:
     assert client.request.max_output_tokens == 1536
 
 
+def test_granite_gateway_routes_coverage_decision_to_healthcare_contract() -> None:
+    client = FakeVisionClient(
+        source_engine="granite_vision_3b",
+        profile_name=GRANITE_VISION_PROFILE,
+    )
+    source = _source_with_page_image()
+    task = SemanticExtractionTask(
+        region_id=uuid4(),
+        annotation_id=uuid4(),
+        document_id=source.document_id,
+        semantic_type="denial_or_coverage_decision",
+        granite_task="kvp",
+        target_schema="medical_eob",
+        expected_fields=("denial_reason", "appeal_deadline"),
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+        reason="Qwen identified a coverage decision block.",
+        confidence=0.91,
+    )
+
+    GraniteVisionExtractionGateway(client=client).extract(
+        source,
+        schema_name="medical_eob",
+        route_profile="docling_plus_granite_structured",
+        semantic_task=task,
+    )
+
+    assert client.request is not None
+    assert client.request.response_schema_name == "granite_healthcare_coverage_decision.v1"
+    assert "denial_reason" in client.request.prompt
+    assert client.request.response_json_schema is not None
+
+
 def test_granite_gateway_routes_retail_order_tables_to_receipt_line_schema() -> None:
     client = FakeVisionClient(
         source_engine="granite_vision_3b",

@@ -10,10 +10,11 @@ from lib.extraction.model_output_normalization import (
 )
 from lib.extraction.models import ValidationReport
 from lib.extraction.normalization import (
+    field_candidates_from_extraction,
     line_item_candidates_from_extraction,
     observation_candidates_from_extraction,
 )
-from lib.extraction.validators import validate_extraction_payload
+from lib.extraction.validators import validate_extraction_payload, validate_semantic_region_payload
 
 
 def test_normalize_granite_region_output_handles_non_object_payloads_without_crashing() -> None:
@@ -104,6 +105,151 @@ def test_granite_line_item_evidence_uses_region_grounding_context() -> None:
     assert evidence["semantic_region_id"] == str(region_id)
     assert evidence["semantic_annotation_id"] == str(annotation_id)
     assert has_concrete_evidence([evidence]) is True
+
+
+def test_receipt_payment_summary_concretizes_region_evidence_for_candidates() -> None:
+    document_id = uuid4()
+    annotation_id = uuid4()
+    region_id = uuid4()
+    page_id = uuid4()
+
+    normalized, metadata = normalize_granite_region_output(
+        document_id=document_id,
+        schema_name="receipt",
+        model_output_schema_name="granite_receipt_payment_summary.v1",
+        payload={
+            "merchant_name": "Coffee Shop",
+            "transaction_date": "2026-05-01",
+            "subtotal": "$4.25",
+            "tax": "$0.40",
+            "total": "$4.65",
+            "confidence": {},
+        },
+        evidence_context=EvidenceContext(
+            source_engine="granite_vision_3b",
+            document_id=document_id,
+            semantic_annotation_id=annotation_id,
+            semantic_region_id=region_id,
+            page_id=page_id,
+            page_number=1,
+        ),
+    )
+
+    assert "attached_region_evidence_context" in metadata["repairs"]
+    assert has_concrete_evidence(normalized["transaction"]["evidence"]) is True
+
+    candidates = field_candidates_from_extraction(
+        document_id=document_id,
+        schema_name="receipt",
+        payload=normalized,
+        validation=ValidationReport(needs_review=True, checks=[]),
+        source_engine="granite_vision_3b",
+        require_concrete_evidence=True,
+    )
+
+    assert [candidate.field_path for candidate in candidates] == [
+        "receipt.merchant.display_name",
+        "receipt.transaction.date_local",
+        "receipt.transaction.subtotal",
+        "receipt.transaction.tax",
+        "receipt.transaction.total",
+    ]
+    assert all(has_concrete_evidence(candidate.evidence) for candidate in candidates)
+
+
+def test_empty_kvp_output_keeps_region_level_evidence_for_validation() -> None:
+    document_id = uuid4()
+    normalized, _metadata = normalize_granite_region_output(
+        document_id=document_id,
+        schema_name="document_observation",
+        model_output_schema_name="granite_dispute_form.v1",
+        payload={
+            "account_holder": None,
+            "merchant_name": None,
+            "transaction_date": None,
+            "transaction_amount": None,
+            "dispute_reason": None,
+            "transactions": [],
+            "confidence": {},
+        },
+        evidence_context=EvidenceContext(
+            source_engine="granite_vision_3b",
+            document_id=document_id,
+            semantic_annotation_id=uuid4(),
+            semantic_region_id=uuid4(),
+            page_id=uuid4(),
+            page_number=1,
+        ),
+    )
+
+    assert normalized["observations"] == []
+    assert has_concrete_evidence(normalized["evidence"]) is True
+    validation = validate_semantic_region_payload(
+        normalized,
+        model_output_schema_name="granite_dispute_form.v1",
+        model_output_payload={
+            "account_holder": None,
+            "merchant_name": None,
+            "transaction_date": None,
+            "transaction_amount": None,
+            "dispute_reason": None,
+            "transactions": [],
+            "confidence": {},
+        },
+    )
+    assert [
+        check
+        for check in validation.checks
+        if check["code"] == "evidence.concrete_locator"
+    ][0]["status"] == "passed"
+
+
+def test_healthcare_coverage_decision_maps_to_grounded_observations() -> None:
+    document_id = uuid4()
+    normalized, metadata = normalize_granite_region_output(
+        document_id=document_id,
+        schema_name="medical_eob",
+        model_output_schema_name="granite_healthcare_coverage_decision.v1",
+        payload={
+            "facts": [
+                {
+                    "name": "denial_reason",
+                    "value": "Not medically necessary",
+                    "confidence": 0.86,
+                    "source_text": "not medically necessary",
+                }
+            ],
+            "contacts": [
+                {
+                    "contact_type": "appeal",
+                    "phone": "555-0100",
+                    "source_text": "Appeals: 555-0100",
+                    "confidence": 0.8,
+                }
+            ],
+            "service_lines": [],
+            "warnings": [],
+        },
+        evidence_context=EvidenceContext(
+            source_engine="granite_vision_3b",
+            document_id=document_id,
+            semantic_annotation_id=uuid4(),
+            semantic_region_id=uuid4(),
+            page_id=uuid4(),
+            page_number=1,
+        ),
+    )
+
+    assert metadata["mapper"] == "granite_healthcare_coverage_decision.v1"
+    assert normalized["schema_name"] == "document_observation"
+    assert [(item["field_name"], item["value"]) for item in normalized["observations"]] == [
+        ("denial_reason", "Not medically necessary"),
+        ("contact_1.contact_type", "appeal"),
+        ("contact_1.phone", "555-0100"),
+    ]
+    assert all(
+        has_concrete_evidence(item["evidence"]) for item in normalized["observations"]
+    )
 
 
 def test_observation_mapper_drops_schema_and_prompt_echo_fields() -> None:

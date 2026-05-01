@@ -35,6 +35,8 @@ def model_output_schema_for_task(
         return load_model_output_schema("granite_real_estate_title_seller_info.v1")
     if semantic_type in {"escrow_summary", "mortgage_payment_summary"}:
         return load_model_output_schema("granite_mortgage_escrow_statement.v1")
+    if semantic_type == "denial_or_coverage_decision":
+        return load_model_output_schema("granite_healthcare_coverage_decision.v1")
     if semantic_type in {"dispute_transaction_table", "dispute_reason_block"}:
         return load_model_output_schema("granite_dispute_form.v1")
     if semantic_type in {"generic_form_kvp", "unsupported_document_region"}:

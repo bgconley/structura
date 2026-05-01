@@ -167,26 +167,29 @@ class ExtractionService:
             )
         )
         gateway_result.normalized_json["validation"] = validation.as_json()
+        normalized_schema_name = str(
+            gateway_result.normalized_json.get("schema_name") or schema_name
+        )
         require_concrete_candidate_evidence = (
             semantic_task is not None and gateway_result.route.source_engine != "system"
         )
         field_candidates = field_candidates_from_extraction(
             document_id=document_id,
-            schema_name=schema_name,
+            schema_name=normalized_schema_name,
             payload=gateway_result.normalized_json,
             validation=validation,
             source_engine=gateway_result.route.source_engine,
             require_concrete_evidence=require_concrete_candidate_evidence,
         )
         line_item_candidates = line_item_candidates_from_extraction(
-            schema_name=schema_name,
+            schema_name=normalized_schema_name,
             payload=gateway_result.normalized_json,
             validation=validation,
             source_engine=gateway_result.route.source_engine,
             require_concrete_evidence=require_concrete_candidate_evidence,
         )
         observation_candidates = observation_candidates_from_extraction(
-            schema_name=schema_name,
+            schema_name=normalized_schema_name,
             payload=gateway_result.normalized_json,
             validation=validation,
             require_concrete_evidence=require_concrete_candidate_evidence,

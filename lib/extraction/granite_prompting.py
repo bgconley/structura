@@ -275,4 +275,10 @@ def _compact_shape_for_schema(schema_name: str) -> str:
             'Use shape {"invoice_no":null,"amount":null,"payments":[],'
             '"confidence":{}}. Include at most two payment objects.'
         )
+    if schema_name == "granite_healthcare_coverage_decision.v1":
+        return (
+            'Use shape {"facts":[{"name":"denial_reason","value":null,'
+            '"confidence":0.0,"source_text":null}],"contacts":[],'
+            '"service_lines":[],"warnings":[]}.'
+        )
     return "Use the compact object shape defined by the supplied API response schema."

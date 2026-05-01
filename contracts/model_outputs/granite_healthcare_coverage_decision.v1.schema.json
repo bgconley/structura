@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/model_outputs/granite_healthcare_coverage_decision.v1.schema.json",
+  "title": "Granite Healthcare Coverage Decision v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "facts": {
+      "type": "array",
+      "maxItems": 40,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1, "maxLength": 120},
+          "value": {"type": ["string", "number", "boolean", "object", "array", "null"]},
+          "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+          "source_text": {"type": ["string", "null"], "maxLength": 500}
+        }
+      }
+    },
+    "contacts": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "contact_type": {"type": ["string", "null"]},
+          "name": {"type": ["string", "null"]},
+          "phone": {"type": ["string", "null"]},
+          "fax": {"type": ["string", "null"]},
+          "address": {"type": ["string", "null"]},
+          "url": {"type": ["string", "null"]},
+          "deadline": {"type": ["string", "null"]},
+          "source_text": {"type": ["string", "null"], "maxLength": 500},
+          "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
+        }
+      }
+    },
+    "service_lines": {
+      "type": "array",
+      "maxItems": 40,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "service_date": {"type": ["string", "null"]},
+          "description": {"type": ["string", "null"]},
+          "code": {"type": ["string", "null"]},
+          "decision": {"type": ["string", "null"]},
+          "source_text": {"type": ["string", "null"], "maxLength": 500},
+          "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {"type": "string", "maxLength": 300}
+    },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "required": ["facts", "contacts", "service_lines", "warnings"]
+}
