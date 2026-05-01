@@ -4,11 +4,10 @@ import argparse
 import signal
 import sys
 import time
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from lib.documents.quality import evaluate_document_quality
 from lib.jobs import JobService, record_service_health
-from lib.jobs.event_payloads import build_classify_document_job_payload
 from lib.search.jobs import enqueue_embed_document_job, enqueue_visual_embed_document_job
 from lib.semantic_annotations.jobs import enqueue_semantic_annotation_job
 from workers.docling.converter import DoclingConverter
@@ -92,26 +91,6 @@ def process_next_docling_job(
         return True
 
     downstream_failures: list[str] = []
-    try:
-        classify_priority = 38
-        classify_job_id = uuid4()
-        job_service.create_job(
-            job_id=classify_job_id,
-            job_type="classify",
-            household_id=claimed.household_id,
-            document_id=target_document_id,
-            payload=build_classify_document_job_payload(
-                job_id=classify_job_id,
-                document_id=target_document_id,
-                requested_by="system",
-                priority=classify_priority,
-                metadata={"stage": "phase4.classify"},
-            ),
-            priority=classify_priority,
-            queue_name="extraction",
-        )
-    except Exception as exc:
-        downstream_failures.append(f"classify:{exc.__class__.__name__}")
     try:
         _enqueue_embedding_refresh(
             target_document_id,

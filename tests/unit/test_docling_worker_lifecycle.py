@@ -59,6 +59,7 @@ def test_docling_worker_does_not_fail_completed_parse_when_downstream_enqueue_fa
 
     assert job_service.completed == [job_id]
     assert job_service.failed == []
+    assert job_service.created == []
     assert parse_failures == []
 
 
