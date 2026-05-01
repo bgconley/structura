@@ -37,8 +37,8 @@ OBSERVATION_BUDGET = GraniteTaskBudget(
 )
 
 SCHEMA_BACKED_OBSERVATION_BUDGET = GraniteTaskBudget(
-    max_output_tokens=1024,
-    timeout_seconds=60,
+    max_output_tokens=2048,
+    timeout_seconds=75,
     max_attempts=1,
 )
 

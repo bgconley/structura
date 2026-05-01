@@ -366,6 +366,8 @@ def test_granite_gateway_routes_title_seller_info_to_observation_schema() -> Non
     assert client.request is not None
     assert client.request.response_schema_name == "granite_real_estate_title_seller_info.v1"
     assert "seller_name" in client.request.prompt
+    assert '"seller_name":null' in client.request.prompt
+    assert '"fields":[{"name":"seller_name"' not in client.request.prompt
 
 
 def test_granite_gateway_uses_receipt_line_item_budget() -> None:
@@ -422,8 +424,8 @@ def test_granite_gateway_uses_schema_backed_observation_budget() -> None:
     )
 
     assert client.request is not None
-    assert client.request.max_output_tokens == 1024
-    assert client.request.timeout_seconds == 60
+    assert client.request.max_output_tokens == 2048
+    assert client.request.timeout_seconds == 75
 
 
 def test_granite_gateway_uses_general_observation_budget() -> None:
@@ -483,6 +485,8 @@ def test_granite_observation_prompt_is_bounded() -> None:
     assert "Extract only the requested observation fields" in client.request.prompt
     assert "Do not transcribe paragraphs" in client.request.prompt
     assert "Return null or an empty list when evidence is not visible" in client.request.prompt
+    assert "the API response schema wins" in client.request.prompt
+    assert "do not place extracted facts inside confidence" in client.request.prompt
 
 
 def test_granite_gateway_sends_only_semantic_grounded_page() -> None:

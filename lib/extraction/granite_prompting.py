@@ -85,6 +85,9 @@ def granite_prompt(
         "prompt text, or instructions unless those are literally visible document fields. "
         "Return null or an empty list when evidence is not visible. "
         "Prefer fewer grounded values over broad summaries. "
+        "When expected_fields conflict with the supplied API response schema, the API "
+        "response schema wins. Keep confidence as an empty object and do not place "
+        "extracted facts inside confidence. "
         f"{_compact_shape_for_schema(model_output_schema.name)} "
         "Return ONLY a valid JSON object matching the response schema supplied by the API."
         f"{docling_context}"
@@ -245,17 +248,20 @@ def _compact_shape_for_schema(schema_name: str) -> str:
         )
     if schema_name == "granite_dispute_form.v1":
         return (
-            'Use shape {"transactions":[{"transaction_date":null,"merchant":null,'
-            '"amount":null,"reason":null}],"fields":[],"confidence":{}}.'
+            'Use shape {"account_holder":null,"merchant_name":null,'
+            '"transaction_date":null,"transaction_amount":null,'
+            '"dispute_reason":null,"transactions":[],"confidence":{}}.'
         )
     if schema_name == "granite_real_estate_title_seller_info.v1":
         return (
-            'Use shape {"fields":[{"name":"seller_name","value":null,'
-            '"confidence":0.0,"source_text":null}],"confidence":{}}.'
+            'Use shape {"seller_name":null,"property_address":null,'
+            '"title_company":null,"file_number":null,"closing_date":null,'
+            '"confidence":{}}.'
         )
     if schema_name == "granite_mortgage_escrow_statement.v1":
         return (
-            'Use shape {"fields":[{"name":"escrow_field","value":null,'
-            '"confidence":0.0,"source_text":null}],"confidence":{}}.'
+            'Use shape {"loan_number":null,"servicer_name":null,'
+            '"statement_date":null,"escrow_balance":null,"payment_amount":null,'
+            '"tax_amount":null,"insurance_amount":null,"confidence":{}}.'
         )
     return "Use the compact object shape defined by the supplied API response schema."
