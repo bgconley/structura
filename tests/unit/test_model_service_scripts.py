@@ -15,3 +15,23 @@ def test_qwen_vllm_start_script_can_disable_prefix_caching() -> None:
 
     assert "STRUCTURA_VLLM_DISABLE_PREFIX_CACHING" in script
     assert "--no-enable-prefix-caching" in script
+
+
+def test_phase8_5_live_bringup_forces_live_model_mode() -> None:
+    script = Path("scripts/gpu/phase8_5_live_bringup.sh").read_text()
+
+    assert 'export STRUCTURA_MODEL_MODE="${STRUCTURA_MODEL_MODE:-live}"' in script
+    assert "phase8_5_live_runtime_preflight.py" in script
+    assert "--force-recreate" in script
+    assert "worker-semantic-annotations" in script
+    assert "worker-extraction" in script
+
+
+def test_phase8_5_live_runtime_preflight_checks_container_modes() -> None:
+    script = Path("scripts/gpu/phase8_5_live_runtime_preflight.py").read_text()
+
+    assert "REQUIRED_LIVE_SERVICES" in script
+    assert "STRUCTURA_MODEL_MODE" in script
+    assert "STRUCTURA_QWEN8_ENABLED" in script
+    assert "model-qwen-semantic" in script
+    assert "model-granite" in script
