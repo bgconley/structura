@@ -5,6 +5,7 @@ import signal
 import sys
 import time
 import traceback
+from typing import Any
 from uuid import UUID
 
 from lib.extraction import ExtractionService
@@ -142,12 +143,7 @@ def process_next_extraction_job(
             message=_failure_message(exc),
             retryable=failure_policy.retryable,
             suppress=False,
-            details={
-                "exception_class": exc.__class__.__name__,
-                "exception_message": str(exc),
-                "model_failure_policy": failure_policy.policy,
-                "traceback": traceback.format_exc(limit=8),
-            },
+            details=_failure_details(exc, failure_policy.policy),
         )
     return True
 
@@ -172,6 +168,19 @@ def _failure_message(exc: Exception) -> str:
     if detail:
         return f"Extraction job failed: {detail}"
     return "Extraction job failed."
+
+
+def _failure_details(exc: Exception, model_failure_policy: str) -> dict[str, Any]:
+    details: dict[str, Any] = {
+        "exception_class": exc.__class__.__name__,
+        "exception_message": str(exc),
+        "model_failure_policy": model_failure_policy,
+        "traceback": traceback.format_exc(limit=8),
+    }
+    model_runtime_details = getattr(exc, "details", None)
+    if isinstance(model_runtime_details, dict) and model_runtime_details:
+        details["model_runtime_details"] = dict(model_runtime_details)
+    return details
 
 
 def _enqueue_embedding_refresh(

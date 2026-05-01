@@ -156,7 +156,16 @@ def _raw_message_content(response: dict[str, Any]) -> tuple[str, str | None]:
         raise ModelProtocolError("Vision model response choice must be an object.")
     finish_reason = first.get("finish_reason")
     if finish_reason == "length":
-        raise ModelProtocolError("Vision model response was truncated before valid JSON completed.")
+        raise ModelProtocolError(
+            "Vision model response was truncated before valid JSON completed.",
+            details={
+                "finish_reason": "length",
+                "usage": _usage_json(response),
+                "model": response.get("model"),
+                "model_version": response.get("model_version")
+                or response.get("system_fingerprint"),
+            },
+        )
     message = first.get("message")
     if not isinstance(message, dict):
         raise ModelProtocolError("Vision model response choice is missing message.")

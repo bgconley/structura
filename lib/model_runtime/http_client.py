@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 from urllib.parse import urlparse
 
@@ -8,6 +9,15 @@ import httpx
 
 class ModelRuntimeError(Exception):
     retryable = False
+
+    def __init__(
+        self,
+        message: str = "",
+        *,
+        details: Mapping[str, Any] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.details = dict(details or {})
 
 
 class ModelConfigurationError(ModelRuntimeError):

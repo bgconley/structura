@@ -266,6 +266,11 @@ def test_qwen_client_rejects_truncated_structured_content() -> None:
                 200,
                 json={
                     "model": "Qwen/Qwen3-VL-8B-Instruct",
+                    "usage": {
+                        "prompt_tokens": 10,
+                        "completion_tokens": 512,
+                        "total_tokens": 522,
+                    },
                     "choices": [
                         {
                             "finish_reason": "length",
@@ -284,8 +289,14 @@ def test_qwen_client_rejects_truncated_structured_content() -> None:
         ),
     )
 
-    with pytest.raises(ModelProtocolError, match="truncated"):
+    with pytest.raises(ModelProtocolError, match="truncated") as excinfo:
         client.generate(_request())
+    assert excinfo.value.details["finish_reason"] == "length"
+    assert excinfo.value.details["usage"] == {
+        "prompt_tokens": 10,
+        "completion_tokens": 512,
+        "total_tokens": 522,
+    }
 
 
 def test_qwen_client_accepts_direct_normalized_object_for_live_model_tolerance() -> None:

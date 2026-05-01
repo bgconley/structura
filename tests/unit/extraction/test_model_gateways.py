@@ -372,11 +372,11 @@ def test_granite_gateway_uses_receipt_line_item_budget() -> None:
     )
 
     assert client.request is not None
-    assert client.request.max_output_tokens == 1024
+    assert client.request.max_output_tokens == 2048
     assert client.request.timeout_seconds == 90
 
 
-def test_granite_gateway_uses_small_observation_budget() -> None:
+def test_granite_gateway_uses_schema_backed_observation_budget() -> None:
     client = FakeVisionClient(
         source_engine="granite_vision_3b",
         profile_name=GRANITE_VISION_PROFILE,
@@ -401,7 +401,36 @@ def test_granite_gateway_uses_small_observation_budget() -> None:
     )
 
     assert client.request is not None
-    assert client.request.max_output_tokens == 512
+    assert client.request.max_output_tokens == 1024
+    assert client.request.timeout_seconds == 60
+
+
+def test_granite_gateway_uses_general_observation_budget() -> None:
+    client = FakeVisionClient(
+        source_engine="granite_vision_3b",
+        profile_name=GRANITE_VISION_PROFILE,
+    )
+    source = _source_with_page_image()
+    task = SemanticExtractionTask(
+        region_id=uuid4(),
+        annotation_id=uuid4(),
+        document_id=source.document_id,
+        semantic_type="document_footer",
+        granite_task="kvp",
+        target_schema="document_observation",
+        expected_fields=("visible_labels",),
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+    )
+
+    GraniteVisionExtractionGateway(client=client).extract(
+        source,
+        schema_name="document_observation",
+        route_profile="docling_plus_granite_structured",
+        semantic_task=task,
+    )
+
+    assert client.request is not None
+    assert client.request.max_output_tokens == 768
     assert client.request.timeout_seconds == 45
 
 
