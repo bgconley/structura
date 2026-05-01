@@ -60,7 +60,7 @@ test("Phase 8.5 Smart Parse manifest is visible and Qwen8 controls are deferred"
     .click();
 
   await page.getByRole("button", {name: "Load Smart Parse"}).click();
-  await expect(page.locator(".semantic-annotation-panel")).toContainText("qwen3_vl_4b");
+  await expect(page.locator(".semantic-annotation-panel")).toContainText("qwen3_vl_8b");
   await expect(page.locator(".semantic-annotation-panel")).toContainText("receipt_line_item_table");
   await expect(page.locator(".semantic-annotation-panel")).toContainText("tables_json");
 

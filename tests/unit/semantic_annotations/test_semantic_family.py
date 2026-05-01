@@ -97,9 +97,9 @@ def _manifest(source: ExtractionSourceDocument, *, document_type: str) -> Docume
         document_id=source.document_id,
         household_id=source.household_id,
         quality_mode="smart",
-        profile_name="qwen3-vl-4b-semantic:v1",
-        source_engine="qwen3_vl_4b",
-        model_name="Qwen/Qwen3-VL-4B-Instruct",
+        profile_name="qwen3-vl-8b-fp8-semantic:v1",
+        source_engine="qwen3_vl_8b",
+        model_name="Qwen/Qwen3-VL-8B-Instruct-FP8",
         model_version="v1",
         prompt_version="phase8_5-semantic-smart-v3",
         pages=[

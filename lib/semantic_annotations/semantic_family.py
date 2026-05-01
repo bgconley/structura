@@ -37,6 +37,7 @@ PERSISTABLE_DOCUMENT_FAMILIES = frozenset(
     }
 )
 
+
 _DOCUMENT_TYPE_FAMILY_MAP = {
     "invoice": "invoice",
     "receipt": "receipt",
@@ -182,7 +183,7 @@ def source_with_semantic_family(
 
 
 def apply_semantic_document_family_decision_with_cursor(
-    cur: object,
+    cur: Any,
     source: ExtractionSourceDocument,
     decision: SemanticDocumentFamilyDecision,
 ) -> None:

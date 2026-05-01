@@ -65,7 +65,7 @@ probe_live_models() {
   "${PYTHON:-python3}" scripts/gpu/probe_phase8_5_live_models.py \
     --skip-qwen \
     --qwen-semantic-url "${QWEN_SEMANTIC_URL}" \
-    --qwen-semantic-model "${STRUCTURA_MODEL_QWEN_SEMANTIC_MODEL:-Qwen/Qwen3-VL-4B-Instruct}" \
+    --qwen-semantic-model "${STRUCTURA_MODEL_QWEN_SEMANTIC_MODEL:-Qwen/Qwen3-VL-8B-Instruct-FP8}" \
     --granite-url "${GRANITE_URL}" \
     --granite-model "${STRUCTURA_MODEL_GRANITE_MODEL:-ibm-granite/granite-4.0-3b-vision}" \
     --text-embed-url "${TEXT_EMBED_URL}" \

@@ -24,7 +24,7 @@ def build_semantic_planner_prompt(
     )
     context_json = json.dumps(context, sort_keys=True, separators=(",", ":"))
     return (
-        "You are Structura's semantic document-understanding layer for "
+        "You are Structura's semantic document-understanding layer for "  # nosec B608
         "Docling-grounded documents. "
         "Return valid JSON only as compact semantic_annotation_model_output JSON matching "
         "the provided JSON Schema. This is semantic inventory and extraction intent, "

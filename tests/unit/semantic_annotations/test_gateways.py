@@ -52,17 +52,17 @@ def test_fixture_gateway_has_explicit_fixture_provenance() -> None:
     assert result.manifest.regions[0].granite_task == "kvp"
 
 
-def test_live_qwen_smart_gateway_builds_truthful_qwen3_vl_4b_manifest() -> None:
+def test_live_qwen_smart_gateway_builds_truthful_qwen3_vl_8b_manifest() -> None:
     source = _source_with_page_image_and_element()
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_4b",
+        source_engine="qwen3_vl_8b",
         normalized_json=_semantic_payload(source.pages[0].page_id),
     )
 
     result = QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
 
-    assert result.manifest.source_engine == "qwen3_vl_4b"
+    assert result.manifest.source_engine == "qwen3_vl_8b"
     assert result.manifest.profile_name == QWEN_SEMANTIC_PROFILE
     assert result.manifest.prompt_version == "phase8_5-semantic-smart-v3"
     assert client.request is not None
@@ -87,7 +87,7 @@ def test_live_qwen_gateway_prompt_keeps_semantic_planning_but_not_tiny_region_li
     source = _source_with_page_image()
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_4b",
+        source_engine="qwen3_vl_8b",
         normalized_json=_semantic_payload(source.pages[0].page_id),
     )
 
@@ -118,7 +118,7 @@ def test_live_qwen_smart_gateway_uses_compact_output_budget_for_16k_service() ->
     source = _source_with_page_image()
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_4b",
+        source_engine="qwen3_vl_8b",
         normalized_json=_semantic_payload(source.pages[0].page_id),
     )
 
@@ -315,7 +315,7 @@ def test_live_qwen_gateway_preserves_planner_metadata_in_manifest() -> None:
     payload["planner_notes"] = ["Docling table text is weak; use full page image."]
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_4b",
+        source_engine="qwen3_vl_8b",
         normalized_json=payload,
     )
 
@@ -471,7 +471,7 @@ def test_live_qwen_high_quality_gateway_merges_duplicate_page_annotations() -> N
     }
 
 
-def test_live_qwen_smart_gateway_uses_four_image_qwen3_vl_4b_fan_in() -> None:
+def test_live_qwen_smart_gateway_uses_four_image_qwen3_vl_8b_fan_in() -> None:
     source = _source_with_two_page_images()
     page_by_hash = {page.image_sha256: page.page_id for page in source.pages if page.image_sha256}
 
@@ -488,7 +488,7 @@ def test_live_qwen_smart_gateway_uses_four_image_qwen3_vl_4b_fan_in() -> None:
                 profile_name=QWEN_SEMANTIC_PROFILE,
                 model_name="fake-qwen",
                 model_version="test",
-                source_engine="qwen3_vl_4b",
+                source_engine="qwen3_vl_8b",
                 prompt_version=request.prompt_version,
                 raw_text="{}",
                 normalized_json=_semantic_payload_for_pages(page_ids),
@@ -538,7 +538,7 @@ def test_live_qwen_smart_gateway_rejects_coverage_failure_without_one_page_fallb
                 profile_name=QWEN_SEMANTIC_PROFILE,
                 model_name="fake-qwen",
                 model_version="test",
-                source_engine="qwen3_vl_4b",
+                source_engine="qwen3_vl_8b",
                 prompt_version=request.prompt_version,
                 raw_text="{}",
                 normalized_json=_semantic_payload_for_pages(page_ids),
@@ -573,7 +573,7 @@ def test_live_qwen_smart_gateway_fills_missing_blank_focus_page_without_fallback
                 profile_name=QWEN_SEMANTIC_PROFILE,
                 model_name="fake-qwen",
                 model_version="test",
-                source_engine="qwen3_vl_4b",
+                source_engine="qwen3_vl_8b",
                 prompt_version=request.prompt_version,
                 raw_text="{}",
                 normalized_json=_semantic_payload_for_pages([source.pages[0].page_id]),
@@ -680,7 +680,7 @@ def test_live_qwen_smart_gateway_filters_context_only_pages_inside_requested_win
                 profile_name=QWEN_SEMANTIC_PROFILE,
                 model_name="fake-qwen",
                 model_version="test",
-                source_engine="qwen3_vl_4b",
+                source_engine="qwen3_vl_8b",
                 prompt_version=request.prompt_version,
                 raw_text="{}",
                 normalized_json=_semantic_payload_for_pages(all_page_ids),
@@ -718,7 +718,7 @@ def test_live_qwen_smart_gateway_chunks_long_documents_without_one_page_fallback
                 profile_name=QWEN_SEMANTIC_PROFILE,
                 model_name="fake-qwen",
                 model_version="test",
-                source_engine="qwen3_vl_4b",
+                source_engine="qwen3_vl_8b",
                 prompt_version=request.prompt_version,
                 raw_text="{}",
                 normalized_json=_semantic_payload_for_pages(page_ids),
@@ -784,7 +784,7 @@ def test_live_qwen_gateway_rejects_malformed_model_output() -> None:
     source = _source_with_page_image()
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_4b",
+        source_engine="qwen3_vl_8b",
         normalized_json={"pages": [], "regions": [{"semantic_type": "not_allowed"}]},
     )
 
@@ -802,7 +802,7 @@ def test_live_qwen_gateway_rejects_schema_invalid_value_bearing_output() -> None
     region["value"] = "$42.00"
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_4b",
+        source_engine="qwen3_vl_8b",
         normalized_json=payload,
     )
 
@@ -820,7 +820,7 @@ def test_live_qwen_gateway_drops_invalid_expected_field_names_from_model_output(
     region["expected_fields"] = ["total_amount", "page_rolе"]
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_4b",
+        source_engine="qwen3_vl_8b",
         normalized_json=payload,
     )
 
@@ -904,7 +904,7 @@ def test_live_qwen_gateway_realigns_wrong_target_schema_to_source_family() -> No
     region["target_schema"] = "medical_eob"
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_4b",
+        source_engine="qwen3_vl_8b",
         normalized_json=payload,
     )
 
@@ -929,7 +929,7 @@ def test_live_qwen_gateway_uses_document_type_hint_before_unclassified_family() 
     region["target_schema"] = "medical_eob"
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_4b",
+        source_engine="qwen3_vl_8b",
         normalized_json=payload,
     )
 
@@ -956,7 +956,7 @@ def test_live_qwen_gateway_marks_unknown_docling_grounding_review_required() -> 
     }
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_4b",
+        source_engine="qwen3_vl_8b",
         normalized_json=payload,
     )
 
@@ -984,7 +984,7 @@ def test_live_qwen_gateway_marks_malformed_grounding_uuid_review_required() -> N
     }
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_4b",
+        source_engine="qwen3_vl_8b",
         normalized_json=payload,
     )
 
@@ -1012,7 +1012,7 @@ def test_live_qwen_gateway_clears_extraneous_grounding_ids() -> None:
     }
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_4b",
+        source_engine="qwen3_vl_8b",
         normalized_json=payload,
     )
 
@@ -1033,7 +1033,7 @@ def test_live_qwen_gateway_deduplicates_duplicate_model_regions() -> None:
     regions.append(dict(regions[0]))
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_4b",
+        source_engine="qwen3_vl_8b",
         normalized_json=payload,
     )
 
@@ -1056,7 +1056,7 @@ def test_live_qwen_smart_gateway_collapses_duplicate_canonical_page_annotations_
     pages.append(dict(pages[0]))
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_4b",
+        source_engine="qwen3_vl_8b",
         normalized_json=payload,
     )
 
@@ -1102,7 +1102,7 @@ def test_live_qwen_gateway_does_not_inject_service_record_semantic_intent() -> N
     region.pop("continuation_group", None)
     client = FakeSemanticVisionClient(
         profile_name=QWEN_SEMANTIC_PROFILE,
-        source_engine="qwen3_vl_4b",
+        source_engine="qwen3_vl_8b",
         normalized_json=payload,
     )
 
@@ -1133,7 +1133,7 @@ def test_live_qwen_gateway_retries_once_after_truncated_model_output() -> None:
                 profile_name=QWEN_SEMANTIC_PROFILE,
                 model_name="fake-qwen",
                 model_version="test",
-                source_engine="qwen3_vl_4b",
+                source_engine="qwen3_vl_8b",
                 prompt_version=request.prompt_version,
                 raw_text="{}",
                 normalized_json=_semantic_payload(source.pages[0].page_id),
@@ -1168,7 +1168,7 @@ def test_qwen_semantic_client_uses_distinct_smart_and_high_quality_urls(
     qwen_gateway.QwenSemanticVisionClient.from_settings(settings)
 
     assert captured == [
-        ("qwen3-vl-4b-semantic:v1", "http://model-qwen-semantic:8104"),
+        ("qwen3-vl-8b-fp8-semantic:v1", "http://model-qwen-semantic:8104"),
     ]
 
 
@@ -1191,7 +1191,7 @@ def test_qwen_semantic_client_can_create_deferred_high_quality_client_when_enabl
     qwen_gateway.QwenSemanticVisionClient.from_settings(settings)
 
     assert captured == [
-        ("qwen3-vl-4b-semantic:v1", "http://model-qwen-semantic:8104"),
+        ("qwen3-vl-8b-fp8-semantic:v1", "http://model-qwen-semantic:8104"),
         ("qwen3-vl-8b-semantic-hq:v1", "http://model-qwen:8100"),
     ]
 

@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     model_visual_embed_url: str = "http://127.0.0.1:8103"
     qwen_profile: str = "qwen3-vl-8b-instruct-nvfp4-local:v1"
     qwen_hq_profile: str = "qwen3-vl-8b-semantic-hq:v1"
-    qwen_semantic_profile: str = "qwen3-vl-4b-semantic:v1"
+    qwen_semantic_profile: str = "qwen3-vl-8b-fp8-semantic:v1"
     model_qwen_semantic_timeout_seconds: int = 300
     model_qwen_hq_timeout_seconds: int = 180
     qwen8_enabled: bool = False

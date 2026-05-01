@@ -302,10 +302,12 @@ def file_sha256(path: Path) -> str:
 
 
 def _chmod_directory(path: Path) -> None:
+    # nosemgrep: python.lang.security.audit.insecure-file-permissions.insecure-file-permissions
     os.chmod(path, OBJECT_DIRECTORY_MODE)
 
 
 def _chmod_object_file(path: Path) -> None:
+    # nosemgrep: python.lang.security.audit.insecure-file-permissions.insecure-file-permissions
     os.chmod(path, OBJECT_FILE_MODE)
 
 

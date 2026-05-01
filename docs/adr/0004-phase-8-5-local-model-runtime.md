@@ -15,9 +15,10 @@ outputs, fake provenance, or unverified structure extraction.
 ## Decisions
 
 - Phase 8.5 is mandatory before Phase 9 analysis.
-- Qwen3-VL-4B semantic planning and Granite 4.0 3B Vision extraction are the default
-  Phase 8.5 live-model priorities. Qwen3-VL-8B remains an explicit high-quality/rescue
-  contract for future evaluation, not an automatically invoked runtime dependency.
+- Qwen3-VL-8B-Instruct-FP8 semantic planning and Granite 4.0 3B Vision extraction
+  are the default Phase 8.5 live-model priorities. The separate `model-qwen`
+  high-quality/rescue service remains disabled/deferred and must not be invoked
+  as a hidden second pass.
 - Live Qwen/Granite/visual VLM services use the `voipmonitor/vllm:cu130` Blackwell-oriented vLLM
   image family unless benchmark evidence proves a better pinned image. Firecrawl-backed research
   found the voipmonitor RTX 6000 Pro docs describe that image as recommended for vLLM on SM120
@@ -29,13 +30,15 @@ outputs, fake provenance, or unverified structure extraction.
   processor cache sizing are first-class runtime knobs. Lowering memory utilization can enable
   co-residency, but it reduces KV-cache capacity and must be checked with inference probes and
   preemption logs.
-- `model-qwen-semantic` runs the Qwen3-VL-4B semantic profile as the always-on Smart
-  Parse annotator. It preserves the four-page semantic fan-in shape used by the historical
-  2B path, but its page images are planner-resolution only through Qwen's 32x visual-token
-  guidance: 256 minimum and 2560 maximum visual tokens per image.
-- `model-qwen` / Qwen3-VL-8B is disabled/deferred in the active runtime. The HQ/rescue
-  contracts remain visible, but default application logic must not silently remap them or
-  invoke Qwen3-VL-8B without explicit user intent.
+- `model-qwen-semantic` runs the Qwen3-VL-8B-Instruct-FP8 semantic profile as the
+  always-on Smart Parse annotator. It preserves the four-page semantic fan-in shape
+  used by the historical 2B/4B path, uses FP8 KV cache, `max_num_seqs=1`,
+  `gpu_memory_utilization=0.88`, disables prefix caching, and keeps page images at
+  planner resolution through Qwen's 32x visual-token guidance: 256 minimum and 2560
+  maximum visual tokens per image.
+- `model-qwen` is disabled/deferred in the active runtime. The HQ/rescue contracts
+  remain visible for future evaluation, but default application logic must not
+  silently invoke a separate second-pass Qwen service.
 - `model-granite` owns structured bills, invoices, receipts, EOBs, tables, charts, forms, and
   semantic KVP extraction. It is the highest-priority GPU1 VLM at 16K because it receives targeted
   Docling-grounded crops/regions, not whole-document prompts.
@@ -46,7 +49,7 @@ outputs, fake provenance, or unverified structure extraction.
   cross-node serving is wired.
 - `model-vl-embed` serves Qwen3-VL-Embedding at its native 2048 dimensions with a short 2K context
   budget co-resident with Granite on GPU1.
-- The Phase 8.5 GPU smoke script supports staged validation: bring up Qwen3-VL-4B Smart
+- The Phase 8.5 GPU smoke script supports staged validation: bring up Qwen3-VL-8B FP8 Smart
   Parse, Granite, visual embeddings, and text embeddings as separate gates, preserving the
   measured Granite/visual-embed co-residency profile and avoiding hidden Qwen3-VL-8B calls.
 - Fixture mode is explicitly named and test-only. Live/required mode must call configured model

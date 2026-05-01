@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace Phase 8 fixture/fake model behavior with real local model services for the intended Docling -> Qwen3-VL-4B -> Granite Vision pipeline, with Qwen3-VL 8B available only through explicit user intent, before Phase 9 analysis begins.
+**Goal:** Replace Phase 8 fixture/fake model behavior with real local model services for the intended Docling -> Qwen3-VL-8B-Instruct-FP8 -> Granite Vision pipeline, before Phase 9 analysis begins.
 
 **Architecture:** Phase 8.5 inserts a model-runtime foundation between Phase 8 and Phase 9. API, workers, and services keep deterministic fixture adapters for tests, but production/live GPU mode must use explicit HTTP model adapters with truthful provenance, bounded inputs, dimension validation, and model-backed golden evidence.
 
-**Tech Stack:** FastAPI/Python workers, PostgreSQL/pgvector, Docker Compose profiles, vLLM/OpenAI-compatible model APIs, TEI-compatible embedding APIs, Qwen3-VL-4B semantic annotation, user-selected/user-permitted Qwen3-VL-8B, Granite 4.0 3B Vision, Qwen3-Embedding, Qwen3-VL-Embedding, RTX PRO 4000 Blackwell SM120 GPUs, RTX 3090.
+**Tech Stack:** FastAPI/Python workers, PostgreSQL/pgvector, Docker Compose profiles, vLLM/OpenAI-compatible model APIs, TEI-compatible embedding APIs, Qwen3-VL-8B-Instruct-FP8 semantic annotation, Granite 4.0 3B Vision, Qwen3-Embedding, Qwen3-VL-Embedding, RTX PRO 4000 Blackwell SM120 GPUs, RTX 3090.
 
 ## Phase 8.5 Realignment
 
@@ -14,22 +14,22 @@ Canonical default pipeline:
 
 ```text
 Docling physical parse
--> Qwen3-VL-4B smart semantic annotation
+-> Qwen3-VL-8B-Instruct-FP8 smart semantic annotation
 -> Granite 4.0 3B Vision targeted extraction
 -> validators / provenance / review policy
 -> canonical facts + evidence/search layer
 ```
 
-Qwen3-VL 8B must never be invoked automatically by application logic.
-
 User-selectable modes:
 
-- `smart`: default Qwen3-VL-4B semantic pass using the same semantic manifest
-  contract and Docling-grounded harness as the original 2B path.
-- `high_quality`: explicit user-selected Qwen3-VL 8B pass.
-- `rescue_permitted`: user allows one Qwen3-VL 8B rescue if policy says rescue
-  is useful.
-- `review_only`: no Qwen3-VL 8B permission; uncertain output routes to review.
+- `smart`: default Qwen3-VL-8B-Instruct-FP8 semantic pass using the same
+  semantic manifest contract and Docling-grounded harness as the original 2B/4B
+  path.
+- `review_only`: uncertain output routes to review without hidden automatic
+  escalation.
+- `high_quality` / `rescue_permitted`: deferred legacy intent fields. They must
+  not silently start a separate second-pass Qwen service unless a future explicit
+  evaluation re-enables that path.
 
 Persist these intent fields in semantic job payloads and audit-visible job data:
 
@@ -62,23 +62,18 @@ Phase 8.5 is therefore a mandatory stop point before Phase 9.
 
 ## Final Model Priority Decision
 
-Treat Qwen3-VL-4B semantic annotation and Granite 4.0 3B Vision as the default
-implementation priorities. Qwen3-VL 8B is an explicitly authorized high-quality
-or one-pass rescue service, not a default pipeline stage.
+Treat Qwen3-VL-8B-Instruct-FP8 semantic annotation and Granite 4.0 3B Vision as
+the default implementation priorities. The separate legacy `model-qwen` HQ/rescue
+service remains disabled/deferred; default Smart Parse uses the FP8 8B semantic
+service directly.
 
-Qwen3-VL-4B owns:
+Qwen3-VL-8B-Instruct-FP8 owns:
 
 - smart semantic annotation over Docling-grounded pages and regions;
 - bounded routing metadata for Granite;
 - ambiguity flags and review hints that do not become canonical facts.
 
-Qwen3-VL 8B owns, only when explicitly user-selected or user-permitted:
-
-- handwriting-heavy pages;
-- degraded scans;
-- OCR/layout rescue;
-- low-text visual reasoning;
-- semantically recoverable ambiguity before human review.
+Deferred HQ/rescue paths own no active default runtime until re-evaluated.
 
 Granite 4.0 3B Vision owns:
 
@@ -157,7 +152,7 @@ Primary source URLs:
 6. Add explicit `--high-quality`, `--allow-8b-rescue`, and `--rescue-stress`
    flags; `--rescue-stress` is synthetic and not a release corpus default.
 7. Add separate Viewer/API controls for High Quality Parse and Allow 8B Rescue.
-8. Run standard private corpus, Qwen3-VL-4B semantic JSON, Granite targeted extraction,
+8. Run standard private corpus, Qwen3-VL-8B FP8 semantic JSON, Granite targeted extraction,
    optional HQ, optional permitted-rescue, visual embedding, and CI gates as
    separate evidence streams.
 9. Before full corpus reruns after semantic changes, run the semantic-only canary
@@ -202,11 +197,11 @@ Canonical GPU placement:
 ```text
 P620 Blackwell node, GPU 0:
   model-qwen-semantic
-  Qwen3-VL-4B-Instruct smart semantic annotation.
+  Qwen3-VL-8B-Instruct-FP8 smart semantic annotation.
 
-P620 Blackwell node, GPU 0 explicit user-selected/user-permitted profile:
+P620 Blackwell node, GPU 0 deferred explicit user-selected/user-permitted profile:
   model-qwen
-  Qwen3-VL-8B-Instruct high-quality or one-pass rescue only.
+  Disabled/deferred legacy high-quality or one-pass rescue profile.
 
 P620 Blackwell node, GPU 1:
   model-granite
@@ -227,7 +222,7 @@ Default live profiles:
 
 ```text
 STRUCTURA_MODEL_MODE=live
-STRUCTURA_QWEN_SEMANTIC_PROFILE=qwen3-vl-4b-semantic:v1
+STRUCTURA_QWEN_SEMANTIC_PROFILE=qwen3-vl-8b-fp8-semantic:v1
 STRUCTURA_QWEN_PROFILE=qwen3-vl-8b-instruct-nvfp4-local:v1
 STRUCTURA_GRANITE_PROFILE=granite-4.0-3b-vision-bf16:v1
 STRUCTURA_TEXT_EMBED_PROFILE=qwen3-embedding-4b-1536:v1
@@ -262,26 +257,30 @@ qwen3-vl-8b-instruct-nvfp4-local:v1
   max_model_len: 32768
   source_engine: qwen3_vl_8b
 
-qwen3-vl-4b-semantic:v1
+qwen3-vl-8b-fp8-semantic:v1
   engine: qwen
   task: semantic_annotation
   model_family: Qwen3-VL
-  base_model: Qwen/Qwen3-VL-4B-Instruct
+  base_model: Qwen/Qwen3-VL-8B-Instruct-FP8
+  quantization: fp8
+  kv_cache_dtype: fp8
   backend: vllm-openai
   default_gpu: blackwell-0
   max_images_per_request: 4
   max_image_bytes: 10485760
   max_model_len: 32768
+  max_num_seqs: 1
+  gpu_memory_utilization: 0.88
+  prefix_caching: disabled
   visual_token_spatial_compression: 32
   visual_token_min_per_image: 256
   visual_token_max_per_image: 2560
-  source_engine: qwen3_vl_4b
+  source_engine: qwen3_vl_8b
 
-Qwen3-VL-4B Smart Parse should first attempt the same four-page semantic image
-fan-in shape used by the historical 2B path. Exact Docling page coverage remains
-mandatory. If the model returns valid JSON that omits a Docling page, retry that
-window as one-page requests, keep whole-document Docling context in each prompt,
-merge page votes/evidence, and record fallback telemetry in manifest confidence.
+Qwen3-VL-8B FP8 Smart Parse uses the same four-page semantic image fan-in shape
+used by the historical 2B/4B smart path. Exact Docling page coverage remains
+mandatory; coverage, context-length, and truncation problems are contract/runtime
+failures to fix, not triggers for hidden model escalation.
 Smart Parse images are semantic-understanding resolution only: vLLM should receive
 
 ```json
@@ -329,7 +328,7 @@ run the semantic-only canary with private expectations:
 
 ```bash
 python scripts/gpu/run_phase8_5_semantic_canary.py \
-  --mode qwen3-vl-4b-adaptive \
+  --mode qwen3-vl-8b-fp8-smart \
   --expectations-json /srv/structura/config/private-semantic-canary-expectations.json \
   --json-output /srv/structura/objects/exports/phase85-runs/semantic-canary.json \
   --pdf /path/to/document.pdf
@@ -1002,10 +1001,10 @@ Validation rules:
   ```text
   digital-native simple invoice -> docling_plus_granite_structured optional, deterministic allowed only in fixture
   structured bill with tables -> docling_plus_granite_structured
-  handwriting-heavy page -> Qwen3-VL-4B smart semantic routing, review-required when uncertain
-  degraded low-text page -> Qwen3-VL-4B smart semantic routing or visual review route
-  Granite validation needs_review -> review-required, no automatic Qwen3-VL 8B
-  Granite recoverable semantic issue + allow_8b_rescue -> one Qwen3-VL 8B rescue max
+  handwriting-heavy page -> Qwen3-VL-8B FP8 smart semantic routing, review-required when uncertain
+  degraded low-text page -> Qwen3-VL-8B FP8 smart semantic routing or visual review route
+  Granite validation needs_review -> review-required, no hidden Qwen escalation
+  Granite recoverable semantic issue + future re-enabled rescue policy -> explicit separate rescue only
   ```
 
 - [ ] **Step 2: Implement routing policy**
@@ -1014,8 +1013,8 @@ Validation rules:
 
   - Docling remains canonical structural parse.
   - Granite is preferred for tables, KVPs, line items, bills, receipts, invoices, and EOBs with layout complexity.
-  - Qwen3-VL-4B provides semantic planning/routing and may not create canonical facts.
-  - Qwen3-VL 8B runs only for explicit High Quality Parse or explicit user-permitted one-pass rescue.
+  - Qwen3-VL-8B FP8 provides semantic planning/routing and may not create canonical facts.
+  - Separate rescue/HQ services remain disabled/deferred unless re-enabled by a future explicit plan.
   - Model-derived uncertain output remains review-required.
 
 - [ ] **Step 3: Persist route trace**
@@ -1315,13 +1314,13 @@ Validation rules:
 Phase 8.5 is complete only when all of the following are true:
 
 - Fixture gateways are explicitly named as fixtures and cannot claim Qwen/Granite provenance.
-- Default ingest uses Docling -> Qwen3-VL-4B -> Granite.
-- Qwen3-VL 8B never runs unless the user explicitly requested High Quality Parse or allowed one rescue.
+- Default ingest uses Docling -> Qwen3-VL-8B-Instruct-FP8 -> Granite.
+- No hidden second-pass Qwen escalation runs from validation/review policy.
 - Document-quality ambiguity routes to review states, not job failure.
 - Runtime/system failures are the only `pipeline_failed` cases.
 - Rescue is user-permitted, bounded, deduped, and never loops.
 - Private corpus standard mode does not secretly run High Quality.
-- Qwen3-VL-4B, optional Qwen3-VL 8B, and Granite live adapters persist truthful provenance only when invoked.
+- Qwen3-VL-8B FP8, historical/canary Qwen profiles, and Granite live adapters persist truthful provenance only when invoked.
 - Granite 4.0 3B Vision live adapter is implemented, invoked, and persists truthful Granite provenance.
 - Text embeddings use a real embedding service in live mode and persist 1536-dimensional vectors.
 - Visual embeddings use a real visual embedding service in live mode and persist 2048-dimensional vectors generated from image inputs.

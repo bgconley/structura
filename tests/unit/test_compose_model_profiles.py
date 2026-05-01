@@ -94,22 +94,26 @@ def test_live_model_profiles_have_concrete_blackwell_commands() -> None:
     assert "voipmonitor/vllm:cu130" in qwen_semantic["image"]
     assert "start_qwen_vllm.sh" in " ".join(qwen_semantic["command"])
     assert qwen_semantic["environment"]["STRUCTURA_MODEL_PROFILE"] == (
-        "${STRUCTURA_QWEN_SEMANTIC_PROFILE:-qwen3-vl-4b-semantic:v1}"
+        "${STRUCTURA_QWEN_SEMANTIC_PROFILE:-qwen3-vl-8b-fp8-semantic:v1}"
     )
-    assert qwen_semantic["environment"]["STRUCTURA_VLLM_MODEL_ID"] == ("Qwen/Qwen3-VL-4B-Instruct")
+    assert qwen_semantic["environment"]["STRUCTURA_VLLM_MODEL_ID"] == (
+        "Qwen/Qwen3-VL-8B-Instruct-FP8"
+    )
     assert qwen_semantic["environment"]["STRUCTURA_VLLM_SERVED_MODEL_NAME"] == (
-        "Qwen/Qwen3-VL-4B-Instruct"
+        "Qwen/Qwen3-VL-8B-Instruct-FP8"
     )
     assert qwen_semantic["environment"]["STRUCTURA_VLLM_PORT"] == "8104"
     assert qwen_semantic["environment"]["STRUCTURA_VLLM_MAX_MODEL_LEN"] == "32768"
-    assert qwen_semantic["environment"]["STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION"] == "0.84"
-    assert qwen_semantic["environment"]["STRUCTURA_VLLM_MAX_NUM_SEQS"] == "2"
+    assert qwen_semantic["environment"]["STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION"] == "0.88"
+    assert qwen_semantic["environment"]["STRUCTURA_VLLM_MAX_NUM_SEQS"] == "1"
+    assert qwen_semantic["environment"]["STRUCTURA_VLLM_KV_CACHE_DTYPE"] == "fp8"
     assert qwen_semantic["environment"]["STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT"] == (
         '{"image":4,"video":0}'
     )
     assert qwen_semantic["environment"]["STRUCTURA_VLLM_MM_PROCESSOR_KWARGS"] == (
         '{"size":{"shortest_edge":262144,"longest_edge":2621440}}'
     )
+    assert qwen_semantic["environment"]["STRUCTURA_VLLM_DISABLE_PREFIX_CACHING"] == "true"
 
     qwen_hq = services["model-qwen"]
     assert "voipmonitor/vllm:cu130" in qwen_hq["image"]

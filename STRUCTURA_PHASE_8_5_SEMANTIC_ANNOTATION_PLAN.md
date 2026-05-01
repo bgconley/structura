@@ -10,7 +10,7 @@ The canonical pipeline is:
 ```text
 Document / image
 -> Docling physical parse
--> Qwen3-VL-4B smart semantic annotation manifest
+-> Qwen3-VL-8B-Instruct-FP8 smart semantic annotation manifest
 -> Granite 4.0 3B Vision targeted extraction
 -> validators / provenance / review
 -> canonical facts + search/evidence layer
@@ -33,23 +33,25 @@ facts.
 6. Phase 9 analysis may use semantic annotations for planning, but answers must cite
    original document/page/region evidence.
 
-## User-Selectable Model Modes
+## Model Modes
 
-Default Smart Parse uses Qwen3-VL-4B through the same Docling-grounded semantic
-harness and manifest contract originally built for the 2B path. Qwen3-VL 8B
-must never be invoked by default ingest, validation review policy, low
-confidence alone, or private corpus standard validation.
+Default Smart Parse now uses Qwen3-VL-8B-Instruct-FP8 through the same
+Docling-grounded semantic harness and manifest contract originally built for the
+2B/4B smart path. This is a model-runtime replacement only: Qwen remains the
+semantic document-understanding layer, never the canonical fact authority.
 
-Qwen3-VL 8B has exactly two authorization paths:
+The previous Qwen3-VL-4B smart profile remains a historical/canary comparator,
+not the default application runtime.
 
-1. **High Quality Parse**: the user explicitly selects a Qwen3-VL 8B pass for
-   the document.
-2. **Allow 8B Rescue**: the user explicitly permits one bounded Qwen3-VL 8B
-   rescue if the rescue policy classifies the issue as semantically recoverable.
+The older separate `model-qwen` High Quality / rescue service remains disabled
+and deferred. Do not introduce hidden second-pass escalation from validation,
+low confidence, or review policy. If a future HQ/rescue mode is re-enabled, it
+must be explicitly specified in a new plan and kept separate from the default
+Smart Parse pass.
 
-If neither option is selected, uncertain, incomplete, unreconciled, or ambiguous
-outputs become `needs_human_review` or `insufficient_signal`; they do not
-escalate to Qwen3-VL 8B.
+Uncertain, incomplete, unreconciled, or ambiguous outputs become
+`needs_human_review` or `insufficient_signal`; they do not trigger another
+automatic Qwen pass.
 
 Persisted semantic job intent fields:
 
@@ -60,21 +62,22 @@ Persisted semantic job intent fields:
 
 ## Runtime Profiles
 
-- Smart Parse: `qwen3-vl-4b-semantic:v1`
-- High Quality: `qwen3-vl-8b-semantic-hq:v1`, user-selected only
-- Rescue: `qwen3-vl-8b-semantic-hq:v1`, one user-permitted rescue only
+- Smart Parse: `qwen3-vl-8b-fp8-semantic:v1`
+- Historical comparator: `qwen3-vl-4b-semantic:v1`
+- Deferred High Quality/Rescue: `qwen3-vl-8b-semantic-hq:v1`, disabled unless
+  a future explicit evaluation re-enables it
 - Structured extraction: `granite-4.0-3b-vision-bf16:v1`
 
-The Qwen3-VL-4B smart profile first attempts four page images per semantic
-request, preserving the historical Qwen3-VL-2B fan-in shape for short PDFs.
-Each Smart Parse page image is bounded to planner resolution through Qwen's 32x
-visual-token guidance: 256 minimum and 2560 maximum visual tokens per image
+The Qwen3-VL-8B FP8 smart profile uses four page images per semantic request,
+preserving the historical Qwen3-VL-2B fan-in shape for short PDFs. It runs on
+`model-qwen-semantic:8104` with `max_model_len=32768`, `max_num_seqs=1`,
+`gpu_memory_utilization=0.88`, `kv_cache_dtype=fp8`, video disabled, multimodal
+processor cache disabled, and prefix caching disabled. Each Smart Parse page
+image is bounded to planner resolution through Qwen's 32x visual-token
+guidance: 256 minimum and 2560 maximum visual tokens per image
 (`shortest_edge = 262144`, `longest_edge = 2621440`). Exact Docling page
-coverage remains mandatory; if a multi-image request omits a Docling page or
-exceeds the model context, the gateway may retry that window as one-page
-requests while keeping whole-document Docling context in the prompt. This
-planner-resolution budget does not downscale Docling originals globally and
-does not weaken Granite page/crop/table inputs.
+coverage remains mandatory. This planner-resolution budget does not downscale
+Docling originals globally and does not weaken Granite page/crop/table inputs.
 
 Fixture mode remains deterministic and must not claim Qwen or Granite provenance.
 

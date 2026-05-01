@@ -128,7 +128,7 @@ Phase 8.5 canonical semantic pipeline:
 
 ```text
 Docling physical parse
--> Qwen3-VL-4B smart semantic annotation
+-> Qwen3-VL-8B-Instruct-FP8 smart semantic annotation
 -> Granite 4.0 3B Vision targeted structured extraction
 -> validators / provenance / human review policy
 -> canonical facts + search/evidence layer
@@ -136,13 +136,12 @@ Docling physical parse
 
 Docling is the source of physical truth: pages, text, element IDs, table IDs, coordinates, page images, and evidence provenance. Qwen is a semantic planner and may not create canonical facts. Granite is the structured extractor for tables, forms, KVPs, charts, invoices, bills, receipts, EOBs, statements, and other layout-sensitive documents. Validators and review policy remain the truth gate.
 
-Phase 8.5 Qwen3-VL 8B authorization policy is strict:
+Phase 8.5 Smart Parse model policy:
 
-1. Qwen3-VL 8B must never be invoked automatically by application logic.
-2. Qwen3-VL 8B may run only when the user explicitly selects `High Quality Parse` for a document/run.
-3. Qwen3-VL 8B may run as rescue only when the user explicitly selected `Allow 8B Rescue`; even then the application may use at most one bounded first-pass rescue before handing the document to human review.
-4. If neither user option is selected, uncertain, incomplete, low-confidence, unreconciled, or ambiguous extraction results become `needs_human_review` or `insufficient_signal`. They do not trigger Qwen3-VL 8B.
-5. Loading or co-residently serving Qwen3-VL 8B is a capacity/runtime decision only. It does not grant permission to invoke it.
+1. Default Smart Parse now invokes Qwen3-VL-8B-Instruct-FP8 on `model-qwen-semantic`.
+2. This is a replacement for the Qwen3-VL-4B Smart Parse service only; keep the same semantic manifest contract, prompt path, Docling context, and Granite routing semantics.
+3. The separate `model-qwen` High Quality / rescue service remains disabled/deferred. Do not introduce hidden second-pass Qwen escalation from validation, low confidence, review policy, or private corpus gates.
+4. Uncertain, incomplete, low-confidence, unreconciled, or ambiguous extraction results become `needs_human_review` or `insufficient_signal`; they do not trigger another automatic Qwen pass.
 
 Use precise Phase 8.5 outcome vocabulary:
 
@@ -156,7 +155,7 @@ Do not call document-quality uncertainty a job failure. True `pipeline_failed` s
 
 Phase 8.5 anti-patterns to avoid:
 
-1. Do not auto-run Qwen3-VL 8B during default ingest.
+1. Do not auto-run a separate second-pass Qwen service during default ingest.
 2. Do not treat `validation.needs_review` as a rescue trigger.
 3. Do not treat low confidence, high-risk document family, or human-review policy as pipeline failure.
 4. Do not create repeated rescue loops or fanout storms.
@@ -166,22 +165,21 @@ Phase 8.5 anti-patterns to avoid:
 8. Do not let Qwen annotations become canonical facts.
 9. Do not let Granite output bypass validators or review policy.
 10. Do not claim Qwen/Granite provenance unless the actual live adapter was invoked.
-11. Do not proceed to Phase 9 while model mode, Qwen8B user permission, rescue policy, and corpus gates are ambiguous.
+11. Do not proceed to Phase 9 while model mode, rescue/HQ deferral, provenance, and corpus gates are ambiguous.
 
 Phase 8.5 runtime/model placement decisions:
 
-1. `model-qwen-semantic` on Blackwell GPU 0 is the default Smart Parse semantic service: Qwen3-VL-4B grounded against Docling context/page images through the same semantic harness and manifest contract originally used for the 2B path.
-2. `model-qwen` / Qwen3-VL-8B is disabled/deferred in the active runtime. The High Quality Parse and 8B rescue contracts remain visible for future evaluation, but default application logic must not silently remap them to Qwen3-VL-4B.
+1. `model-qwen-semantic` on Blackwell GPU 0 is the default Smart Parse semantic service: Qwen3-VL-8B-Instruct-FP8 grounded against Docling context/page images through the same semantic harness and manifest contract originally used for the 2B/4B path.
+2. `model-qwen` is disabled/deferred in the active runtime. The legacy High Quality Parse and rescue contracts remain visible for future evaluation, but default application logic must not silently start a separate second-pass Qwen service.
 3. `model-granite` on Blackwell GPU 1 is Granite 4.0 3B Vision for structured extraction from Docling/Qwen-grounded targets.
 4. `model-embed` belongs on the RTX 3090 or an explicit offload path for Qwen3-Embedding text retrieval, preserving the 1536-dimensional text pgvector index.
 5. `model-vl-embed` is Qwen3-VL-Embedding visual retrieval. Live validation showed the vLLM endpoint returns native 2048-dimensional vectors and rejects the `dimensions` override, so visual embedding defaults/indexes must be 2048 unless a serving backend proves safe down-projection support.
 6. Co-residency on the two 24GB Blackwell cards is allowed only as measured runtime capacity. Allocate KV cache by pipeline priority and measured document context needs; do not assume all services can run at 32K context simultaneously.
-7. The Qwen3-VL-4B smart profile uses `max_model_len=32768`, `max_num_seqs=2`, video disabled, `gpu_memory_utilization=0.84`, and four page images per semantic request by default to match the old 2B semantic fan-in shape. Smart Parse images are planner-resolution only through Qwen's 32x guidance: 256 minimum and 2560 maximum visual tokens per image (`STRUCTURA_VLLM_MM_PROCESSOR_KWARGS={"size":{"shortest_edge":262144,"longest_edge":2621440}}`). Do not downscale Docling originals globally or weaken Granite page/crop/table inputs. Qwen semantic planner prompts should omit token-heavy Docling bboxes and page image hashes; Qwen needs page/element/table IDs plus text/table context for routing, while Granite receives the grounded page/crop/table extraction inputs. If a multi-image response fails exact Docling page coverage, is truncated before valid JSON completes, or the active vLLM service rejects the request for context length, retry that window as one-page requests, merge with whole-document Docling context, and record the fallback reason in manifest confidence.
-8. Qwen semantic prompts must include whole-document Docling context with a focused current-page section. Do not let one-page fallback remove title/page-outline/table/context evidence needed for document-family routing.
+7. The Qwen3-VL-8B FP8 smart profile uses `max_model_len=32768`, `max_num_seqs=1`, video disabled, `gpu_memory_utilization=0.88`, `kv_cache_dtype=fp8`, multimodal processor cache disabled, prefix caching disabled, and four page images per semantic request by default to match the old 2B/4B semantic fan-in shape. Smart Parse images are planner-resolution only through Qwen's 32x guidance: 256 minimum and 2560 maximum visual tokens per image (`STRUCTURA_VLLM_MM_PROCESSOR_KWARGS={"size":{"shortest_edge":262144,"longest_edge":2621440}}`). Do not downscale Docling originals globally or weaken Granite page/crop/table inputs. Qwen semantic planner prompts should omit token-heavy Docling bboxes and page image hashes; Qwen needs page/element/table IDs plus text/table context for routing, while Granite receives the grounded page/crop/table extraction inputs.
+8. Qwen semantic prompts must include whole-document Docling context with a focused current-page section. Do not remove title/page-outline/table/context evidence needed for document-family routing.
 9. Before enqueuing Granite, apply Docling-anchor schema-fit gates. Invoice, receipt, and medical EOB extraction require supporting Docling lexical/table evidence; otherwise route useful unsupported content to `document_observation` instead of forcing a canonical extractor.
 10. Granite table prompts must put the official task tag such as `<tables_json>` first, and vLLM structured-output payloads must use one structured-output mechanism per request. Do not send both `response_format: json_schema` and `structured_outputs.json` in the same call.
-11. Smart Parse prompt version `phase8_5-semantic-smart-v3` is a bounded-recall Qwen3-VL-4B planner contract. It should inventory every input page image, emit all materially extractable grounded regions up to 12 per request, preserve continuation/weak-table/full-page-image planner metadata, and still never emit canonical facts or field values. Smart Granite enqueue remains separately capped at six jobs with line-item and payment regions prioritized over repeated headers/boilerplate.
-11. Smart Parse prompt version `phase8_5-semantic-smart-v3` is a bounded-recall Qwen3-VL-4B planner contract. It should inventory every input page image, emit all materially extractable grounded regions up to 12 per request, preserve continuation/weak-table/full-page-image planner metadata, and still never emit canonical facts or field values. Smart Granite enqueue remains separately capped at six jobs with line-item and payment regions prioritized over repeated headers/boilerplate.
+11. Smart Parse prompt version `phase8_5-semantic-smart-v3` is a bounded-recall Qwen semantic contract. It should inventory every input page image, emit all materially extractable grounded regions up to 12 per request, preserve continuation/weak-table/full-page-image planner metadata, and still never emit canonical facts or field values. Smart Granite enqueue remains separately capped at six jobs with line-item and payment regions prioritized over repeated headers/boilerplate.
 
 Deterministic model gateways are test fixtures only. In live or required model mode they must not silently replace Qwen, Granite, text embedding, or visual embedding services, and they must never claim Qwen or Granite provenance.
 
@@ -191,10 +189,8 @@ Current Phase 8.5 implementation work has established these seams:
 2. `lib/model_runtime/clients/` owns Qwen, Granite, text embedding, and visual embedding HTTP adapters. These adapters validate response shapes and dimensions before returning data to extraction/search layers.
 3. `lib/extraction/gateways/` owns live Qwen/Granite extraction adapters and routing. `lib/extraction/gateway.py` remains the deterministic Docling-text fixture path and must not claim Qwen/Granite provenance.
 4. `lib/search/embeddings/` owns live text/visual embedding adapters. `EmbeddingService` selects fixture gateways only when `STRUCTURA_MODEL_MODE=fixture`; `live`/`required` use configured model service URLs.
-5. Compose now separates `models-placeholder`, `models-live`, and `visual-embed-live`; `model-qwen-semantic` uses Blackwell GPU 0, `model-granite` uses Blackwell GPU 1, and `model-vl-embed` may be co-resident with Granite on GPU 1 when the measured KV/cache profile fits. `model-qwen` / Qwen3-VL-8B is retained for future evaluation contracts but is not part of the default active runtime.
+5. Compose now separates `models-placeholder`, `models-live`, and `visual-embed-live`; `model-qwen-semantic` uses Blackwell GPU 0 with Qwen3-VL-8B-Instruct-FP8, `model-granite` uses Blackwell GPU 1, and `model-vl-embed` may be co-resident with Granite on GPU 1 when the measured KV/cache profile fits. `model-qwen` is retained only for deferred future evaluation contracts and is not part of the default active runtime.
 6. Model-corpus release evidence is represented by `scripts/run_model_corpus.py` and `tests/fixtures/model_corpus/`. The committed example manifest is deterministic; release validation requires a private model-backed manifest with `fixtureType = "model_backed"`.
-7. `lib/semantic_annotations/prompting.py` owns Qwen semantic-planner prompt assembly and prompt-version constants. Keep prompt contract changes there instead of growing `qwen_gateway.py`.
-8. `scripts/gpu/run_phase8_5_semantic_canary.py` is the first gate after Qwen prompt/schema/context changes. Use private expectations to check document family, required semantic types, forbidden masquerades, continuation groups, full-page-image flags, and region attributes before rerunning Granite/full corpus.
 7. `lib/semantic_annotations/prompting.py` owns Qwen semantic-planner prompt assembly and prompt-version constants. Keep prompt contract changes there instead of growing `qwen_gateway.py`.
 8. `scripts/gpu/run_phase8_5_semantic_canary.py` is the first gate after Qwen prompt/schema/context changes. Use private expectations to check document family, required semantic types, forbidden masquerades, continuation groups, full-page-image flags, and region attributes before rerunning Granite/full corpus.
 

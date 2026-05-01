@@ -32,8 +32,8 @@ from scripts.gpu.run_phase8_5_private_corpus import (  # noqa: E402
 )
 
 CANARY_MODES = (
-    "qwen3-vl-4b-adaptive",
-    "qwen3-vl-4b-current",
+    "qwen3-vl-8b-fp8-smart",
+    "qwen3-vl-4b-historical",
     "qwen3-vl-2b-historical",
 )
 
@@ -43,12 +43,13 @@ def main() -> int:
     if args.mode == "qwen3-vl-2b-historical":
         raise SystemExit(
             "qwen3-vl-2b-historical canary mode requires a separately running historical "
-            "2B service; the active Phase 8.5 runtime uses Qwen3-VL-4B."
+            "2B service; the active Phase 8.5 runtime uses Qwen3-VL-8B-Instruct-FP8."
         )
     owner = _resolve_owner(args.household_id, args.user_id) if args.pdf else None
     document_ids = list(args.document_id)
     for pdf_path in args.pdf:
-        assert owner is not None
+        if owner is None:
+            raise SystemExit("--household-id and --user-id are required when using --pdf")
         document_id = _ingest_pdf(pdf_path, owner=owner, title_prefix=args.title_prefix)
         _run_docling(document_id, timeout_seconds=args.docling_timeout_seconds)
         document_ids.append(document_id)
@@ -82,7 +83,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run a Phase 8.5 semantic-only canary.")
     parser.add_argument("--document-id", action="append", type=UUID, default=[])
     parser.add_argument("--pdf", action="append", type=Path, default=[])
-    parser.add_argument("--mode", choices=CANARY_MODES, default="qwen3-vl-4b-adaptive")
+    parser.add_argument("--mode", choices=CANARY_MODES, default="qwen3-vl-8b-fp8-smart")
     parser.add_argument(
         "--skip-granite",
         action="store_true",
@@ -674,7 +675,7 @@ def _page_image_budget(
             "width_px": None,
             "height_px": None,
             "byte_size": len(image_bytes or b""),
-            "raw_visual_token_estimate": None,
+            "raw_visual_token_estimate": None,  # nosec B105
             "qwen_grid_estimate": None,
         }
     width, height = dimensions

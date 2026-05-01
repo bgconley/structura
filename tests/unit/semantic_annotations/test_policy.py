@@ -157,7 +157,7 @@ def test_semantic_annotation_model_output_schema_bounds_model_generated_arrays()
     ]
 
 
-def test_semantic_annotation_schemas_include_expanded_qwen3_vl_4b_routing_vocabulary() -> None:
+def test_semantic_annotation_schemas_include_expanded_qwen3_vl_8b_routing_vocabulary() -> None:
     from lib.semantic_annotations.schema import (
         semantic_annotation_manifest_schema,
         semantic_annotation_model_output_schema,
@@ -219,9 +219,9 @@ def _manifest_with_region(region: SemanticRegionAnnotation) -> DocumentSemanticM
         document_id=uuid4(),
         household_id=uuid4(),
         quality_mode="smart",
-        profile_name="qwen3-vl-4b-semantic:v1",
-        source_engine="qwen3_vl_4b",
-        model_name="Qwen/Qwen3-VL-4B-Instruct",
+        profile_name="qwen3-vl-8b-fp8-semantic:v1",
+        source_engine="qwen3_vl_8b",
+        model_name="Qwen/Qwen3-VL-8B-Instruct-FP8",
         model_version="test",
         prompt_version="phase8_5-semantic-smart-v3",
         pages=[
@@ -250,9 +250,9 @@ def _manifest_with_pages(
         document_id=uuid4(),
         household_id=uuid4(),
         quality_mode="smart",
-        profile_name="qwen3-vl-4b-semantic:v1",
-        source_engine="qwen3_vl_4b",
-        model_name="Qwen/Qwen3-VL-4B-Instruct",
+        profile_name="qwen3-vl-8b-fp8-semantic:v1",
+        source_engine="qwen3_vl_8b",
+        model_name="Qwen/Qwen3-VL-8B-Instruct-FP8",
         model_version="test",
         prompt_version="phase8_5-semantic-smart-v3",
         pages=[

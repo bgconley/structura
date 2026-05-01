@@ -54,7 +54,7 @@ def test_phase8_5_semantic_manifest_supersedes_current_and_persists_grounded_reg
     assert first_id != second_id
     current = load_current_manifest(
         document_id=document_id,
-        profile_name="qwen3-vl-4b-semantic:v1",
+        profile_name="qwen3-vl-8b-fp8-semantic:v1",
         quality_mode="smart",
     )
     assert current is not None
@@ -174,7 +174,7 @@ def test_phase8_5_semantic_manifest_rolls_back_if_targeted_job_payload_is_invali
     assert (
         load_current_manifest(
             document_id=document_id,
-            profile_name="qwen3-vl-4b-semantic:v1",
+            profile_name="qwen3-vl-8b-fp8-semantic:v1",
             quality_mode="smart",
         )
         is None
@@ -207,9 +207,9 @@ def _manifest(
         document_id=document_id,
         household_id=household_id,
         quality_mode="smart",
-        profile_name="qwen3-vl-4b-semantic:v1",
-        source_engine="qwen3_vl_4b",
-        model_name="Qwen/Qwen3-VL-4B-Instruct",
+        profile_name="qwen3-vl-8b-fp8-semantic:v1",
+        source_engine="qwen3_vl_8b",
+        model_name="Qwen/Qwen3-VL-8B-Instruct-FP8",
         model_version=model_version,
         prompt_version="phase8_5-semantic-smart-v3",
         pages=[

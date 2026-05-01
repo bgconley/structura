@@ -52,4 +52,10 @@ if [[ -n "${STRUCTURA_VLLM_MM_PROCESSOR_KWARGS:-}" ]]; then
   args+=(--mm-processor-kwargs "$STRUCTURA_VLLM_MM_PROCESSOR_KWARGS")
 fi
 
+case "${STRUCTURA_VLLM_DISABLE_PREFIX_CACHING:-}" in
+  1|true|TRUE|yes|YES)
+    args+=(--no-enable-prefix-caching)
+    ;;
+esac
+
 exec python -m vllm.entrypoints.openai.api_server "${args[@]}"

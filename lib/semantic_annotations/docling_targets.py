@@ -180,12 +180,11 @@ def _docling_structural_regions(
     for table in source.tables:
         if table.table_id in existing_table_ids:
             continue
+        table_summary = table_audit_by_id.get(table.table_id)
         table_region = _table_region(
             table,
             audit=audit,
-            table_signal=table_audit_by_id.get(table.table_id).table_signal
-            if table_audit_by_id.get(table.table_id) is not None
-            else "unknown",
+            table_signal=table_summary.table_signal if table_summary is not None else "unknown",
             family=table_family,
         )
         if table_region is None:

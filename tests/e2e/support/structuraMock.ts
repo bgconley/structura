@@ -729,9 +729,9 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
 function semanticAnnotationForDocument(documentId: string) {
   return {
     qualityMode: "smart",
-    profileName: "qwen3-vl-4b-semantic:v1",
-    sourceEngine: "qwen3_vl_4b",
-    modelName: "Qwen/Qwen3-VL-4B-Instruct",
+    profileName: "qwen3-vl-8b-fp8-semantic:v1",
+    sourceEngine: "qwen3_vl_8b",
+    modelName: "Qwen/Qwen3-VL-8B-Instruct-FP8",
     modelVersion: "fixture",
     promptVersion: "phase8_5-semantic-smart-v3",
     reviewRequired: false,
