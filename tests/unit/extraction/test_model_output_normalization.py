@@ -157,6 +157,83 @@ def test_receipt_payment_summary_concretizes_region_evidence_for_candidates() ->
     assert all(has_concrete_evidence(candidate.evidence) for candidate in candidates)
 
 
+def test_receipt_payment_summary_parses_model_datetime_before_candidate_insert() -> None:
+    document_id = uuid4()
+
+    normalized, _metadata = normalize_granite_region_output(
+        document_id=document_id,
+        schema_name="receipt",
+        model_output_schema_name="granite_receipt_payment_summary.v1",
+        payload={
+            "merchant_name": "Coffee Shop",
+            "transaction_date": "10-Sep-2025 12:17:38P",
+            "total": "$4.65",
+            "confidence": {},
+        },
+        evidence_context=EvidenceContext(
+            source_engine="granite_vision_3b",
+            document_id=document_id,
+            semantic_annotation_id=uuid4(),
+            semantic_region_id=uuid4(),
+            page_id=uuid4(),
+            page_number=1,
+        ),
+    )
+
+    candidates = field_candidates_from_extraction(
+        document_id=document_id,
+        schema_name="receipt",
+        payload=normalized,
+        validation=ValidationReport(needs_review=True, checks=[]),
+        source_engine="granite_vision_3b",
+        require_concrete_evidence=True,
+    )
+
+    dates = [
+        candidate.value
+        for candidate in candidates
+        if candidate.field_path == "receipt.transaction.date_local"
+    ]
+    assert [value.isoformat() for value in dates] == ["2025-09-10"]
+
+
+def test_unparseable_receipt_date_is_not_persisted_as_date_candidate() -> None:
+    document_id = uuid4()
+
+    candidates = field_candidates_from_extraction(
+        document_id=document_id,
+        schema_name="receipt",
+        payload={
+            "schema_name": "receipt",
+            "merchant": {
+                "display_name": "Coffee Shop",
+                "evidence": [
+                    {
+                        "semantic_region_id": str(uuid4()),
+                        "page_number": 1,
+                    }
+                ],
+            },
+            "transaction": {
+                "date_local": "not a real date",
+                "evidence": [
+                    {
+                        "semantic_region_id": str(uuid4()),
+                        "page_number": 1,
+                    }
+                ],
+            },
+        },
+        validation=ValidationReport(needs_review=True, checks=[]),
+        source_engine="granite_vision_3b",
+        require_concrete_evidence=True,
+    )
+
+    assert "receipt.transaction.date_local" not in {
+        candidate.field_path for candidate in candidates
+    }
+
+
 def test_empty_kvp_output_keeps_region_level_evidence_for_validation() -> None:
     document_id = uuid4()
     normalized, _metadata = normalize_granite_region_output(

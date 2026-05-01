@@ -129,7 +129,10 @@ def typed_value_columns(value_type: str, value: Any) -> dict[str, Any]:
             "json_value": dict(value),
         }
     if value_type == "date":
-        return {**_empty_value_columns(), "date_value": value}
+        return {
+            **_empty_value_columns(),
+            "date_value": value if isinstance(value, date) else None,
+        }
     if value_type == "integer":
         return {**_empty_value_columns(), "integer_value": int(value)}
     if value_type == "number":

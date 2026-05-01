@@ -428,6 +428,10 @@ def _candidate(
 ) -> list[CandidateFact]:
     if value in (None, ""):
         return []
+    if value_type == "date":
+        value = _date(value)
+        if value is None:
+            return []
     rejected, _reason = reject_scalar_candidate(value)
     if rejected:
         return []
@@ -811,9 +815,39 @@ def _date(value: Any) -> date | None:
     if not isinstance(value, str) or not value.strip():
         return None
     text = value.strip()
-    for fmt in ("%Y-%m-%d", "%m/%d/%y", "%m/%d/%Y"):
-        try:
-            return datetime.strptime(text, fmt).date()
-        except ValueError:
-            continue
+    candidates = [
+        text,
+        *_date_fragments(text),
+    ]
+    for candidate in dict.fromkeys(candidates):
+        for fmt in (
+            "%Y-%m-%d",
+            "%m/%d/%y",
+            "%m/%d/%Y",
+            "%d-%b-%Y",
+            "%d-%B-%Y",
+            "%d-%b-%y",
+            "%d-%B-%y",
+            "%b %d %Y",
+            "%B %d %Y",
+            "%b %d, %Y",
+            "%B %d, %Y",
+        ):
+            try:
+                return datetime.strptime(candidate, fmt).date()
+            except ValueError:
+                continue
     return None
+
+
+def _date_fragments(text: str) -> list[str]:
+    patterns = (
+        r"\b\d{4}-\d{1,2}-\d{1,2}\b",
+        r"\b\d{1,2}/\d{1,2}/\d{2,4}\b",
+        r"\b\d{1,2}-[A-Za-z]{3,9}-\d{2,4}\b",
+        r"\b[A-Za-z]{3,9}\s+\d{1,2},?\s+\d{2,4}\b",
+    )
+    fragments: list[str] = []
+    for pattern in patterns:
+        fragments.extend(match.group(0) for match in re.finditer(pattern, text))
+    return fragments
