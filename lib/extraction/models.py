@@ -17,6 +17,10 @@ class ParsedPageText:
     image_bytes: bytes | None = None
     image_mime_type: str | None = None
     image_sha256: str | None = None
+    width_points: float | None = None
+    height_points: float | None = None
+    rotation_degrees: int = 0
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -26,6 +30,7 @@ class ParsedElementText:
     ordinal: int
     text: str
     bbox: Any | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -35,6 +40,9 @@ class ParsedTableText:
     table_index: int
     table_markdown: str | None = None
     table_json: dict[str, Any] = field(default_factory=dict)
+    element_id: UUID | None = None
+    bbox: Any | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

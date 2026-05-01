@@ -6,18 +6,24 @@ from lib.extraction.evidence_context import evidence_context_for_task
 from lib.extraction.granite_budgets import GraniteTaskBudget
 from lib.extraction.granite_prompting import granite_prompt
 from lib.extraction.model_output_normalization import normalize_granite_region_output
-from lib.extraction.model_output_schemas import model_output_schema_for_task
+from lib.extraction.model_output_schemas import ModelOutputSchema, model_output_schema_for_task
 from lib.extraction.models import (
     ExtractionSourceDocument,
     GatewayExtraction,
     ModelRoute,
 )
+from lib.extraction.visual_input_planning import (
+    VisualInputDecision,
+    crop_retry_allowed,
+    is_useful_granite_output,
+    plan_granite_visual_inputs,
+    visual_input_attempt_json,
+    visual_input_mode_from_env,
+)
 from lib.model_runtime.contracts import (
-    ModelImageInput,
     VisionGenerateRequest,
     VisionGenerateResponse,
 )
-from lib.model_runtime.http_client import ModelProtocolError
 from lib.semantic_annotations.models import SemanticExtractionTask
 from lib.storage import ObjectStorage
 
@@ -58,32 +64,23 @@ class VisionExtractionGateway:
             schema_name=schema_name,
             semantic_task=semantic_task,
         )
+        visual_mode = visual_input_mode_from_env()
+        decision = plan_granite_visual_inputs(
+            source,
+            semantic_task=semantic_task,
+            max_images=self.max_image_inputs,
+            page_image_loader=self._page_image_bytes,
+            mode=visual_mode,
+        )
         response = self.client.generate(
-            VisionGenerateRequest(
-                profile_name=self.profile_name,
-                prompt_version=self.prompt_version,
-                prompt=granite_prompt(
-                    source=source,
-                    schema_name=schema_name,
-                    route_profile=route_profile,
-                    semantic_task=semantic_task,
-                    model_output_schema=model_output_schema,
-                ),
-                image_inputs=_image_inputs(
-                    source,
-                    storage=self.storage,
-                    semantic_task=semantic_task,
-                    max_images=self.max_image_inputs,
-                ),
-                response_schema_name=(
-                    model_output_schema.name if model_output_schema is not None else schema_name
-                ),
-                max_output_tokens=budget.max_output_tokens,
-                temperature=0.0,
-                timeout_seconds=budget.timeout_seconds,
-                response_json_schema=(
-                    model_output_schema.schema if model_output_schema is not None else None
-                ),
+            self._request(
+                source=source,
+                schema_name=schema_name,
+                route_profile=route_profile,
+                semantic_task=semantic_task,
+                model_output_schema=model_output_schema,
+                decision=decision,
+                budget=budget,
             )
         )
         normalized_json, normalization_json = normalize_granite_region_output(
@@ -97,8 +94,74 @@ class VisionExtractionGateway:
                 source=source,
                 semantic_task=semantic_task,
                 source_engine=response.source_engine,
+                visual_plan=decision.primary_plan,
             ),
         )
+        useful = is_useful_granite_output(
+            normalized_json=normalized_json,
+            semantic_task=semantic_task,
+        )
+        attempts = [
+            visual_input_attempt_json(
+                decision=decision,
+                useful=useful,
+                failure_reason=None if useful else "output_not_useful",
+            )
+        ]
+        if not useful and budget.max_attempts > 1 and crop_retry_allowed(decision):
+            retry_decision = plan_granite_visual_inputs(
+                source,
+                semantic_task=semantic_task,
+                max_images=self.max_image_inputs,
+                page_image_loader=self._page_image_bytes,
+                mode=visual_mode,
+                retry_scope="full_page_retry",
+            )
+            retry_response = self.client.generate(
+                self._request(
+                    source=source,
+                    schema_name=schema_name,
+                    route_profile=route_profile,
+                    semantic_task=semantic_task,
+                    model_output_schema=model_output_schema,
+                    decision=retry_decision,
+                    budget=budget,
+                )
+            )
+            retry_normalized_json, retry_normalization_json = normalize_granite_region_output(
+                document_id=source.document_id,
+                schema_name=schema_name,
+                model_output_schema_name=(
+                    model_output_schema.name if model_output_schema is not None else None
+                ),
+                payload=dict(retry_response.normalized_json),
+                evidence_context=evidence_context_for_task(
+                    source=source,
+                    semantic_task=semantic_task,
+                    source_engine=retry_response.source_engine,
+                    visual_plan=retry_decision.primary_plan,
+                ),
+            )
+            retry_useful = is_useful_granite_output(
+                normalized_json=retry_normalized_json,
+                semantic_task=semantic_task,
+            )
+            attempts.append(
+                visual_input_attempt_json(
+                    decision=retry_decision,
+                    useful=retry_useful,
+                    failure_reason=None if retry_useful else "full_page_retry_output_not_useful",
+                )
+            )
+            response = retry_response
+            normalized_json = retry_normalized_json
+            normalization_json = {
+                **retry_normalization_json,
+                "fallbackFromVisualInputScope": (
+                    decision.primary_plan.effective_scope if decision.primary_plan else None
+                ),
+            }
+            decision = retry_decision
         return GatewayExtraction(
             schema_name=schema_name,
             schema_version="v1",
@@ -126,6 +189,10 @@ class VisionExtractionGateway:
                 "confidence": response.confidence_json,
                 "rawText": response.raw_text,
                 "semanticTask": _semantic_task_json(semantic_task),
+                "visualInputPlan": (
+                    decision.primary_plan.as_json() if decision.primary_plan else None
+                ),
+                "visualInputAttempts": attempts,
                 "requestBudget": {
                     "maxOutputTokens": budget.max_output_tokens,
                     "timeoutSeconds": budget.timeout_seconds,
@@ -144,6 +211,46 @@ class VisionExtractionGateway:
             normalization_json=normalization_json,
         )
 
+    def _request(
+        self,
+        *,
+        source: ExtractionSourceDocument,
+        schema_name: str,
+        route_profile: str,
+        semantic_task: SemanticExtractionTask | None,
+        model_output_schema: ModelOutputSchema | None,
+        decision: VisualInputDecision,
+        budget: GraniteTaskBudget,
+    ) -> VisionGenerateRequest:
+        return VisionGenerateRequest(
+            profile_name=self.profile_name,
+            prompt_version=self.prompt_version,
+            prompt=granite_prompt(
+                source=source,
+                schema_name=schema_name,
+                route_profile=route_profile,
+                semantic_task=semantic_task,
+                model_output_schema=model_output_schema,
+            ),
+            image_inputs=decision.model_inputs,
+            response_schema_name=(
+                model_output_schema.name if model_output_schema is not None else schema_name
+            ),
+            max_output_tokens=budget.max_output_tokens,
+            temperature=0.0,
+            timeout_seconds=budget.timeout_seconds,
+            response_json_schema=(
+                model_output_schema.schema if model_output_schema is not None else None
+            ),
+        )
+
+    def _page_image_bytes(self, page: object) -> bytes | None:
+        image_bytes = getattr(page, "image_bytes", None)
+        image_asset_uri = getattr(page, "image_asset_uri", None)
+        if image_bytes is None and image_asset_uri:
+            image_bytes = self.storage.path_for_uri(image_asset_uri).read_bytes()
+        return image_bytes
+
     def _request_budget(
         self,
         *,
@@ -155,85 +262,6 @@ class VisionExtractionGateway:
             timeout_seconds=self.timeout_seconds,
             max_attempts=1,
         )
-
-
-def _image_inputs(
-    source: ExtractionSourceDocument,
-    *,
-    storage: ObjectStorage,
-    semantic_task: SemanticExtractionTask | None = None,
-    max_images: int = 4,
-) -> tuple[ModelImageInput, ...]:
-    inputs: list[ModelImageInput] = []
-    for page in _candidate_pages(source, semantic_task=semantic_task):
-        image_bytes = page.image_bytes
-        if image_bytes is None and page.image_asset_uri:
-            image_bytes = storage.path_for_uri(page.image_asset_uri).read_bytes()
-        if not image_bytes or not page.image_mime_type:
-            continue
-        inputs.append(
-            ModelImageInput(
-                content=image_bytes,
-                mime_type=page.image_mime_type,
-                sha256=page.image_sha256 or "",
-            )
-        )
-        if len(inputs) >= max_images:
-            break
-    if not inputs:
-        raise ModelProtocolError("Vision extraction requires page image assets.")
-    return tuple(inputs)
-
-
-def _candidate_pages(
-    source: ExtractionSourceDocument,
-    *,
-    semantic_task: SemanticExtractionTask | None,
-) -> list:
-    if semantic_task is None:
-        return source.pages
-    page_id = _page_id_for_semantic_task(source, semantic_task)
-    if page_id is None:
-        return source.pages
-    return [page for page in source.pages if page.page_id == page_id] or source.pages
-
-
-def _page_id_for_semantic_task(
-    source: ExtractionSourceDocument,
-    task: SemanticExtractionTask,
-) -> object | None:
-    if task.grounding.page_id:
-        return task.grounding.page_id
-    if task.grounding.element_id:
-        page_number = next(
-            (
-                element.page_number
-                for element in source.elements
-                if element.element_id == task.grounding.element_id
-            ),
-            None,
-        )
-        return _page_id_for_number(source, page_number)
-    if task.grounding.table_id:
-        page_number = next(
-            (
-                table.page_number
-                for table in source.tables
-                if table.table_id == task.grounding.table_id
-            ),
-            None,
-        )
-        return _page_id_for_number(source, page_number)
-    return None
-
-
-def _page_id_for_number(
-    source: ExtractionSourceDocument,
-    page_number: int | None,
-) -> object | None:
-    if page_number is None:
-        return None
-    return next((page.page_id for page in source.pages if page.page_number == page_number), None)
 
 
 def _prompt(

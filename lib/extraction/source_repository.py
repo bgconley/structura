@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any, cast
 from uuid import UUID
 
@@ -73,6 +74,12 @@ def load_extraction_source(document_id: UUID) -> ExtractionSourceDocument:
                     str(row["image_mime_type"]) if row.get("image_mime_type") else None
                 ),
                 image_sha256=str(row["image_sha256"]) if row.get("image_sha256") else None,
+                width_points=_row_float(row.get("width_points")),
+                height_points=_row_float(row.get("height_points")),
+                rotation_degrees=_row_int(row["rotation_degrees"], "rotation_degrees"),
+                metadata=(
+                    dict(row["metadata_json"]) if isinstance(row["metadata_json"], dict) else {}
+                ),
             )
             for row in pages
         ],
@@ -83,6 +90,9 @@ def load_extraction_source(document_id: UUID) -> ExtractionSourceDocument:
                 ordinal=_row_int(row["ordinal"], "ordinal"),
                 text=str(row["text_content"] or ""),
                 bbox=row["bbox_json"],
+                metadata=(
+                    dict(row["metadata_json"]) if isinstance(row["metadata_json"], dict) else {}
+                ),
             )
             for row in elements
         ],
@@ -95,6 +105,11 @@ def load_extraction_source(document_id: UUID) -> ExtractionSourceDocument:
                     str(row["table_markdown"]) if row["table_markdown"] is not None else None
                 ),
                 table_json=(dict(row["table_json"]) if isinstance(row["table_json"], dict) else {}),
+                element_id=cast(UUID, row["element_id"]) if row.get("element_id") else None,
+                bbox=row["bbox_json"],
+                metadata=(
+                    dict(row["metadata_json"]) if isinstance(row["metadata_json"], dict) else {}
+                ),
             )
             for row in tables
         ],
@@ -126,6 +141,16 @@ def _row_int(value: object, column: str) -> int:
     raise ExtractionRepositoryError(f"Unexpected non-integer value for {column}.")
 
 
+def _row_float(value: object) -> float | None:
+    if value is None:
+        return None
+    if isinstance(value, (int, float, Decimal)):
+        return float(value)
+    if isinstance(value, str):
+        return float(value)
+    return None
+
+
 def _page_rows(cur: Any, document_id: UUID) -> list[dict[str, object]]:
     cur.execute(
         """
@@ -133,6 +158,10 @@ def _page_rows(cur: Any, document_id: UUID) -> list[dict[str, object]]:
           p.id,
           p.page_number,
           p.text_content,
+          p.width_points,
+          p.height_points,
+          p.rotation_degrees,
+          p.metadata_json,
           a.uri AS image_uri,
           a.mime_type AS image_mime_type,
           a.sha256 AS image_sha256
@@ -154,7 +183,8 @@ def _element_rows(cur: Any, document_id: UUID) -> list[dict[str, object]]:
           p.page_number,
           e.ordinal,
           e.text_content,
-          e.bbox_json
+          e.bbox_json,
+          e.metadata_json
         FROM document_elements e
         JOIN document_pages p ON p.id = e.page_id
         WHERE e.document_id = %s
@@ -173,9 +203,13 @@ def _table_rows(cur: Any, document_id: UUID) -> list[dict[str, object]]:
           p.page_number,
           t.table_index,
           t.table_markdown,
-          t.table_json
+          t.table_json,
+          t.element_id,
+          COALESCE(te.bbox_json, t.metadata_json -> 'bbox') AS bbox_json,
+          t.metadata_json
         FROM document_tables t
         JOIN document_pages p ON p.id = t.page_id
+        LEFT JOIN document_elements te ON te.id = t.element_id
         WHERE t.document_id = %s
         ORDER BY p.page_number, t.table_index
         """,

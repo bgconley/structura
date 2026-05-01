@@ -1050,6 +1050,26 @@ def _evidence(
             evidence["semantic_region_id"] = str(evidence_context.semantic_region_id)
         if evidence_context.semantic_annotation_id is not None:
             evidence["semantic_annotation_id"] = str(evidence_context.semantic_annotation_id)
+        if evidence_context.visual_input_scope is not None:
+            evidence["visual_input_scope"] = evidence_context.visual_input_scope
+        if evidence_context.visual_input_sha256 is not None:
+            evidence["visual_input_sha256"] = evidence_context.visual_input_sha256
+        if evidence_context.source_page_image_sha256 is not None:
+            evidence["source_page_image_sha256"] = evidence_context.source_page_image_sha256
+        if evidence_context.bbox is not None:
+            evidence["bbox"] = evidence_context.bbox
+        if evidence_context.bbox_basis is not None:
+            evidence["bbox_basis"] = evidence_context.bbox_basis
+        if evidence_context.original_bbox is not None:
+            evidence["original_bbox"] = evidence_context.original_bbox
+        if evidence_context.expanded_bbox is not None:
+            evidence["expanded_bbox"] = evidence_context.expanded_bbox
+        if evidence_context.rotation_policy is not None:
+            evidence["rotation_policy"] = evidence_context.rotation_policy
+        if evidence_context.crop_quality is not None:
+            evidence["crop_quality"] = evidence_context.crop_quality
+        if evidence_context.visual_input_attempt is not None:
+            evidence["visual_input_attempt"] = evidence_context.visual_input_attempt
     return {key: value for key, value in evidence.items() if value not in (None, "")}
 
 
