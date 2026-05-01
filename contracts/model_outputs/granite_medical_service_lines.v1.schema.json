@@ -7,6 +7,7 @@
   "properties": {
     "service_lines": {
       "type": "array",
+      "maxItems": 40,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -19,8 +20,7 @@
           "billed_amount": {"type": ["number", "string", "null"]},
           "allowed_amount": {"type": ["number", "string", "null"]},
           "paid_amount": {"type": ["number", "string", "null"]},
-          "patient_responsibility": {"type": ["number", "string", "null"]},
-          "source_text": {"type": ["string", "null"]}
+          "patient_responsibility": {"type": ["number", "string", "null"]}
         }
       }
     },

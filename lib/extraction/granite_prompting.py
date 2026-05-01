@@ -44,6 +44,21 @@ def granite_prompt(
             f"{docling_context}"
         )
 
+    if _is_line_item_region(semantic_task):
+        return (
+            f"{base}"
+            f"{task_context}"
+            "Extract line items as compact row candidates from the grounded region. "
+            "Use Docling table rows when provided. "
+            "Do not output table dimensions, table cells, or table schema. "
+            "Do not copy these instructions into any field. "
+            "Do not include source_text; Structura records evidence separately. "
+            "If visible rows are not present, return an empty list instead of prose. "
+            f"{_line_item_shape(model_output_schema)} "
+            "Return ONLY a valid JSON object matching the response schema supplied by the API."
+            f"{docling_context}"
+        )
+
     schema_text = json.dumps(model_output_schema.schema, indent=2, sort_keys=True)
     if _is_table_region(semantic_task):
         return (
@@ -194,11 +209,29 @@ def _is_table_region(task: SemanticExtractionTask) -> bool:
         "tables_json",
         "tables_html",
         "tables_otsl",
-    } or task.semantic_type in {
+    } and not _is_line_item_region(task)
+
+
+def _is_line_item_region(task: SemanticExtractionTask) -> bool:
+    return task.semantic_type in {
         "invoice_line_item_table",
         "covered_services_line_item_table",
         "receipt_line_item_table",
         "retail_order_line_item_table",
         "service_record_line_item_table",
-        "dispute_transaction_table",
     }
+
+
+def _line_item_shape(model_output_schema: ModelOutputSchema) -> str:
+    if model_output_schema.name == "granite_medical_service_lines.v1":
+        return (
+            'Use shape {"service_lines":[{"ordinal":1,'
+            '"service_description":"visible service","service_date":null,'
+            '"procedure_code":null,"billed_amount":null,"allowed_amount":null,'
+            '"paid_amount":null,"patient_responsibility":null}],"confidence":{}}.'
+        )
+    return (
+        'Use shape {"line_items":[{"ordinal":1,"description":"visible row",'
+        '"quantity":null,"unit_price":null,"amount":null}],"totals":{},'
+        '"confidence":{}}.'
+    )

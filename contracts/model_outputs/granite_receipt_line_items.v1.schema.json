@@ -7,7 +7,7 @@
   "properties": {
     "line_items": {
       "type": "array",
-      "maxItems": 40,
+      "maxItems": 16,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -18,8 +18,7 @@
           "quantity": {"type": ["number", "string", "null"]},
           "unit_price": {"type": ["number", "string", "null"]},
           "amount": {"type": ["number", "string", "null"]},
-          "sku": {"type": ["string", "null"], "maxLength": 80},
-          "source_text": {"type": ["string", "null"], "maxLength": 500}
+          "sku": {"type": ["string", "null"], "maxLength": 80}
         }
       }
     },

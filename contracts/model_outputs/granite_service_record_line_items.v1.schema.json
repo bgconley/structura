@@ -8,7 +8,7 @@
   "properties": {
     "line_items": {
       "type": "array",
-      "maxItems": 60,
+      "maxItems": 40,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -24,8 +24,7 @@
           "unit_price": {"type": ["number", "string", "null"]},
           "line_total": {"type": ["number", "string", "null"]},
           "amount": {"type": ["number", "string", "null"]},
-          "category_hint": {"type": ["string", "null"], "maxLength": 80},
-          "source_text": {"type": ["string", "null"], "maxLength": 500}
+          "category_hint": {"type": ["string", "null"], "maxLength": 80}
         }
       }
     },

@@ -134,7 +134,10 @@ def test_granite_gateway_routes_invoice_tables_to_model_output_schema() -> None:
     )
 
     assert client.request is not None
-    assert "<tables_json>" in client.request.prompt
+    assert not client.request.prompt.startswith("<tables_json>")
+    assert "Extract line items as compact row candidates" in client.request.prompt
+    assert "Do not output table dimensions, table cells, or table schema." in client.request.prompt
+    assert "JSON Schema:" not in client.request.prompt
     assert client.request.response_schema_name == "granite_invoice_line_items.v1"
     assert client.request.response_json_schema is not None
     assert "line_items" in client.request.response_json_schema["properties"]
@@ -167,7 +170,7 @@ def test_granite_gateway_forces_line_item_schema_when_qwen_task_label_is_kvp() -
     )
 
     assert client.request is not None
-    assert "<tables_json>" in client.request.prompt
+    assert not client.request.prompt.startswith("<tables_json>")
     assert client.request.response_schema_name == "granite_invoice_line_items.v1"
     assert client.request.response_json_schema is not None
 
@@ -231,8 +234,14 @@ def test_granite_gateway_routes_retail_order_tables_to_receipt_line_schema() -> 
     )
 
     assert client.request is not None
-    assert client.request.prompt.startswith("<tables_json>")
+    assert not client.request.prompt.startswith("<tables_json>")
+    assert "Do not include source_text" in client.request.prompt
     assert client.request.response_schema_name == "granite_receipt_line_items.v1"
+    assert client.request.response_json_schema is not None
+    line_items = client.request.response_json_schema["properties"]["line_items"]
+    assert line_items["maxItems"] == 16
+    item_properties = line_items["items"]["properties"]
+    assert "source_text" not in item_properties
 
 
 def test_granite_gateway_routes_service_record_tables_to_service_record_schema() -> None:
@@ -260,10 +269,15 @@ def test_granite_gateway_routes_service_record_tables_to_service_record_schema()
     )
 
     assert client.request is not None
-    assert client.request.prompt.startswith("<tables_json>")
+    assert not client.request.prompt.startswith("<tables_json>")
+    assert "Do not include source_text" in client.request.prompt
     assert client.request.response_schema_name == "granite_service_record_line_items.v1"
     assert client.request.response_json_schema is not None
     assert client.request.response_json_schema["required"] == ["line_items"]
+    item_properties = client.request.response_json_schema["properties"]["line_items"]["items"][
+        "properties"
+    ]
+    assert "source_text" not in item_properties
 
 
 def test_granite_gateway_renders_docling_table_json_as_readable_rows() -> None:
@@ -313,6 +327,7 @@ def test_granite_gateway_renders_docling_table_json_as_readable_rows() -> None:
     )
 
     assert client.request is not None
+    assert not client.request.prompt.startswith("<tables_json>")
     assert "DESCRIPTION OF SERVICE AND PARTS | AMOUNT" in client.request.prompt
     assert "600 mile running-in check | $250.00" in client.request.prompt
     assert '"bbox"' not in client.request.prompt
