@@ -661,10 +661,10 @@ def _cancel_job_row(
               COALESCE(error_json, '{}'::jsonb)
               || jsonb_build_object(
                 'error_class', 'JobCancelled',
-                'message', %s,
-                'last_error', %s,
+                'message', %s::text,
+                'last_error', %s::text,
                 'retryable', false,
-                'cancelled_by', %s,
+                'cancelled_by', %s::text,
                 'cancelled_at', now()
               )
             )
