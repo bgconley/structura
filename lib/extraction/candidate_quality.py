@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 PROMPT_ECHO_PATTERNS = (
@@ -70,7 +72,7 @@ def reject_line_item(item: dict[str, Any]) -> tuple[bool, str | None]:
         return True, "prompt_or_schema_echo"
 
     numeric_one_count = sum(
-        str(item.get(key)) in {"1", "1.0", "1.00", "1.0000"}
+        _numeric_value_is_one(item.get(key))
         for key in ("quantity", "unit_price", "gross_amount", "net_amount", "amount")
     )
     if numeric_one_count >= 2 and ("schema" in text or "rows" in text):
@@ -84,3 +86,22 @@ def reject_line_item(item: dict[str, Any]) -> tuple[bool, str | None]:
         return True, "placeholder_or_null_value"
 
     return False, None
+
+
+def _numeric_value_is_one(value: object) -> bool:
+    if isinstance(value, dict):
+        value = value.get("amount")
+    if isinstance(value, int | float | Decimal):
+        return _decimal_value_is_one(str(value))
+    if isinstance(value, str):
+        match = re.search(r"-?\d[\d,]*(?:\.\d+)?", value)
+        if match:
+            return _decimal_value_is_one(match.group(0).replace(",", ""))
+    return False
+
+
+def _decimal_value_is_one(value: str) -> bool:
+    try:
+        return Decimal(value) == Decimal("1")
+    except (InvalidOperation, ValueError):
+        return False

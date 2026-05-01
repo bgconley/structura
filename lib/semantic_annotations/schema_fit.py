@@ -120,18 +120,6 @@ def schema_fit_for_region(
     allowed_evidence_families = _TARGET_SCHEMA_EVIDENCE_FAMILIES[requested]
     document_type = _normalized(document_type_hint)
     is_docling_structural = region.metadata.get("region_source") == DOCLING_STRUCTURAL_REGION_SOURCE
-    if is_docling_structural and not _target_schema_is_compatible(
-        document_type=document_type,
-        target_schema=requested,
-    ):
-        return SchemaFitDecision(
-            target_schema=None,
-            requested_target_schema=requested,
-            evidence_families=evidence_families,
-            document_type_hint=document_type,
-            reason="docling_structural_target_incompatible_with_document_type",
-            downgraded=True,
-        )
     if (
         document_type in _OBSERVATION_DOCUMENT_TYPES and not is_docling_structural
     ) or region.semantic_type in _OBSERVATION_SEMANTIC_TYPES:
@@ -141,6 +129,23 @@ def schema_fit_for_region(
             evidence_families=evidence_families,
             document_type_hint=document_type,
             reason="observation_document_or_region_type",
+            downgraded=True,
+        )
+    if not _target_schema_is_compatible(
+        document_type=document_type,
+        target_schema=requested,
+    ):
+        reason = (
+            "docling_structural_target_incompatible_with_document_type"
+            if is_docling_structural
+            else "target_schema_incompatible_with_document_type"
+        )
+        return SchemaFitDecision(
+            target_schema=None,
+            requested_target_schema=requested,
+            evidence_families=evidence_families,
+            document_type_hint=document_type,
+            reason=reason,
             downgraded=True,
         )
     if _conflicting_observation_families(anchor_hits) and not _has_required_anchor_fit(

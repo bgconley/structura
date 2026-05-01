@@ -43,17 +43,29 @@ def field_candidates_from_extraction(
     payload: dict[str, Any],
     validation: ValidationReport,
     source_engine: str,
+    require_concrete_evidence: bool = False,
 ) -> list[CandidateFact]:
     del document_id
     evidence_fallback = _first_evidence(payload)
     confidence = _overall_confidence(payload)
     status = _candidate_status(validation, evidence_fallback, source_engine=source_engine)
     if schema_name == "receipt":
-        return _receipt_candidates(payload, confidence, source_engine, validation, status)
+        return _receipt_candidates(
+            payload, confidence, source_engine, validation, status, require_concrete_evidence
+        )
     if schema_name == "invoice":
-        return _invoice_candidates(payload, confidence, source_engine, validation, status)
+        return _invoice_candidates(
+            payload, confidence, source_engine, validation, status, require_concrete_evidence
+        )
     if schema_name == "medical_eob":
-        return _eob_candidates(payload, confidence, source_engine, validation, "needs_review")
+        return _eob_candidates(
+            payload,
+            confidence,
+            source_engine,
+            validation,
+            "needs_review",
+            require_concrete_evidence,
+        )
     return []
 
 
@@ -63,13 +75,19 @@ def line_item_candidates_from_extraction(
     payload: dict[str, Any],
     validation: ValidationReport,
     source_engine: str,
+    require_concrete_evidence: bool = False,
 ) -> list[LineItemCandidateFact]:
     confidence = _overall_confidence(payload)
     status = _candidate_status(validation, _first_evidence(payload), source_engine=source_engine)
     if schema_name == "receipt":
         return _dedupe_line_item_candidates(
             _line_items(
-                payload.get("line_items"), "receipt_item", source_engine, confidence, status
+                payload.get("line_items"),
+                "receipt_item",
+                source_engine,
+                confidence,
+                status,
+                require_concrete_evidence,
             )
         )
     if schema_name == "invoice":
@@ -77,11 +95,24 @@ def line_item_candidates_from_extraction(
         if not isinstance(invoice_items, list) or not invoice_items:
             invoice_items = invoice_line_item_dicts_from_payload(payload)
         return _dedupe_line_item_candidates(
-            _line_items(invoice_items, "invoice_item", source_engine, confidence, status)
+            _line_items(
+                invoice_items,
+                "invoice_item",
+                source_engine,
+                confidence,
+                status,
+                require_concrete_evidence,
+            )
         )
     if schema_name == "medical_eob":
         return _dedupe_line_item_candidates(
-            _eob_line_items(payload.get("service_lines"), source_engine, confidence, "needs_review")
+            _eob_line_items(
+                payload.get("service_lines"),
+                source_engine,
+                confidence,
+                "needs_review",
+                require_concrete_evidence,
+            )
         )
     return []
 
@@ -91,6 +122,7 @@ def observation_candidates_from_extraction(
     schema_name: str,
     payload: dict[str, Any],
     validation: ValidationReport,
+    require_concrete_evidence: bool = False,
 ) -> list[ObservationCandidateFact]:
     if schema_name != "document_observation":
         return []
@@ -105,6 +137,9 @@ def observation_candidates_from_extraction(
             continue
         if _empty_observation_value(value) or _grid_only_observation(field_name, value):
             continue
+        evidence = _evidence(item)
+        if require_concrete_evidence and not has_concrete_evidence(evidence):
+            continue
         candidates.append(
             ObservationCandidateFact(
                 observation_family=(
@@ -113,7 +148,7 @@ def observation_candidates_from_extraction(
                 field_name=str(field_name),
                 value_type=str(item.get("value_type") or "string"),
                 value=value,
-                evidence=_evidence(item),
+                evidence=evidence,
                 confidence=_confidence_or_none(item.get("confidence")),
                 validation=validation.as_json(),
                 status="needs_review",
@@ -129,6 +164,7 @@ def _receipt_candidates(
     source_engine: str,
     validation: ValidationReport,
     status: str,
+    require_concrete_evidence: bool,
 ) -> list[CandidateFact]:
     merchant = payload.get("merchant") or {}
     transaction = payload.get("transaction") or {}
@@ -142,6 +178,7 @@ def _receipt_candidates(
             source_engine,
             validation,
             status,
+            require_concrete_evidence=require_concrete_evidence,
         ),
         *_candidate(
             "receipt.transaction.date_local",
@@ -152,6 +189,7 @@ def _receipt_candidates(
             source_engine,
             validation,
             status,
+            require_concrete_evidence=require_concrete_evidence,
         ),
         *_money_candidate(
             "receipt.transaction.subtotal",
@@ -161,6 +199,7 @@ def _receipt_candidates(
             source_engine,
             validation,
             status,
+            require_concrete_evidence=require_concrete_evidence,
         ),
         *_money_candidate(
             "receipt.transaction.tax",
@@ -170,6 +209,7 @@ def _receipt_candidates(
             source_engine,
             validation,
             status,
+            require_concrete_evidence=require_concrete_evidence,
         ),
         *_money_candidate(
             "receipt.transaction.total",
@@ -179,6 +219,7 @@ def _receipt_candidates(
             source_engine,
             validation,
             status,
+            require_concrete_evidence=require_concrete_evidence,
         ),
     ]
 
@@ -189,6 +230,7 @@ def _invoice_candidates(
     source_engine: str,
     validation: ValidationReport,
     status: str,
+    require_concrete_evidence: bool,
 ) -> list[CandidateFact]:
     seller = payload.get("seller") or {}
     invoice = payload.get("invoice") or {}
@@ -203,6 +245,7 @@ def _invoice_candidates(
             source_engine,
             validation,
             status,
+            require_concrete_evidence=require_concrete_evidence,
         ),
         *_candidate(
             "invoice.invoice_number",
@@ -213,6 +256,7 @@ def _invoice_candidates(
             source_engine,
             validation,
             status,
+            require_concrete_evidence=require_concrete_evidence,
         ),
         *_candidate(
             "invoice.issue_date",
@@ -223,6 +267,7 @@ def _invoice_candidates(
             source_engine,
             validation,
             status,
+            require_concrete_evidence=require_concrete_evidence,
         ),
         *_candidate(
             "invoice.due_date",
@@ -233,6 +278,7 @@ def _invoice_candidates(
             source_engine,
             validation,
             status,
+            require_concrete_evidence=require_concrete_evidence,
         ),
         *_money_candidate(
             "invoice.subtotal",
@@ -242,6 +288,7 @@ def _invoice_candidates(
             source_engine,
             validation,
             status,
+            require_concrete_evidence=require_concrete_evidence,
         ),
         *_money_candidate(
             "invoice.tax_total",
@@ -251,6 +298,7 @@ def _invoice_candidates(
             source_engine,
             validation,
             status,
+            require_concrete_evidence=require_concrete_evidence,
         ),
         *_money_candidate(
             "invoice.total_amount",
@@ -260,6 +308,7 @@ def _invoice_candidates(
             source_engine,
             validation,
             status,
+            require_concrete_evidence=require_concrete_evidence,
         ),
         *_money_candidate(
             "invoice.balance_due",
@@ -269,6 +318,7 @@ def _invoice_candidates(
             source_engine,
             validation,
             status,
+            require_concrete_evidence=require_concrete_evidence,
         ),
     ]
 
@@ -279,6 +329,7 @@ def _eob_candidates(
     source_engine: str,
     validation: ValidationReport,
     status: str,
+    require_concrete_evidence: bool,
 ) -> list[CandidateFact]:
     payer = payload.get("payer") or {}
     patient = payload.get("patient") or {}
@@ -295,6 +346,7 @@ def _eob_candidates(
             source_engine,
             validation,
             status,
+            require_concrete_evidence=require_concrete_evidence,
         ),
         *_candidate(
             "medical_eob.patient.display_name",
@@ -305,6 +357,7 @@ def _eob_candidates(
             source_engine,
             validation,
             status,
+            require_concrete_evidence=require_concrete_evidence,
         ),
         *_candidate(
             "medical_eob.provider.display_name",
@@ -315,6 +368,7 @@ def _eob_candidates(
             source_engine,
             validation,
             status,
+            require_concrete_evidence=require_concrete_evidence,
         ),
         *_candidate(
             "medical_eob.claim_number",
@@ -325,6 +379,7 @@ def _eob_candidates(
             source_engine,
             validation,
             status,
+            require_concrete_evidence=require_concrete_evidence,
         ),
         *_money_candidate(
             "medical_eob.total_billed",
@@ -334,6 +389,7 @@ def _eob_candidates(
             source_engine,
             validation,
             status,
+            require_concrete_evidence=require_concrete_evidence,
         ),
         *_money_candidate(
             "medical_eob.total_plan_paid",
@@ -343,6 +399,7 @@ def _eob_candidates(
             source_engine,
             validation,
             status,
+            require_concrete_evidence=require_concrete_evidence,
         ),
         *_money_candidate(
             "medical_eob.total_patient_responsibility",
@@ -352,6 +409,7 @@ def _eob_candidates(
             source_engine,
             validation,
             status,
+            require_concrete_evidence=require_concrete_evidence,
         ),
     ]
 
@@ -365,6 +423,8 @@ def _candidate(
     source_engine: str,
     validation: ValidationReport,
     status: str,
+    *,
+    require_concrete_evidence: bool = False,
 ) -> list[CandidateFact]:
     if value in (None, ""):
         return []
@@ -372,6 +432,8 @@ def _candidate(
     if rejected:
         return []
     evidence = _evidence(owner)
+    if require_concrete_evidence and not has_concrete_evidence(evidence):
+        return []
     return [
         CandidateFact(
             field_path=field_path,
@@ -394,10 +456,16 @@ def _money_candidate(
     source_engine: str,
     validation: ValidationReport,
     status: str,
+    *,
+    require_concrete_evidence: bool = False,
 ) -> list[CandidateFact]:
     if not isinstance(value, dict) or value.get("amount") is None:
         return []
     evidence = _evidence(owner)
+    if not evidence:
+        evidence = _evidence(value)
+    if require_concrete_evidence and not has_concrete_evidence(evidence):
+        return []
     return [
         CandidateFact(
             field_path=field_path,
@@ -419,6 +487,7 @@ def _line_items(
     source_engine: str,
     confidence: float,
     status: str,
+    require_concrete_evidence: bool = False,
 ) -> list[LineItemCandidateFact]:
     if not isinstance(items, list):
         return []
@@ -429,6 +498,9 @@ def _line_items(
         rejected, _reason = reject_line_item(item)
         if rejected:
             continue
+        evidence = _evidence(item)
+        if require_concrete_evidence and not has_concrete_evidence(evidence):
+            continue
         raw_amount = item.get("amount")
         amount = raw_amount if isinstance(raw_amount, dict) else {}
         facts.append(
@@ -436,7 +508,7 @@ def _line_items(
                 line_item_type=line_item_type,
                 ordinal=int(item.get("ordinal") or len(facts) + 1),
                 description=str(item["description"]),
-                evidence=_evidence(item),
+                evidence=evidence,
                 candidate_group=f"{line_item_type}.default",
                 service_date=_date(item.get("service_date")),
                 quantity=_number(item.get("quantity")),
@@ -460,6 +532,7 @@ def _eob_line_items(
     source_engine: str,
     confidence: float,
     status: str,
+    require_concrete_evidence: bool = False,
 ) -> list[LineItemCandidateFact]:
     if not isinstance(items, list):
         return []
@@ -470,12 +543,15 @@ def _eob_line_items(
         rejected, _reason = reject_line_item(item)
         if rejected:
             continue
+        evidence = _evidence(item)
+        if require_concrete_evidence and not has_concrete_evidence(evidence):
+            continue
         facts.append(
             LineItemCandidateFact(
                 line_item_type="service_line",
                 ordinal=int(item.get("ordinal") or len(facts) + 1),
                 description=str(item["service_description"]),
-                evidence=_evidence(item),
+                evidence=evidence,
                 candidate_group="medical_eob.service_lines",
                 code=item.get("procedure_code"),
                 service_date=_date(item.get("service_date")),

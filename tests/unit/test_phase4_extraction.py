@@ -91,6 +91,7 @@ def test_semantic_region_validation_does_not_require_full_canonical_receipt() ->
             ],
         },
         model_output_schema_name="granite_receipt_line_items.v1",
+        model_output_payload={"line_items": [{"description": "Coffee", "amount": "4.25"}]},
     )
 
     assert report.needs_review
@@ -100,6 +101,31 @@ def test_semantic_region_validation_does_not_require_full_canonical_receipt() ->
     )
     assert any(
         check["code"] == "region_scope.validation_routing" and check["status"] == "passed"
+        for check in report.checks
+    )
+    assert any(
+        check["code"] == "region_scope.model_output_contract" and check["status"] == "passed"
+        for check in report.checks
+    )
+
+
+def test_semantic_region_validation_checks_model_output_contract() -> None:
+    report = validate_semantic_region_payload(
+        {
+            "schema_name": "receipt",
+            "schema_version": "v1",
+            "document_id": str(uuid4()),
+            "line_items": [],
+        },
+        model_output_schema_name="granite_receipt_line_items.v1",
+        model_output_payload={
+            "line_items": [{"description": "Coffee", "unexpected_field": "schema echo"}]
+        },
+    )
+
+    assert report.needs_review
+    assert any(
+        check["code"] == "region_scope.model_output_contract" and check["status"] == "failed"
         for check in report.checks
     )
 

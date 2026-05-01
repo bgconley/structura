@@ -4,7 +4,11 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+from jsonschema import Draft202012Validator
+from jsonschema.exceptions import ValidationError as JsonSchemaValidationError
+
 from lib.extraction.evidence import has_concrete_evidence
+from lib.extraction.model_output_schemas import load_model_output_schema
 from lib.extraction.models import ValidationReport
 from lib.extraction.schema_registry import ExtractionSchemaError, ExtractionSchemaRegistry
 
@@ -42,6 +46,7 @@ def validate_semantic_region_payload(
     payload: dict[str, Any],
     *,
     model_output_schema_name: str | None,
+    model_output_payload: dict[str, Any] | None = None,
 ) -> ValidationReport:
     checks: list[dict[str, Any]] = [
         _check(
@@ -56,6 +61,12 @@ def validate_semantic_region_payload(
                 "region_scope.model_output_contract_selected",
                 "passed",
                 f"Region extraction selected model-output contract {model_output_schema_name}.",
+            )
+        )
+        checks.append(
+            _model_output_contract_check(
+                model_output_schema_name=model_output_schema_name,
+                model_output_payload=model_output_payload,
             )
         )
     else:
@@ -75,6 +86,40 @@ def validate_semantic_region_payload(
         )
     )
     return ValidationReport(needs_review=True, checks=checks)
+
+
+def _model_output_contract_check(
+    *,
+    model_output_schema_name: str,
+    model_output_payload: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if model_output_payload is None:
+        return _check(
+            "region_scope.model_output_contract",
+            "warning",
+            "Region extraction did not retain raw model output for "
+            "model-output contract validation.",
+        )
+    try:
+        model_output_schema = load_model_output_schema(model_output_schema_name)
+        Draft202012Validator(model_output_schema.schema).validate(model_output_payload)
+    except JsonSchemaValidationError as exc:
+        return _check(
+            "region_scope.model_output_contract",
+            "failed",
+            f"Model output did not conform to {model_output_schema_name}: {exc.message}",
+        )
+    except (OSError, ValueError) as exc:
+        return _check(
+            "region_scope.model_output_contract",
+            "failed",
+            f"Could not load model-output contract {model_output_schema_name}: {exc}",
+        )
+    return _check(
+        "region_scope.model_output_contract",
+        "passed",
+        f"Raw model output conforms to {model_output_schema_name}.",
+    )
 
 
 def _receipt_checks(payload: dict[str, Any]) -> list[dict[str, Any]]:

@@ -83,13 +83,14 @@ class VisionExtractionGateway:
                 budget=budget,
             )
         )
+        model_output_payload = dict(response.normalized_json)
         normalized_json, normalization_json = normalize_granite_region_output(
             document_id=source.document_id,
             schema_name=schema_name,
             model_output_schema_name=(
                 model_output_schema.name if model_output_schema is not None else None
             ),
-            payload=dict(response.normalized_json),
+            payload=model_output_payload,
             evidence_context=evidence_context_for_task(
                 source=source,
                 semantic_task=semantic_task,
@@ -128,13 +129,14 @@ class VisionExtractionGateway:
                     budget=budget,
                 )
             )
+            retry_model_output_payload = dict(retry_response.normalized_json)
             retry_normalized_json, retry_normalization_json = normalize_granite_region_output(
                 document_id=source.document_id,
                 schema_name=schema_name,
                 model_output_schema_name=(
                     model_output_schema.name if model_output_schema is not None else None
                 ),
-                payload=dict(retry_response.normalized_json),
+                payload=retry_model_output_payload,
                 evidence_context=evidence_context_for_task(
                     source=source,
                     semantic_task=semantic_task,
@@ -154,6 +156,7 @@ class VisionExtractionGateway:
                 )
             )
             response = retry_response
+            model_output_payload = retry_model_output_payload
             normalized_json = retry_normalized_json
             normalization_json = {
                 **retry_normalization_json,
@@ -200,6 +203,7 @@ class VisionExtractionGateway:
                 "modelOutputSchema": (
                     model_output_schema.name if model_output_schema is not None else None
                 ),
+                "modelOutputPayload": model_output_payload,
             },
             model_output_schema_name=(
                 model_output_schema.name if model_output_schema is not None else None

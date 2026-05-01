@@ -77,12 +77,14 @@ def reconcile_invoice_region_extractions(
         return None
     if not invoice.get("invoice_number"):
         metadata.setdefault("missing_fields", []).append("invoice.invoice_number")
-        return None
+        invoice.pop("invoice_number", None)
     if not _party_has_non_placeholder_name(seller):
         metadata.setdefault("missing_fields", []).append("seller.display_name")
-        return None
+        seller = {}
     if "total" not in totals and "amount_paid" in totals:
         totals["total"] = totals["amount_paid"]
+    if "total" not in totals:
+        metadata.setdefault("missing_fields", []).append("totals.total")
 
     return {
         "schema_name": "invoice",

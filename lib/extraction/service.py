@@ -150,10 +150,14 @@ class ExtractionService:
             route_profile=route_profile,
             semantic_task=semantic_task,
         )
+        model_output_payload = gateway_result.raw_output_json.get("modelOutputPayload")
+        if not isinstance(model_output_payload, dict):
+            model_output_payload = None
         validation = (
             validate_semantic_region_payload(
                 gateway_result.normalized_json,
                 model_output_schema_name=gateway_result.model_output_schema_name,
+                model_output_payload=model_output_payload,
             )
             if semantic_task is not None
             else validate_extraction_payload(
@@ -163,23 +167,29 @@ class ExtractionService:
             )
         )
         gateway_result.normalized_json["validation"] = validation.as_json()
+        require_concrete_candidate_evidence = (
+            semantic_task is not None and gateway_result.route.source_engine != "system"
+        )
         field_candidates = field_candidates_from_extraction(
             document_id=document_id,
             schema_name=schema_name,
             payload=gateway_result.normalized_json,
             validation=validation,
             source_engine=gateway_result.route.source_engine,
+            require_concrete_evidence=require_concrete_candidate_evidence,
         )
         line_item_candidates = line_item_candidates_from_extraction(
             schema_name=schema_name,
             payload=gateway_result.normalized_json,
             validation=validation,
             source_engine=gateway_result.route.source_engine,
+            require_concrete_evidence=require_concrete_candidate_evidence,
         )
         observation_candidates = observation_candidates_from_extraction(
             schema_name=schema_name,
             payload=gateway_result.normalized_json,
             validation=validation,
+            require_concrete_evidence=require_concrete_candidate_evidence,
         )
         persisted = self.persister(
             gateway_result,

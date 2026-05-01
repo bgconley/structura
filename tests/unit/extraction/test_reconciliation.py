@@ -144,7 +144,11 @@ def test_invoice_region_reconciliation_does_not_fabricate_required_fields() -> N
         ],
     )
 
-    assert aggregate is None
+    assert aggregate is not None
+    assert "invoice_number" not in aggregate["invoice"]
+    assert "invoice.invoice_number" in aggregate["metadata"]["missing_fields"]
+    assert aggregate["line_items"][0]["description"] == "PERFORM 600 MILE RUNNING-IN CHECK"
+    assert aggregate["validation"]["needs_review"] is True
 
 
 def test_invoice_region_reconciliation_requires_non_placeholder_seller() -> None:
@@ -162,7 +166,11 @@ def test_invoice_region_reconciliation_requires_non_placeholder_seller() -> None
         ],
     )
 
-    assert aggregate is None
+    assert aggregate is not None
+    assert aggregate["seller"] == {}
+    assert aggregate["invoice"]["invoice_number"] == "6046058/1"
+    assert "seller.display_name" in aggregate["metadata"]["missing_fields"]
+    assert aggregate["validation"]["needs_review"] is True
 
 
 def test_invoice_region_reconciliation_skips_non_invoice_observation_regions() -> None:

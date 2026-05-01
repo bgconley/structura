@@ -17,6 +17,7 @@ from lib.extraction.models import (
     ValidationReport,
 )
 from lib.extraction.normalization import (
+    field_candidates_from_extraction,
     line_item_candidates_from_extraction,
     observation_candidates_from_extraction,
 )
@@ -200,6 +201,96 @@ def test_prompt_echo_line_items_are_rejected_before_candidate_creation() -> None
     ]
 
 
+def test_schema_echo_money_dict_line_items_are_rejected_before_candidate_creation() -> None:
+    validation = ValidationReport(needs_review=True, checks=[])
+    payload = {
+        "line_items": [
+            {
+                "description": "Generated row",
+                "category_hint": "schema",
+                "quantity": "1.0000",
+                "unit_price": {"amount": 1.0, "currency": "USD"},
+                "amount": {"amount": 1.0, "currency": "USD"},
+                "unit": "rows",
+            },
+            {
+                "description": "Pellegrino Sparkler 16oz Bottle",
+                "amount": {"amount": 5.0, "currency": "USD"},
+            },
+        ]
+    }
+
+    candidates = line_item_candidates_from_extraction(
+        schema_name="receipt",
+        payload=payload,
+        validation=validation,
+        source_engine="granite_vision_3b",
+    )
+
+    assert [candidate.description for candidate in candidates] == [
+        "Pellegrino Sparkler 16oz Bottle"
+    ]
+
+
+def test_model_region_line_items_require_concrete_evidence_when_requested() -> None:
+    validation = ValidationReport(needs_review=True, checks=[])
+    evidence = [{"page_number": 1, "page_id": str(uuid4()), "semantic_region_id": str(uuid4())}]
+    payload = {
+        "line_items": [
+            {
+                "description": "Ungrounded Coffee",
+                "amount": {"amount": 4.25, "currency": "USD"},
+            },
+            {
+                "description": "Grounded Coffee",
+                "amount": {"amount": 4.25, "currency": "USD"},
+                "evidence": evidence,
+            },
+        ]
+    }
+
+    candidates = line_item_candidates_from_extraction(
+        schema_name="receipt",
+        payload=payload,
+        validation=validation,
+        source_engine="granite_vision_3b",
+        require_concrete_evidence=True,
+    )
+
+    assert [candidate.description for candidate in candidates] == ["Grounded Coffee"]
+
+
+def test_model_region_field_candidates_require_concrete_evidence_when_requested() -> None:
+    validation = ValidationReport(needs_review=True, checks=[])
+    evidence = [{"page_number": 1, "page_id": str(uuid4()), "semantic_region_id": str(uuid4())}]
+    payload = {
+        "merchant": {
+            "display_name": "Coffee Shop",
+            "evidence": evidence,
+        },
+        "transaction": {
+            "date_local": "2026-04-30",
+            "subtotal": {"amount": 4.25, "currency": "USD"},
+            "tax": {"amount": 0.40, "currency": "USD", "evidence": evidence},
+            "total": {"amount": 4.65, "currency": "USD"},
+        },
+    }
+
+    candidates = field_candidates_from_extraction(
+        document_id=uuid4(),
+        schema_name="receipt",
+        payload=payload,
+        validation=validation,
+        source_engine="granite_vision_3b",
+        require_concrete_evidence=True,
+    )
+
+    assert [candidate.field_path for candidate in candidates] == [
+        "receipt.merchant.display_name",
+        "receipt.transaction.tax",
+    ]
+
+
 def test_placeholder_observations_are_rejected_before_candidate_creation() -> None:
     validation = ValidationReport(needs_review=True, checks=[])
     payload = {
@@ -231,6 +322,37 @@ def test_placeholder_observations_are_rejected_before_candidate_creation() -> No
 
     assert [(candidate.field_name, candidate.value) for candidate in candidates] == [
         ("appeal_deadline", "2026-03-01")
+    ]
+
+
+def test_model_region_observations_require_concrete_evidence_when_requested() -> None:
+    validation = ValidationReport(needs_review=True, checks=[])
+    evidence = [{"page_number": 1, "page_id": str(uuid4()), "semantic_region_id": str(uuid4())}]
+    payload = {
+        "observations": [
+            {
+                "field_name": "appeal_deadline",
+                "value": "2026-03-01",
+                "value_type": "date",
+            },
+            {
+                "field_name": "denial_reason",
+                "value": "Not medically necessary",
+                "value_type": "string",
+                "evidence": evidence,
+            },
+        ]
+    }
+
+    candidates = observation_candidates_from_extraction(
+        schema_name="document_observation",
+        payload=payload,
+        validation=validation,
+        require_concrete_evidence=True,
+    )
+
+    assert [(candidate.field_name, candidate.value) for candidate in candidates] == [
+        ("denial_reason", "Not medically necessary")
     ]
 
 

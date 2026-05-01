@@ -197,6 +197,41 @@ def test_semantic_service_uses_qwen_document_type_before_phase4_family() -> None
     assert payload["metadata"]["schema_fit"]["requested_target_schema"] == "receipt"
 
 
+def test_semantic_service_blocks_incompatible_qwen_region_target_before_granite() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="generic",
+        text="Coverage decision denied medical necessity appeal rights member ID",
+    )
+    manifest = _manifest(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        semantic_type="receipt_line_item_table",
+        target_schema="receipt",
+        document_type="healthcare_coverage_decision",
+    )
+    jobs = RecordingJobs()
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    assert jobs.created == []
+
+
 def test_semantic_service_uses_semantic_type_before_unclassified_family() -> None:
     document_id = uuid4()
     household_id = uuid4()
