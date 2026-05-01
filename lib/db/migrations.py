@@ -30,6 +30,7 @@ BASELINE_SQL_FILES = (
     "079_phase8_5_extraction_observations.sql",
     "080_phase8_5_semantic_type_expansion.sql",
     "081_phase8_5_semantic_family_reconciliation.sql",
+    "082_phase8_5_semantic_region_asset_scope.sql",
 )
 
 

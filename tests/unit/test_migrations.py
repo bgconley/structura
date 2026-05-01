@@ -15,7 +15,7 @@ def test_baseline_migration_scripts_are_present_and_ordered() -> None:
     plan = baseline_migration_plan("database")
 
     assert plan.scripts[0].name == "001_extensions.sql"
-    assert plan.scripts[-1].name == "081_phase8_5_semantic_family_reconciliation.sql"
+    assert plan.scripts[-1].name == "082_phase8_5_semantic_region_asset_scope.sql"
     assert all(script.exists() for script in plan.scripts)
 
 
