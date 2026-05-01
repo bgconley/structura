@@ -17,6 +17,13 @@ def test_qwen_vllm_start_script_can_disable_prefix_caching() -> None:
     assert "--no-enable-prefix-caching" in script
 
 
+def test_granite_vllm_start_script_can_disable_prefix_caching() -> None:
+    script = Path("workers/model_services/start_granite_vllm.sh").read_text()
+
+    assert "STRUCTURA_GRANITE_DISABLE_PREFIX_CACHING" in script
+    assert "--no-enable-prefix-caching" in script
+
+
 def test_phase8_5_live_bringup_forces_live_model_mode() -> None:
     script = Path("scripts/gpu/phase8_5_live_bringup.sh").read_text()
 

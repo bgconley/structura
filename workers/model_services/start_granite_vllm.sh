@@ -30,13 +30,22 @@ if [[ ! -f granite4_vision.py || ! -f start_granite4_vision_server.py ]]; then
     --local-dir "$server_dir"
 fi
 
-exec python start_granite4_vision_server.py \
-  --model "$model_id" \
-  --trust_remote_code \
-  --host 0.0.0.0 \
-  --port "$port" \
-  --max-model-len "$max_model_len" \
-  --gpu-memory-utilization "$gpu_memory" \
-  --max-num-seqs "$max_num_seqs" \
-  --limit-mm-per-prompt "$limit_mm" \
+args=(
+  --model "$model_id"
+  --trust_remote_code
+  --host 0.0.0.0
+  --port "$port"
+  --max-model-len "$max_model_len"
+  --gpu-memory-utilization "$gpu_memory"
+  --max-num-seqs "$max_num_seqs"
+  --limit-mm-per-prompt "$limit_mm"
   --hf-overrides "{\"adapter_path\":\"$adapter_path\"}"
+)
+
+case "${STRUCTURA_GRANITE_DISABLE_PREFIX_CACHING:-}" in
+  1|true|TRUE|yes|YES)
+    args+=(--no-enable-prefix-caching)
+    ;;
+esac
+
+exec python start_granite4_vision_server.py "${args[@]}"

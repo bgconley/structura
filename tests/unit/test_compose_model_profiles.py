@@ -116,6 +116,7 @@ def test_live_model_profiles_have_concrete_blackwell_commands() -> None:
     )
     assert granite["environment"]["STRUCTURA_GRANITE_MAX_MODEL_LEN"] == "16384"
     assert granite["environment"]["STRUCTURA_GRANITE_GPU_MEMORY_UTILIZATION"] == "0.50"
+    assert granite["environment"]["STRUCTURA_GRANITE_DISABLE_PREFIX_CACHING"] == "true"
 
     text_embed = services["model-embed"]
     assert "text-embeddings-inference:cuda-1.9" in text_embed["image"]

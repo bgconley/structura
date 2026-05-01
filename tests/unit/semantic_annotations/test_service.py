@@ -602,7 +602,7 @@ def test_semantic_service_queues_granite_jobs_with_task_budget_attempts() -> Non
         jobs=jobs,
     ).annotate_document(document_id, quality_mode="smart", requested_by="system")
 
-    assert jobs.created[0]["max_attempts"] == 1
+    assert jobs.created[0]["max_attempts"] == 2
 
 
 def test_semantic_service_dedupes_repeated_regions_before_enqueue() -> None:

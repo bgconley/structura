@@ -15,31 +15,31 @@ class GraniteTaskBudget:
 DEFAULT_GRANITE_BUDGET = GraniteTaskBudget(
     max_output_tokens=1024,
     timeout_seconds=60,
-    max_attempts=1,
+    max_attempts=2,
 )
 
 LINE_ITEM_TABLE_BUDGET = GraniteTaskBudget(
     max_output_tokens=2048,
     timeout_seconds=90,
-    max_attempts=1,
+    max_attempts=2,
 )
 
 SUMMARY_KVP_BUDGET = GraniteTaskBudget(
     max_output_tokens=768,
     timeout_seconds=60,
-    max_attempts=1,
+    max_attempts=2,
 )
 
 OBSERVATION_BUDGET = GraniteTaskBudget(
     max_output_tokens=768,
     timeout_seconds=45,
-    max_attempts=1,
+    max_attempts=2,
 )
 
 SCHEMA_BACKED_OBSERVATION_BUDGET = GraniteTaskBudget(
     max_output_tokens=2048,
     timeout_seconds=75,
-    max_attempts=1,
+    max_attempts=2,
 )
 
 LINE_ITEM_SEMANTIC_TYPES = frozenset(

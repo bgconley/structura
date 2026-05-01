@@ -427,6 +427,7 @@ services:
       STRUCTURA_GRANITE_GPU_MEMORY_UTILIZATION: "0.50"
       STRUCTURA_GRANITE_MAX_NUM_SEQS: "4"
       STRUCTURA_GRANITE_LIMIT_MM_PER_PROMPT: '{"image":1,"video":0}'
+      STRUCTURA_GRANITE_DISABLE_PREFIX_CACHING: "true"
     deploy:
       resources:
         reservations:
