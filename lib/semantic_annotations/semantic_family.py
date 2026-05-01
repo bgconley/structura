@@ -88,6 +88,23 @@ _SPECIFIC_PHASE4_FAMILIES = frozenset(
         "generic",
     }
 )
+_OVERCLASSIFIABLE_PHASE4_FAMILIES = frozenset(
+    {
+        "receipt",
+        "invoice",
+        "medical_eob",
+        "medical_bill",
+        "insurance_document",
+    }
+)
+_GENERIC_SEMANTIC_DOCUMENT_TYPES = frozenset(
+    {
+        "document_observation",
+        "generic_form",
+        "unsupported_document",
+        "no_extraction_target",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -150,9 +167,24 @@ def semantic_document_family_decision(
             docling_hints=docling_hints,
         )
 
+    source_family = _normalized(source.family) or "generic"
+    if (
+        source_family in _OVERCLASSIFIABLE_PHASE4_FAMILIES
+        and semantic_document_type in _GENERIC_SEMANTIC_DOCUMENT_TYPES
+        and not _has_docling_support(source_family, docling_hints)
+    ):
+        return _decision(
+            source=source,
+            family="generic",
+            confidence=0.68,
+            reason="semantic_generic_downgrades_unsupported_phase4_family",
+            semantic_document_type=semantic_document_type,
+            docling_hints=docling_hints,
+        )
+
     return _decision(
         source=source,
-        family=_normalized(source.family) or "generic",
+        family=source_family,
         confidence=0.62,
         reason="retain_existing_family",
         semantic_document_type=semantic_document_type,
@@ -247,9 +279,7 @@ def _decision(
     normalized_family = family if family in PERSISTABLE_DOCUMENT_FAMILIES else "generic"
     normalized_source_family = _normalized(source.family) or "generic"
     update = (
-        normalized_family != normalized_source_family
-        if should_update is None
-        else should_update
+        normalized_family != normalized_source_family if should_update is None else should_update
     )
     return SemanticDocumentFamilyDecision(
         family=normalized_family,

@@ -7,7 +7,10 @@ from lib.extraction.model_output_normalization import (
     observation_dicts_from_payload,
 )
 from lib.extraction.models import ValidationReport
-from lib.extraction.normalization import observation_candidates_from_extraction
+from lib.extraction.normalization import (
+    line_item_candidates_from_extraction,
+    observation_candidates_from_extraction,
+)
 from lib.extraction.validators import validate_extraction_payload
 
 
@@ -208,3 +211,97 @@ def test_observation_candidate_confidence_rejects_out_of_range_model_values() ->
 
     assert len(candidates) == 1
     assert candidates[0].confidence is None
+
+
+def test_line_item_candidates_drop_exact_and_sparse_duplicates() -> None:
+    candidates = line_item_candidates_from_extraction(
+        schema_name="receipt",
+        payload={
+            "line_items": [
+                {
+                    "ordinal": 1,
+                    "description": "OBEN SPA-1000 SMARTPHONE ADAPTER",
+                    "quantity": 1,
+                    "unit_price": {"amount": 120.32, "currency": "USD"},
+                    "amount": {"amount": 120.32, "currency": "USD"},
+                },
+                {
+                    "ordinal": 2,
+                    "description": "OBEN SPA-1000 SMARTPHONE ADAPTER",
+                    "quantity": 1,
+                    "unit_price": {"amount": 120.32, "currency": "USD"},
+                    "amount": {"amount": 120.32, "currency": "USD"},
+                },
+                {
+                    "ordinal": 3,
+                    "description": "OBEN SPA-1000 SMARTPHONE ADAPTER",
+                },
+                {
+                    "ordinal": 4,
+                    "description": "OBEN SPA-1000 SMARTPHONE ADAPTER",
+                    "quantity": 1,
+                    "unit_price": {"amount": 20.0, "currency": "USD"},
+                    "amount": {"amount": 20.0, "currency": "USD"},
+                },
+                {
+                    "ordinal": 5,
+                    "description": "OBEN CTT-1000 CF TABLETOP TRIPOD",
+                    "quantity": 1,
+                    "unit_price": {"amount": 103.9, "currency": "USD"},
+                    "amount": {"amount": 103.9, "currency": "USD"},
+                },
+            ],
+            "confidence": {"overall": 0.82},
+        },
+        validation=ValidationReport(needs_review=True, checks=[]),
+        source_engine="granite_vision_3b",
+    )
+
+    assert [(item.description, item.net_amount, item.ordinal) for item in candidates] == [
+        ("OBEN SPA-1000 SMARTPHONE ADAPTER", 120.32, 1),
+        ("OBEN SPA-1000 SMARTPHONE ADAPTER", 20.0, 2),
+        ("OBEN CTT-1000 CF TABLETOP TRIPOD", 103.9, 3),
+    ]
+
+
+def test_observation_candidates_suppress_empty_grid_and_duplicate_values() -> None:
+    candidates = observation_candidates_from_extraction(
+        schema_name="document_observation",
+        payload={
+            "observations": [
+                {
+                    "family": "granite_medical_denial.v1",
+                    "field_name": "grievance_contact_phone",
+                    "value_type": "string",
+                    "value": None,
+                },
+                {
+                    "family": "granite_mortgage_escrow_statement.v1",
+                    "field_name": "loan_number",
+                    "value_type": "string",
+                    "value": "123456789",
+                },
+                {
+                    "family": "granite_mortgage_escrow_statement.v1",
+                    "field_name": "loan_number",
+                    "value_type": "string",
+                    "value": "123456789",
+                },
+                {
+                    "family": "granite_generic_kvp.v1",
+                    "field_name": "dimensions",
+                    "value_type": "object",
+                    "value": {"rows": 10, "columns": 10},
+                },
+                {
+                    "family": "granite_generic_kvp.v1",
+                    "field_name": "cells",
+                    "value_type": "array",
+                    "value": [0.0, 0.0, 0.0],
+                },
+            ]
+        },
+        validation=ValidationReport(needs_review=True, checks=[]),
+    )
+
+    assert [(item.field_name, item.value) for item in candidates] == [("loan_number", "123456789")]

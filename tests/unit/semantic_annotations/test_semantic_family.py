@@ -61,6 +61,38 @@ def test_semantic_family_does_not_blindly_replace_supported_phase4_family() -> N
     assert decision.reason == "retain_existing_family"
 
 
+def test_semantic_generic_downgrades_unsupported_phase4_invoice_family() -> None:
+    source = _source(
+        family="invoice",
+        title="Scan Oct 8",
+        text="Small scanned table with handwritten rows and no business identifiers",
+    )
+    decision = semantic_document_family_decision(
+        source,
+        _manifest(source, document_type="generic_form"),
+    )
+
+    assert decision.family == "generic"
+    assert decision.should_update is True
+    assert decision.reason == "semantic_generic_downgrades_unsupported_phase4_family"
+
+
+def test_semantic_generic_keeps_supported_phase4_invoice_family() -> None:
+    source = _source(
+        family="invoice",
+        title="Plain invoice",
+        text="Invoice number bill to balance due",
+    )
+    decision = semantic_document_family_decision(
+        source,
+        _manifest(source, document_type="generic_form"),
+    )
+
+    assert decision.family == "invoice"
+    assert decision.should_update is False
+    assert decision.reason == "retain_existing_family"
+
+
 def _source(*, family: str, title: str, text: str) -> ExtractionSourceDocument:
     page_id = uuid4()
     return ExtractionSourceDocument(

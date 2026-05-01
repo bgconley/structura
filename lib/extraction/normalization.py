@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+from dataclasses import replace
 from datetime import date, datetime
 from typing import Any
 from uuid import UUID
@@ -59,17 +61,21 @@ def line_item_candidates_from_extraction(
     confidence = _overall_confidence(payload)
     status = _candidate_status(validation, _first_evidence(payload), source_engine=source_engine)
     if schema_name == "receipt":
-        return _line_items(
-            payload.get("line_items"), "receipt_item", source_engine, confidence, status
+        return _dedupe_line_item_candidates(
+            _line_items(
+                payload.get("line_items"), "receipt_item", source_engine, confidence, status
+            )
         )
     if schema_name == "invoice":
         invoice_items = payload.get("line_items")
         if not isinstance(invoice_items, list) or not invoice_items:
             invoice_items = invoice_line_item_dicts_from_payload(payload)
-        return _line_items(invoice_items, "invoice_item", source_engine, confidence, status)
+        return _dedupe_line_item_candidates(
+            _line_items(invoice_items, "invoice_item", source_engine, confidence, status)
+        )
     if schema_name == "medical_eob":
-        return _eob_line_items(
-            payload.get("service_lines"), source_engine, confidence, "needs_review"
+        return _dedupe_line_item_candidates(
+            _eob_line_items(payload.get("service_lines"), source_engine, confidence, "needs_review")
         )
     return []
 
@@ -87,6 +93,9 @@ def observation_candidates_from_extraction(
         field_name = item.get("field_name")
         if not field_name:
             continue
+        value = item.get("value")
+        if _empty_observation_value(value) or _grid_only_observation(field_name, value):
+            continue
         candidates.append(
             ObservationCandidateFact(
                 observation_family=(
@@ -94,7 +103,7 @@ def observation_candidates_from_extraction(
                 ),
                 field_name=str(field_name),
                 value_type=str(item.get("value_type") or "string"),
-                value=item.get("value"),
+                value=value,
                 evidence=_evidence(item),
                 confidence=_confidence_or_none(item.get("confidence")),
                 validation=validation.as_json(),
@@ -102,7 +111,7 @@ def observation_candidates_from_extraction(
                 metadata={"source_text": item.get("source_text")},
             )
         )
-    return candidates
+    return _dedupe_observation_candidates(candidates)
 
 
 def _receipt_candidates(
@@ -463,6 +472,139 @@ def _eob_line_items(
     return facts
 
 
+def _dedupe_line_item_candidates(
+    facts: list[LineItemCandidateFact],
+) -> list[LineItemCandidateFact]:
+    exact: dict[tuple[Any, ...], LineItemCandidateFact] = {}
+    for fact in facts:
+        key = _line_item_exact_key(fact)
+        current = exact.get(key)
+        if current is None or _line_item_richness(fact) > _line_item_richness(current):
+            exact[key] = fact
+
+    unique = list(exact.values())
+    rich_sparse_keys = {
+        _line_item_sparse_key(fact) for fact in unique if _line_item_has_meaningful_detail(fact)
+    }
+    filtered = [
+        fact
+        for fact in unique
+        if not (_line_item_is_sparse(fact) and _line_item_sparse_key(fact) in rich_sparse_keys)
+    ]
+    return [replace(fact, ordinal=index + 1) for index, fact in enumerate(filtered)]
+
+
+def _line_item_exact_key(fact: LineItemCandidateFact) -> tuple[Any, ...]:
+    return (
+        _normalized_text_key(fact.line_item_type),
+        _normalized_text_key(fact.description),
+        _normalized_text_key(fact.code),
+        _date_key(fact.service_date),
+        _float_key(fact.quantity),
+        _normalized_text_key(fact.unit),
+        _float_key(fact.unit_price),
+        _float_key(fact.gross_amount),
+        _float_key(fact.discount_amount),
+        _float_key(fact.tax_amount),
+        _float_key(fact.net_amount),
+        _normalized_text_key(fact.currency),
+    )
+
+
+def _line_item_sparse_key(fact: LineItemCandidateFact) -> tuple[Any, ...]:
+    return (
+        _normalized_text_key(fact.line_item_type),
+        _normalized_text_key(fact.description),
+        _normalized_text_key(fact.code),
+    )
+
+
+def _line_item_is_sparse(fact: LineItemCandidateFact) -> bool:
+    return not _line_item_has_meaningful_detail(fact)
+
+
+def _line_item_has_meaningful_detail(fact: LineItemCandidateFact) -> bool:
+    return any(
+        value is not None
+        for value in (
+            fact.code,
+            fact.service_date,
+            fact.quantity,
+            fact.unit_price,
+            fact.gross_amount,
+            fact.discount_amount,
+            fact.tax_amount,
+            fact.net_amount,
+        )
+    )
+
+
+def _line_item_richness(fact: LineItemCandidateFact) -> int:
+    populated = (
+        fact.code,
+        fact.service_date,
+        fact.quantity,
+        fact.unit,
+        fact.unit_price,
+        fact.gross_amount,
+        fact.discount_amount,
+        fact.tax_amount,
+        fact.net_amount,
+        fact.currency,
+        fact.category_hint,
+    )
+    return sum(value not in (None, "") for value in populated) + len(fact.evidence)
+
+
+def _dedupe_observation_candidates(
+    candidates: list[ObservationCandidateFact],
+) -> list[ObservationCandidateFact]:
+    deduped: dict[tuple[Any, ...], ObservationCandidateFact] = {}
+    for candidate in candidates:
+        key = _observation_key(candidate)
+        if key not in deduped:
+            deduped[key] = candidate
+    return list(deduped.values())
+
+
+def _observation_key(candidate: ObservationCandidateFact) -> tuple[Any, ...]:
+    return (
+        _normalized_text_key(candidate.observation_family),
+        _normalized_text_key(candidate.field_name),
+        _normalized_text_key(candidate.value_type),
+        _json_key(candidate.value),
+    )
+
+
+def _empty_observation_value(value: Any) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return not value.strip()
+    if isinstance(value, (list, tuple, set, dict)):
+        return len(value) == 0
+    return False
+
+
+def _grid_only_observation(field_name: Any, value: Any) -> bool:
+    field = _normalized_text_key(field_name)
+    if field == "dimensions":
+        return True
+    if field != "cells":
+        return False
+    return not _contains_textual_content(value)
+
+
+def _contains_textual_content(value: Any) -> bool:
+    if isinstance(value, str):
+        return any(char.isalpha() for char in value)
+    if isinstance(value, dict):
+        return any(_contains_textual_content(item) for item in value.values())
+    if isinstance(value, (list, tuple, set)):
+        return any(_contains_textual_content(item) for item in value)
+    return False
+
+
 def _candidate_status(
     validation: ValidationReport,
     evidence: list[dict[str, Any]],
@@ -533,6 +675,34 @@ def _confidence_or_none(value: Any) -> float | None:
     if confidence is None or not 0.0 <= confidence <= 1.0:
         return None
     return confidence
+
+
+def _normalized_text_key(value: Any) -> str:
+    if value is None:
+        return ""
+    return " ".join(str(value).strip().lower().split())
+
+
+def _float_key(value: float | None) -> float | None:
+    return round(float(value), 6) if value is not None else None
+
+
+def _date_key(value: date | None) -> str:
+    return value.isoformat() if isinstance(value, date) else ""
+
+
+def _json_key(value: Any) -> str:
+    return json.dumps(_json_key_value(value), sort_keys=True, separators=(",", ":"))
+
+
+def _json_key_value(value: Any) -> Any:
+    if isinstance(value, str):
+        return _normalized_text_key(value)
+    if isinstance(value, dict):
+        return {str(key): _json_key_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_json_key_value(item) for item in value]
+    return value
 
 
 def _date(value: Any) -> date | None:
