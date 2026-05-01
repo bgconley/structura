@@ -323,6 +323,8 @@ def test_crop_output_empty_line_items_retries_full_page(monkeypatch) -> None:
     attempts = result.raw_output_json["visualInputAttempts"]
     assert attempts[0]["useful"] is False
     assert attempts[1]["useful"] is True
+    assert result.metadata["visualInputPlan"]["scope"] == "full_page_retry"
+    assert result.metadata["visualInputAttempts"] == attempts
 
 
 def test_planned_crop_evidence_records_visual_bbox(monkeypatch) -> None:

@@ -162,6 +162,7 @@ class VisionExtractionGateway:
                 ),
             }
             decision = retry_decision
+        visual_input_plan = decision.primary_plan.as_json() if decision.primary_plan else None
         return GatewayExtraction(
             schema_name=schema_name,
             schema_version="v1",
@@ -189,9 +190,7 @@ class VisionExtractionGateway:
                 "confidence": response.confidence_json,
                 "rawText": response.raw_text,
                 "semanticTask": _semantic_task_json(semantic_task),
-                "visualInputPlan": (
-                    decision.primary_plan.as_json() if decision.primary_plan else None
-                ),
+                "visualInputPlan": visual_input_plan,
                 "visualInputAttempts": attempts,
                 "requestBudget": {
                     "maxOutputTokens": budget.max_output_tokens,
@@ -209,6 +208,10 @@ class VisionExtractionGateway:
                 model_output_schema.version if model_output_schema is not None else None
             ),
             normalization_json=normalization_json,
+            metadata={
+                "visualInputPlan": visual_input_plan,
+                "visualInputAttempts": attempts,
+            },
         )
 
     def _request(
