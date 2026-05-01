@@ -86,20 +86,63 @@ def test_semantic_annotation_worker_fails_unknown_job_type() -> None:
     assert job_service.failed[0]["retryable"] is False
 
 
+def test_semantic_annotation_worker_cancels_granite_jobs_when_parent_was_cancelled() -> None:
+    document_id = uuid4()
+    job_id = uuid4()
+    queued_job_id = uuid4()
+    job_service = RecordingJobService(
+        SimpleNamespace(
+            state=SimpleNamespace(job_id=job_id, job_type="semantic_annotate"),
+            document_id=document_id,
+            household_id=uuid4(),
+            payload={},
+        ),
+        complete_status="cancelled",
+    )
+    service = RecordingSemanticService(
+        annotation_id=uuid4(),
+        queued_granite_job_ids=(queued_job_id,),
+    )
+
+    processed = process_next_semantic_annotation_job(
+        worker_name="worker-semantic-annotations-test",
+        job_service=job_service,
+        service=service,
+    )
+
+    assert processed is True
+    assert job_service.cancelled == [
+        {
+            "job_id": queued_job_id,
+            "reason": "Parent semantic annotation job was cancelled.",
+            "include_running": True,
+            "requested_by": "worker-semantic-annotations-test",
+        }
+    ]
+
+
 class RecordingJobService:
-    def __init__(self, claimed: object | None) -> None:
+    def __init__(self, claimed: object | None, *, complete_status: str | None = None) -> None:
         self.claimed = claimed
+        self.complete_status = complete_status
         self.completed: list[dict[str, object]] = []
         self.failed: list[dict[str, object]] = []
+        self.cancelled: list[dict[str, object]] = []
 
     def claim_next_job_record(self, **_kwargs: object) -> object | None:
         return self.claimed
 
-    def complete_job(self, **kwargs: object) -> None:
+    def complete_job(self, **kwargs: object) -> object | None:
         self.completed.append(kwargs)
+        if self.complete_status:
+            return SimpleNamespace(status=self.complete_status)
+        return None
 
     def fail_job(self, **kwargs: object) -> None:
         self.failed.append(kwargs)
+
+    def cancel_job(self, **kwargs: object) -> None:
+        self.cancelled.append(kwargs)
 
 
 class RecordingSemanticService:

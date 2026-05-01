@@ -56,7 +56,7 @@ def process_next_docling_job(
             converter=converter,
         )
         quality = evaluate_document_quality(target_document_id)
-        job_service.complete_job(
+        completed = job_service.complete_job(
             job_id=claimed.state.job_id,
             result={
                 "parse_status": "succeeded",
@@ -72,6 +72,8 @@ def process_next_docling_job(
                 },
             },
         )
+        if getattr(completed, "status", None) == "cancelled":
+            return True
     except Exception as exc:
         if target_document_id:
             mark_document_parse_failed(

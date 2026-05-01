@@ -90,7 +90,7 @@ def process_next_semantic_annotation_job(
         )
         annotation_id = result.annotation_id
         queued_granite_job_ids = tuple(result.queued_granite_job_ids)
-        jobs.complete_job(
+        completed = jobs.complete_job(
             job_id=claimed.state.job_id,
             result={
                 "semantic_annotation_status": "succeeded",
@@ -98,6 +98,16 @@ def process_next_semantic_annotation_job(
                 "queued_granite_job_ids": [str(job_id) for job_id in queued_granite_job_ids],
             },
         )
+        if getattr(completed, "status", None) == "cancelled":
+            cancel_job = getattr(jobs, "cancel_job", None)
+            if callable(cancel_job):
+                for granite_job_id in queued_granite_job_ids:
+                    cancel_job(
+                        job_id=granite_job_id,
+                        reason="Parent semantic annotation job was cancelled.",
+                        include_running=True,
+                        requested_by=worker_name,
+                    )
     except SemanticAnnotationWorkerError as exc:
         jobs.fail_job(
             job_id=claimed.state.job_id,

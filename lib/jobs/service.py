@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, cast
@@ -40,6 +40,20 @@ class ClaimedJob:
     payload: dict[str, Any]
     document_id: UUID | None
     household_id: UUID | None
+
+
+@dataclass(frozen=True)
+class BulkCancelResult:
+    cancelled_job_ids: tuple[UUID, ...]
+    skipped_job_ids: tuple[UUID, ...]
+
+    @property
+    def cancelled_count(self) -> int:
+        return len(self.cancelled_job_ids)
+
+    @property
+    def skipped_count(self) -> int:
+        return len(self.skipped_job_ids)
 
 
 class JobServiceError(Exception):
@@ -344,6 +358,12 @@ class JobService:
     def complete_job(self, *, job_id: UUID, result: Mapping[str, Any] | None = None) -> JobState:
         with db_connection() as conn:
             with conn.cursor() as cur:
+                cur.execute("SELECT * FROM pipeline_jobs WHERE id = %s FOR UPDATE", (job_id,))
+                current = cur.fetchone()
+                if not current:
+                    raise JobServiceError("Job not found.")
+                if current["status"] == "cancelled":
+                    return job_state_from_row(current)
                 cur.execute(
                     """
                     UPDATE pipeline_jobs
@@ -359,7 +379,7 @@ class JobService:
                 row = cur.fetchone()
             conn.commit()
         if not row:
-            raise JobServiceError("Job not found.")
+            raise JobServiceError("Job update failed.")
         return job_state_from_row(row)
 
     def fail_job(
@@ -378,6 +398,8 @@ class JobService:
                 current = cur.fetchone()
                 if not current:
                     raise JobServiceError("Job not found.")
+                if current["status"] == "cancelled":
+                    return job_state_from_row(current)
                 status = "failed"
                 if current["attempt_count"] >= current["max_attempts"] or not retryable:
                     status = "dead_letter"
@@ -416,6 +438,109 @@ class JobService:
         if not row:
             raise JobServiceError("Job update failed.")
         return job_state_from_row(row)
+
+    def cancel_job(
+        self,
+        *,
+        job_id: UUID,
+        household_id: UUID | None = None,
+        reason: str,
+        include_running: bool = False,
+        requested_by: str = "operator",
+    ) -> JobState:
+        with db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT *
+                    FROM pipeline_jobs
+                    WHERE id = %s
+                      AND (%s::uuid IS NULL OR household_id = %s)
+                    FOR UPDATE
+                    """,
+                    (job_id, household_id, household_id),
+                )
+                current = cur.fetchone()
+                if not current:
+                    raise JobServiceError("Job not found.")
+                row = _cancel_job_row(
+                    cur,
+                    current=current,
+                    reason=reason,
+                    include_running=include_running,
+                    requested_by=requested_by,
+                )
+            conn.commit()
+        return job_state_from_row(row)
+
+    def cancel_jobs(
+        self,
+        *,
+        household_id: UUID | None = None,
+        reason: str,
+        job_ids: Sequence[UUID] = (),
+        document_ids: Sequence[UUID] = (),
+        queue_names: Sequence[str] = (),
+        statuses: Sequence[str] = ("queued", "failed"),
+        title_prefix: str | None = None,
+        include_running: bool = False,
+        max_jobs: int = 250,
+        requested_by: str = "operator",
+    ) -> BulkCancelResult:
+        if not job_ids and not document_ids and not title_prefix:
+            raise JobServiceError(
+                "Bulk job cancellation requires job_ids, document_ids, or title_prefix."
+            )
+        candidate_statuses = set(statuses or ("queued", "failed"))
+        if include_running:
+            candidate_statuses.update({"running", "leased"})
+        elif candidate_statuses.intersection({"running", "leased"}):
+            raise JobServiceError("Cancelling running jobs requires include_running=true.")
+        unsupported = candidate_statuses - {"queued", "failed", "running", "leased"}
+        if unsupported:
+            unsupported_text = ", ".join(sorted(unsupported))
+            raise JobServiceError(f"Unsupported cancellation statuses: {unsupported_text}.")
+
+        with db_connection() as conn:
+            with conn.cursor() as cur:
+                candidate_ids = _candidate_cancel_job_ids(
+                    cur,
+                    household_id=household_id,
+                    job_ids=job_ids,
+                    document_ids=document_ids,
+                    queue_names=queue_names,
+                    statuses=tuple(sorted(candidate_statuses)),
+                    title_prefix=title_prefix,
+                    max_jobs=max_jobs,
+                )
+                cancelled: list[UUID] = []
+                skipped: list[UUID] = []
+                for candidate_id in candidate_ids:
+                    cur.execute(
+                        "SELECT * FROM pipeline_jobs WHERE id = %s FOR UPDATE",
+                        (candidate_id,),
+                    )
+                    current = cur.fetchone()
+                    if not current:
+                        skipped.append(candidate_id)
+                        continue
+                    try:
+                        _cancel_job_row(
+                            cur,
+                            current=current,
+                            reason=reason,
+                            include_running=include_running,
+                            requested_by=requested_by,
+                        )
+                    except JobServiceError:
+                        skipped.append(candidate_id)
+                    else:
+                        cancelled.append(candidate_id)
+            conn.commit()
+        return BulkCancelResult(
+            cancelled_job_ids=tuple(cancelled),
+            skipped_job_ids=tuple(skipped),
+        )
 
     def retry_job(self, *, job_id: UUID, household_id: UUID | None = None) -> AcceptedJob:
         with db_connection() as conn:
@@ -506,6 +631,95 @@ def _recover_expired_running_jobs(
         (queue_name, document_id, document_id),
     )
     return int(cur.rowcount)
+
+
+def _cancel_job_row(
+    cur: Any,
+    *,
+    current: Mapping[str, Any],
+    reason: str,
+    include_running: bool,
+    requested_by: str,
+) -> Mapping[str, Any]:
+    status = str(current["status"])
+    if status == "cancelled":
+        return current
+    if status in {"succeeded", "dead_letter"}:
+        raise JobServiceError(f"Job in status '{status}' cannot be cancelled.")
+    if status in {"running", "leased"} and not include_running:
+        raise JobServiceError("Running job cancellation requires include_running=true.")
+    if status not in {"queued", "failed", "running", "leased"}:
+        raise JobServiceError(f"Job in status '{status}' cannot be cancelled.")
+    cur.execute(
+        """
+        UPDATE pipeline_jobs
+        SET status = 'cancelled',
+            finished_at = now(),
+            lease_expires_at = NULL,
+            scheduled_at = now(),
+            error_json = jsonb_strip_nulls(
+              COALESCE(error_json, '{}'::jsonb)
+              || jsonb_build_object(
+                'error_class', 'JobCancelled',
+                'message', %s,
+                'last_error', %s,
+                'retryable', false,
+                'cancelled_by', %s,
+                'cancelled_at', now()
+              )
+            )
+        WHERE id = %s
+        RETURNING *
+        """,
+        (reason, reason, requested_by, current["id"]),
+    )
+    row = cur.fetchone()
+    if not row:
+        raise JobServiceError("Job cancellation failed.")
+    return row
+
+
+def _candidate_cancel_job_ids(
+    cur: Any,
+    *,
+    household_id: UUID | None,
+    job_ids: Sequence[UUID],
+    document_ids: Sequence[UUID],
+    queue_names: Sequence[str],
+    statuses: Sequence[str],
+    title_prefix: str | None,
+    max_jobs: int,
+) -> list[UUID]:
+    clauses = ["j.status::text = any(%s)"]
+    params: list[Any] = [list(statuses)]
+    if household_id is not None:
+        clauses.append("j.household_id = %s")
+        params.append(household_id)
+    if job_ids:
+        clauses.append("j.id = any(%s)")
+        params.append(list(job_ids))
+    if document_ids:
+        clauses.append("j.document_id = any(%s)")
+        params.append(list(document_ids))
+    if queue_names:
+        clauses.append("j.queue_name = any(%s)")
+        params.append([str(queue_name) for queue_name in queue_names])
+    if title_prefix:
+        clauses.append("d.title ILIKE %s")
+        params.append(f"{title_prefix}%")
+    params.append(max_jobs)
+    cur.execute(
+        f"""
+        SELECT j.id
+        FROM pipeline_jobs j
+        LEFT JOIN documents d ON d.id = j.document_id
+        WHERE {' AND '.join(clauses)}
+        ORDER BY j.priority DESC, j.created_at ASC
+        LIMIT %s
+        """,
+        params,
+    )
+    return [row["id"] for row in cur.fetchall()]
 
 
 def record_service_health(

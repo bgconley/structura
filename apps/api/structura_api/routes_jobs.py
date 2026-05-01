@@ -7,7 +7,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from apps.api.structura_api.dependencies import current_principal, require_admin, require_admin_csrf
 from lib.auth import AuthPrincipal
-from lib.contracts import AcceptedJob, JobState
+from lib.contracts import (
+    AcceptedJob,
+    JobBulkCancelRequest,
+    JobBulkCancelResult,
+    JobCancelRequest,
+    JobState,
+)
 from lib.jobs import JobService, JobServiceError
 
 router = APIRouter(prefix="/api/v1", tags=["Jobs"])
@@ -55,3 +61,59 @@ def retry_job(
         return JobService().retry_job(job_id=jobId, household_id=principal.household_id)
     except JobServiceError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+
+@router.post(
+    "/admin/jobs/{jobId}/cancel",
+    response_model=JobState,
+    status_code=status.HTTP_202_ACCEPTED,
+    tags=["Admin"],
+)
+def cancel_job(
+    jobId: UUID,
+    request: JobCancelRequest,
+    principal: Annotated[AuthPrincipal, Depends(require_admin_csrf)],
+) -> JobState:
+    try:
+        return JobService().cancel_job(
+            job_id=jobId,
+            household_id=principal.household_id,
+            reason=request.reason,
+            include_running=request.include_running,
+            requested_by=str(principal.user_id),
+        )
+    except JobServiceError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+
+@router.post(
+    "/admin/jobs/cancel",
+    response_model=JobBulkCancelResult,
+    status_code=status.HTTP_202_ACCEPTED,
+    tags=["Admin"],
+)
+def cancel_jobs(
+    request: JobBulkCancelRequest,
+    principal: Annotated[AuthPrincipal, Depends(require_admin_csrf)],
+) -> JobBulkCancelResult:
+    try:
+        result = JobService().cancel_jobs(
+            household_id=principal.household_id,
+            reason=request.reason,
+            job_ids=request.job_ids,
+            document_ids=request.document_ids,
+            queue_names=request.queue_names,
+            statuses=request.statuses,
+            title_prefix=request.title_prefix,
+            include_running=request.include_running,
+            max_jobs=request.max_jobs,
+            requested_by=str(principal.user_id),
+        )
+    except JobServiceError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return JobBulkCancelResult(
+        cancelledCount=result.cancelled_count,
+        skippedCount=result.skipped_count,
+        cancelledJobIds=list(result.cancelled_job_ids),
+        skippedJobIds=list(result.skipped_job_ids),
+    )

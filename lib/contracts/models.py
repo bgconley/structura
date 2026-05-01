@@ -448,6 +448,38 @@ class AcceptedJob(ContractModel):
     status: Literal["queued", "running"]
 
 
+class JobCancelRequest(ContractModel):
+    reason: str = Field(min_length=1, max_length=500)
+    include_running: bool = Field(default=False, alias="includeRunning")
+
+
+class JobBulkCancelRequest(ContractModel):
+    reason: str = Field(min_length=1, max_length=500)
+    job_ids: list[UUID] = Field(default_factory=list, alias="jobIds", max_length=500)
+    document_ids: list[UUID] = Field(default_factory=list, alias="documentIds", max_length=500)
+    queue_names: list[str] = Field(default_factory=list, alias="queueNames", max_length=50)
+    statuses: list[str] = Field(
+        default_factory=lambda: ["queued", "failed"],
+        max_length=10,
+    )
+    title_prefix: str | None = Field(default=None, alias="titlePrefix", max_length=240)
+    include_running: bool = Field(default=False, alias="includeRunning")
+    max_jobs: int = Field(default=250, alias="maxJobs", ge=1, le=1000)
+
+    @model_validator(mode="after")
+    def require_bounded_selector(self) -> JobBulkCancelRequest:
+        if self.job_ids or self.document_ids or self.title_prefix:
+            return self
+        raise ValueError("Bulk job cancellation requires jobIds, documentIds, or titlePrefix.")
+
+
+class JobBulkCancelResult(ContractModel):
+    cancelled_count: int = Field(alias="cancelledCount")
+    skipped_count: int = Field(alias="skippedCount")
+    cancelled_job_ids: list[UUID] = Field(default_factory=list, alias="cancelledJobIds")
+    skipped_job_ids: list[UUID] = Field(default_factory=list, alias="skippedJobIds")
+
+
 class DocumentSummary(ContractModel):
     id: UUID
     title: str

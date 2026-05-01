@@ -307,6 +307,123 @@ def test_phase0_expired_running_jobs_are_recoverable(monkeypatch: pytest.MonkeyP
     assert retried_claim.state.job_id == manual.job_id
 
 
+@pytest.mark.skipif(
+    not os.environ.get("STRUCTURA_TEST_DATABASE_URL"),
+    reason="Set STRUCTURA_TEST_DATABASE_URL to run live Phase 0 auth/job tests.",
+)
+def test_phase0_admin_job_cancel_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database_url = os.environ["STRUCTURA_TEST_DATABASE_URL"]
+    monkeypatch.setenv("STRUCTURA_DATABASE_URL", database_url)
+    monkeypatch.setenv("STRUCTURA_ENV", "test")
+    get_settings.cache_clear()
+
+    unique = uuid.uuid4().hex[:12]
+    email = f"phase0-cancel-{unique}@example.com"
+    password = "minimum8"
+    bootstrap = AuthService().bootstrap_admin(
+        email=email,
+        password=password,
+        display_name="Phase 0 Cancel Admin",
+        household_name=f"Phase 0 Cancel {unique}",
+        must_rotate=False,
+    )
+
+    app = create_app()
+    client = TestClient(app)
+    login = client.post(
+        "/api/v1/auth/session",
+        json={"method": "password", "email": email, "password": password},
+    )
+    assert login.status_code == 201
+    csrf = client.cookies["structura_csrf"]
+
+    queue_name = f"phase0-cancel-{unique}"
+    job_service = JobService()
+    queued = job_service.create_job(
+        job_type="ingest",
+        household_id=bootstrap.household_id,
+        payload={"document_id": "queued-cancel-placeholder"},
+        queue_name=queue_name,
+    )
+
+    missing_csrf = client.post(
+        f"/api/v1/admin/jobs/{queued.job_id}/cancel",
+        json={"reason": "test missing csrf"},
+    )
+    assert missing_csrf.status_code == 403
+
+    cancelled = client.post(
+        f"/api/v1/admin/jobs/{queued.job_id}/cancel",
+        headers={"X-CSRF-Token": csrf},
+        json={"reason": "operator cancelled stale queued work"},
+    )
+    assert cancelled.status_code == 202
+    assert cancelled.json()["status"] == "cancelled"
+    assert job_service.claim_next_job(worker_name="phase0-cancel", queue_name=queue_name) is None
+
+    running = job_service.create_job(
+        job_type="ingest",
+        household_id=bootstrap.household_id,
+        payload={"document_id": "running-cancel-placeholder"},
+        queue_name=queue_name,
+    )
+    claimed = job_service.claim_next_job_record(
+        worker_name="phase0-cancel-worker",
+        queue_name=queue_name,
+        lease_seconds=300,
+    )
+    assert claimed
+    assert claimed.state.job_id == running.job_id
+
+    running_without_flag = client.post(
+        f"/api/v1/admin/jobs/{running.job_id}/cancel",
+        headers={"X-CSRF-Token": csrf},
+        json={"reason": "running jobs require explicit opt in"},
+    )
+    assert running_without_flag.status_code == 409
+
+    running_cancelled = client.post(
+        f"/api/v1/admin/jobs/{running.job_id}/cancel",
+        headers={"X-CSRF-Token": csrf},
+        json={"reason": "operator cancelled running stale work", "includeRunning": True},
+    )
+    assert running_cancelled.status_code == 202
+    assert running_cancelled.json()["status"] == "cancelled"
+
+    late_complete = job_service.complete_job(
+        job_id=running.job_id,
+        result={"late": "worker finished after cancellation"},
+    )
+    assert late_complete.status == "cancelled"
+    assert client.get(f"/api/v1/jobs/{running.job_id}").json()["status"] == "cancelled"
+
+    failed = job_service.create_job(
+        job_type="ingest",
+        household_id=bootstrap.household_id,
+        payload={"document_id": "failed-cancel-placeholder"},
+        queue_name=queue_name,
+    )
+    job_service.fail_job(
+        job_id=failed.job_id,
+        error_class="Phase0Retryable",
+        message="retryable before cancellation",
+        retryable=True,
+    )
+    bulk = client.post(
+        "/api/v1/admin/jobs/cancel",
+        headers={"X-CSRF-Token": csrf},
+        json={
+            "jobIds": [str(failed.job_id)],
+            "reason": "bulk cancellation for stale retryable job",
+        },
+    )
+    assert bulk.status_code == 202
+    assert bulk.json()["cancelledCount"] == 1
+    assert job_service.get_job(failed.job_id).status == "cancelled"
+
+
 def _expire_job_lease(job_id: uuid.UUID) -> None:
     with db_connection() as conn:
         with conn.cursor() as cur:

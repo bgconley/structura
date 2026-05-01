@@ -57,7 +57,7 @@ def process_next_extraction_job(
                 target_document_id,
                 force_reclassify=bool(claimed.payload.get("force_reclassify", False)),
             )
-            job_service.complete_job(
+            completed = job_service.complete_job(
                 job_id=claimed.state.job_id,
                 result={
                     "classification_status": "succeeded",
@@ -70,6 +70,8 @@ def process_next_extraction_job(
                     ),
                 },
             )
+            if getattr(completed, "status", None) == "cancelled":
+                return True
             _enqueue_embedding_refresh(
                 target_document_id,
                 household_id=claimed.household_id,
@@ -105,7 +107,7 @@ def process_next_extraction_job(
                 ),
                 schema_name=schema_name,
             )
-            job_service.complete_job(
+            completed = job_service.complete_job(
                 job_id=claimed.state.job_id,
                 result={
                     "extraction_status": "succeeded",
@@ -119,6 +121,8 @@ def process_next_extraction_job(
                     "review_task_count": persisted.review_task_count,
                 },
             )
+            if getattr(completed, "status", None) == "cancelled":
+                return True
             _enqueue_embedding_refresh(
                 target_document_id,
                 household_id=claimed.household_id,
