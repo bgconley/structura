@@ -347,21 +347,92 @@ def test_granite_gateway_routes_title_seller_info_to_observation_schema() -> Non
     assert "seller_name" in client.request.prompt
 
 
-def test_granite_gateway_uses_larger_output_budget_for_live_structured_json() -> None:
+def test_granite_gateway_uses_receipt_line_item_budget() -> None:
     client = FakeVisionClient(
         source_engine="granite_vision_3b",
         profile_name=GRANITE_VISION_PROFILE,
     )
     source = _source_with_page_image()
+    task = SemanticExtractionTask(
+        region_id=uuid4(),
+        annotation_id=uuid4(),
+        document_id=source.document_id,
+        semantic_type="receipt_line_item_table",
+        granite_task="tables_json",
+        target_schema="receipt",
+        expected_fields=("item_description", "quantity", "line_total"),
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+    )
 
     GraniteVisionExtractionGateway(client=client).extract(
         source,
-        schema_name="invoice",
+        schema_name="receipt",
         route_profile="docling_plus_granite_structured",
+        semantic_task=task,
     )
 
     assert client.request is not None
-    assert client.request.max_output_tokens == 4096
+    assert client.request.max_output_tokens == 1024
+    assert client.request.timeout_seconds == 90
+
+
+def test_granite_gateway_uses_small_observation_budget() -> None:
+    client = FakeVisionClient(
+        source_engine="granite_vision_3b",
+        profile_name=GRANITE_VISION_PROFILE,
+    )
+    source = _source_with_page_image()
+    task = SemanticExtractionTask(
+        region_id=uuid4(),
+        annotation_id=uuid4(),
+        document_id=source.document_id,
+        semantic_type="dispute_reason_block",
+        granite_task="kvp",
+        target_schema="document_observation",
+        expected_fields=("merchant", "amount", "dispute_reason"),
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+    )
+
+    GraniteVisionExtractionGateway(client=client).extract(
+        source,
+        schema_name="document_observation",
+        route_profile="docling_plus_granite_structured",
+        semantic_task=task,
+    )
+
+    assert client.request is not None
+    assert client.request.max_output_tokens == 512
+    assert client.request.timeout_seconds == 45
+
+
+def test_granite_observation_prompt_is_bounded() -> None:
+    client = FakeVisionClient(
+        source_engine="granite_vision_3b",
+        profile_name=GRANITE_VISION_PROFILE,
+    )
+    source = _source_with_page_image()
+    task = SemanticExtractionTask(
+        region_id=uuid4(),
+        annotation_id=uuid4(),
+        document_id=source.document_id,
+        semantic_type="dispute_reason_block",
+        granite_task="kvp",
+        target_schema="document_observation",
+        expected_fields=("transaction_date", "merchant", "amount", "dispute_reason"),
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+    )
+
+    GraniteVisionExtractionGateway(client=client).extract(
+        source,
+        schema_name="document_observation",
+        route_profile="docling_plus_granite_structured",
+        semantic_task=task,
+    )
+
+    assert client.request is not None
+    assert "Extract only the requested observation fields" in client.request.prompt
+    assert "Do not transcribe paragraphs" in client.request.prompt
+    assert "Return null or an empty list when evidence is not visible" in client.request.prompt
 
 
 def test_granite_gateway_sends_only_semantic_grounded_page() -> None:

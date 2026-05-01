@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 
 from lib.config import get_settings
 from lib.db.connection import db_connection
+from lib.extraction.granite_budgets import granite_budget_for_task
 from lib.extraction.models import ExtractionSourceDocument
 from lib.extraction.repository import load_extraction_source
 from lib.jobs import JobService, create_job_with_cursor
@@ -19,6 +20,7 @@ from lib.semantic_annotations.models import (
     DocumentSemanticManifest,
     QualityMode,
     SemanticAnnotationResult,
+    SemanticExtractionTask,
     SemanticRegionAnnotation,
 )
 from lib.semantic_annotations.qwen_gateway import (
@@ -249,6 +251,11 @@ class SemanticAnnotationService:
                 ),
                 priority=spec.priority,
                 queue_name="extraction",
+                max_attempts=_max_attempts_for_granite_spec(
+                    spec,
+                    document_id=source.document_id,
+                    annotation_id=persisted.annotation_id,
+                ),
             )
             created_job_id = getattr(created_job, "job_id", None)
             if isinstance(created_job_id, UUID):
@@ -303,6 +310,11 @@ class SemanticAnnotationService:
                 ),
                 priority=spec.priority,
                 queue_name="extraction",
+                max_attempts=_max_attempts_for_granite_spec(
+                    spec,
+                    document_id=source.document_id,
+                    annotation_id=persisted.annotation_id,
+                ),
             )
             queued.append(job_id)
         return queued
@@ -496,6 +508,33 @@ def _region_for_granite_job(
     return replace(region, granite_task=granite_task, metadata=metadata), {
         "semantic_task_repair": repair
     }
+
+
+def _max_attempts_for_granite_spec(
+    spec: GraniteJobSpec,
+    *,
+    document_id: UUID,
+    annotation_id: UUID,
+) -> int:
+    if spec.region.granite_task is None:
+        return 1
+    task = SemanticExtractionTask(
+        region_id=spec.region_id,
+        annotation_id=annotation_id,
+        document_id=document_id,
+        semantic_type=spec.region.semantic_type,
+        granite_task=spec.region.granite_task,
+        target_schema=spec.region.target_schema or spec.target_schema,
+        expected_fields=spec.region.expected_fields,
+        grounding=spec.region.grounding,
+        reason=spec.region.reason,
+        confidence=spec.region.confidence,
+        metadata=spec.region.metadata,
+    )
+    return granite_budget_for_task(
+        schema_name=spec.target_schema,
+        semantic_task=task,
+    ).max_attempts
 
 
 def _region_pairs(

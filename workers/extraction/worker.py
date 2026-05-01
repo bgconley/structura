@@ -8,6 +8,7 @@ import traceback
 from uuid import UUID
 
 from lib.extraction import ExtractionService
+from lib.extraction.model_failure_policy import extraction_failure_policy
 from lib.extraction.reconciliation_repository import maybe_reconcile_semantic_annotation
 from lib.jobs import JobService, record_service_health
 from lib.relationships.jobs import enqueue_relationship_job
@@ -131,15 +132,20 @@ def process_next_extraction_job(
                 f"Unsupported extraction queue job: {claimed.state.job_type}"
             )
     except Exception as exc:
+        failure_policy = extraction_failure_policy(
+            payload=claimed.payload,
+            exc=exc,
+        )
         job_service.fail_job(
             job_id=claimed.state.job_id,
             error_class=exc.__class__.__name__,
             message=_failure_message(exc),
-            retryable=True,
+            retryable=failure_policy.retryable,
             suppress=False,
             details={
                 "exception_class": exc.__class__.__name__,
                 "exception_message": str(exc),
+                "model_failure_policy": failure_policy.policy,
                 "traceback": traceback.format_exc(limit=8),
             },
         )

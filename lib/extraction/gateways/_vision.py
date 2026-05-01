@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from lib.extraction.granite_budgets import GraniteTaskBudget
 from lib.extraction.granite_prompting import granite_prompt
 from lib.extraction.model_output_normalization import normalize_granite_region_output
 from lib.extraction.model_output_schemas import model_output_schema_for_task
@@ -52,6 +53,10 @@ class VisionExtractionGateway:
             schema_name=schema_name,
             semantic_task=semantic_task,
         )
+        budget = self._request_budget(
+            schema_name=schema_name,
+            semantic_task=semantic_task,
+        )
         response = self.client.generate(
             VisionGenerateRequest(
                 profile_name=self.profile_name,
@@ -72,9 +77,9 @@ class VisionExtractionGateway:
                 response_schema_name=(
                     model_output_schema.name if model_output_schema is not None else schema_name
                 ),
-                max_output_tokens=self.max_output_tokens,
+                max_output_tokens=budget.max_output_tokens,
                 temperature=0.0,
-                timeout_seconds=self.timeout_seconds,
+                timeout_seconds=budget.timeout_seconds,
                 response_json_schema=(
                     model_output_schema.schema if model_output_schema is not None else None
                 ),
@@ -115,6 +120,11 @@ class VisionExtractionGateway:
                 "confidence": response.confidence_json,
                 "rawText": response.raw_text,
                 "semanticTask": _semantic_task_json(semantic_task),
+                "requestBudget": {
+                    "maxOutputTokens": budget.max_output_tokens,
+                    "timeoutSeconds": budget.timeout_seconds,
+                    "maxAttempts": budget.max_attempts,
+                },
                 "modelOutputSchema": (
                     model_output_schema.name if model_output_schema is not None else None
                 ),
@@ -126,6 +136,18 @@ class VisionExtractionGateway:
                 model_output_schema.version if model_output_schema is not None else None
             ),
             normalization_json=normalization_json,
+        )
+
+    def _request_budget(
+        self,
+        *,
+        schema_name: str,
+        semantic_task: SemanticExtractionTask | None,
+    ) -> GraniteTaskBudget:
+        return GraniteTaskBudget(
+            max_output_tokens=self.max_output_tokens,
+            timeout_seconds=self.timeout_seconds,
+            max_attempts=1,
         )
 
 

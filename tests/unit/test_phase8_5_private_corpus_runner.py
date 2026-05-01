@@ -187,7 +187,7 @@ def test_cancel_text_embedding_jobs_types_corpus_actor_for_postgres(
     assert executed["committed"] is True
 
 
-def test_private_corpus_extraction_drain_reports_failed_region_jobs_without_stopping(
+def test_private_corpus_extraction_drain_marks_model_timeout_as_fatal(
     monkeypatch,
     capsys,
 ) -> None:
@@ -209,9 +209,14 @@ def test_private_corpus_extraction_drain_reports_failed_region_jobs_without_stop
         lambda doc_id, *, queue_name: failed_jobs if queue_name == "extraction" else [],
     )
 
-    failures = runner._drain_extraction_and_rescue(document_id)
+    try:
+        runner._drain_extraction_and_rescue(document_id)
+    except SystemExit as exc:
+        assert exc.code == 2
+    else:
+        raise AssertionError("Model timeout should stop the corpus run by default")
 
-    assert failures == failed_jobs
     output = capsys.readouterr().out
     assert '"stage": "extraction_failures"' in output
     assert '"error_class": "ModelTimeoutError"' in output
+    assert '"stage": "model_timeout_fatal"' in output

@@ -4,7 +4,10 @@ from dataclasses import dataclass
 from typing import Any
 
 from lib.extraction.models import ExtractionSourceDocument
-from lib.semantic_annotations.docling_audit import family_anchor_hits
+from lib.semantic_annotations.docling_audit import (
+    family_anchor_hits,
+    family_has_required_hint_fit,
+)
 from lib.semantic_annotations.docling_targets import DOCLING_STRUCTURAL_REGION_SOURCE
 from lib.semantic_annotations.models import SemanticRegionAnnotation
 from lib.semantic_annotations.target_schema_policy import (
@@ -176,7 +179,13 @@ def _requested_target_schema(
 
 
 def _evidence_families_from_hits(anchor_hits: dict[str, tuple[str, ...]]) -> tuple[str, ...]:
-    return tuple(sorted(family for family, anchors in anchor_hits.items() if anchors))
+    return tuple(
+        sorted(
+            family
+            for family, anchors in anchor_hits.items()
+            if anchors and family_has_required_hint_fit(family, anchors)
+        )
+    )
 
 
 def _has_required_anchor_fit(
@@ -185,7 +194,11 @@ def _has_required_anchor_fit(
 ) -> bool:
     allowed = _TARGET_SCHEMA_EVIDENCE_FAMILIES[requested]
     required_count = _TARGET_SCHEMA_REQUIRED_ANCHOR_COUNTS[requested]
-    return any(len(anchor_hits.get(family, ())) >= required_count for family in allowed)
+    return any(
+        len(anchor_hits.get(family, ())) >= required_count
+        and family_has_required_hint_fit(family, anchor_hits.get(family, ()))
+        for family in allowed
+    )
 
 
 def _conflicting_observation_families(
@@ -196,6 +209,7 @@ def _conflicting_observation_families(
         for family in _OBSERVATION_CONFLICT_FAMILIES
         if len(anchor_hits.get(family, ()))
         >= _OBSERVATION_CONFLICT_REQUIRED_ANCHOR_COUNTS[family]
+        and family_has_required_hint_fit(family, anchor_hits.get(family, ()))
     ]
     return tuple(sorted(conflicts))
 

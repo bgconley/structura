@@ -53,6 +53,8 @@ def granite_prompt(
             "Extract only the line/service rows visible in the grounded table or region. "
             "For line-item contracts, populate line_items with row objects; do not return "
             "standalone quantity or amount arrays instead of rows. "
+            "If visible rows are not present, return an empty line_items array instead of prose. "
+            "Do not infer line items from totals, disclaimers, or payment text. "
             "Use the JSON Schema below as the output contract. "
             "Return null for fields you cannot find. "
             "Return ONLY valid JSON matching the schema instance, not the schema itself. "
@@ -61,7 +63,10 @@ def granite_prompt(
         )
     return (
         f"{base}{task_context}"
-        "Extract structured data from this document.\n"
+        "Extract only the requested observation fields. "
+        "Do not transcribe paragraphs or unrelated receipt/legal/payment text. "
+        "Return null or an empty list when evidence is not visible. "
+        "Prefer fewer grounded values over broad summaries.\n"
         "Return a JSON object matching this schema:\n\n"
         f"{schema_text}\n\n"
         "Return null for fields you cannot find.\n"

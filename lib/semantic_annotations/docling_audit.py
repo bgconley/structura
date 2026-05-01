@@ -54,11 +54,24 @@ FAMILY_ANCHORS: dict[str, dict[str, tuple[str, ...]]] = {
         "uwm": ("uwm", "united wholesale mortgage"),
     },
     "financial_dispute_form": {
-        "dispute": ("dispute",),
+        "dispute": ("dispute", "reason for dispute", "dispute form"),
         "transaction": ("transaction",),
         "charge": ("charge",),
-        "unauthorized": ("unauthorized",),
+        "unauthorized": ("unauthorized", "not authorized"),
+        "chargeback": ("chargeback",),
+        "fraud": ("fraud", "fraudulent"),
     },
+}
+
+REQUIRED_HINT_ANCHORS: dict[str, frozenset[str]] = {
+    "financial_dispute_form": frozenset(
+        {
+            "dispute",
+            "unauthorized",
+            "chargeback",
+            "fraud",
+        }
+    ),
 }
 
 
@@ -121,7 +134,7 @@ def build_docling_audit(source: ExtractionSourceDocument) -> DoclingAudit:
     suggested_family_hints = tuple(
         family
         for family in FAMILY_ANCHORS
-        if len(anchor_hits.get(family, ())) >= _hint_threshold(family)
+        if family_has_suggested_hint(family, anchor_hits.get(family, ()))
     )
     return DoclingAudit(
         document_id=source.document_id,
@@ -152,6 +165,20 @@ def family_anchor_hits(source: ExtractionSourceDocument) -> dict[str, tuple[str,
         )
     )
     return _anchor_hits(audit_text)
+
+
+def family_has_required_hint_fit(family: str, anchors: tuple[str, ...]) -> bool:
+    required = REQUIRED_HINT_ANCHORS.get(family)
+    if not required:
+        return True
+    return bool(required.intersection(anchors))
+
+
+def family_has_suggested_hint(family: str, anchors: tuple[str, ...]) -> bool:
+    return len(anchors) >= _hint_threshold(family) and family_has_required_hint_fit(
+        family,
+        anchors,
+    )
 
 
 def _page_snippets(source: ExtractionSourceDocument) -> list[PageAuditSnippet]:

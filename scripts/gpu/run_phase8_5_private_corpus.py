@@ -467,7 +467,31 @@ def _drain_extraction_and_rescue(document_id: UUID) -> list[dict[str, Any]]:
             flush=True,
         )
     _require_no_failed_jobs(document_id, queue_name="semantic-annotations")
+    if _has_model_timeout(extraction_failures):
+        print(
+            json.dumps(
+                {
+                    "stage": "model_timeout_fatal",
+                    "document_id": str(document_id),
+                    "message": (
+                        "Stopping private corpus run because a model timeout indicates "
+                        "runtime instability that must not be hidden by retries."
+                    ),
+                },
+                sort_keys=True,
+            ),
+            flush=True,
+        )
+        raise SystemExit(2)
     return extraction_failures
+
+
+def _has_model_timeout(failures: list[dict[str, Any]]) -> bool:
+    for failure in failures:
+        error_json = failure.get("error_json")
+        if isinstance(error_json, dict) and error_json.get("error_class") == "ModelTimeoutError":
+            return True
+    return False
 
 
 def _drain_visual_embedding(document_id: UUID) -> None:

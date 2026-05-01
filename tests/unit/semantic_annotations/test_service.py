@@ -558,6 +558,83 @@ def test_semantic_service_uses_only_dominant_docling_observation_family() -> Non
     assert payload["metadata"]["docling_structural_target"]["family"] == "real_estate_title"
 
 
+def test_semantic_service_does_not_add_dispute_target_for_restaurant_receipt() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="receipt",
+        text=(
+            "McDonald's receipt transaction subtotal tax total paid "
+            "visa charge payment approval code"
+        ),
+    )
+    manifest = _manifest(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        semantic_type="receipt_payment_summary",
+        granite_task="kvp",
+        target_schema="receipt",
+        document_type="receipt",
+    )
+    jobs = RecordingJobs()
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    semantic_types = [job["payload"].get("semantic_type") for job in jobs.created]
+    assert "receipt_payment_summary" in semantic_types
+    assert "dispute_reason_block" not in semantic_types
+
+
+def test_semantic_service_queues_granite_jobs_with_task_budget_attempts() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="receipt",
+        text="McDonald's receipt subtotal tax total paid",
+    )
+    manifest = _manifest(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        semantic_type="receipt_line_item_table",
+        granite_task="tables_json",
+        target_schema="receipt",
+        document_type="receipt",
+    )
+    jobs = RecordingJobs()
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    assert jobs.created[0]["max_attempts"] == 1
+
+
 def test_semantic_service_dedupes_repeated_regions_before_enqueue() -> None:
     document_id = uuid4()
     household_id = uuid4()

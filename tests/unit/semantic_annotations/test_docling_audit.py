@@ -53,6 +53,40 @@ def test_docling_audit_finds_service_record_anchors_without_title_false_hint() -
     assert "parts" in audit.lexical_anchors
 
 
+def test_restaurant_receipt_does_not_trigger_financial_dispute_hint() -> None:
+    source = _source_with_pages(
+        [
+            (
+                "McDonald's receipt transaction subtotal tax total paid "
+                "visa charge payment approval code"
+            )
+        ]
+    )
+
+    audit = build_docling_audit(source)
+
+    assert audit.anchor_counts["receipt"] >= 2
+    assert "receipt" in audit.suggested_family_hints
+    assert "financial_dispute_form" not in audit.suggested_family_hints
+    assert audit.family_tension == ()
+
+
+def test_financial_dispute_hint_requires_dispute_trigger() -> None:
+    source = _source_with_pages(
+        [
+            (
+                "Cardholder dispute form unauthorized transaction charge "
+                "merchant amount reason for dispute"
+            )
+        ]
+    )
+
+    audit = build_docling_audit(source)
+
+    assert "financial_dispute_form" in audit.suggested_family_hints
+    assert audit.anchor_counts["financial_dispute_form"] >= 3
+
+
 def test_docling_audit_preserves_table_inventory() -> None:
     source = _source_with_pages(["BH Photo order subtotal tax paid"])
 
