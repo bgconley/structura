@@ -18,6 +18,10 @@ sys.path.insert(0, str(ROOT))
 from lib.config import get_settings  # noqa: E402
 from lib.db.connection import db_connection  # noqa: E402
 from lib.semantic_annotations.jobs import enqueue_semantic_annotation_job  # noqa: E402
+from scripts.gpu.phase8_5_corpus_run_guard import (  # noqa: E402
+    DEFAULT_CORPUS_LOCK_PATH,
+    CorpusRunGuard,
+)
 
 CONTROLLED_WORKERS = (
     "worker-docling",
@@ -28,10 +32,27 @@ CONTROLLED_WORKERS = (
 )
 CORPUS_RUN_ID = "phase8_5_private_corpus"
 CORPUS_REQUESTED_BY = "agent"
+CORPUS_LOCK_PATH = DEFAULT_CORPUS_LOCK_PATH
+
+_ACTIVE_CORPUS_RUN: CorpusRunGuard | None = None
 
 
 def main() -> int:
+    global _ACTIVE_CORPUS_RUN
     args = _parse_args()
+    with CorpusRunGuard(
+        root=ROOT,
+        lock_path=args.lock_path,
+        title_prefix=args.title_prefix,
+    ) as guard:
+        _ACTIVE_CORPUS_RUN = guard
+        try:
+            return _run_corpus(args)
+        finally:
+            _ACTIVE_CORPUS_RUN = None
+
+
+def _run_corpus(args: argparse.Namespace) -> int:
     settings = get_settings()
     if settings.model_mode == "fixture":
         raise SystemExit("Refusing private corpus run with STRUCTURA_MODEL_MODE=fixture.")
@@ -97,6 +118,15 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--household-id", type=UUID)
     parser.add_argument("--user-id", type=UUID)
     parser.add_argument("--docling-timeout-seconds", type=int, default=1800)
+    parser.add_argument(
+        "--lock-path",
+        type=Path,
+        default=CORPUS_LOCK_PATH,
+        help=(
+            "Singleton lock path. The private corpus runner refuses to start while "
+            "another run owns this lock."
+        ),
+    )
     parser.add_argument(
         "--high-quality",
         action="store_true",
@@ -597,6 +627,8 @@ def _compose_python(
     volumes: tuple[str, ...] = (),
 ) -> subprocess.CompletedProcess[str]:
     command = ["docker", "compose", "run", "--rm", "--no-deps"]
+    if _ACTIVE_CORPUS_RUN:
+        command.extend(_ACTIVE_CORPUS_RUN.compose_run_options(service))
     for volume in volumes:
         command.extend(["--volume", volume])
     if live_model_env:
@@ -610,14 +642,19 @@ def _compose_python(
         )
     command.extend([service, "python", "-c", code, *args])
     # Fixed docker compose argv, no shell, service names are caller-controlled internals.
-    return subprocess.run(  # nosec B603
-        command,
-        cwd=ROOT,
-        check=check,
-        timeout=timeout_seconds,
-        text=True,
-        capture_output=True,
-    )
+    try:
+        return subprocess.run(  # nosec B603
+            command,
+            cwd=ROOT,
+            check=check,
+            timeout=timeout_seconds,
+            text=True,
+            capture_output=True,
+        )
+    except subprocess.TimeoutExpired:
+        if _ACTIVE_CORPUS_RUN:
+            _ACTIVE_CORPUS_RUN.cleanup_current_run_containers()
+        raise
 
 
 def _cancel_text_embedding_jobs(document_id: UUID) -> None:

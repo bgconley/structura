@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 import importlib.util
+import subprocess
 import sys
 from pathlib import Path
 from uuid import uuid4
 
 from lib.jobs.event_payloads import build_semantic_annotate_document_job_payload
+from scripts.gpu.phase8_5_corpus_run_guard import (
+    CORPUS_CONTAINER_LABEL,
+    CORPUS_CONTAINER_RUN_LABEL,
+    CorpusRunGuard,
+)
 
 
 def _load_private_corpus_runner():
@@ -132,6 +138,60 @@ def test_private_corpus_manifest_argument_is_supported_without_committing_privat
 
     assert args.manifest == manifest_path
     assert args.pdf == [pdf_path]
+    assert args.lock_path == runner.CORPUS_LOCK_PATH
+
+
+def test_private_corpus_one_off_containers_are_labeled_and_named(monkeypatch, tmp_path) -> None:
+    runner = _load_private_corpus_runner()
+    captured: dict[str, object] = {}
+
+    def fake_run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        captured["command"] = command
+        captured["kwargs"] = kwargs
+        return subprocess.CompletedProcess(command, 0, stdout="{}", stderr="")
+
+    guard = CorpusRunGuard(root=tmp_path, lock_path=tmp_path / "corpus.lock", title_prefix="test")
+    guard.run_id = "20260501T000000Z-1234-abcdef12"
+    monkeypatch.setattr(runner, "_ACTIVE_CORPUS_RUN", guard)
+    monkeypatch.setattr(runner.subprocess, "run", fake_run)
+
+    runner._compose_python("worker-semantic-annotations", "print('ok')")
+
+    command = captured["command"]
+    assert isinstance(command, list)
+    assert command[:3] == ["docker", "compose", "run"]
+    assert "--name" in command
+    assert "structura-phase85-" in command[command.index("--name") + 1]
+    assert "--label" in command
+    assert f"{CORPUS_CONTAINER_LABEL}=true" in command
+    assert f"{CORPUS_CONTAINER_RUN_LABEL}=20260501T000000Z-1234-abcdef12" in command
+
+
+def test_private_corpus_timeout_cleans_current_run_containers(monkeypatch) -> None:
+    runner = _load_private_corpus_runner()
+    cleaned: list[str] = []
+
+    class FakeGuard:
+        def compose_run_options(self, _service: str) -> list[str]:
+            return []
+
+        def cleanup_current_run_containers(self) -> None:
+            cleaned.append("cleaned")
+
+    def fake_run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        raise subprocess.TimeoutExpired(command, timeout=10)
+
+    monkeypatch.setattr(runner, "_ACTIVE_CORPUS_RUN", FakeGuard())
+    monkeypatch.setattr(runner.subprocess, "run", fake_run)
+
+    try:
+        runner._compose_python("worker-extraction", "print('ok')", timeout_seconds=10)
+    except subprocess.TimeoutExpired:
+        pass
+    else:
+        raise AssertionError("TimeoutExpired should propagate after cleanup")
+
+    assert cleaned == ["cleaned"]
 
 
 def test_private_corpus_summary_does_not_select_removed_document_parse_status() -> None:
