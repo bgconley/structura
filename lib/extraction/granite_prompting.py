@@ -46,13 +46,17 @@ def granite_prompt(
 
     if _is_line_item_region(semantic_task):
         return (
+            "<tables_json>\n"
             f"{base}"
             f"{task_context}"
             "Extract line items as compact row candidates from the grounded region. "
             "Use Docling table rows when provided. "
+            "Return at most 20 row objects for this grounded region. "
             "Do not output table dimensions, table cells, or table schema. "
             "Do not copy these instructions into any field. "
             "Do not include source_text; Structura records evidence separately. "
+            "Do not include page summaries, row grids, coordinate dumps, or explanatory text. "
+            "Keep confidence as an empty object or concise numeric scores only. "
             "If visible rows are not present, return an empty list instead of prose. "
             f"{_line_item_shape(model_output_schema)} "
             "Return ONLY a valid JSON object matching the response schema supplied by the API."

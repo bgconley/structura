@@ -4,7 +4,6 @@ from __future__ import annotations
 import argparse
 import json
 import time
-from collections import Counter
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -276,9 +275,7 @@ def _terminal_state(
     ]
     progress = _document_progress(document_ids)
     complete_shape = all(
-        int(row["pages"] or 0) > 0
-        and int(row["semantic_succeeded"] or 0) > 0
-        and int(row["extractions_completed"] or 0) > 0
+        int(row["pages"] or 0) > 0 and int(row["semantic_succeeded"] or 0) > 0
         for row in progress
     )
     return not active and complete_shape, active, target_dead_letters, progress
@@ -329,12 +326,14 @@ def _dead_letter_counts(document_ids: list[UUID]) -> list[dict[str, Any]]:
 
 
 def _compact_job_counts(document_ids: list[UUID]) -> list[dict[str, Any]]:
-    compact = Counter(
-        (row["queue_name"], row["job_type"], row["status"]) for row in _job_counts(document_ids)
-    )
     return [
-        {"queue": key[0], "type": key[1], "status": key[2], "count": count}
-        for key, count in sorted(compact.items())
+        {
+            "queue": row["queue_name"],
+            "type": row["job_type"],
+            "status": row["status"],
+            "count": row["count"],
+        }
+        for row in _job_counts(document_ids)
     ]
 
 
@@ -445,14 +444,20 @@ ORDER BY created_at DESC
 """
 
 _SEMANTIC_REGIONS_SQL = """
-SELECT r.page_number, r.semantic_type, r.priority, r.granite_task, r.target_schema,
+SELECT COALESCE(p.page_number, dp.page_number) AS page_number,
+       r.semantic_type, r.priority, r.granite_task, r.target_schema,
        r.grounding_kind, r.review_required, r.reason, r.confidence,
        r.metadata_json ->> 'importance' AS importance,
        r.metadata_json ->> 'must_extract_reason' AS must_extract_reason
 FROM semantic_region_annotations r
 JOIN document_semantic_annotations a ON a.id = r.annotation_id
+LEFT JOIN page_semantic_annotations p ON p.id = r.page_annotation_id
+LEFT JOIN document_pages dp ON dp.id = r.page_id
 WHERE r.document_id = %s AND a.is_current
-ORDER BY r.page_number NULLS LAST, r.priority DESC, r.semantic_type, r.created_at
+ORDER BY COALESCE(p.page_number, dp.page_number) NULLS LAST,
+         r.priority DESC,
+         r.semantic_type,
+         r.created_at
 """
 
 _EXTRACTIONS_SQL = """
