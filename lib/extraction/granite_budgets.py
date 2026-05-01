@@ -25,7 +25,7 @@ LINE_ITEM_TABLE_BUDGET = GraniteTaskBudget(
 )
 
 SUMMARY_KVP_BUDGET = GraniteTaskBudget(
-    max_output_tokens=768,
+    max_output_tokens=1536,
     timeout_seconds=60,
     max_attempts=2,
 )

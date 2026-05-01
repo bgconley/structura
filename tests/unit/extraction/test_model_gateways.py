@@ -210,9 +210,11 @@ def test_granite_gateway_routes_payment_summary_to_kvp_schema_prompt() -> None:
     assert "JSON Schema:" not in client.request.prompt
     assert '"properties"' not in client.request.prompt
     assert "Return null or an empty list when evidence is not visible" in client.request.prompt
+    assert '"payments":[]' in client.request.prompt
     assert client.request.response_schema_name == "granite_payment_summary.v1"
     assert client.request.response_json_schema is not None
     assert "payments" in client.request.response_json_schema["properties"]
+    assert client.request.max_output_tokens == 1536
 
 
 def test_granite_gateway_routes_retail_order_tables_to_receipt_line_schema() -> None:

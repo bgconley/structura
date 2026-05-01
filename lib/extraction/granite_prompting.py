@@ -264,4 +264,15 @@ def _compact_shape_for_schema(schema_name: str) -> str:
             '"statement_date":null,"escrow_balance":null,"payment_amount":null,'
             '"tax_amount":null,"insurance_amount":null,"confidence":{}}.'
         )
+    if schema_name == "granite_receipt_payment_summary.v1":
+        return (
+            'Use shape {"merchant_name":null,"transaction_date":null,'
+            '"subtotal":null,"tax":null,"tip":null,"total":null,'
+            '"payment_method":null,"confidence":{}}.'
+        )
+    if schema_name == "granite_payment_summary.v1":
+        return (
+            'Use shape {"invoice_no":null,"amount":null,"payments":[],'
+            '"confidence":{}}. Include at most two payment objects.'
+        )
     return "Use the compact object shape defined by the supplied API response schema."
