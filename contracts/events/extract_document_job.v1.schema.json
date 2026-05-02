@@ -109,6 +109,36 @@
         "type": "string"
       }
     },
+    "plan_id": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/uuid"
+    },
+    "plan_task_id": {
+      "$ref": "../schemas/common_defs.schema.json#/$defs/uuid"
+    },
+    "model_output_schema_name": {
+      "type": "string"
+    },
+    "canonical_target_schema": {
+      "type": "string"
+    },
+    "compatibility_mode": {
+      "type": "string",
+      "enum": [
+        "exact",
+        "compatible_alias",
+        "generic_review_only",
+        "missing"
+      ]
+    },
+    "extractor_backend": {
+      "type": "string"
+    },
+    "contract_resolution_reason": {
+      "type": "string"
+    },
+    "region_envelope_version": {
+      "type": "string"
+    },
     "semantic_quality_mode": {
       "type": "string",
       "enum": [

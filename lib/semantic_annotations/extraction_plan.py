@@ -32,6 +32,11 @@ class GraniteJobSpec:
     region: SemanticRegionAnnotation
     region_id: UUID
     target_schema: str
+    canonical_target_schema: str
+    model_output_schema_name: str
+    contract_resolution_reason: str
+    compatibility_mode: str | None
+    extractor_backend: str
     priority: int
     ordinal: int
     schema_fit: SchemaFitDecision
@@ -46,10 +51,21 @@ class GraniteExtractionPlan:
     bucket_counts: dict[str, int]
 
     def to_metadata(self) -> dict[str, object]:
+        selected_by_backend: dict[str, int] = defaultdict(int)
+        selected_by_bucket: dict[str, int] = defaultdict(int)
+        for spec in self.selected:
+            selected_by_backend[spec.extractor_backend] += 1
+            selected_by_bucket[_bucket(spec)] += 1
         return {
             "selectedCount": len(self.selected),
             "droppedCount": len(self.dropped),
+            "plannedTaskCount": len(self.selected) + len(self.dropped),
+            "safeSkipCount": len(self.dropped),
+            "safeAbstentionCount": 0,
+            "unsafeFailureCount": 0,
             "bucketCounts": dict(self.bucket_counts),
+            "selectedTaskCountByBackend": dict(selected_by_backend),
+            "selectedTaskCountByBucket": dict(selected_by_bucket),
             "warnings": list(self.warnings),
             "selected": [_spec_summary(spec) for spec in self.selected],
             "dropped": [_spec_summary(spec) for spec in self.dropped[:12]],
@@ -202,6 +218,11 @@ def _spec_summary(spec: GraniteJobSpec) -> dict[str, object]:
         "regionId": str(spec.region_id),
         "semanticType": spec.region.semantic_type,
         "targetSchema": spec.target_schema,
+        "canonicalTargetSchema": spec.canonical_target_schema,
+        "modelOutputSchemaName": spec.model_output_schema_name,
+        "contractResolutionReason": spec.contract_resolution_reason,
+        "compatibilityMode": spec.compatibility_mode,
+        "extractorBackend": spec.extractor_backend,
         "graniteTask": spec.region.granite_task,
         "bucket": _bucket(spec),
         "schemaFitReason": spec.schema_fit.reason,

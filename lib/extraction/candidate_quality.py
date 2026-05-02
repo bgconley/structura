@@ -85,7 +85,39 @@ def reject_line_item(item: dict[str, Any]) -> tuple[bool, str | None]:
     if description.lower() in PLACEHOLDER_VALUES:
         return True, "placeholder_or_null_value"
 
+    zero_rejected, zero_reason = zero_amount_line_requires_context(item)
+    if zero_rejected:
+        return True, zero_reason
+
     return False, None
+
+
+def zero_amount_line_requires_context(item: dict[str, Any]) -> tuple[bool, str | None]:
+    amounts = (
+        item.get("gross_amount"),
+        item.get("net_amount"),
+        item.get("unit_price"),
+        item.get("amount"),
+        item.get("billed_amount"),
+        item.get("allowed_amount"),
+        item.get("paid_amount"),
+        item.get("patient_responsibility"),
+    )
+    all_zero_or_missing = all(_amount_is_zero_or_missing(value) for value in amounts)
+    if not all_zero_or_missing:
+        return False, None
+
+    description = str(item.get("description") or item.get("service_description") or "").strip()
+    code = str(item.get("code") or item.get("procedure_code") or "").strip()
+    service_date = str(item.get("service_date") or "").strip()
+    category_hint = str(item.get("category_hint") or "").strip()
+
+    if len(description) >= 12 and (
+        code or service_date or category_hint or "service" in description.lower()
+    ):
+        return False, None
+
+    return True, "zero_amount_without_service_context"
 
 
 def _numeric_value_is_one(value: object) -> bool:
@@ -100,8 +132,32 @@ def _numeric_value_is_one(value: object) -> bool:
     return False
 
 
+def _amount_is_zero_or_missing(value: object) -> bool:
+    if value in (None, ""):
+        return True
+    if isinstance(value, dict):
+        value = value.get("amount")
+    if isinstance(value, int | float | Decimal):
+        return _decimal_value_is_zero(str(value))
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return True
+        match = re.search(r"-?\d[\d,]*(?:\.\d+)?", stripped)
+        if match:
+            return _decimal_value_is_zero(match.group(0).replace(",", ""))
+    return False
+
+
 def _decimal_value_is_one(value: str) -> bool:
     try:
         return Decimal(value) == Decimal("1")
+    except (InvalidOperation, ValueError):
+        return False
+
+
+def _decimal_value_is_zero(value: str) -> bool:
+    try:
+        return Decimal(value) == Decimal("0")
     except (InvalidOperation, ValueError):
         return False

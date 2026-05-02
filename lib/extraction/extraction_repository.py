@@ -423,11 +423,13 @@ def _insert_extraction_run_row(
             review_status, extraction_scope, semantic_annotation_id,
             source_semantic_region_id, semantic_type, granite_task,
             model_output_schema_name, model_output_schema_version,
-            normalization_json, metadata_json
+            normalization_json, metadata_json, plan_id, plan_task_id,
+            canonical_target_schema, compatibility_mode,
+            contract_resolution_reason, region_envelope_version
           )
         VALUES (
           %s, %s, %s, %s, true, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s, %s,
-          %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb
+          %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s, %s, %s, %s, %s, %s
         )
         RETURNING id
         """,
@@ -454,6 +456,12 @@ def _insert_extraction_run_row(
             extraction.model_output_schema_version,
             Jsonb(extraction.normalization_json),
             Jsonb({**run_scope.metadata, **extraction.metadata}),
+            run_scope.plan_id,
+            run_scope.plan_task_id,
+            run_scope.canonical_target_schema,
+            run_scope.compatibility_mode,
+            run_scope.contract_resolution_reason,
+            run_scope.region_envelope_version,
         ),
     )
     row = cur.fetchone()
@@ -603,6 +611,19 @@ def _run_scope_from_semantic_task(semantic_task: Any | None) -> ExtractionRunSco
         source_semantic_region_id=semantic_task.region_id,
         semantic_type=semantic_task.semantic_type,
         granite_task=semantic_task.granite_task,
+        plan_id=_uuid_from_metadata(semantic_task.metadata.get("plan_id")),
+        plan_task_id=_uuid_from_metadata(semantic_task.metadata.get("plan_task_id")),
+        canonical_target_schema=_str_from_metadata(
+            semantic_task.metadata.get("canonical_target_schema")
+        ),
+        compatibility_mode=_str_from_metadata(semantic_task.metadata.get("compatibility_mode")),
+        contract_resolution_reason=_str_from_metadata(
+            semantic_task.metadata.get("contract_resolution_reason")
+        ),
+        region_envelope_version=_str_from_metadata(
+            semantic_task.metadata.get("region_envelope_version")
+        ),
+        metadata=dict(semantic_task.metadata),
     )
 
 
@@ -627,7 +648,31 @@ def _artifact_metadata(
         metadata["modelOutputSchemaName"] = extraction.model_output_schema_name
     if extraction.model_output_schema_version:
         metadata["modelOutputSchemaVersion"] = extraction.model_output_schema_version
+    if run_scope.plan_id:
+        metadata["planId"] = str(run_scope.plan_id)
+    if run_scope.plan_task_id:
+        metadata["planTaskId"] = str(run_scope.plan_task_id)
+    if run_scope.canonical_target_schema:
+        metadata["canonicalTargetSchema"] = run_scope.canonical_target_schema
+    if run_scope.compatibility_mode:
+        metadata["compatibilityMode"] = run_scope.compatibility_mode
+    if run_scope.contract_resolution_reason:
+        metadata["contractResolutionReason"] = run_scope.contract_resolution_reason
+    if run_scope.region_envelope_version:
+        metadata["regionEnvelopeVersion"] = run_scope.region_envelope_version
     return metadata
+
+
+def _uuid_from_metadata(value: object) -> UUID | None:
+    if value in (None, ""):
+        return None
+    return UUID(str(value))
+
+
+def _str_from_metadata(value: object) -> str | None:
+    if value in (None, ""):
+        return None
+    return str(value)
 
 
 def _status_for_persisted_extraction(validation: ValidationReport) -> str:

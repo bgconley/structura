@@ -15,7 +15,7 @@ def test_baseline_migration_scripts_are_present_and_ordered() -> None:
     plan = baseline_migration_plan("database")
 
     assert plan.scripts[0].name == "001_extensions.sql"
-    assert plan.scripts[-1].name == "082_phase8_5_semantic_region_asset_scope.sql"
+    assert plan.scripts[-1].name == "083_phase8_5_reliable_extraction_platform.sql"
     assert all(script.exists() for script in plan.scripts)
 
 
@@ -190,6 +190,23 @@ def test_phase8_5_semantic_family_reconciliation_migration_is_baseline_migration
     assert "ALTER TYPE document_family_enum ADD VALUE IF NOT EXISTS 'service_record'" in sql
     assert "ALTER TYPE document_family_enum ADD VALUE IF NOT EXISTS 'real_estate_title'" in sql
     assert (
-        "ALTER TYPE document_family_enum ADD VALUE IF NOT EXISTS 'mortgage_escrow_statement'"
-        in sql
+        "ALTER TYPE document_family_enum ADD VALUE IF NOT EXISTS 'mortgage_escrow_statement'" in sql
     )
+
+
+def test_phase8_5_reliable_extraction_platform_migration_is_baseline_migration() -> None:
+    plan = baseline_migration_plan("database")
+    names = [script.name for script in plan.scripts]
+
+    assert "083_phase8_5_reliable_extraction_platform.sql" in names
+
+    sql = Path("database/083_phase8_5_reliable_extraction_platform.sql").read_text(encoding="utf-8")
+    assert "CREATE TABLE IF NOT EXISTS semantic_extraction_plans" in sql
+    assert "CREATE TABLE IF NOT EXISTS semantic_extraction_plan_tasks" in sql
+    assert "CREATE TABLE IF NOT EXISTS candidate_admission_events" in sql
+    assert "plan_task_id uuid REFERENCES semantic_extraction_plan_tasks" in sql
+    assert "semantic_annotation_id uuid REFERENCES document_semantic_annotations" in sql
+    assert "region_envelope_version text" in sql
+    assert "ADD COLUMN IF NOT EXISTS plan_id" in sql
+    assert "ADD COLUMN IF NOT EXISTS plan_task_id" in sql
+    assert "candidate_admission_events_plan_task_idx" in sql

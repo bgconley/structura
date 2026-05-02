@@ -1079,13 +1079,20 @@ Required phase artifact to review:
 
 ```text
 /Users/brennanconley/vibecode/structura/STRUCTURA_PHASE_8_5_IMPLEMENTATION_PLAN.md
+/Users/brennanconley/vibecode/structura/STRUCTURA_PHASE_8_5_SEMANTIC_ANNOTATION_PLAN.md
+/Users/brennanconley/vibecode/structura/docs/superpowers/plans/2026-05-01-phase-8-5-reliable-extraction-platform.md
 ```
 
 Tasks:
 
 - Quarantine deterministic embedding/extraction gateways as fixture-only test adapters.
-- Implement live Qwen3-VL-2B Smart Parse semantic annotation by default, with Qwen3-VL-8B only for explicit High Quality Parse or user-permitted one-pass rescue.
+- Use Qwen3-VL-8B-Instruct-FP8 on `model-qwen-semantic` as the default Smart Parse semantic planner and inventory path.
+- Do not run hidden second-pass or escalation Qwen paths; uncertainty routes to `needs_human_review`, `insufficient_signal`, `no_extraction_target`, or a classified skip instead of automatic escalation.
 - Implement live Granite 4.0 3B Vision service invocation for table, chart, form, KVP, invoice, bill, receipt, and EOB structure extraction.
+- Add a closed-world extraction planner with queryable plan persistence, explicit contract registry, family/schema compatibility, grounding checks, bounded fanout, and skip/abstention reporting before Granite enqueue.
+- Add an internal region envelope as the authoritative intermediate between model-output schemas and candidate insertion, with `normalization_json` retained only as a compatibility projection.
+- Add Structura-owned evidence concretization, candidate admission gates, queryable admission telemetry, and planner/candidate/reconciliation dedupe so prompt artifacts, placeholders, evidence-less facts, incompatible candidates, and duplicate aggregate copies cannot be admitted.
+- Add run manifests, repeatability fingerprints, resident-corpus reliability reports, and truth/review/debug surface separation before Phase 9 consumes model-backed outputs.
 - Implement live text embedding service on the RTX 3090 with 1536-dimensional vectors.
 - Implement true visual embedding service for page/image bytes with native 2048-dimensional vectors.
 - Add model profile registry, model health, redacted observability, pinned Compose profiles, and model-backed corpus gates.
@@ -1100,6 +1107,8 @@ Phase 8.5 gate:
 
 - Qwen3-VL, Granite Vision, text embeddings, and visual embeddings pass deterministic tests plus GPU live model validation.
 - Model-backed golden corpus evidence exists for handwriting, structured extraction, text retrieval, visual retrieval, and hybrid retrieval.
+- The resident corpus passes the Phase 8.5 reliable-extraction hard invariants: no missing Granite contracts, no missing Granite grounding, no incompatible family/schema Granite tasks, no prompt/placeholder/literal-null candidates admitted, no admitted candidates without concrete evidence, no model-backed semantic-region rows auto-accepted, and no fabricated canonical required fields.
+- Phase 9 remains gated until reliability reports distinguish truth, review, and debug surfaces and every document can reach evidence-grounded candidates, bounded review/partial candidates, or a classified abstention/skip.
 
 ## Phase 9 - Analysis Workspace
 

@@ -127,6 +127,12 @@ class ExtractionService:
         schema_name: str,
         route_profile: str = "docling_plus_structured_extraction",
         semantic_region_id: UUID | None = None,
+        plan_id: UUID | None = None,
+        plan_task_id: UUID | None = None,
+        canonical_target_schema: str | None = None,
+        compatibility_mode: str | None = None,
+        contract_resolution_reason: str | None = None,
+        region_envelope_version: str | None = None,
         allow_8b_rescue: bool = False,
         requested_by: str = "system",
         requested_by_user_id: UUID | None = None,
@@ -143,6 +149,14 @@ class ExtractionService:
             document_id,
             schema_name=schema_name,
             semantic_region_id=semantic_region_id,
+            run_metadata={
+                "plan_id": str(plan_id) if plan_id else None,
+                "plan_task_id": str(plan_task_id) if plan_task_id else None,
+                "canonical_target_schema": canonical_target_schema,
+                "compatibility_mode": compatibility_mode,
+                "contract_resolution_reason": contract_resolution_reason,
+                "region_envelope_version": region_envelope_version,
+            },
         )
         gateway_result = self.gateway.extract(
             source,
@@ -222,6 +236,7 @@ class ExtractionService:
         *,
         schema_name: str,
         semantic_region_id: UUID | None,
+        run_metadata: dict[str, str | None],
     ) -> SemanticExtractionTask | None:
         if semantic_region_id is None:
             return None
@@ -243,4 +258,12 @@ class ExtractionService:
             repaired_task = replace(repaired_task, granite_task=granite_task or task.granite_task)
         if metadata != task.metadata:
             repaired_task = replace(repaired_task, metadata=metadata)
+        lineage_metadata = {
+            key: value for key, value in run_metadata.items() if value not in (None, "")
+        }
+        if lineage_metadata:
+            repaired_task = replace(
+                repaired_task,
+                metadata={**repaired_task.metadata, **lineage_metadata},
+            )
         return repaired_task

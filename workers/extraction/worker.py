@@ -91,6 +91,18 @@ def process_next_extraction_job(
                 schema_name=schema_name,
                 route_profile=route_profile,
                 semantic_region_id=_optional_uuid(claimed.payload.get("semantic_region_id")),
+                plan_id=_optional_uuid(claimed.payload.get("plan_id")),
+                plan_task_id=_optional_uuid(claimed.payload.get("plan_task_id")),
+                canonical_target_schema=_optional_str(
+                    claimed.payload.get("canonical_target_schema")
+                ),
+                compatibility_mode=_optional_str(claimed.payload.get("compatibility_mode")),
+                contract_resolution_reason=_optional_str(
+                    claimed.payload.get("contract_resolution_reason")
+                ),
+                region_envelope_version=_optional_str(
+                    claimed.payload.get("region_envelope_version")
+                ),
                 allow_8b_rescue=bool(claimed.payload.get("allow_8b_rescue", False)),
                 requested_by=str(claimed.payload.get("requested_by") or "system"),
                 requested_by_user_id=_optional_uuid(claimed.payload.get("requested_by_user_id")),
@@ -165,6 +177,12 @@ def _optional_uuid(value: object) -> UUID | None:
     if not value:
         return None
     return UUID(str(value))
+
+
+def _optional_str(value: object) -> str | None:
+    if value in (None, ""):
+        return None
+    return str(value)
 
 
 def _failure_message(exc: Exception) -> str:

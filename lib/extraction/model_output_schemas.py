@@ -7,6 +7,10 @@ from pathlib import Path
 from typing import Any
 
 from lib.config import get_settings
+from lib.extraction.contract_registry import (
+    resolve_model_output_contract,
+    resolved_document_type_from_task_metadata,
+)
 from lib.semantic_annotations.models import SemanticExtractionTask
 
 
@@ -24,46 +28,21 @@ def model_output_schema_for_task(
 ) -> ModelOutputSchema | None:
     if semantic_task is None:
         return None
-    semantic_type = semantic_task.semantic_type
-    if semantic_type == "service_record_line_item_table":
-        return load_model_output_schema("granite_service_record_line_items.v1")
-    if semantic_type in {"receipt_line_item_table", "retail_order_line_item_table"}:
-        return load_model_output_schema("granite_receipt_line_items.v1")
-    if semantic_type in {"receipt_payment_summary"}:
-        return load_model_output_schema("granite_receipt_payment_summary.v1")
-    if semantic_type == "seller_information_block":
-        return load_model_output_schema("granite_real_estate_title_seller_info.v1")
-    if semantic_type in {"escrow_summary", "mortgage_payment_summary"}:
-        return load_model_output_schema("granite_mortgage_escrow_statement.v1")
-    if semantic_type == "denial_or_coverage_decision":
-        return load_model_output_schema("granite_healthcare_coverage_decision.v1")
-    if semantic_type in {"dispute_transaction_table", "dispute_reason_block"}:
-        return load_model_output_schema("granite_dispute_form.v1")
-    if semantic_type in {"generic_form_kvp", "unsupported_document_region"}:
-        return load_model_output_schema("granite_generic_kvp.v1")
-    if schema_name == "document_observation":
-        return load_model_output_schema("granite_generic_kvp.v1")
-    if schema_name == "invoice" and semantic_task.semantic_type == "invoice_line_item_table":
-        return load_model_output_schema("granite_invoice_line_items.v1")
-    if (
-        schema_name == "medical_eob"
-        and semantic_task.semantic_type == "covered_services_line_item_table"
-    ):
-        return load_model_output_schema("granite_medical_service_lines.v1")
-    if schema_name == "invoice" and semantic_task.semantic_type == "payment_summary":
-        return load_model_output_schema("granite_payment_summary.v1")
-    if semantic_task.granite_task in {"tables_json", "tables_html", "tables_otsl"}:
-        if schema_name == "invoice" and semantic_task.semantic_type == "invoice_line_item_table":
-            return load_model_output_schema("granite_invoice_line_items.v1")
-        if (
-            schema_name == "medical_eob"
-            and semantic_task.semantic_type == "covered_services_line_item_table"
-        ):
-            return load_model_output_schema("granite_medical_service_lines.v1")
-    if semantic_task.granite_task == "kvp":
-        if schema_name == "invoice" and semantic_task.semantic_type == "payment_summary":
-            return load_model_output_schema("granite_payment_summary.v1")
-    return None
+    resolved_document_type = resolved_document_type_from_task_metadata(
+        metadata=semantic_task.metadata,
+        semantic_type=semantic_task.semantic_type,
+        target_schema=schema_name,
+    )
+    resolution = resolve_model_output_contract(
+        resolved_document_type=resolved_document_type,
+        semantic_type=semantic_task.semantic_type,
+        granite_task=semantic_task.granite_task,
+        target_schema=schema_name,
+        allow_generic_fallback=schema_name == "document_observation",
+    )
+    if resolution.schema_name is None:
+        return None
+    return load_model_output_schema(resolution.schema_name)
 
 
 @lru_cache(maxsize=16)

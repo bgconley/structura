@@ -125,6 +125,12 @@ class ExtractionRunScope:
     source_semantic_region_id: UUID | None = None
     semantic_type: str | None = None
     granite_task: str | None = None
+    plan_id: UUID | None = None
+    plan_task_id: UUID | None = None
+    canonical_target_schema: str | None = None
+    compatibility_mode: str | None = None
+    contract_resolution_reason: str | None = None
+    region_envelope_version: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
@@ -146,6 +152,13 @@ class ExtractionRunScope:
         source_semantic_region_id: UUID,
         semantic_type: str,
         granite_task: str | None,
+        plan_id: UUID | None = None,
+        plan_task_id: UUID | None = None,
+        canonical_target_schema: str | None = None,
+        compatibility_mode: str | None = None,
+        contract_resolution_reason: str | None = None,
+        region_envelope_version: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> ExtractionRunScope:
         return cls(
             extraction_scope="semantic_region",
@@ -153,6 +166,13 @@ class ExtractionRunScope:
             source_semantic_region_id=source_semantic_region_id,
             semantic_type=semantic_type,
             granite_task=granite_task,
+            plan_id=plan_id,
+            plan_task_id=plan_task_id,
+            canonical_target_schema=canonical_target_schema,
+            compatibility_mode=compatibility_mode,
+            contract_resolution_reason=contract_resolution_reason,
+            region_envelope_version=region_envelope_version,
+            metadata=metadata or {},
         )
 
 

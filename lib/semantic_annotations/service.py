@@ -7,6 +7,10 @@ from uuid import UUID, uuid4
 
 from lib.config import get_settings
 from lib.db.connection import db_connection
+from lib.extraction.contract_registry import (
+    CONTRACT_REGISTRY_VERSION,
+    resolve_model_output_contract,
+)
 from lib.extraction.granite_budgets import granite_budget_for_task
 from lib.extraction.models import ExtractionSourceDocument
 from lib.extraction.repository import load_extraction_source
@@ -15,7 +19,14 @@ from lib.jobs.event_payloads import build_extract_document_job_payload
 from lib.semantic_annotations.docling_targets import (
     augment_result_with_docling_structural_targets,
 )
-from lib.semantic_annotations.extraction_plan import GraniteJobSpec, plan_granite_jobs
+from lib.semantic_annotations.extraction_plan import (
+    GraniteExtractionPlan,
+    GraniteJobSpec,
+    plan_granite_jobs,
+)
+from lib.semantic_annotations.extraction_plan_repository import (
+    persist_extraction_plan_with_cursor,
+)
 from lib.semantic_annotations.fixture_gateway import FixtureSemanticAnnotationGateway
 from lib.semantic_annotations.models import (
     DocumentSemanticManifest,
@@ -207,7 +218,8 @@ class SemanticAnnotationService:
         user_intent_reason: str | None,
     ) -> list[UUID]:
         queued: list[UUID] = []
-        for spec in _granite_job_specs(source, manifest_result, persisted):
+        plan = _granite_extraction_plan(source, manifest_result, persisted)
+        for spec in plan.selected:
             job_id = uuid4()
             created_job = self.jobs.create_job(
                 job_id=job_id,
@@ -227,6 +239,11 @@ class SemanticAnnotationService:
                     semantic_granite_task=spec.region.granite_task,
                     semantic_type=spec.region.semantic_type,
                     semantic_expected_fields=spec.region.expected_fields,
+                    model_output_schema_name=spec.model_output_schema_name,
+                    canonical_target_schema=spec.canonical_target_schema,
+                    compatibility_mode=spec.compatibility_mode,
+                    extractor_backend=spec.extractor_backend,
+                    contract_resolution_reason=spec.contract_resolution_reason,
                     semantic_quality_mode=_semantic_quality_mode(
                         manifest_result.manifest.quality_mode
                     ),
@@ -265,7 +282,16 @@ class SemanticAnnotationService:
         user_intent_reason: str | None,
     ) -> list[UUID]:
         queued: list[UUID] = []
-        for spec in _granite_job_specs(source, manifest_result, persisted):
+        plan = _granite_extraction_plan(source, manifest_result, persisted)
+        persisted_plan = persist_extraction_plan_with_cursor(
+            cur,
+            document_id=source.document_id,
+            semantic_annotation_id=persisted.annotation_id,
+            manifest_result=manifest_result,
+            plan=plan,
+        )
+        for spec in plan.selected:
+            plan_task_id = persisted_plan.selected_task_ids.get(spec.region_id)
             job_id = uuid4()
             create_job_with_cursor(
                 cur,
@@ -286,6 +312,13 @@ class SemanticAnnotationService:
                     semantic_granite_task=spec.region.granite_task,
                     semantic_type=spec.region.semantic_type,
                     semantic_expected_fields=spec.region.expected_fields,
+                    plan_id=persisted_plan.plan_id,
+                    plan_task_id=plan_task_id,
+                    model_output_schema_name=spec.model_output_schema_name,
+                    canonical_target_schema=spec.canonical_target_schema,
+                    compatibility_mode=spec.compatibility_mode,
+                    extractor_backend=spec.extractor_backend,
+                    contract_resolution_reason=spec.contract_resolution_reason,
                     semantic_quality_mode=_semantic_quality_mode(
                         manifest_result.manifest.quality_mode
                     ),
@@ -401,11 +434,11 @@ def _priority_for_region(region: SemanticRegionAnnotation) -> int:
     return max(1, base)
 
 
-def _granite_job_specs(
+def _granite_extraction_plan(
     source: ExtractionSourceDocument,
     manifest_result: SemanticAnnotationResult,
     persisted: PersistedSemanticManifest,
-) -> tuple[GraniteJobSpec, ...]:
+) -> GraniteExtractionPlan:
     specs: list[GraniteJobSpec] = []
     for ordinal, (region, region_id) in enumerate(_region_pairs(manifest_result, persisted)):
         repaired_region, repair_metadata = _region_for_granite_job(region)
@@ -414,21 +447,54 @@ def _granite_job_specs(
         schema_fit = _target_schema_for_region(repaired_region, source, manifest_result.manifest)
         if not schema_fit.target_schema:
             continue
+        resolved_document_type = _resolved_document_type_for_plan(
+            source=source,
+            manifest=manifest_result.manifest,
+            region=repaired_region,
+            target_schema=schema_fit.target_schema,
+        )
+        contract = resolve_model_output_contract(
+            resolved_document_type=resolved_document_type,
+            semantic_type=repaired_region.semantic_type,
+            granite_task=repaired_region.granite_task or "",
+            target_schema=schema_fit.target_schema,
+            allow_generic_fallback=schema_fit.target_schema == "document_observation",
+        )
+        if contract.schema_name is None:
+            continue
+        metadata = {
+            **repaired_region.metadata,
+            **repair_metadata,
+            "resolved_document_type": resolved_document_type,
+            "semantic_document_type": _semantic_document_type(manifest_result.manifest),
+            "canonical_target_schema": contract.canonical_target_schema,
+            "model_output_schema_name": contract.schema_name,
+            "contract_resolution_reason": contract.reason,
+            "compatibility_mode": contract.compatibility_mode,
+            "contract_registry_version": CONTRACT_REGISTRY_VERSION,
+            "document_observation_review_only": schema_fit.target_schema == "document_observation",
+        }
         specs.append(
             GraniteJobSpec(
                 region=repaired_region,
                 region_id=region_id,
                 target_schema=schema_fit.target_schema,
+                canonical_target_schema=contract.canonical_target_schema
+                or schema_fit.target_schema,
+                model_output_schema_name=contract.schema_name,
+                contract_resolution_reason=contract.reason,
+                compatibility_mode=contract.compatibility_mode,
+                extractor_backend="granite_region",
                 priority=_priority_for_region(repaired_region),
                 ordinal=ordinal,
                 schema_fit=schema_fit,
-                metadata={**repaired_region.metadata, **repair_metadata},
+                metadata=metadata,
             )
         )
     return plan_granite_jobs(
         specs,
         quality_mode=manifest_result.manifest.quality_mode,
-    ).selected
+    )
 
 
 def _region_for_granite_job(
@@ -483,3 +549,52 @@ def _region_pairs(
             "Persisted semantic region count does not match manifest region count."
         )
     return tuple(zip(regions, persisted.region_ids, strict=True))
+
+
+def _resolved_document_type_for_plan(
+    *,
+    source: ExtractionSourceDocument,
+    manifest: DocumentSemanticManifest,
+    region: SemanticRegionAnnotation,
+    target_schema: str,
+) -> str:
+    if target_schema == "document_observation":
+        observation_document_type = _observation_document_type_for_semantic_type(
+            region.semantic_type
+        )
+        if observation_document_type:
+            return observation_document_type
+    document_type = _semantic_document_type(manifest)
+    if document_type and document_type not in {
+        "document_observation",
+        "generic_form",
+        "unsupported_document",
+        "no_extraction_target",
+    }:
+        return document_type
+    if source.family and source.family != "generic":
+        return source.family
+    if target_schema != "document_observation":
+        return target_schema
+    return document_type or source.family or "generic"
+
+
+def _semantic_document_type(manifest: DocumentSemanticManifest) -> str | None:
+    value = manifest.manifest.get("document_type")
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip().lower()
+    return normalized or None
+
+
+def _observation_document_type_for_semantic_type(semantic_type: str) -> str | None:
+    normalized = semantic_type.strip().lower()
+    if normalized == "seller_information_block":
+        return "real_estate_title"
+    if normalized in {"escrow_summary", "mortgage_payment_summary"}:
+        return "mortgage_escrow_statement"
+    if normalized in {"dispute_reason_block", "dispute_transaction_table"}:
+        return "financial_dispute_form"
+    if normalized in {"generic_form_kvp", "unsupported_document_region"}:
+        return "generic"
+    return None

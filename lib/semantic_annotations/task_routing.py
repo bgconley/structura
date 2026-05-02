@@ -12,6 +12,20 @@ LINE_ITEM_TABLE_SEMANTIC_TYPES = frozenset(
     }
 )
 TABLE_GRANITE_TASKS = frozenset({"tables_json", "tables_html", "tables_otsl"})
+KVP_SEMANTIC_TYPES = frozenset(
+    {
+        "billing_summary",
+        "payment_summary",
+        "patient_responsibility_summary",
+        "receipt_payment_summary",
+        "escrow_summary",
+        "mortgage_payment_summary",
+        "denial_or_coverage_decision",
+        "dispute_reason_block",
+        "seller_information_block",
+        "unsupported_document_region",
+    }
+)
 
 
 def corrected_granite_task_for_semantic_type(
@@ -21,6 +35,15 @@ def corrected_granite_task_for_semantic_type(
 ) -> tuple[str | None, dict[str, Any] | None]:
     if granite_task in {None, "ignore"}:
         return granite_task, None
+    if semantic_type in KVP_SEMANTIC_TYPES and granite_task in TABLE_GRANITE_TASKS:
+        return (
+            "kvp",
+            {
+                "original_granite_task": granite_task,
+                "repaired_granite_task": "kvp",
+                "reason": "kvp_semantic_type_requires_kvp_task",
+            },
+        )
     if semantic_type not in LINE_ITEM_TABLE_SEMANTIC_TYPES:
         return granite_task, None
     if granite_task in TABLE_GRANITE_TASKS:

@@ -24,6 +24,7 @@ from lib.model_runtime.contracts import (
     VisionGenerateRequest,
     VisionGenerateResponse,
 )
+from lib.model_runtime.http_client import ModelProtocolError
 from lib.semantic_annotations.models import SemanticExtractionTask
 from lib.storage import ObjectStorage
 
@@ -60,6 +61,10 @@ class VisionExtractionGateway:
             schema_name=schema_name,
             semantic_task=semantic_task,
         )
+        if semantic_task is not None and model_output_schema is None:
+            raise ModelProtocolError(
+                "Selected Granite semantic-region task is missing a model-output contract."
+            )
         budget = self._request_budget(
             schema_name=schema_name,
             semantic_task=semantic_task,

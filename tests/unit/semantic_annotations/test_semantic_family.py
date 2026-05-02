@@ -93,6 +93,22 @@ def test_semantic_generic_keeps_supported_phase4_invoice_family() -> None:
     assert decision.reason == "retain_existing_family"
 
 
+def test_semantic_family_promotes_generic_source_when_qwen_receipt_has_docling_support() -> None:
+    source = _source(
+        family="generic",
+        title="Restaurant receipt",
+        text="Receipt subtotal tax total paid merchant visa",
+    )
+    decision = semantic_document_family_decision(
+        source,
+        _manifest(source, document_type="receipt"),
+    )
+
+    assert decision.family == "receipt"
+    assert decision.should_update is True
+    assert decision.reason == "semantic_document_type_with_docling_support"
+
+
 def _source(*, family: str, title: str, text: str) -> ExtractionSourceDocument:
     page_id = uuid4()
     return ExtractionSourceDocument(

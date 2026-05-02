@@ -61,6 +61,11 @@ def test_semantic_service_persists_manifest_and_queues_grounded_granite_jobs() -
     assert payload["semantic_region_id"] == str(region_id)
     assert payload["semantic_granite_task"] == "tables_json"
     assert payload["semantic_expected_fields"] == ["line_items", "total_amount"]
+    assert payload["model_output_schema_name"] == "granite_invoice_line_items.v1"
+    assert payload["canonical_target_schema"] == "invoice"
+    assert payload["compatibility_mode"] == "exact"
+    assert payload["extractor_backend"] == "granite_region"
+    assert payload["contract_resolution_reason"] == "exact_contract"
     assert payload["semantic_quality_mode"] == "smart"
     assert payload["allow_8b_rescue"] is False
 
@@ -413,6 +418,9 @@ def test_semantic_service_uses_docling_table_targets_when_qwen_emits_no_regions(
     assert payload["target_schema_name"] == "receipt"
     assert payload["semantic_type"] == "service_record_line_item_table"
     assert payload["semantic_granite_task"] == "tables_json"
+    assert payload["model_output_schema_name"] == "granite_service_record_line_items.v1"
+    assert payload["canonical_target_schema"] == "service_record"
+    assert payload["compatibility_mode"] == "exact"
     assert payload["metadata"]["region_source"] == "docling_structural"
     assert payload["metadata"]["docling_structural_target"]["source"] == "docling_table"
 
@@ -864,9 +872,11 @@ def test_semantic_service_prioritizes_line_items_over_header_regions() -> None:
         jobs=jobs,
     ).annotate_document(document_id, quality_mode="smart", requested_by="system")
 
-    semantic_region_ids = [job["payload"]["semantic_region_id"] for job in jobs.created]
-    assert str(line_item_region_id) in semantic_region_ids
-    assert len(jobs.created) == 6
+    assert len(jobs.created) == 1
+    payload = jobs.created[0]["payload"]
+    assert payload["semantic_region_id"] == str(line_item_region_id)
+    assert payload["semantic_type"] == "invoice_line_item_table"
+    assert payload["model_output_schema_name"] == "granite_invoice_line_items.v1"
 
 
 def test_semantic_service_rejects_removed_rescue_mode() -> None:
