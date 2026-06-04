@@ -70,6 +70,19 @@ def test_terminal_state_ignores_failed_non_target_maintenance_jobs(monkeypatch) 
     assert target_dead_letters == []
 
 
+def test_planner_task_report_query_derives_missing_page_number() -> None:
+    runner = _load_resident_runner()
+
+    page_number_expr = (
+        "COALESCE(task.page_number, psa.page_number, "
+        "dp.page_number, dep.page_number, dtp.page_number)"
+    )
+    assert page_number_expr in runner._PLANNER_TASKS_SQL
+    assert "LEFT JOIN semantic_region_annotations region" in runner._PLANNER_TASKS_SQL
+    assert "LEFT JOIN document_elements de" in runner._PLANNER_TASKS_SQL
+    assert "LEFT JOIN document_tables dt" in runner._PLANNER_TASKS_SQL
+
+
 def _report(*, hard_status: str) -> dict[str, object]:
     return {
         "runId": "phase85-resident",

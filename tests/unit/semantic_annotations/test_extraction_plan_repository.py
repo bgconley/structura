@@ -81,12 +81,16 @@ def test_persist_extraction_plan_records_summary_and_task_lineage() -> None:
     )
     assert "phase85-20260604-smoke-001" in plan_call
     task_call = next(
-        params
+        (sql, params)
         for sql, params in cursor.calls
         if "INSERT INTO semantic_extraction_plan_tasks" in sql
     )
-    assert "granite_receipt_line_items.v1" in task_call
-    assert "exact_contract" in task_call
+    task_sql, task_params = task_call
+    assert "page_number" in task_sql
+    assert "COALESCE(psa.page_number, dp.page_number" in task_sql
+    assert "LEFT JOIN page_semantic_annotations psa" in task_sql
+    assert "granite_receipt_line_items.v1" in task_params
+    assert "exact_contract" in task_params
 
 
 class RecordingCursor:

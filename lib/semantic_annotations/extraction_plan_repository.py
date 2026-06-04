@@ -94,13 +94,21 @@ def _insert_plan_task(
           granite_task, extractor_backend, resolved_document_type,
           target_schema, canonical_target_schema, model_output_schema_name,
           contract_resolution_reason, compatibility_mode, grounding_kind,
-          page_id, element_id, table_id, status, skip_reason,
+          page_number, page_id, element_id, table_id, status, skip_reason,
           review_required, task_json
         )
         SELECT
           %s, r.document_id, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-          %s, %s, %s, %s, %s, %s, %s, %s::jsonb
+          %s,
+          COALESCE(psa.page_number, dp.page_number, dep.page_number, dtp.page_number),
+          %s, %s, %s, %s, %s, %s, %s::jsonb
         FROM semantic_region_annotations r
+        LEFT JOIN page_semantic_annotations psa ON psa.id = r.page_annotation_id
+        LEFT JOIN document_pages dp ON dp.id = r.page_id
+        LEFT JOIN document_elements de ON de.id = r.element_id
+        LEFT JOIN document_pages dep ON dep.id = de.page_id
+        LEFT JOIN document_tables dt ON dt.id = r.table_id
+        LEFT JOIN document_pages dtp ON dtp.id = dt.page_id
         WHERE r.id = %s
         RETURNING id
         """,

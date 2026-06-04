@@ -516,13 +516,23 @@ ORDER BY created_at
 """
 
 _PLANNER_TASKS_SQL = """
-SELECT id, plan_id, semantic_region_id, semantic_type, granite_task, extractor_backend,
-       resolved_document_type, target_schema, canonical_target_schema,
-       model_output_schema_name, contract_resolution_reason, compatibility_mode,
-       grounding_kind, page_number, status, skip_reason, review_required, task_json
-FROM semantic_extraction_plan_tasks
-WHERE document_id = %s
-ORDER BY created_at
+SELECT task.id, task.plan_id, task.semantic_region_id, task.semantic_type,
+       task.granite_task, task.extractor_backend, task.resolved_document_type,
+       task.target_schema, task.canonical_target_schema, task.model_output_schema_name,
+       task.contract_resolution_reason, task.compatibility_mode, task.grounding_kind,
+       COALESCE(task.page_number, psa.page_number, dp.page_number, dep.page_number, dtp.page_number)
+         AS page_number,
+       task.status, task.skip_reason, task.review_required, task.task_json
+FROM semantic_extraction_plan_tasks task
+LEFT JOIN semantic_region_annotations region ON region.id = task.semantic_region_id
+LEFT JOIN page_semantic_annotations psa ON psa.id = region.page_annotation_id
+LEFT JOIN document_pages dp ON dp.id = region.page_id
+LEFT JOIN document_elements de ON de.id = region.element_id
+LEFT JOIN document_pages dep ON dep.id = de.page_id
+LEFT JOIN document_tables dt ON dt.id = region.table_id
+LEFT JOIN document_pages dtp ON dtp.id = dt.page_id
+WHERE task.document_id = %s
+ORDER BY task.created_at
 """
 
 _ADMISSION_EVENTS_SQL = """
