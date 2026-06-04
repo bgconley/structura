@@ -89,6 +89,49 @@ def test_report_acceptance_fails_when_planner_summary_is_stale() -> None:
     ]
 
 
+def test_report_planner_summary_normalizes_contract_resolution_modes() -> None:
+    report = build_phase85_reliability_report(
+        run_id="phase85-planner-summary",
+        title_prefix="Phase 8.5 Planner Summary",
+        documents=[_document_report_with_cased_contract_modes()],
+    )
+
+    assert report["plannerSummary"]["contractResolutionModes"] == {
+        "exact": 1,
+        "missing": 1,
+    }
+
+    report["plannerSummary"] = {
+        **report["plannerSummary"],
+        "contractResolutionModes": {" Exact ": 1, " Missing ": 1},
+    }
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["plannerSummary"]["status"] == "failed"
+    assert summary["checks"]["plannerSummary"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-planner-summary",
+            "invalid": ["contractResolutionModes"],
+            "details": report["plannerSummary"],
+            "recomputed": {
+                "runId": "phase85-planner-summary",
+                "plannerVersion": report["runManifest"]["planner_version"],
+                "selectedTaskCount": 1,
+                "skippedTaskCount": 1,
+                "abstentionCount": 0,
+                "missingContractCount": 1,
+                "missingGroundingCount": 0,
+                "incompatibleSchemaCount": 0,
+                "duplicateSuppressedCount": 0,
+                "contractResolutionModes": {"exact": 1, "missing": 1},
+            },
+        }
+    ]
+
+
 def _document_report() -> dict[str, Any]:
     return {
         "document": {
@@ -129,3 +172,10 @@ def _document_report() -> dict[str, Any]:
             },
         ],
     }
+
+
+def _document_report_with_cased_contract_modes() -> dict[str, Any]:
+    document = _document_report()
+    document["plannerTasks"][0]["compatibility_mode"] = " Exact "
+    document["plannerTasks"][1]["compatibility_mode"] = " Missing "
+    return document

@@ -29,7 +29,7 @@ def planner_summary(run_id: str, documents: list[dict[str, Any]]) -> dict[str, A
     planner_rows = all_rows(documents, "planner")
     task_rows = all_rows(documents, "plannerTasks")
     contract_modes = Counter(
-        str(get_value(row, "compatibility_mode", "compatibilityMode") or "unknown")
+        normalized_text(get_value(row, "compatibility_mode", "compatibilityMode")) or "unknown"
         for row in task_rows
     )
     return {
@@ -129,9 +129,10 @@ def contract_summary(run_id: str, documents: list[dict[str, Any]]) -> dict[str, 
             schema_counts[str(schema_name)] += 1
         else:
             missing += 1
-        contract_modes[
-            str(get_value(task, "compatibility_mode", "compatibilityMode") or "unknown")
-        ] += 1
+        contract_mode = (
+            normalized_text(get_value(task, "compatibility_mode", "compatibilityMode")) or "unknown"
+        )
+        contract_modes[contract_mode] += 1
     return {
         "runId": run_id,
         "contractRegistryVersion": CONTRACT_REGISTRY_VERSION,

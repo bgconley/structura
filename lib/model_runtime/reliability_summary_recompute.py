@@ -93,7 +93,7 @@ def recomputed_planner_summary(report: dict[str, Any]) -> dict[str, Any] | None:
     planner_rows = all_rows(document_rows, "planner")
     task_rows = all_rows(document_rows, "plannerTasks")
     contract_modes = Counter(
-        str(get_value(row, "compatibility_mode", "compatibilityMode") or "unknown")
+        normalized_text(get_value(row, "compatibility_mode", "compatibilityMode")) or "unknown"
         for row in task_rows
     )
     return {
