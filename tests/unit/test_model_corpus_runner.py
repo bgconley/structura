@@ -68,6 +68,70 @@ def test_model_corpus_runner_enforces_required_sections_and_thresholds() -> None
         evaluate_model_corpus_manifest(payload, require_model_backed=True)
 
 
+def test_model_corpus_runner_rejects_non_numeric_manifest_metrics_and_thresholds() -> None:
+    payload = _manifest(fixture_type="model_backed")
+    payload["metrics"]["text_embedding_hit_rate_at_k"] = "not-a-number"
+
+    with pytest.raises(SystemExit, match="metric text_embedding_hit_rate_at_k must be numeric"):
+        evaluate_model_corpus_manifest(payload, require_model_backed=True)
+
+    payload = _manifest(fixture_type="model_backed")
+    payload["thresholds"]["visual_embedding_hit_rate_at_k"] = "not-a-number"
+
+    with pytest.raises(
+        SystemExit, match="threshold visual_embedding_hit_rate_at_k must be numeric"
+    ):
+        evaluate_model_corpus_manifest(payload, require_model_backed=True)
+
+
+def test_model_corpus_runner_rejects_non_finite_manifest_and_evidence_metrics(
+    tmp_path: Path,
+) -> None:
+    payload = _manifest(fixture_type="model_backed")
+    payload["metrics"]["hybrid_hit_rate_at_k"] = "NaN"
+
+    with pytest.raises(SystemExit, match="metric hybrid_hit_rate_at_k must be finite"):
+        evaluate_model_corpus_manifest(payload, require_model_backed=True)
+
+    payload = _manifest(fixture_type="model_backed")
+    _write_evidence_artifacts(tmp_path, payload, fixture_type="model_backed")
+    qwen_evidence = payload["evidence"]["qwen"]  # type: ignore[index]
+    assert isinstance(qwen_evidence, dict)
+    metrics = _section_metrics(payload, "qwen")
+    metrics.update(_aggregate_metrics(payload))
+    metrics["provenance_truth_rate"] = "NaN"
+    (tmp_path / qwen_evidence["evidencePath"]).write_text(  # type: ignore[index]
+        json.dumps(
+            _evidence_artifact(
+                str(qwen_evidence["runId"]),
+                fixture_type="model_backed",
+                metrics=metrics,
+            )
+        ),
+        encoding="utf-8",
+    )
+    manifest = tmp_path / "phase8_5_model_manifest.json"
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_model_corpus.py",
+            "--require-model-backed",
+            "--manifest",
+            str(manifest),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "qwen" in result.stderr
+    assert "provenance_truth_rate" in result.stderr
+    assert "must be finite" in result.stderr
+
+
 def test_model_corpus_runner_requires_gold_corpus_baseline_metrics() -> None:
     payload = _manifest(fixture_type="model_backed")
     del payload["goldMetrics"]["expectedCalibrationError"]

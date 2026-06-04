@@ -46,6 +46,7 @@ as the section-specific profile field in `runManifest`, such as
 `visual_embedding_profile`. The artifact `metrics` object must include the
 section-specific metric values claimed by the manifest, such as Qwen
 route/review rates, Granite table/KVP scores, or text/visual retrieval hit
-rates. Aggregate claims such as `hybrid_hit_rate_at_k` and
+rates. Manifest metrics, thresholds, and evidence metric values must be finite
+numbers. Aggregate claims such as `hybrid_hit_rate_at_k` and
 `provenance_truth_rate` must appear in at least one evidence artifact, and any
 artifact that reports a claimed metric must match the manifest value.

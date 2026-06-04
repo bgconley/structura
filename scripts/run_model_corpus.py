@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -162,7 +163,10 @@ def evaluate_model_corpus_manifest(
             section: _evidence_summary(evidence[section]) for section in REQUIRED_EVIDENCE_SECTIONS
         },
         "runManifest": run_manifest,
-        "metrics": {metric: float(metrics[metric]) for metric in REQUIRED_METRICS},
+        "metrics": {
+            metric: _manifest_number(metrics[metric], kind="metric", metric=metric)
+            for metric in REQUIRED_METRICS
+        },
         "goldCorpusMetrics": gold_summary,
     }
 
@@ -236,10 +240,20 @@ def _assert_metric(metrics: dict[str, Any], thresholds: dict[str, Any], metric: 
         raise SystemExit(f"Model corpus metric missing: {metric}")
     if metric not in thresholds:
         raise SystemExit(f"Model corpus threshold missing: {metric}")
-    actual = float(metrics[metric])
-    expected = float(thresholds[metric])
+    actual = _manifest_number(metrics[metric], kind="metric", metric=metric)
+    expected = _manifest_number(thresholds[metric], kind="threshold", metric=metric)
     if actual < expected:
         raise SystemExit(f"Model corpus {metric} {actual:.4f} is below {expected:.4f}.")
+
+
+def _manifest_number(value: Any, *, kind: str, metric: str) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError) as exc:
+        raise SystemExit(f"Model corpus {kind} {metric} must be numeric.") from exc
+    if not math.isfinite(number):
+        raise SystemExit(f"Model corpus {kind} {metric} must be finite.")
+    return number
 
 
 def _assert_model_backed_evidence(
@@ -500,12 +514,16 @@ def _metric_float(
     path: Path | None = None,
 ) -> float:
     try:
-        return float(value)
+        number = float(value)
     except (TypeError, ValueError) as exc:
         suffix = f": {path}" if path is not None else "."
         raise SystemExit(
             f"Model corpus evidence {section} metric {metric} must be numeric{suffix}"
         ) from exc
+    if not math.isfinite(number):
+        suffix = f": {path}" if path is not None else "."
+        raise SystemExit(f"Model corpus evidence {section} metric {metric} must be finite{suffix}")
+    return number
 
 
 def _parse_measured_at(
