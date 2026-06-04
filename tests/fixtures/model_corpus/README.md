@@ -21,4 +21,7 @@ the active `pipeline_version` and report evidence such as `acceptanceGates`,
 `metrics`, `checks`, or `documents`; deterministic fixture artifacts are not
 valid release evidence. The artifact `metrics` object must include the
 section-specific metric values claimed by the manifest, such as Qwen route/review
-rates, Granite table/KVP scores, or text/visual retrieval hit rates.
+rates, Granite table/KVP scores, or text/visual retrieval hit rates. Aggregate
+claims such as `hybrid_hit_rate_at_k` and `provenance_truth_rate` must appear in
+at least one evidence artifact, and any artifact that reports a claimed metric
+must match the manifest value.

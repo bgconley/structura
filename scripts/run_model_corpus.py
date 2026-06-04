@@ -32,6 +32,10 @@ EVIDENCE_SECTION_METRICS = {
     "textEmbedding": ("text_embedding_hit_rate_at_k",),
     "visualEmbedding": ("visual_embedding_hit_rate_at_k",),
 }
+AGGREGATE_EVIDENCE_METRICS = (
+    "hybrid_hit_rate_at_k",
+    "provenance_truth_rate",
+)
 REQUIRED_METRICS = (
     "qwen_handwriting_route_success_rate",
     "qwen_review_required_rate",
@@ -77,16 +81,21 @@ def evaluate_model_corpus_manifest(
         raise SystemExit("Model corpus manifest is not model-backed.")
     evidence = _required_mapping(payload, "evidence")
     metrics = _required_mapping(payload, "metrics")
+    model_backed_artifacts: dict[str, dict[str, Any]] = {}
     for section in REQUIRED_EVIDENCE_SECTIONS:
         if section not in evidence or not isinstance(evidence[section], dict):
             raise SystemExit(f"Model corpus evidence section missing: {section}")
         if fixture_type == "model_backed":
-            _assert_model_backed_evidence(
+            artifact = _assert_model_backed_evidence(
                 section,
                 evidence[section],
                 metrics=metrics,
                 manifest_path=manifest_path,
             )
+            if artifact is not None:
+                model_backed_artifacts[section] = artifact
+    if model_backed_artifacts:
+        _assert_aggregate_metric_evidence(model_backed_artifacts, metrics)
     thresholds = _required_mapping(payload, "thresholds")
     for metric in REQUIRED_METRICS:
         _assert_metric(metrics, thresholds, metric)
@@ -145,13 +154,13 @@ def _assert_model_backed_evidence(
     *,
     metrics: dict[str, Any],
     manifest_path: Path | None,
-) -> None:
+) -> dict[str, Any] | None:
     for key in REQUIRED_MODEL_BACKED_EVIDENCE_KEYS:
         value = evidence.get(key)
         if not isinstance(value, str) or not value.strip():
             raise SystemExit(f"Model corpus evidence {section} missing traceable {key}.")
     if manifest_path is None:
-        return
+        return None
     evidence_path = _resolve_evidence_path(str(evidence["evidencePath"]), manifest_path)
     if not evidence_path.is_file():
         raise SystemExit(f"Model corpus evidence {section} evidencePath not found: {evidence_path}")
@@ -164,6 +173,7 @@ def _assert_model_backed_evidence(
         )
     _assert_evidence_artifact_lineage(section, evidence_artifact, evidence_path)
     _assert_evidence_artifact_metrics(section, evidence_artifact, metrics, evidence_path)
+    return evidence_artifact
 
 
 def _evidence_summary(evidence: dict[str, Any]) -> dict[str, str]:
@@ -260,12 +270,41 @@ def _assert_evidence_artifact_metrics(
             )
 
 
-def _metric_float(value: Any, *, section: str, metric: str, path: Path) -> float:
+def _assert_aggregate_metric_evidence(
+    artifacts: dict[str, dict[str, Any]],
+    metrics: dict[str, Any],
+) -> None:
+    for metric in AGGREGATE_EVIDENCE_METRICS:
+        seen = False
+        for section, artifact in artifacts.items():
+            artifact_metrics = artifact.get("metrics")
+            if not isinstance(artifact_metrics, dict) or metric not in artifact_metrics:
+                continue
+            seen = True
+            actual = _metric_float(artifact_metrics[metric], section=section, metric=metric)
+            expected = _metric_float(metrics[metric], section=section, metric=metric)
+            if abs(actual - expected) > 1e-9:
+                raise SystemExit(
+                    f"Model corpus evidence {section} metric mismatch for {metric}: "
+                    f"{actual:.4f} != {expected:.4f}"
+                )
+        if not seen:
+            raise SystemExit(f"Model corpus aggregate metric evidence missing {metric}.")
+
+
+def _metric_float(
+    value: Any,
+    *,
+    section: str,
+    metric: str,
+    path: Path | None = None,
+) -> float:
     try:
         return float(value)
     except (TypeError, ValueError) as exc:
+        suffix = f": {path}" if path is not None else "."
         raise SystemExit(
-            f"Model corpus evidence {section} metric {metric} must be numeric: {path}"
+            f"Model corpus evidence {section} metric {metric} must be numeric{suffix}"
         ) from exc
 
 
