@@ -628,6 +628,76 @@ def test_hard_invariants_flag_admitted_compact_compound_name_placeholder_payload
     ]
 
 
+def test_hard_invariants_flag_admitted_compound_amount_placeholder_payloads() -> None:
+    document = _safe_document_report()
+    document["admissionEvents"].append(
+        {
+            "decision": "admitted_review_required",
+            "candidate_kind": "field",
+            "candidate_fingerprint": "compound-amount-placeholder-field-1",
+            **_admission_event_telemetry(),
+            "evidence_concrete": True,
+            "payload_json": {
+                "candidate": {
+                    "field_path": "invoice.total_amount",
+                    "value": {"total_amount": "Unknown"},
+                    "evidence": [{"page_id": "page-1", "semantic_region_id": "region-1"}],
+                }
+            },
+        }
+    )
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 1
+    assert (
+        summary["invariants"]["placeholderOrLiteralNullCandidatesAdmitted"]["violationCount"] == 1
+    )
+    assert summary["invariants"]["placeholderOrLiteralNullCandidatesAdmitted"]["examples"] == [
+        {
+            "reason": "admitted_placeholder_or_literal_null",
+            "documentId": None,
+            "entityId": "compound-amount-placeholder-field-1",
+        }
+    ]
+
+
+def test_hard_invariants_flag_admitted_compact_compound_amount_placeholder_payloads() -> None:
+    document = _safe_document_report()
+    document["admissionEvents"].append(
+        {
+            "decision": "admitted_review_required",
+            "candidate_kind": "field",
+            "candidate_fingerprint": "compact-compound-amount-placeholder-field-1",
+            **_admission_event_telemetry(),
+            "evidence_concrete": True,
+            "payload_json": {
+                "candidate": {
+                    "field_path": "invoice.balance_due",
+                    "value": {"balancedue": "NotProvided"},
+                    "evidence": [{"page_id": "page-1", "semantic_region_id": "region-1"}],
+                }
+            },
+        }
+    )
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 1
+    assert (
+        summary["invariants"]["placeholderOrLiteralNullCandidatesAdmitted"]["violationCount"] == 1
+    )
+    assert summary["invariants"]["placeholderOrLiteralNullCandidatesAdmitted"]["examples"] == [
+        {
+            "reason": "admitted_placeholder_or_literal_null",
+            "documentId": None,
+            "entityId": "compact-compound-amount-placeholder-field-1",
+        }
+    ]
+
+
 def test_hard_invariants_flag_admitted_compact_placeholder_field_names() -> None:
     document = _safe_document_report()
     document["admissionEvents"].append(

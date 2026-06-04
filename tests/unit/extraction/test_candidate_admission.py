@@ -593,6 +593,62 @@ def test_compact_compound_name_placeholder_key_field_value_is_rejected_before_in
     assert admission.events[0].reasons == ("placeholder_or_null_value",)
 
 
+def test_compound_amount_placeholder_key_field_value_is_rejected_before_insertion() -> None:
+    context = _context(canonical_target_schema="invoice")
+    candidate = CandidateFact(
+        field_path="invoice.total_amount",
+        value_type="json",
+        value={"total_amount": "Unknown"},
+        evidence=[_evidence(context)],
+        status="proposed",
+    )
+
+    admission = admit_extraction_candidates(
+        context=context,
+        field_candidates=[candidate],
+        line_item_candidates=[],
+        observation_candidates=[],
+    )
+
+    assert admission.field_candidates == []
+    assert admission.summary == {
+        "produced": 1,
+        "admitted": 0,
+        "rejected": 1,
+        "rejectionReasons": {"rejected_placeholder": 1},
+    }
+    assert admission.events[0].decision == "rejected_placeholder"
+    assert admission.events[0].reasons == ("placeholder_or_null_value",)
+
+
+def test_compact_compound_amount_placeholder_key_field_value_is_rejected_before_insertion() -> None:
+    context = _context(canonical_target_schema="invoice")
+    candidate = CandidateFact(
+        field_path="invoice.balance_due",
+        value_type="json",
+        value={"balancedue": "NotProvided"},
+        evidence=[_evidence(context)],
+        status="proposed",
+    )
+
+    admission = admit_extraction_candidates(
+        context=context,
+        field_candidates=[candidate],
+        line_item_candidates=[],
+        observation_candidates=[],
+    )
+
+    assert admission.field_candidates == []
+    assert admission.summary == {
+        "produced": 1,
+        "admitted": 0,
+        "rejected": 1,
+        "rejectionReasons": {"rejected_placeholder": 1},
+    }
+    assert admission.events[0].decision == "rejected_placeholder"
+    assert admission.events[0].reasons == ("placeholder_or_null_value",)
+
+
 def test_repeated_separator_placeholder_field_value_is_rejected_before_insertion() -> None:
     context = _context()
     candidate = CandidateFact(
