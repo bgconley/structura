@@ -135,6 +135,13 @@ def _assert_model_backed_evidence(
     evidence_path = _resolve_evidence_path(str(evidence["evidencePath"]), manifest_path)
     if not evidence_path.is_file():
         raise SystemExit(f"Model corpus evidence {section} evidencePath not found: {evidence_path}")
+    evidence_artifact = _load_evidence_artifact(section, evidence_path)
+    artifact_run_id = evidence_artifact.get("runId") or evidence_artifact.get("run_id")
+    if artifact_run_id is not None and str(artifact_run_id) != str(evidence["runId"]):
+        raise SystemExit(
+            f"Model corpus evidence {section} runId mismatch: "
+            f"{artifact_run_id} != {evidence['runId']}"
+        )
 
 
 def _evidence_summary(evidence: dict[str, Any]) -> dict[str, str]:
@@ -151,6 +158,20 @@ def _resolve_evidence_path(evidence_path: str, manifest_path: Path) -> Path:
     if path.is_absolute():
         return path
     return manifest_path.parent / path
+
+
+def _load_evidence_artifact(section: str, path: Path) -> dict[str, Any]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise SystemExit(
+            f"Model corpus evidence {section} evidencePath must contain a JSON object: {path}"
+        ) from exc
+    if not isinstance(payload, dict):
+        raise SystemExit(
+            f"Model corpus evidence {section} evidencePath must contain a JSON object: {path}"
+        )
+    return payload
 
 
 if __name__ == "__main__":

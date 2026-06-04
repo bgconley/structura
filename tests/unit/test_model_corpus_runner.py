@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -118,6 +119,59 @@ def test_model_corpus_script_requires_existing_model_backed_evidence_paths(
     assert "evidencePath not found" in result.stderr
 
 
+def test_model_corpus_script_requires_parseable_evidence_artifacts(tmp_path) -> None:
+    payload = _manifest(fixture_type="model_backed")
+    _write_evidence_artifacts(tmp_path, payload)
+    (tmp_path / "evidence" / "qwen.json").write_text("not json", encoding="utf-8")
+    manifest = tmp_path / "phase8_5_model_manifest.json"
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_model_corpus.py",
+            "--require-model-backed",
+            "--manifest",
+            str(manifest),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "qwen" in result.stderr
+    assert "evidencePath must contain a JSON object" in result.stderr
+
+
+def test_model_corpus_script_requires_matching_evidence_artifact_run_id(tmp_path) -> None:
+    payload = _manifest(fixture_type="model_backed")
+    _write_evidence_artifacts(tmp_path, payload)
+    (tmp_path / "evidence" / "granite.json").write_text(
+        json.dumps({"runId": "different-run"}),
+        encoding="utf-8",
+    )
+    manifest = tmp_path / "phase8_5_model_manifest.json"
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_model_corpus.py",
+            "--require-model-backed",
+            "--manifest",
+            str(manifest),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "granite" in result.stderr
+    assert "runId mismatch" in result.stderr
+
+
 def _manifest(*, fixture_type: str) -> dict[str, object]:
     return {
         "fixtureType": fixture_type,
@@ -198,3 +252,17 @@ def _evidence(profile: str, slug: str) -> dict[str, object]:
         "measuredAt": "2026-06-04T12:00:00Z",
         "evidencePath": f"/srv/structura/objects/exports/phase85-runs/{slug}-report.json",
     }
+
+
+def _write_evidence_artifacts(tmp_path: Path, payload: dict[str, object]) -> None:
+    evidence_dir = tmp_path / "evidence"
+    evidence_dir.mkdir()
+    evidence_sections = payload["evidence"]
+    assert isinstance(evidence_sections, dict)
+    for section, evidence in evidence_sections.items():
+        assert isinstance(evidence, dict)
+        evidence["evidencePath"] = f"evidence/{section}.json"
+        (evidence_dir / f"{section}.json").write_text(
+            json.dumps({"runId": evidence["runId"]}),
+            encoding="utf-8",
+        )

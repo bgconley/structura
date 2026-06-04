@@ -14,4 +14,6 @@ Each model-backed evidence section (`qwen`, `granite`, `textEmbedding`, and
 resident, retrieval, or corpus report artifact that produced the corresponding
 metric evidence. Relative `evidencePath` values resolve from the private
 manifest's directory, and the runner requires the target artifact file to exist
-when evaluating a model-backed manifest from disk.
+when evaluating a model-backed manifest from disk. The target artifact must be a
+JSON object; if it includes `runId` or `run_id`, that value must match the
+evidence section `runId`.
