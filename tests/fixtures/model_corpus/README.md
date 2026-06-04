@@ -19,15 +19,15 @@ when evaluating a model-backed manifest from disk. The target artifact must be a
 JSON object; if it includes `runId` or `run_id`, that value must match the
 evidence section `runId`; if it includes `measuredAt` or `measured_at`, that
 value must match the evidence section `measuredAt`. It must also include a Phase
-8.5 `runManifest` with the active `pipeline_version` and report evidence such as
-`acceptanceGates`, `metrics`, `checks`, or `documents`; deterministic fixture
-artifacts are not valid release evidence. The artifact must include model
-profile metadata matching the evidence section `profile`, either as a top-level
-profile field or as the section-specific profile field in `runManifest`, such as
-`semantic_profile`, `granite_profile`, `text_embedding_profile`, or
-`visual_embedding_profile`. The artifact `metrics` object must include the
-section-specific metric values claimed by the manifest, such as Qwen route/review
-rates, Granite table/KVP scores, or text/visual retrieval hit rates. Aggregate
-claims such as `hybrid_hit_rate_at_k` and `provenance_truth_rate` must appear in
-at least one evidence artifact, and any artifact that reports a claimed metric
-must match the manifest value.
+8.5 `runManifest` with the active `pipeline_version`, `model_mode` set to
+`live` or `required`, and report evidence such as `acceptanceGates`, `metrics`,
+`checks`, or `documents`; deterministic fixture artifacts are not valid release
+evidence. The artifact must include model profile metadata matching the evidence
+section `profile`, either as a top-level profile field or as the section-specific
+profile field in `runManifest`, such as `semantic_profile`, `granite_profile`,
+`text_embedding_profile`, or `visual_embedding_profile`. The artifact `metrics`
+object must include the section-specific metric values claimed by the manifest,
+such as Qwen route/review rates, Granite table/KVP scores, or text/visual
+retrieval hit rates. Aggregate claims such as `hybrid_hit_rate_at_k` and
+`provenance_truth_rate` must appear in at least one evidence artifact, and any
+artifact that reports a claimed metric must match the manifest value.

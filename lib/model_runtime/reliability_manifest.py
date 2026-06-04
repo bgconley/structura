@@ -3,6 +3,7 @@ from __future__ import annotations
 from importlib import metadata
 from typing import Any
 
+from lib.config.settings import get_settings
 from lib.extraction.candidate_admission_models import CANDIDATE_GATE_VERSION
 from lib.extraction.contract_registry import CONTRACT_REGISTRY_VERSION
 from lib.extraction.region_envelope import REGION_ENVELOPE_VERSION
@@ -28,10 +29,12 @@ def build_phase85_run_manifest(
     run_id: str,
     overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    settings = get_settings()
     granite = get_model_profile(GRANITE_VISION_PROFILE)
     manifest: dict[str, Any] = {
         "run_id": run_id,
         "pipeline_version": PIPELINE_VERSION,
+        "model_mode": settings.model_mode,
         "docling_version": _docling_version(),
         "semantic_profile": QWEN_SEMANTIC_PROFILE,
         "semantic_prompt_version": SMART_PROMPT_VERSION,

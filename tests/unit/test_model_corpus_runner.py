@@ -380,6 +380,93 @@ def test_model_corpus_script_rejects_conflicting_artifact_profile(tmp_path) -> N
     assert "profile mismatch" in result.stderr
 
 
+def test_model_corpus_script_requires_artifact_model_mode_metadata(tmp_path) -> None:
+    payload = _manifest(fixture_type="model_backed")
+    _write_evidence_artifacts(tmp_path, payload, fixture_type="model_backed")
+    text_evidence = payload["evidence"]["textEmbedding"]  # type: ignore[index]
+    assert isinstance(text_evidence, dict)
+    metrics = {
+        **_section_metrics(payload, "textEmbedding"),
+        **_aggregate_metrics(payload),
+    }
+    artifact = _evidence_artifact(
+        str(text_evidence["runId"]),
+        fixture_type="model_backed",
+        metrics=metrics,
+        profile=str(text_evidence["profile"]),
+    )
+    run_manifest = artifact["runManifest"]
+    assert isinstance(run_manifest, dict)
+    run_manifest.pop("model_mode", None)
+    (tmp_path / text_evidence["evidencePath"]).write_text(  # type: ignore[index]
+        json.dumps(artifact),
+        encoding="utf-8",
+    )
+    manifest = tmp_path / "phase8_5_model_manifest.json"
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_model_corpus.py",
+            "--require-model-backed",
+            "--manifest",
+            str(manifest),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "textEmbedding" in result.stderr
+    assert "model_mode" in result.stderr
+
+
+def test_model_corpus_script_rejects_fixture_artifact_model_mode(tmp_path) -> None:
+    payload = _manifest(fixture_type="model_backed")
+    _write_evidence_artifacts(tmp_path, payload, fixture_type="model_backed")
+    qwen_evidence = payload["evidence"]["qwen"]  # type: ignore[index]
+    assert isinstance(qwen_evidence, dict)
+    metrics = {
+        **_section_metrics(payload, "qwen"),
+        **_aggregate_metrics(payload),
+    }
+    artifact = _evidence_artifact(
+        str(qwen_evidence["runId"]),
+        fixture_type="model_backed",
+        metrics=metrics,
+        profile=str(qwen_evidence["profile"]),
+    )
+    run_manifest = artifact["runManifest"]
+    assert isinstance(run_manifest, dict)
+    run_manifest["model_mode"] = "fixture"
+    (tmp_path / qwen_evidence["evidencePath"]).write_text(  # type: ignore[index]
+        json.dumps(artifact),
+        encoding="utf-8",
+    )
+    manifest = tmp_path / "phase8_5_model_manifest.json"
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_model_corpus.py",
+            "--require-model-backed",
+            "--manifest",
+            str(manifest),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "qwen" in result.stderr
+    assert "model_mode" in result.stderr
+    assert "fixture" in result.stderr
+
+
 def test_model_corpus_script_requires_report_lineage_in_evidence_artifacts(tmp_path) -> None:
     payload = _manifest(fixture_type="model_backed")
     _write_evidence_artifacts(tmp_path, payload)
@@ -704,14 +791,18 @@ def _evidence_artifact(
     measured_at: str | None = None,
     profile: str = QWEN_SEMANTIC_PROFILE,
     include_profile: bool = True,
+    model_mode: str | None = "live",
 ) -> dict[str, object]:
+    run_manifest: dict[str, object] = {
+        "run_id": run_id,
+        "pipeline_version": PIPELINE_VERSION,
+    }
+    if model_mode is not None:
+        run_manifest["model_mode"] = model_mode
     artifact: dict[str, object] = {
         "fixtureType": fixture_type,
         "runId": run_id,
-        "runManifest": {
-            "run_id": run_id,
-            "pipeline_version": PIPELINE_VERSION,
-        },
+        "runManifest": run_manifest,
         "metrics": metrics or {"source": "unit-test"},
     }
     if include_profile:

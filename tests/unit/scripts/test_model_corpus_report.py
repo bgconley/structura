@@ -29,6 +29,7 @@ def test_reliability_report_includes_run_manifest_and_lineage_summaries() -> Non
     assert report["runId"] == "phase85-20260604-smoke-001"
     assert report["runManifest"]["run_id"] == "phase85-20260604-smoke-001"
     assert report["runManifest"]["pipeline_version"] == PIPELINE_VERSION
+    assert report["runManifest"]["model_mode"] == "fixture"
     assert report["runManifest"]["semantic_profile"] == QWEN_SEMANTIC_PROFILE
     assert report["runManifest"]["semantic_prompt_version"] == SMART_PROMPT_VERSION
     assert report["runManifest"]["granite_profile"] == GRANITE_VISION_PROFILE
