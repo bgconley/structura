@@ -208,6 +208,72 @@ def test_hard_invariants_flag_rejected_candidate_rows_inserted() -> None:
     ]
 
 
+def test_hard_invariants_flag_rejected_candidate_canonical_alias_rows_inserted() -> None:
+    document = _safe_document_report()
+    document["admissionEvents"].append(
+        {
+            "decision": "rejected_missing_evidence",
+            "candidate_kind": "field",
+            "candidate_fingerprint": "rejected-canonical-field",
+            **_admission_event_telemetry(),
+            "field_path": "invoice.total_amount",
+            "payload_json": {
+                "field_path": "invoice.total_amount",
+                "value": "42.00",
+            },
+        }
+    )
+    document["canonicalFields"] = [
+        {
+            "id": "canonical-field-rejected",
+            "candidateFingerprint": "rejected-canonical-field",
+            "fieldPath": "invoice.total_amount",
+            "value": "42.00",
+            "reviewStatus": "needs_review",
+        }
+    ]
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 1
+    assert summary["invariants"]["rejectedCandidatesInserted"]["violationCount"] == 1
+    assert summary["invariants"]["rejectedCandidatesInserted"]["examples"] == [
+        {
+            "reason": "rejected_candidate_inserted",
+            "documentId": "doc-safe",
+            "entityId": "canonical-field-rejected",
+        }
+    ]
+
+
+def test_hard_invariants_flag_fabricated_canonical_field_alias_rows() -> None:
+    document = _safe_document_report()
+    document["canonicalFields"] = [
+        {
+            "id": "canonical-field-fabricated",
+            "fieldPath": "invoice.invoice_number",
+            "reviewStatus": "auto_accepted",
+            "value": "INV-1001",
+            "evidence": [],
+            "validation": {"fabricated": True},
+        }
+    ]
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 1
+    assert summary["invariants"]["fabricatedCanonicalRequiredFields"]["violationCount"] == 1
+    assert summary["invariants"]["fabricatedCanonicalRequiredFields"]["examples"] == [
+        {
+            "reason": "fabricated_required_field",
+            "documentId": "doc-safe",
+            "entityId": "canonical-field-fabricated",
+        }
+    ]
+
+
 def test_reliability_report_includes_hard_invariant_summary() -> None:
     report = build_phase85_reliability_report(
         run_id="phase85-20260604-smoke-001",

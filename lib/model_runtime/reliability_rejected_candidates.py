@@ -62,10 +62,16 @@ def _inserted_candidate_rows(doc: dict[str, Any]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for key in (
         "fields",
+        "canonicalFields",
+        "canonical_fields",
         "fieldCandidates",
         "lineItems",
+        "canonicalLineItems",
+        "canonical_line_items",
         "lineItemCandidates",
         "observations",
+        "canonicalObservations",
+        "canonical_observations",
         "observationCandidates",
     ):
         rows.extend(row for row in list_value(get_value(doc, key)) if isinstance(row, dict))

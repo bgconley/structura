@@ -81,8 +81,8 @@ def evaluate_extractions(documents: list[dict[str, Any]], violations: ViolationM
 def evaluate_canonical_fields(documents: list[dict[str, Any]], violations: ViolationMap) -> None:
     for doc in documents:
         document = dict_value(get_value(doc, "document"))
-        for field in list_value(get_value(doc, "fields")):
-            if not isinstance(field, dict) or not _is_accepted_field(field):
+        for field in _canonical_field_rows(doc):
+            if not _is_accepted_field(field):
                 continue
             field_path = str(get_value(field, "field_path", "fieldPath") or "")
             if _is_fabricated_required_field(field, field_path):
@@ -101,6 +101,13 @@ def evaluate_canonical_fields(documents: list[dict[str, Any]], violations: Viola
                     "title_derived_merchant_seller_without_allowlist",
                     document=document,
                 )
+
+
+def _canonical_field_rows(doc: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for key in ("fields", "canonicalFields", "canonical_fields"):
+        rows.extend(row for row in list_value(get_value(doc, key)) if isinstance(row, dict))
+    return rows
 
 
 def _semantic_regions_by_id(documents: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
