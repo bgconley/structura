@@ -48,6 +48,7 @@ profile field in `runManifest`, such as
 section-specific metric values claimed by the manifest, such as Qwen
 route/review rates, Granite table/KVP scores, or text/visual retrieval hit
 rates. Manifest metrics, thresholds, and evidence metric values must be finite
-numbers, not booleans. Aggregate claims such as `hybrid_hit_rate_at_k` and
-`provenance_truth_rate` must appear in at least one evidence artifact, and any
-artifact that reports a claimed metric must match the manifest value.
+numbers, not booleans, and must be bounded between 0 and 1. Aggregate claims
+such as `hybrid_hit_rate_at_k` and `provenance_truth_rate` must appear in at
+least one evidence artifact, and any artifact that reports a claimed metric must
+match the manifest value.

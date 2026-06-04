@@ -255,6 +255,8 @@ def _manifest_number(value: Any, *, kind: str, metric: str) -> float:
         raise SystemExit(f"Model corpus {kind} {metric} must be numeric.") from exc
     if not math.isfinite(number):
         raise SystemExit(f"Model corpus {kind} {metric} must be finite.")
+    if number < 0 or number > 1:
+        raise SystemExit(f"Model corpus {kind} {metric} must be between 0 and 1.")
     return number
 
 
@@ -526,6 +528,10 @@ def _metric_float(
         ) from exc
     if not math.isfinite(number):
         raise SystemExit(f"Model corpus evidence {section} metric {metric} must be finite{suffix}")
+    if number < 0 or number > 1:
+        raise SystemExit(
+            f"Model corpus evidence {section} metric {metric} must be between 0 and 1{suffix}"
+        )
     return number
 
 

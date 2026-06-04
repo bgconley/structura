@@ -100,6 +100,22 @@ def test_model_corpus_runner_rejects_boolean_manifest_metrics_and_thresholds() -
         evaluate_model_corpus_manifest(payload, require_model_backed=True)
 
 
+def test_model_corpus_runner_rejects_out_of_range_manifest_metrics_and_thresholds() -> None:
+    payload = _manifest(fixture_type="model_backed")
+    payload["metrics"]["hybrid_hit_rate_at_k"] = 1.5
+
+    with pytest.raises(SystemExit, match="metric hybrid_hit_rate_at_k must be between 0 and 1"):
+        evaluate_model_corpus_manifest(payload, require_model_backed=True)
+
+    payload = _manifest(fixture_type="model_backed")
+    payload["thresholds"]["granite_table_structure_score"] = -0.1
+
+    with pytest.raises(
+        SystemExit, match="threshold granite_table_structure_score must be between 0 and 1"
+    ):
+        evaluate_model_corpus_manifest(payload, require_model_backed=True)
+
+
 def test_model_corpus_runner_rejects_non_finite_manifest_and_evidence_metrics(
     tmp_path: Path,
 ) -> None:
@@ -170,6 +186,37 @@ def test_model_corpus_runner_rejects_boolean_evidence_metrics(tmp_path: Path) ->
 
     with pytest.raises(
         SystemExit, match="qwen.*qwen_handwriting_route_success_rate must be numeric"
+    ):
+        evaluate_model_corpus_manifest(
+            payload,
+            require_model_backed=True,
+            manifest_path=manifest,
+        )
+
+
+def test_model_corpus_runner_rejects_out_of_range_evidence_metrics(tmp_path: Path) -> None:
+    payload = _manifest(fixture_type="model_backed")
+    _write_evidence_artifacts(tmp_path, payload, fixture_type="model_backed")
+    granite_evidence = payload["evidence"]["granite"]  # type: ignore[index]
+    assert isinstance(granite_evidence, dict)
+    metrics = _section_metrics(payload, "granite")
+    metrics.update(_aggregate_metrics(payload))
+    metrics["granite_table_structure_score"] = 1.2
+    (tmp_path / granite_evidence["evidencePath"]).write_text(  # type: ignore[index]
+        json.dumps(
+            _evidence_artifact(
+                str(granite_evidence["runId"]),
+                fixture_type="model_backed",
+                metrics=metrics,
+                profile=str(granite_evidence["profile"]),
+            )
+        ),
+        encoding="utf-8",
+    )
+    manifest = tmp_path / "phase8_5_model_manifest.json"
+
+    with pytest.raises(
+        SystemExit, match="granite.*granite_table_structure_score must be between 0 and 1"
     ):
         evaluate_model_corpus_manifest(
             payload,
