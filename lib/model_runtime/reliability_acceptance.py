@@ -23,6 +23,9 @@ from lib.model_runtime.reliability_admission_summary_acceptance import (
 from lib.model_runtime.reliability_envelope_summary_acceptance import (
     envelope_summary_acceptance_check,
 )
+from lib.model_runtime.reliability_extraction_pressure_acceptance import (
+    extraction_pressure_acceptance_check,
+)
 from lib.model_runtime.reliability_gold_acceptance import gold_corpus_acceptance_check
 from lib.model_runtime.reliability_planner_summary_acceptance import (
     planner_summary_acceptance_check,
@@ -96,6 +99,7 @@ def evaluate_phase85_report_acceptance(
         "envelopeSummary": envelope_summary_acceptance_check(reports),
         "visualInputPlanSummary": visual_input_plan_summary_acceptance_check(reports),
         "retrySummary": retry_summary_acceptance_check(reports),
+        "extractionPressure": extraction_pressure_acceptance_check(reports),
         "hardCorrectnessInvariants": _hard_correctness_check(reports),
         "operationalSLOs": _operational_slo_check(reports),
         "goldCorpusQuality": gold_corpus_acceptance_check(reports, require_gold=require_gold),

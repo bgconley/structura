@@ -10,6 +10,7 @@ from lib.model_runtime.reliability_report_normalization import (
     all_rows,
     bool_value,
     dict_value,
+    first_report_value,
     get_value,
     int_value,
     list_value,
@@ -19,6 +20,7 @@ from lib.model_runtime.reliability_report_normalization import (
 __all__ = [
     "recomputed_candidate_admission_summary",
     "recomputed_envelope_summary",
+    "recomputed_extraction_pressure",
     "recomputed_hard_invariants",
     "recomputed_operational_slos",
     "recomputed_planner_summary",
@@ -164,6 +166,57 @@ def recomputed_retry_summary(report: dict[str, Any]) -> dict[str, Any] | None:
     if not outcomes:
         return None
     return {"outcomes": dict(sorted(outcomes.items()))}
+
+
+def recomputed_extraction_pressure(report: dict[str, Any]) -> dict[str, Any] | None:
+    documents = _document_rows(report)
+    if documents is None:
+        return None
+    valid, document_rows = documents
+    if not valid:
+        return {}
+    planner_rows = all_rows(document_rows, "planner")
+    task_rows = all_rows(document_rows, "plannerTasks")
+    if not planner_rows and not task_rows:
+        return None
+    selected_tasks = [
+        task for task in task_rows if str(get_value(task, "status") or "").startswith("selected")
+    ]
+    selected_by_backend = Counter(
+        str(get_value(task, "extractor_backend", "extractorBackend") or "unknown")
+        for task in selected_tasks
+    )
+    selected_by_page = Counter(
+        str(get_value(task, "page_number", "pageNumber") or "unknown") for task in selected_tasks
+    )
+    estimated_visual_tokens = sum(
+        int_value(
+            get_value(dict_value(get_value(task, "task_json", "taskJson")), "estimatedVisualTokens")
+        )
+        for task in task_rows
+    )
+    skipped_budget_count = sum(
+        1 for task in task_rows if str(get_value(task, "status") or "") == "skipped_budget_exceeded"
+    )
+    return {
+        "plannedTaskCount": sum_values(planner_rows, "selected_task_count", "selectedTaskCount")
+        + sum_values(planner_rows, "skipped_task_count", "skippedTaskCount"),
+        "selectedTaskCount": sum_values(planner_rows, "selected_task_count", "selectedTaskCount"),
+        "selectedTaskCountByBackend": dict(sorted(selected_by_backend.items())),
+        "selectedTaskCountByPage": dict(sorted(selected_by_page.items())),
+        "maxTasksPerDocumentPolicy": int_value(
+            first_report_value(planner_rows, "maxTasksPerDocumentPolicy")
+        ),
+        "maxTasksPerPagePolicy": int_value(
+            first_report_value(planner_rows, "maxTasksPerPagePolicy")
+        ),
+        "budgetExceededCount": skipped_budget_count
+        or sum_values(planner_rows, "skipped_task_count", "skippedTaskCount"),
+        "estimatedVisualTokens": estimated_visual_tokens,
+        "estimatedDoclingContextTokens": int_value(
+            first_report_value(planner_rows, "estimatedDoclingContextTokens")
+        ),
+    }
 
 
 def recomputed_hard_invariants(report: dict[str, Any]) -> dict[str, Any] | None:
