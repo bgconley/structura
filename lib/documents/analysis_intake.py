@@ -13,6 +13,13 @@ ANALYSIS_TARGET_JOB_QUEUES = {
     "visual-embeddings",
 }
 OPERATIONAL_FAILURE_STATUSES = {"failed", "dead_letter", "pipeline_failed"}
+ADMITTED_ARTIFACT_REASONS = {
+    "fake_schema_line_item",
+    "missing_description",
+    "placeholder_field_name",
+    "placeholder_or_null_value",
+    "prompt_or_schema_echo",
+}
 
 BLOCKED_PHASE9_MUTATION_KEYS = (
     "canonicalFacts",
@@ -257,7 +264,9 @@ def _has_admitted_artifact(document: Mapping[str, Any]) -> bool:
     for event in _rows(document, "admissionEvents", "candidateAdmissionEvents"):
         decision = str(_value(event, "decision") or "")
         reasons = [str(reason) for reason in _list(_value(event, "reasons"))]
-        if decision.startswith("admitted") and "prompt_or_schema_echo" in reasons:
+        if decision.startswith("admitted") and any(
+            reason in ADMITTED_ARTIFACT_REASONS for reason in reasons
+        ):
             return True
     return False
 

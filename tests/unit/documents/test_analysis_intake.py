@@ -125,6 +125,39 @@ def test_phase9_intake_preserves_observation_candidates_with_truth_observations(
     assert intake["review"]["uncertainObservations"][0]["fieldName"] == "possible_discount"
 
 
+def test_phase9_intake_disables_analysis_for_admitted_placeholder_artifacts() -> None:
+    intake = build_phase9_document_intake(
+        {
+            "id": "doc-artifact-admitted",
+            "fields": [
+                {
+                    "fieldPath": "invoice.total_amount",
+                    "value": {"amount": 42.5, "currency": "USD"},
+                    "reviewStatus": "auto_accepted",
+                    "evidence": [_concrete_evidence()],
+                }
+            ],
+            "admissionEvents": [
+                {
+                    "decision": "admitted_review_required",
+                    "reasons": ["placeholder_or_null_value"],
+                },
+                {
+                    "decision": "admitted_review_required",
+                    "reasons": ["fake_schema_line_item"],
+                },
+                {
+                    "decision": "rejected_placeholder",
+                    "reasons": ["placeholder_or_null_value"],
+                },
+            ],
+        }
+    )
+
+    assert intake["documentQuality"]["has_admitted_artifact"] is True
+    assert intake["eligibility"] == "analysis_disabled_artifact_regression"
+
+
 def test_phase9_intake_excludes_debug_envelopes_from_truth_context() -> None:
     intake = build_phase9_document_intake(
         {
