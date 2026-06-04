@@ -81,6 +81,8 @@ def evaluate_admission_events(documents: list[dict[str, Any]], violations: Viola
 
 def _evaluate_event_telemetry(event: dict[str, Any], violations: ViolationMap) -> None:
     for snake_key, camel_key, reason in (
+        ("run_id", "runId", "missing_run_id"),
+        ("planner_version", "plannerVersion", "missing_planner_version"),
         ("candidate_fingerprint", "candidateFingerprint", "missing_candidate_fingerprint"),
         ("candidate_gate_version", "candidateGateVersion", "missing_candidate_gate_version"),
         (

@@ -6,6 +6,7 @@ from lib.extraction.candidate_admission_models import CANDIDATE_GATE_VERSION
 from lib.extraction.contract_registry import CONTRACT_REGISTRY_VERSION
 from lib.model_runtime.reliability_invariants import evaluate_hard_correctness_invariants
 from lib.model_runtime.reliability_report import build_phase85_reliability_report
+from lib.semantic_annotations.extraction_plan_repository import PLANNER_VERSION
 
 
 def test_hard_invariants_pass_for_safe_skips_and_review_required_model_rows() -> None:
@@ -295,6 +296,8 @@ def _artifact_document_report() -> dict[str, Any]:
 
 def _admission_event_telemetry() -> dict[str, str]:
     return {
+        "run_id": "phase85-20260604-smoke-001",
+        "planner_version": PLANNER_VERSION,
         "candidate_gate_version": CANDIDATE_GATE_VERSION,
         "contract_registry_version": CONTRACT_REGISTRY_VERSION,
     }

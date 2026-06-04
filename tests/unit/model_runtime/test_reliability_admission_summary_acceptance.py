@@ -6,6 +6,7 @@ from lib.extraction.candidate_admission_models import CANDIDATE_GATE_VERSION
 from lib.extraction.contract_registry import CONTRACT_REGISTRY_VERSION
 from lib.model_runtime.reliability_acceptance import evaluate_phase85_report_acceptance
 from lib.model_runtime.reliability_report import build_phase85_reliability_report
+from lib.semantic_annotations.extraction_plan_repository import PLANNER_VERSION
 
 
 def test_report_acceptance_fails_when_candidate_admission_summary_lineage_is_stale() -> None:
@@ -134,6 +135,8 @@ def _document_report() -> dict[str, Any]:
 
 def _admission_event_telemetry() -> dict[str, str]:
     return {
+        "run_id": "phase85-admission-summary",
+        "planner_version": PLANNER_VERSION,
         "candidate_gate_version": CANDIDATE_GATE_VERSION,
         "contract_registry_version": CONTRACT_REGISTRY_VERSION,
     }

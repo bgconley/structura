@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from lib.extraction.candidate_admission_models import CANDIDATE_GATE_VERSION
+from lib.extraction.contract_registry import CONTRACT_REGISTRY_VERSION
+from lib.extraction.region_envelope import REGION_ENVELOPE_VERSION
 from lib.model_runtime.profiles import (
     GRANITE_VISION_PROFILE,
     QWEN_SEMANTIC_PROFILE,
@@ -12,17 +15,43 @@ from lib.model_runtime.reliability_acceptance import evaluate_phase85_report_acc
 from lib.model_runtime.reliability_invariants import evaluate_hard_correctness_invariants
 
 
-def test_hard_invariants_flag_missing_admission_event_telemetry() -> None:
-    summary = evaluate_hard_correctness_invariants([_document_with_missing_telemetry()])
+def test_hard_invariants_flag_missing_admission_event_run_lineage() -> None:
+    summary = evaluate_hard_correctness_invariants([_document_missing_run_lineage()])
 
     assert summary["status"] == "failed"
-    assert summary["totalViolationCount"] == 4
+    assert summary["totalViolationCount"] == 2
     assert summary["invariants"]["admissionEventsMissingTelemetry"] == {
         "description": (
             "Admission events must include queryable lineage, gate versions, "
             "and candidate fingerprints."
         ),
-        "violationCount": 4,
+        "violationCount": 2,
+        "examples": [
+            {
+                "reason": "missing_run_id",
+                "documentId": None,
+                "entityId": "line-fingerprint-1",
+            },
+            {
+                "reason": "missing_planner_version",
+                "documentId": None,
+                "entityId": "line-fingerprint-1",
+            },
+        ],
+    }
+
+
+def test_hard_invariants_flag_missing_admission_event_telemetry() -> None:
+    summary = evaluate_hard_correctness_invariants([_document_with_missing_telemetry()])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 6
+    assert summary["invariants"]["admissionEventsMissingTelemetry"] == {
+        "description": (
+            "Admission events must include queryable lineage, gate versions, "
+            "and candidate fingerprints."
+        ),
+        "violationCount": 6,
         "examples": _missing_telemetry_examples(),
     }
 
@@ -43,20 +72,44 @@ def test_report_acceptance_fails_when_admission_event_telemetry_is_missing() -> 
             "invalid": ["recomputed.totalViolationCount"],
             "recomputed": {
                 "status": "failed",
-                "totalViolationCount": 4,
+                "totalViolationCount": 6,
                 "invariants": {
                     "admissionEventsMissingTelemetry": {
                         "description": (
                             "Admission events must include queryable lineage, "
                             "gate versions, and candidate fingerprints."
                         ),
-                        "violationCount": 4,
+                        "violationCount": 6,
                         "examples": _missing_telemetry_examples(),
                     }
                 },
             },
         }
     ]
+
+
+def _document_missing_run_lineage() -> dict[str, Any]:
+    return {
+        "document": {"id": "doc-missing-run-lineage", "document_family": "invoice"},
+        "admissionEvents": [
+            {
+                "decision": "admitted_review_required",
+                "candidate_kind": "line_item",
+                "candidate_fingerprint": "line-fingerprint-1",
+                "candidate_gate_version": CANDIDATE_GATE_VERSION,
+                "contract_registry_version": CONTRACT_REGISTRY_VERSION,
+                "region_envelope_version": REGION_ENVELOPE_VERSION,
+                "source_engine": "granite",
+                "evidence_concrete": True,
+                "payload_json": {
+                    "candidate": {
+                        "description": "Labor",
+                        "evidence": [{"page_id": "page-1", "semantic_region_id": "region-1"}],
+                    }
+                },
+            }
+        ],
+    }
 
 
 def _document_with_missing_telemetry() -> dict[str, Any]:
@@ -146,6 +199,16 @@ def _passing_report_with_documents(documents: list[dict[str, Any]]) -> dict[str,
 
 def _missing_telemetry_examples() -> list[dict[str, object]]:
     return [
+        {
+            "reason": "missing_run_id",
+            "documentId": None,
+            "entityId": "invoice.total_amount",
+        },
+        {
+            "reason": "missing_planner_version",
+            "documentId": None,
+            "entityId": "invoice.total_amount",
+        },
         {
             "reason": "missing_candidate_fingerprint",
             "documentId": None,

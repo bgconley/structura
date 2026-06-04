@@ -15,6 +15,7 @@ from lib.model_runtime.profiles import (
 )
 from lib.model_runtime.reliability_acceptance import evaluate_phase85_report_acceptance
 from lib.model_runtime.reliability_report import build_phase85_reliability_report
+from lib.semantic_annotations.extraction_plan_repository import PLANNER_VERSION
 
 
 def test_report_acceptance_import_does_not_load_runtime_settings() -> None:
@@ -672,6 +673,8 @@ def _passed_operational_slo_gates() -> dict[str, dict[str, object]]:
 
 def _admission_event_telemetry() -> dict[str, str]:
     return {
+        "run_id": "phase85-pass-1",
+        "planner_version": PLANNER_VERSION,
         "candidate_gate_version": CANDIDATE_GATE_VERSION,
         "contract_registry_version": CONTRACT_REGISTRY_VERSION,
     }
