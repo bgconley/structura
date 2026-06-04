@@ -41,6 +41,7 @@ from lib.extraction.candidate_schema_policy import (
     canonical_candidate_schema_rejection_reason,
     field_path_schema_rejection_reason,
 )
+from lib.extraction.candidate_source_policy import title_derived_counterparty_rejection_reason
 from lib.extraction.evidence import has_concrete_evidence
 from lib.extraction.models import (
     CandidateFact,
@@ -275,6 +276,14 @@ def _field_rejection_decision(
     rejected, reason = reject_scalar_candidate(candidate.value)
     if rejected:
         return decision_for_quality_reason(reason)
+    source_reason = title_derived_counterparty_rejection_reason(
+        field_path=candidate.field_path,
+        evidence=candidate.evidence,
+        validation=candidate.validation,
+        run_metadata=context.run_scope.metadata,
+    )
+    if source_reason:
+        return "rejected_source_provenance", (source_reason,)
     if context.model_backed_semantic_region and not evidence_concrete:
         return "rejected_missing_evidence", ("missing_concrete_evidence",)
     return None, ()

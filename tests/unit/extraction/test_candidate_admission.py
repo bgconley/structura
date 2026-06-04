@@ -848,6 +848,59 @@ def test_repeated_separator_placeholder_field_value_is_rejected_before_insertion
     assert admission.events[0].reasons == ("placeholder_or_null_value",)
 
 
+def test_title_derived_seller_field_is_rejected_before_insertion() -> None:
+    context = _context(canonical_target_schema="invoice")
+    candidate = CandidateFact(
+        field_path="invoice.seller.display_name",
+        value_type="string",
+        value="Acme Services",
+        evidence=[_title_evidence(context)],
+        status="proposed",
+    )
+
+    admission = admit_extraction_candidates(
+        context=context,
+        field_candidates=[candidate],
+        line_item_candidates=[],
+        observation_candidates=[],
+    )
+
+    assert admission.field_candidates == []
+    assert admission.summary == {
+        "produced": 1,
+        "admitted": 0,
+        "rejected": 1,
+        "rejectionReasons": {"rejected_source_provenance": 1},
+    }
+    assert admission.events[0].decision == "rejected_source_provenance"
+    assert admission.events[0].reasons == ("title_derived_merchant_seller_without_allowlist",)
+
+
+def test_title_derived_seller_field_can_be_explicitly_allowlisted() -> None:
+    context = _context(
+        canonical_target_schema="invoice",
+        run_metadata={"allow_title_derived_merchant_seller": True},
+    )
+    candidate = CandidateFact(
+        field_path="invoice.seller.display_name",
+        value_type="string",
+        value="Acme Services",
+        evidence=[_title_evidence(context)],
+        status="proposed",
+    )
+
+    admission = admit_extraction_candidates(
+        context=context,
+        field_candidates=[candidate],
+        line_item_candidates=[],
+        observation_candidates=[],
+    )
+
+    assert len(admission.field_candidates) == 1
+    assert admission.field_candidates[0].status == "needs_review"
+    assert admission.events[0].decision == "admitted_review_required"
+
+
 def test_report_placeholder_value_is_rejected_before_insertion() -> None:
     context = _context()
     candidate = CandidateFact(
@@ -1456,6 +1509,7 @@ def _context(
     source_engine: str = "granite_vision_3b",
     semantic_region_id: UUID | None = None,
     semantic_type: str = "receipt_payment_summary",
+    run_metadata: dict[str, Any] | None = None,
 ) -> CandidateAdmissionContext:
     return CandidateAdmissionContext(
         document_id=uuid4(),
@@ -1470,6 +1524,7 @@ def _context(
             compatibility_mode="exact",
             contract_resolution_reason="exact_contract",
             region_envelope_version="phase8_5-region-envelope-v1",
+            metadata=run_metadata,
         ),
         source_engine=source_engine,
         model_output_schema_name="granite_receipt_payment_summary.v1",
@@ -1484,4 +1539,16 @@ def _evidence(context: CandidateAdmissionContext) -> dict[str, object]:
         "page_number": 1,
         "source_engine": context.source_engine,
         "source_text": "Coffee Shop total $4.65",
+    }
+
+
+def _title_evidence(context: CandidateAdmissionContext) -> dict[str, object]:
+    return {
+        "document_id": str(context.document_id),
+        "semantic_annotation_id": str(context.semantic_annotation_id),
+        "semantic_region_id": str(context.semantic_region_id),
+        "page_number": 1,
+        "sourceEngine": "DocumentTitle",
+        "source_text": "Acme Services Invoice 1001",
+        "text_span": {"start": 0, "end": 13, "basis": "document_title"},
     }
