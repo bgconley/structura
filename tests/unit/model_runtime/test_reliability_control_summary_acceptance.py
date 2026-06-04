@@ -118,6 +118,44 @@ def test_report_contract_summary_normalizes_contract_resolution_modes() -> None:
     ]
 
 
+def test_report_contract_summary_normalizes_schema_counts() -> None:
+    report = build_phase85_reliability_report(
+        run_id="phase85-control-summary",
+        title_prefix="Phase 8.5 Control Summary",
+        documents=[_document_report_with_cased_schema_name()],
+    )
+
+    assert report["contractSummary"]["schemaCounts"] == {
+        "granite_invoice_line_items.v1": 1,
+    }
+
+    report["contractSummary"] = {
+        **report["contractSummary"],
+        "schemaCounts": {" Granite_Invoice_Line_Items.V1 ": 1},
+    }
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["contractSummary"]["status"] == "failed"
+    assert summary["checks"]["contractSummary"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-control-summary",
+            "invalid": ["schemaCounts"],
+            "details": report["contractSummary"],
+            "recomputed": {
+                "runId": "phase85-control-summary",
+                "contractRegistryVersion": CONTRACT_REGISTRY_VERSION,
+                "contractedTaskCount": 1,
+                "missingContractTaskCount": 1,
+                "schemaCounts": {"granite_invoice_line_items.v1": 1},
+                "contractResolutionModes": {"exact": 1, "missing": 1},
+            },
+        }
+    ]
+
+
 def _document_report() -> dict[str, Any]:
     return {
         "document": {
@@ -182,6 +220,12 @@ def _document_report_with_cased_contract_modes() -> dict[str, Any]:
     document = _document_report()
     document["plannerTasks"][0]["compatibility_mode"] = " Exact "
     document["plannerTasks"][1]["compatibility_mode"] = " Missing "
+    return document
+
+
+def _document_report_with_cased_schema_name() -> dict[str, Any]:
+    document = _document_report()
+    document["plannerTasks"][0]["model_output_schema_name"] = " Granite_Invoice_Line_Items.V1 "
     return document
 
 

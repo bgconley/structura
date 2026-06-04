@@ -124,10 +124,12 @@ def contract_summary(run_id: str, documents: list[dict[str, Any]]) -> dict[str, 
     contracted = 0
     missing = 0
     for task in task_rows:
-        schema_name = get_value(task, "model_output_schema_name", "modelOutputSchemaName")
-        if schema_name not in (None, ""):
+        schema_name = normalized_text(
+            get_value(task, "model_output_schema_name", "modelOutputSchemaName")
+        )
+        if schema_name:
             contracted += 1
-            schema_counts[str(schema_name)] += 1
+            schema_counts[schema_name] += 1
         else:
             missing += 1
         contract_mode = (
