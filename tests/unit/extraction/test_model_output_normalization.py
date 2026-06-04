@@ -157,6 +157,17 @@ def test_authoritative_docling_table_rejects_line_items_without_row_identity() -
     assert evidence["row_index"] == 1
     assert evidence["page_number"] == 2
     assert metadata["tableConsistency"]["rejectedRowCount"] == 1
+    rejected_row = metadata["tableConsistency"]["rejectedRows"][0]
+    assert rejected_row["reason"] == "candidate.missing_docling_row_index"
+    assert rejected_row["payload"]["description"] == "Invented row"
+    assert rejected_row["payload"]["amount"] == {"amount": 12.0, "currency": "USD"}
+    assert rejected_row["payload"]["table_id"] == str(table_id)
+    assert rejected_row["payload"]["page_number"] == 2
+    assert "row_index" not in rejected_row["payload"]
+    assert (
+        normalized["metadata"]["tableConsistency"]["rejectedRows"]
+        == metadata["tableConsistency"]["rejectedRows"]
+    )
     assert "candidate.missing_docling_row_index" in metadata["tableConsistency"]["warnings"]
 
 

@@ -158,6 +158,14 @@ def apply_table_consistency_projection(
         "needsReview": consistency.needs_review,
         "warnings": list(consistency.warnings),
     }
+    if consistency.rejected_rows:
+        table_consistency["rejectedRows"] = [
+            {
+                "payload": dict(row),
+                "reason": "candidate.missing_docling_row_index",
+            }
+            for row in consistency.rejected_rows
+        ]
     metadata["tableConsistency"] = table_consistency
     metadata["repairs"] = [
         *metadata.get("repairs", []),
@@ -251,9 +259,7 @@ def _numeric_column_count(rows: list[list[str]]) -> int:
     count = 0
     for column_index in range(width):
         values = [
-            row[column_index]
-            for row in rows[1:]
-            if column_index < len(row) and row[column_index]
+            row[column_index] for row in rows[1:] if column_index < len(row) and row[column_index]
         ]
         if values and sum(1 for value in values if _looks_numeric(value)) / len(values) >= 0.5:
             count += 1

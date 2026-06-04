@@ -35,6 +35,7 @@ def rejected_candidates_from_payload(
             require_concrete_evidence=require_concrete_evidence,
         )
     )
+    rejected.extend(_table_consistency_rejections_from_payload(payload))
     rejected.extend(
         _observation_rejections_from_payload(
             schema_name=schema_name,
@@ -42,6 +43,35 @@ def rejected_candidates_from_payload(
             require_concrete_evidence=require_concrete_evidence,
         )
     )
+    return rejected
+
+
+def _table_consistency_rejections_from_payload(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    metadata = _dict(payload.get("metadata"))
+    table_consistency = _dict(metadata.get("tableConsistency") or metadata.get("table_consistency"))
+    rejected_rows = table_consistency.get("rejectedRows") or table_consistency.get("rejected_rows")
+    if not isinstance(rejected_rows, list):
+        return []
+
+    rejected: list[dict[str, Any]] = []
+    for item in rejected_rows:
+        if not isinstance(item, dict):
+            continue
+        row_payload = _dict(item.get("payload"))
+        if not row_payload:
+            continue
+        evidence = _evidence(row_payload)
+        reason = str(item.get("reason") or "candidate.table_consistency_rejected")
+        rejected.append(
+            _raw_rejection_payload(
+                candidate_kind="line_item",
+                field_path=None,
+                payload=row_payload,
+                decision="rejected_table_consistency",
+                reasons=(reason,),
+                evidence_concrete=has_concrete_evidence(evidence),
+            )
+        )
     return rejected
 
 
@@ -87,9 +117,7 @@ def _line_item_rejections_from_payload(
 ) -> list[dict[str, Any]]:
     rejected: list[dict[str, Any]] = []
     raw_items = (
-        payload.get("service_lines")
-        if schema_name == "medical_eob"
-        else payload.get("line_items")
+        payload.get("service_lines") if schema_name == "medical_eob" else payload.get("line_items")
     )
     if not isinstance(raw_items, list):
         return rejected
