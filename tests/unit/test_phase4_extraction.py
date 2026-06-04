@@ -96,8 +96,7 @@ def test_semantic_region_validation_does_not_require_full_canonical_receipt() ->
 
     assert report.needs_review
     assert not any(
-        check["code"] == "json_schema" and check["status"] == "failed"
-        for check in report.checks
+        check["code"] == "json_schema" and check["status"] == "failed" for check in report.checks
     )
     assert any(
         check["code"] == "region_scope.validation_routing" and check["status"] == "passed"

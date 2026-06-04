@@ -126,8 +126,7 @@ def _table_context(source: ExtractionSourceDocument, task: SemanticExtractionTas
         if table.table_markdown:
             table_text = _render_table_markdown(table.table_markdown)
             rendered.append(
-                f"Table page={table.page_number} index={table.table_index}:\n"
-                f"{table_text[:1600]}"
+                f"Table page={table.page_number} index={table.table_index}:\n{table_text[:1600]}"
             )
         elif table.table_json:
             table_text = _render_table_json(table.table_json)

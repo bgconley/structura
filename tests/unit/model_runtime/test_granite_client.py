@@ -75,11 +75,7 @@ def test_granite_client_treats_confidence_only_json_as_empty_extraction() -> Non
                 json={
                     "model": "ibm-granite/granite-4.0-3b-vision",
                     "choices": [
-                        {
-                            "message": {
-                                "content": json.dumps({"confidence": {"overall": 0.0}})
-                            }
-                        }
+                        {"message": {"content": json.dumps({"confidence": {"overall": 0.0}})}}
                     ],
                 },
             )
