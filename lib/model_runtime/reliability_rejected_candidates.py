@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from lib.model_runtime.reliability_report_normalization import dict_value, get_value, list_value
+from lib.model_runtime.reliability_report_normalization import (
+    dict_value,
+    get_value,
+    list_value,
+    snake,
+)
 
 ViolationMap = dict[str, list[dict[str, Any]]]
 
@@ -96,7 +101,7 @@ def _candidate_payload_identities(
     field_path: str,
     payload: dict[str, Any],
 ) -> set[str]:
-    normalized_kind = candidate_kind.lower()
+    normalized_kind = _normalized_candidate_kind(candidate_kind)
     if normalized_kind == "line_item":
         return {_line_item_identity(payload)}
     if normalized_kind == "observation":
@@ -149,6 +154,11 @@ def _normalized_identity_text(value: Any) -> str:
     if value in (None, ""):
         return ""
     return " ".join(str(value).strip().lower().split())
+
+
+def _normalized_candidate_kind(value: Any) -> str:
+    normalized = snake(str(value or "").strip()).replace("-", "_").replace(" ", "_").lower()
+    return "_".join(part for part in normalized.split("_") if part)
 
 
 def _normalized_decision(value: Any) -> str:

@@ -411,6 +411,49 @@ def test_hard_invariants_normalize_rejected_event_decisions_before_matching_rows
     ]
 
 
+def test_hard_invariants_normalize_rejected_event_candidate_kind_before_matching_rows() -> None:
+    document = _safe_document_report()
+    document["admissionEvents"].append(
+        {
+            "decision": "rejected_missing_evidence",
+            "candidateKind": " Line_Item ",
+            "candidateFingerprint": "rejected-line-kind-fingerprint",
+            **_admission_event_telemetry(),
+            "payloadJson": {
+                "candidate": {
+                    "description": "Front tire service",
+                    "code": "TIRE",
+                    "netAmount": "145.00",
+                    "grossAmount": "145.00",
+                },
+            },
+        }
+    )
+    document["lineItemCandidates"] = [
+        {
+            "id": "line-item-rejected-kind",
+            "description": "Front tire service",
+            "code": "TIRE",
+            "netAmount": "145.00",
+            "grossAmount": "145.00",
+            "status": "needs_review",
+        }
+    ]
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 1
+    assert summary["invariants"]["rejectedCandidatesInserted"]["violationCount"] == 1
+    assert summary["invariants"]["rejectedCandidatesInserted"]["examples"] == [
+        {
+            "reason": "rejected_candidate_inserted",
+            "documentId": "doc-safe",
+            "entityId": "line-item-rejected-kind",
+        }
+    ]
+
+
 def test_hard_invariants_flag_fabricated_canonical_field_alias_rows() -> None:
     document = _safe_document_report()
     document["canonicalFields"] = [
