@@ -276,6 +276,7 @@ def _is_zero_number(value: Any) -> bool:
 def _repeatability_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
     missing_by_report: list[dict[str, Any]] = []
     mismatched_by_report: list[dict[str, Any]] = []
+    missing_document_evidence_by_report: list[dict[str, Any]] = []
     missing_run_ids: list[dict[str, int]] = []
     run_ids: list[str] = []
     for index, report in enumerate(reports):
@@ -295,6 +296,13 @@ def _repeatability_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
                 }
             )
         recomputed = recomputed_repeatability_fingerprints(report)
+        if len(reports) >= 2 and not _has_document_evidence(report):
+            missing_document_evidence_by_report.append(
+                {
+                    "reportIndex": index,
+                    "runId": get_value(report, "runId", "run_id"),
+                }
+            )
         if recomputed is not None:
             mismatched = [
                 key
@@ -318,6 +326,7 @@ def _repeatability_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
             "baseline": {},
             "missingByReport": missing_by_report,
             "mismatchedByReport": mismatched_by_report,
+            "missingDocumentEvidenceByReport": [],
             "missingRunIds": missing_run_ids,
             "duplicateRunIds": duplicate_run_ids,
             "comparisons": [],
@@ -329,6 +338,7 @@ def _repeatability_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
             "baseline": {},
             "missingByReport": [],
             "mismatchedByReport": [],
+            "missingDocumentEvidenceByReport": [],
             "missingRunIds": [],
             "duplicateRunIds": [],
             "comparisons": [],
@@ -346,14 +356,20 @@ def _repeatability_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
             drift.append(key)
         comparisons.append({"key": key, "baseline": baseline_value, "values": values})
     return {
-        "status": "passed" if not drift else "failed",
+        "status": "passed" if not drift and not missing_document_evidence_by_report else "failed",
         "drift": drift,
         "missingByReport": [],
         "mismatchedByReport": [],
+        "missingDocumentEvidenceByReport": missing_document_evidence_by_report,
         "missingRunIds": [],
         "duplicateRunIds": [],
         "comparisons": comparisons,
     }
+
+
+def _has_document_evidence(report: dict[str, Any]) -> bool:
+    documents = get_value(report, "documents")
+    return isinstance(documents, list) and any(isinstance(row, dict) for row in documents)
 
 
 def _gate(report: dict[str, Any], gate_name: str) -> dict[str, Any]:

@@ -466,6 +466,28 @@ def test_report_acceptance_compares_repeatability_fingerprints_across_two_passes
     assert summary["checks"]["repeatabilityFingerprints"]["drift"] == ["candidateFingerprints"]
 
 
+def test_report_acceptance_requires_document_evidence_for_two_pass_repeatability() -> None:
+    first = _resident_report()
+    second = deepcopy(first)
+    second["runId"] = "phase85-pass-2"
+    second["runManifest"]["run_id"] = "phase85-pass-2"
+
+    summary = evaluate_phase85_report_acceptance([first, second])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["repeatabilityFingerprints"]["status"] == "failed"
+    assert summary["checks"]["repeatabilityFingerprints"]["missingDocumentEvidenceByReport"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+        },
+        {
+            "reportIndex": 1,
+            "runId": "phase85-pass-2",
+        },
+    ]
+
+
 def test_report_acceptance_rejects_duplicate_run_ids_for_repeatability() -> None:
     first = _resident_report()
     second = deepcopy(first)

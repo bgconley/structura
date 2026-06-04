@@ -215,6 +215,16 @@ def test_gpu_validation_docs_require_distinct_repeatability_run_ids() -> None:
     assert "Repeatability comparisons require distinct `runId` values" in normalized
 
 
+def test_gpu_validation_docs_require_repeatability_document_evidence() -> None:
+    content = Path("docs/model-runtime/phase8_5_gpu_validation.md").read_text(encoding="utf-8")
+    normalized = re.sub(r"\s+", " ", content)
+
+    assert (
+        "Two-pass repeatability evidence must include non-empty report `documents` rows"
+    ) in normalized
+    assert "fingerprints are recomputable from captured corpus evidence" in normalized
+
+
 def test_gpu_validation_docs_require_zero_hard_correctness_count() -> None:
     content = Path("docs/model-runtime/phase8_5_gpu_validation.md").read_text(encoding="utf-8")
     normalized = re.sub(r"\s+", " ", content)

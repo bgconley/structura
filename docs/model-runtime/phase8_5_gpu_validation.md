@@ -101,6 +101,9 @@ Report acceptance requires the full repeatability fingerprint set:
 `canonicalOutput`, `reviewTasks`, and `rejectionDistribution`.
 Repeatability comparisons require distinct `runId` values so the same report
 cannot be submitted twice as two-pass evidence.
+Two-pass repeatability evidence must include non-empty report `documents` rows
+so planner and candidate fingerprints are recomputable from captured corpus
+evidence.
 Hard correctness acceptance requires
 `acceptanceGates.hardCorrectnessInvariants.status = passed` and
 `totalViolationCount = 0`.
