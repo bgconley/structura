@@ -11,6 +11,12 @@ from lib.model_runtime.reliability_report_normalization import (
     get_value,
     snake,
 )
+from lib.model_runtime.reliability_versions import (
+    CANDIDATE_GATE_VERSION,
+    CONTRACT_REGISTRY_VERSION,
+    PLANNER_VERSION,
+    REGION_ENVELOPE_VERSION,
+)
 from lib.model_runtime.source_engines import is_model_source_engine
 
 ViolationMap = dict[str, list[dict[str, Any]]]
@@ -107,6 +113,30 @@ def _evaluate_event_telemetry(event: dict[str, Any], violations: ViolationMap) -
         if not _has_text(get_value(event, snake_key, camel_key)):
             _add_violation(violations, "admissionEventsMissingTelemetry", event, reason)
 
+    for snake_key, camel_key, expected, reason in (
+        ("planner_version", "plannerVersion", PLANNER_VERSION, "stale_planner_version"),
+        (
+            "candidate_gate_version",
+            "candidateGateVersion",
+            CANDIDATE_GATE_VERSION,
+            "stale_candidate_gate_version",
+        ),
+        (
+            "contract_registry_version",
+            "contractRegistryVersion",
+            CONTRACT_REGISTRY_VERSION,
+            "stale_contract_registry_version",
+        ),
+    ):
+        _evaluate_expected_version(
+            event,
+            violations,
+            snake_key=snake_key,
+            camel_key=camel_key,
+            expected=expected,
+            reason=reason,
+        )
+
     if _is_model_backed_event(event):
         for snake_key, camel_key, reason in (
             ("plan_id", "planId", "missing_plan_id"),
@@ -124,6 +154,14 @@ def _evaluate_event_telemetry(event: dict[str, Any], violations: ViolationMap) -
         ):
             if not _has_value(get_value(event, snake_key, camel_key)):
                 _add_violation(violations, "admissionEventsMissingTelemetry", event, reason)
+        _evaluate_expected_version(
+            event,
+            violations,
+            snake_key="region_envelope_version",
+            camel_key="regionEnvelopeVersion",
+            expected=REGION_ENVELOPE_VERSION,
+            reason="stale_region_envelope_version",
+        )
 
 
 def _is_admitted(event: dict[str, Any]) -> bool:
@@ -145,6 +183,22 @@ def _has_value(value: Any) -> bool:
     if value in (None, ""):
         return False
     return not (isinstance(value, str) and not value.strip())
+
+
+def _evaluate_expected_version(
+    event: dict[str, Any],
+    violations: ViolationMap,
+    *,
+    snake_key: str,
+    camel_key: str,
+    expected: str,
+    reason: str,
+) -> None:
+    value = get_value(event, snake_key, camel_key)
+    if value in (None, ""):
+        return
+    if str(value).strip() != expected:
+        _add_violation(violations, "admissionEventsMissingTelemetry", event, reason)
 
 
 def _candidate_payload(event: dict[str, Any]) -> dict[str, Any]:

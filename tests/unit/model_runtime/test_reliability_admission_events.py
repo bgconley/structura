@@ -13,6 +13,7 @@ from lib.model_runtime.profiles import (
 )
 from lib.model_runtime.reliability_acceptance import evaluate_phase85_report_acceptance
 from lib.model_runtime.reliability_invariants import evaluate_hard_correctness_invariants
+from lib.model_runtime.reliability_versions import PLANNER_VERSION
 
 
 def test_hard_invariants_flag_missing_admission_event_run_lineage() -> None:
@@ -107,6 +108,44 @@ def test_hard_invariants_require_semantic_plan_lineage_for_model_sources() -> No
                 "reason": "missing_semantic_annotation_id",
                 "documentId": None,
                 "entityId": "line-fingerprint-planless",
+            },
+        ],
+    }
+
+
+def test_hard_invariants_flag_stale_admission_event_gate_versions() -> None:
+    document = _document_with_stale_gate_versions()
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 4
+    assert summary["invariants"]["admissionEventsMissingTelemetry"] == {
+        "description": (
+            "Admission events must include queryable lineage, gate versions, "
+            "and candidate fingerprints."
+        ),
+        "violationCount": 4,
+        "examples": [
+            {
+                "reason": "stale_planner_version",
+                "documentId": None,
+                "entityId": "line-fingerprint-stale-versions",
+            },
+            {
+                "reason": "stale_candidate_gate_version",
+                "documentId": None,
+                "entityId": "line-fingerprint-stale-versions",
+            },
+            {
+                "reason": "stale_contract_registry_version",
+                "documentId": None,
+                "entityId": "line-fingerprint-stale-versions",
+            },
+            {
+                "reason": "stale_region_envelope_version",
+                "documentId": None,
+                "entityId": "line-fingerprint-stale-versions",
             },
         ],
     }
@@ -208,7 +247,7 @@ def _document_with_versioned_model_source_missing_region_envelope() -> dict[str,
                 "candidate_kind": "line_item",
                 "candidate_fingerprint": "line-fingerprint-versioned",
                 "run_id": "phase85-smoke-versioned",
-                "planner_version": "planner-v1",
+                "planner_version": PLANNER_VERSION,
                 "candidate_gate_version": CANDIDATE_GATE_VERSION,
                 "contract_registry_version": CONTRACT_REGISTRY_VERSION,
                 **_semantic_plan_lineage(),
@@ -234,11 +273,38 @@ def _document_with_versioned_model_source_missing_semantic_plan_lineage() -> dic
                 "candidate_kind": "line_item",
                 "candidate_fingerprint": "line-fingerprint-planless",
                 "run_id": "phase85-smoke-planless",
-                "planner_version": "planner-v1",
+                "planner_version": PLANNER_VERSION,
                 "candidate_gate_version": CANDIDATE_GATE_VERSION,
                 "contract_registry_version": CONTRACT_REGISTRY_VERSION,
                 "region_envelope_version": REGION_ENVELOPE_VERSION,
                 "semantic_region_id": "region-1",
+                "source_engine": "granite_vision_3b",
+                "evidence_concrete": True,
+                "payload_json": {
+                    "candidate": {
+                        "description": "Labor",
+                        "evidence": [{"page_id": "page-1", "semantic_region_id": "region-1"}],
+                    }
+                },
+            }
+        ],
+    }
+
+
+def _document_with_stale_gate_versions() -> dict[str, Any]:
+    return {
+        "document": {"id": "doc-stale-gate-versions", "document_family": "invoice"},
+        "admissionEvents": [
+            {
+                "decision": "admitted_review_required",
+                "candidate_kind": "line_item",
+                "candidate_fingerprint": "line-fingerprint-stale-versions",
+                "run_id": "phase85-smoke-stale-versions",
+                "planner_version": "phase8_5-old-planner",
+                "candidate_gate_version": "phase8_5-old-gates",
+                "contract_registry_version": "phase8_5-old-contracts",
+                "region_envelope_version": "phase8_5-old-envelope",
+                **_semantic_plan_lineage(),
                 "source_engine": "granite_vision_3b",
                 "evidence_concrete": True,
                 "payload_json": {
@@ -288,7 +354,7 @@ def _document_with_spaced_placeholder_value() -> dict[str, Any]:
                 "candidate_kind": "field",
                 "candidate_fingerprint": "placeholder-value-spaced",
                 "run_id": "phase85-smoke-placeholder",
-                "planner_version": "planner-v1",
+                "planner_version": PLANNER_VERSION,
                 "candidate_gate_version": CANDIDATE_GATE_VERSION,
                 "contract_registry_version": CONTRACT_REGISTRY_VERSION,
                 "evidence_concrete": True,
@@ -313,7 +379,7 @@ def _document_with_whitespace_padded_true_evidence_concrete() -> dict[str, Any]:
                 "candidate_kind": "field",
                 "candidate_fingerprint": "evidence-true-spaced",
                 "run_id": "phase85-smoke-evidence",
-                "planner_version": "planner-v1",
+                "planner_version": PLANNER_VERSION,
                 "candidate_gate_version": CANDIDATE_GATE_VERSION,
                 "contract_registry_version": CONTRACT_REGISTRY_VERSION,
                 "region_envelope_version": REGION_ENVELOPE_VERSION,
