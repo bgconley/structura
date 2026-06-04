@@ -11,6 +11,9 @@ from lib.extraction.docling_table_quality import (
 )
 from lib.extraction.evidence_context import EvidenceContext
 from lib.extraction.line_item_provenance import line_item_evidence, line_item_provenance
+from lib.extraction.model_output_healthcare import (
+    healthcare_coverage_decision_output as _healthcare_coverage_decision_output,
+)
 from lib.extraction.model_output_line_items import (
     canonical_line_item_evidence,
 )
@@ -36,16 +39,10 @@ from lib.extraction.model_output_observations import (
     looks_like_schema_echo as _looks_like_schema_echo,
 )
 from lib.extraction.model_output_observations import (
-    observation as _observation,
-)
-from lib.extraction.model_output_observations import (
     observation_dicts_from_payload as _observation_dicts_from_payload,
 )
 from lib.extraction.model_output_observations import (
     observations_from_model_payload as _observations_from_model_payload,
-)
-from lib.extraction.model_output_observations import (
-    should_drop_observation as _should_drop_observation,
 )
 from lib.extraction.model_output_payments import (
     invoice_payment_summary_from_payload,
@@ -708,88 +705,6 @@ def _invoice_line_item_records(payload: dict[str, Any]) -> list[Any]:
 def _has_flat_invoice_line_items(payload: dict[str, Any]) -> bool:
     return any(
         key in payload for key in ("service_description", "parts", "labor_cost", "parts_cost")
-    )
-
-
-def _healthcare_coverage_decision_output(
-    document_id: UUID,
-    payload: dict[str, Any],
-    *,
-    evidence_context: EvidenceContext | None,
-) -> tuple[dict[str, Any], dict[str, Any]]:
-    observations: list[dict[str, Any]] = []
-    for item in payload.get("facts") or []:
-        if not isinstance(item, dict):
-            continue
-        name = item.get("name")
-        value = item.get("value")
-        if not name or _should_drop_observation(name, value):
-            continue
-        observations.append(
-            _observation(
-                field_name=str(name),
-                value=value,
-                family="granite_healthcare_coverage_decision.v1",
-                confidence=_number(item.get("confidence")),
-                source_text=item.get("source_text") or value,
-                evidence_context=evidence_context,
-            )
-        )
-
-    for index, item in enumerate(payload.get("contacts") or [], start=1):
-        if not isinstance(item, dict):
-            continue
-        for key, value in item.items():
-            if key in {"confidence", "source_text"} or _should_drop_observation(key, value):
-                continue
-            observations.append(
-                _observation(
-                    field_name=f"contact_{index}.{key}",
-                    value=value,
-                    family="granite_healthcare_coverage_decision.v1",
-                    confidence=_number(item.get("confidence")),
-                    source_text=item.get("source_text") or value,
-                    evidence_context=evidence_context,
-                )
-            )
-
-    for index, item in enumerate(payload.get("service_lines") or [], start=1):
-        if not isinstance(item, dict):
-            continue
-        for key, value in item.items():
-            if key in {"confidence", "source_text"} or _should_drop_observation(key, value):
-                continue
-            observations.append(
-                _observation(
-                    field_name=f"service_line_{index}.{key}",
-                    value=value,
-                    family="granite_healthcare_coverage_decision.v1",
-                    confidence=_number(item.get("confidence")),
-                    source_text=item.get("source_text") or value,
-                    evidence_context=evidence_context,
-                )
-            )
-
-    return (
-        {
-            "schema_name": "document_observation",
-            "schema_version": "v1",
-            "document_id": str(document_id),
-            "observations": observations,
-            "confidence": (
-                payload.get("confidence") if isinstance(payload.get("confidence"), dict) else {}
-            ),
-            "created_at": datetime.now(UTC).isoformat(),
-            "metadata": {"model_output_schema_name": "granite_healthcare_coverage_decision.v1"},
-        },
-        {
-            "mapper": "granite_healthcare_coverage_decision.v1",
-            "repairs": ["mapped_healthcare_coverage_decision_to_observations"],
-            "rejected_fields": _rejected_fields(
-                payload,
-                {"facts", "contacts", "service_lines", "warnings", "confidence"},
-            ),
-        },
     )
 
 
