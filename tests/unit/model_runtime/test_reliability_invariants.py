@@ -535,6 +535,26 @@ def test_hard_invariants_normalize_required_field_paths_before_fabrication_check
     ]
 
 
+def test_hard_invariants_normalize_aggregate_schema_and_source_families() -> None:
+    document = _safe_document_report()
+    document["extractions"].append(
+        {
+            "id": "aggregate-compatible-cased",
+            "schemaName": " Invoice ",
+            "extractionScope": " Aggregate ",
+            "sourceEngine": "system_reconciler",
+            "reviewStatus": "needs_review",
+            "normalizationJson": {"sourceFamilies": [" invoice "]},
+        }
+    )
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "passed"
+    assert summary["totalViolationCount"] == 0
+    assert summary["invariants"]["aggregateSchemasFromIncompatibleFamilies"]["violationCount"] == 0
+
+
 def test_reliability_report_includes_hard_invariant_summary() -> None:
     report = build_phase85_reliability_report(
         run_id="phase85-20260604-smoke-001",

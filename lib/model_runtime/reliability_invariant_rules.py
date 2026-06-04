@@ -248,7 +248,7 @@ def _is_incompatible_aggregate_extraction(extraction: dict[str, Any]) -> bool:
     scope = _normalized_text(get_value(extraction, "extraction_scope", "extractionScope"))
     if scope not in {"aggregate", "document"}:
         return False
-    schema_name = str(get_value(extraction, "schema_name", "schemaName") or "")
+    schema_name = _normalized_schema_family(get_value(extraction, "schema_name", "schemaName"))
     if schema_name in {"", "document_observation"}:
         return False
     validation = dict_value(
@@ -266,11 +266,17 @@ def _is_incompatible_aggregate_extraction(extraction: dict[str, Any]) -> bool:
     ]
     if any("incompatible" in warning.lower() for warning in warnings):
         return True
-    source_families = {
-        str(item)
-        for item in list_value(get_value(normalization, "sourceFamilies", "source_families"))
-        if item not in (None, "")
-    }
+    source_families = set(
+        filter(
+            None,
+            (
+                _normalized_schema_family(item)
+                for item in list_value(
+                    get_value(normalization, "sourceFamilies", "source_families")
+                )
+            ),
+        )
+    )
     return bool(source_families) and schema_name not in source_families
 
 
@@ -315,6 +321,10 @@ def _normalized_field_path(value: Any) -> str:
 def _normalized_path_segment(value: Any) -> str:
     segment = snake(str(value or "").strip()).replace("-", "_").replace(" ", "_").lower()
     return "_".join(part for part in segment.split("_") if part)
+
+
+def _normalized_schema_family(value: Any) -> str:
+    return _normalized_path_segment(value)
 
 
 def _is_title_derived_merchant_or_seller(
