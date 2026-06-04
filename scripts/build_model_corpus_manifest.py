@@ -10,18 +10,20 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from lib.model_runtime.model_corpus_manifest import (  # noqa: E402
+from lib.model_runtime.model_corpus_evidence import (  # noqa: E402
     AGGREGATE_EVIDENCE_METRICS,
     EVIDENCE_SECTION_METRICS,
     MANIFEST_RUN_PROFILE_KEYS,
     REQUIRED_EVIDENCE_SECTIONS,
-    REQUIRED_METRICS,
-    _evidence_artifact_measured_at,
-    _evidence_artifact_profiles,
-    _evidence_artifact_run_id,
-    _load_evidence_artifact,
-    evaluate_model_corpus_manifest,
+    evidence_artifact_measured_at,
+    evidence_artifact_profiles,
+    evidence_artifact_run_id,
     evidence_metric_number,
+    load_evidence_artifact,
+)
+from lib.model_runtime.model_corpus_manifest import (  # noqa: E402
+    REQUIRED_METRICS,
+    evaluate_model_corpus_manifest,
 )
 
 
@@ -81,7 +83,7 @@ def build_model_corpus_manifest(
     gold_thresholds: dict[str, Any],
 ) -> dict[str, Any]:
     artifacts = {
-        section: _load_evidence_artifact(section, evidence_paths[section].expanduser())
+        section: load_evidence_artifact(section, evidence_paths[section].expanduser())
         for section in REQUIRED_EVIDENCE_SECTIONS
     }
     evidence = {
@@ -112,15 +114,15 @@ def _evidence_section(
     artifact: dict[str, Any],
     path: Path,
 ) -> dict[str, str]:
-    run_id = _evidence_artifact_run_id(artifact)
+    run_id = evidence_artifact_run_id(artifact)
     if not isinstance(run_id, str) or not run_id.strip():
         raise SystemExit(f"Model corpus evidence {section} artifact is missing runId metadata.")
-    measured_at = _evidence_artifact_measured_at(artifact)
+    measured_at = evidence_artifact_measured_at(artifact)
     if not isinstance(measured_at, str) or not measured_at.strip():
         raise SystemExit(
             f"Model corpus evidence {section} artifact is missing measuredAt metadata."
         )
-    profiles = _evidence_artifact_profiles(section, artifact)
+    profiles = evidence_artifact_profiles(section, artifact)
     if not profiles:
         raise SystemExit(f"Model corpus evidence {section} artifact is missing profile metadata.")
     profile = profiles[0]

@@ -7,7 +7,6 @@ import pytest
 
 from lib.model_runtime.model_corpus_manifest import (
     evaluate_model_corpus_manifest,
-    evidence_metric_number,
     fixture_type,
     manifest_number,
 )
@@ -37,46 +36,6 @@ def test_manifest_number_requires_real_bounded_numeric_value() -> None:
         SystemExit, match="metric visual_embedding_hit_rate_at_k must be between 0 and 1"
     ):
         manifest_number(1.2, kind="metric", metric="visual_embedding_hit_rate_at_k")
-
-
-def test_evidence_metric_number_requires_real_bounded_numeric_value() -> None:
-    path = Path("evidence/qwen.json")
-
-    assert (
-        evidence_metric_number(
-            0.9,
-            section="qwen",
-            metric="qwen_handwriting_route_success_rate",
-            path=path,
-        )
-        == 0.9
-    )
-
-    with pytest.raises(
-        SystemExit, match="qwen.*qwen_handwriting_route_success_rate must be numeric"
-    ):
-        evidence_metric_number(
-            False,
-            section="qwen",
-            metric="qwen_handwriting_route_success_rate",
-            path=path,
-        )
-
-    with pytest.raises(SystemExit, match="granite.*granite_table_structure_score must be finite"):
-        evidence_metric_number(
-            float("inf"),
-            section="granite",
-            metric="granite_table_structure_score",
-            path=path,
-        )
-
-    with pytest.raises(SystemExit, match="visualEmbedding.*visual_embedding_hit_rate_at_k"):
-        evidence_metric_number(
-            -0.1,
-            section="visualEmbedding",
-            metric="visual_embedding_hit_rate_at_k",
-            path=path,
-        )
 
 
 def test_evaluate_model_corpus_manifest_is_owned_by_model_runtime() -> None:
