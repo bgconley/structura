@@ -14,12 +14,23 @@ from lib.model_runtime.reliability_report_normalization import (
 )
 
 __all__ = [
+    "recomputed_candidate_admission_summary",
     "recomputed_hard_invariants",
     "recomputed_operational_slos",
     "recomputed_repeatability_fingerprints",
     "violating_hard_invariants_summary",
     "violating_operational_slo_summary",
 ]
+
+
+def recomputed_candidate_admission_summary(report: dict[str, Any]) -> dict[str, Any] | None:
+    documents = _document_rows(report)
+    if documents is None:
+        return None
+    valid, document_rows = documents
+    if not valid:
+        return {}
+    return _candidate_admission_evidence(document_rows)
 
 
 def recomputed_hard_invariants(report: dict[str, Any]) -> dict[str, Any] | None:
@@ -119,6 +130,28 @@ def _candidate_rejection_summary(run_id: str, documents: list[dict[str, Any]]) -
             rejection_reasons[decision] += 1
     return {
         "runId": run_id,
+        "rejectionReasons": dict(sorted(rejection_reasons.items())),
+    }
+
+
+def _candidate_admission_evidence(documents: list[dict[str, Any]]) -> dict[str, Any]:
+    admitted = 0
+    rejected = 0
+    rejection_reasons: Counter[str] = Counter()
+    for event in all_rows(documents, "admissionEvents"):
+        decision = str(get_value(event, "decision") or "")
+        if decision.startswith("admitted"):
+            admitted += 1
+        elif decision.startswith("rejected"):
+            rejected += 1
+            reasons = list_value(get_value(event, "reasons"))
+            if reasons:
+                rejection_reasons.update(str(reason) for reason in reasons)
+            else:
+                rejection_reasons[decision] += 1
+    return {
+        "admittedCount": admitted,
+        "rejectedCount": rejected,
         "rejectionReasons": dict(sorted(rejection_reasons.items())),
     }
 
