@@ -42,7 +42,10 @@ SCHEMA_ARTIFACT_VALUE_TOKENS = frozenset(
 
 def contains_prompt_echo(value: object) -> bool:
     text = str(value or "").lower()
-    return any(pattern in text for pattern in PROMPT_ECHO_PATTERNS)
+    token = _normalized_key(value)
+    return any(pattern in text for pattern in PROMPT_ECHO_PATTERNS) or any(
+        _normalized_key(pattern) in token for pattern in PROMPT_ECHO_PATTERNS
+    )
 
 
 def contains_prompt_or_schema_artifact(value: Any) -> bool:
@@ -63,7 +66,7 @@ def contains_prompt_or_schema_artifact(value: Any) -> bool:
         return True
     if normalized_token in SCHEMA_ARTIFACT_VALUE_TOKENS:
         return True
-    if contains_prompt_echo(normalized):
+    if contains_prompt_echo(value):
         return True
     return any(token in normalized for token in SCHEMA_ARTIFACT_VALUES) or any(
         token in normalized_token for token in SCHEMA_ARTIFACT_VALUE_TOKENS

@@ -54,6 +54,39 @@ def test_prompt_echo_line_item_is_rejected_and_not_admitted() -> None:
     assert admission.events[0].reasons == ("prompt_or_schema_echo",)
 
 
+def test_camel_case_prompt_echo_line_item_is_rejected_and_not_admitted() -> None:
+    context = _context()
+    candidate = LineItemCandidateFact(
+        line_item_type="receipt_item",
+        ordinal=1,
+        description="ReturnOnlyJsonMatchingTheSchema",
+        quantity=1.0,
+        unit="rows",
+        unit_price=1.0,
+        gross_amount=1.0,
+        net_amount=1.0,
+        evidence=[_evidence(context)],
+        status="proposed",
+    )
+
+    admission = admit_extraction_candidates(
+        context=context,
+        field_candidates=[],
+        line_item_candidates=[candidate],
+        observation_candidates=[],
+    )
+
+    assert admission.line_item_candidates == []
+    assert admission.summary == {
+        "produced": 1,
+        "admitted": 0,
+        "rejected": 1,
+        "rejectionReasons": {"rejected_artifact": 1},
+    }
+    assert admission.events[0].decision == "rejected_artifact"
+    assert admission.events[0].reasons == ("prompt_or_schema_echo",)
+
+
 def test_schema_artifact_key_field_is_rejected_and_not_admitted() -> None:
     context = _context()
     candidate = CandidateFact(
