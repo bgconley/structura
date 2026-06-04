@@ -15,14 +15,29 @@ PLACEHOLDER_FIELD_NAMES = {
 
 PLACEHOLDER_VALUES = {
     "",
+    "--",
     "null",
     "none",
     "n/a",
-    "unknown",
+    "na",
+    "field",
+    "key",
     "missing",
+    "not applicable",
+    "not available",
     "not found",
+    "not provided",
+    "placeholder",
+    "tbd",
+    "unknown",
+    "visible_field",
     "visible value",
     "example value",
+    "<placeholder>",
+}
+NORMALIZED_PLACEHOLDER_VALUES = {
+    "_".join(part for part in value.replace("-", "_").replace(" ", "_").split("_") if part)
+    for value in PLACEHOLDER_VALUES
 }
 PRIMARY_VALUE_KEYS = {
     "amount",
@@ -220,7 +235,9 @@ def _contains_placeholder_value_for_keys(
     if value is None:
         return reject_null_leaves and key_is_value
     if isinstance(value, str):
-        return key_is_value and value.strip().lower() in PLACEHOLDER_VALUES
+        return (
+            key_is_value and _normalized_placeholder_value(value) in NORMALIZED_PLACEHOLDER_VALUES
+        )
     if isinstance(value, dict):
         return any(
             _contains_placeholder_value_for_keys(
@@ -248,3 +265,8 @@ def _normalized_key(value: object) -> str:
     text = str(value or "").strip().replace("-", "_").replace(" ", "_")
     text = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", text)
     return "_".join(part for part in text.lower().split("_") if part)
+
+
+def _normalized_placeholder_value(value: str) -> str:
+    text = value.strip().lower().replace("-", "_").replace(" ", "_")
+    return "_".join(part for part in text.split("_") if part)
