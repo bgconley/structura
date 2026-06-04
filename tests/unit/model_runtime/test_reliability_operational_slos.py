@@ -36,6 +36,39 @@ def test_operational_slos_fail_for_retry_and_fanout_regressions() -> None:
     assert summary["gates"]["retrySafeJobs"]["violationCount"] == 1
 
 
+def test_operational_slos_do_not_treat_error_class_as_failure_taxonomy() -> None:
+    summary = evaluate_operational_slos(
+        [
+            {
+                "document": {"id": "doc-error-class-only"},
+                "jobs": [
+                    _job(
+                        queue="extraction",
+                        status="failed",
+                        error_jsons=[
+                            {
+                                "error_class": "ModelTimeoutError",
+                                "retryable": True,
+                            }
+                        ],
+                    )
+                ],
+            }
+        ]
+    )
+
+    assert summary["status"] == "failed"
+    assert summary["gates"]["classifiedOperationalFailures"]["examples"] == [
+        {
+            "reason": "operational_failure_missing_taxonomy_code",
+            "queueName": "extraction",
+            "jobType": "extract",
+            "status": "failed",
+            "count": 1,
+        }
+    ]
+
+
 def test_operational_slos_normalize_target_job_queue_and_status() -> None:
     summary = evaluate_operational_slos([_cased_dead_letter_document_report()])
 

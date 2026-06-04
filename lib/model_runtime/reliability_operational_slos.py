@@ -328,7 +328,8 @@ def _has_taxonomy_code(mapping: dict[str, Any]) -> bool:
             "taxonomyCode",
             "failure_taxonomy",
             "failureTaxonomy",
-            "error_class",
+            "failure_code",
+            "failureCode",
         )
         for source in (mapping, details)
     )
