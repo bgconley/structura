@@ -70,11 +70,16 @@ def test_persist_extraction_plan_records_summary_and_task_lineage() -> None:
             )
         ),
         plan=plan,
+        run_id="phase85-20260604-smoke-001",
     )
 
     assert persisted.plan_id == plan_id
     assert persisted.selected_task_ids == {region_id: task_id}
     assert any("INSERT INTO semantic_extraction_plans" in sql for sql, _ in cursor.calls)
+    plan_call = next(
+        params for sql, params in cursor.calls if "INSERT INTO semantic_extraction_plans" in sql
+    )
+    assert "phase85-20260604-smoke-001" in plan_call
     task_call = next(
         params
         for sql, params in cursor.calls

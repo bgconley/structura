@@ -1,0 +1,59 @@
+from __future__ import annotations
+
+from importlib import metadata
+from typing import Any
+
+from lib.extraction.candidate_admission_models import CANDIDATE_GATE_VERSION
+from lib.extraction.contract_registry import CONTRACT_REGISTRY_VERSION
+from lib.extraction.region_envelope import REGION_ENVELOPE_VERSION
+from lib.model_runtime.profiles import (
+    GRANITE_VISION_PROFILE,
+    QWEN_SEMANTIC_PROFILE,
+    get_model_profile,
+)
+from lib.model_runtime.reliability_report_normalization import json_safe
+from lib.semantic_annotations.extraction_plan_repository import PLANNER_VERSION
+from lib.semantic_annotations.prompting import SMART_PROMPT_VERSION
+
+PIPELINE_VERSION = "phase8_5_reliability_v1"
+GRANITE_PROMPT_VERSION = "phase8_5-granite-structured-v1"
+RECONCILER_VERSION = "phase8_5-reconciler-v1"
+VISUAL_INPUT_PLAN_VERSION = "phase8_5-visual-plan-v1"
+
+
+def build_phase85_run_manifest(
+    *,
+    run_id: str,
+    overrides: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    granite = get_model_profile(GRANITE_VISION_PROFILE)
+    manifest: dict[str, Any] = {
+        "run_id": run_id,
+        "pipeline_version": PIPELINE_VERSION,
+        "docling_version": _docling_version(),
+        "semantic_profile": QWEN_SEMANTIC_PROFILE,
+        "semantic_prompt_version": SMART_PROMPT_VERSION,
+        "granite_model": granite.base_model,
+        "granite_prompt_version": GRANITE_PROMPT_VERSION,
+        "planner_version": PLANNER_VERSION,
+        "contract_registry_version": CONTRACT_REGISTRY_VERSION,
+        "region_envelope_version": REGION_ENVELOPE_VERSION,
+        "candidate_gate_version": CANDIDATE_GATE_VERSION,
+        "reconciler_version": RECONCILER_VERSION,
+        "visual_input_plan_version": VISUAL_INPUT_PLAN_VERSION,
+        "decoding": {
+            "temperature": 0,
+            "top_p": None,
+        },
+    }
+    if overrides:
+        manifest.update(json_safe(overrides))
+        manifest["run_id"] = run_id
+    return manifest
+
+
+def _docling_version() -> str:
+    try:
+        return metadata.version("docling")
+    except metadata.PackageNotFoundError:
+        return "worker-docling-isolated"

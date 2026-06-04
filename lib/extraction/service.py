@@ -142,6 +142,7 @@ class ExtractionService:
         compatibility_mode: str | None = None,
         contract_resolution_reason: str | None = None,
         region_envelope_version: str | None = None,
+        run_id: str | None = None,
         allow_8b_rescue: bool = False,
         requested_by: str = "system",
         requested_by_user_id: UUID | None = None,
@@ -165,6 +166,7 @@ class ExtractionService:
                 "compatibility_mode": compatibility_mode,
                 "contract_resolution_reason": contract_resolution_reason,
                 "region_envelope_version": region_envelope_version,
+                "run_id": run_id,
             },
         )
         gateway_result = self.gateway.extract(

@@ -29,7 +29,12 @@ def test_semantic_service_persists_manifest_and_queues_grounded_granite_jobs() -
     page_id = uuid4()
     annotation_id = uuid4()
     region_id = uuid4()
-    source = _source(document_id=document_id, household_id=household_id, page_id=page_id)
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        metadata={"hints": {"runId": "phase85-20260604-smoke-001"}},
+    )
     manifest = _manifest(document_id=document_id, household_id=household_id, page_id=page_id)
     jobs = RecordingJobs()
 
@@ -68,6 +73,7 @@ def test_semantic_service_persists_manifest_and_queues_grounded_granite_jobs() -
     assert payload["contract_resolution_reason"] == "exact_contract"
     assert payload["semantic_quality_mode"] == "smart"
     assert payload["allow_8b_rescue"] is False
+    assert payload["metadata"]["run_id"] == "phase85-20260604-smoke-001"
 
 
 def test_semantic_service_rejects_removed_rescue_permission() -> None:

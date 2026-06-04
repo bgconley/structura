@@ -103,6 +103,7 @@ def process_next_extraction_job(
                 region_envelope_version=_optional_str(
                     claimed.payload.get("region_envelope_version")
                 ),
+                run_id=_metadata_run_id(claimed.payload),
                 allow_8b_rescue=bool(claimed.payload.get("allow_8b_rescue", False)),
                 requested_by=str(claimed.payload.get("requested_by") or "system"),
                 requested_by_user_id=_optional_uuid(claimed.payload.get("requested_by_user_id")),
@@ -177,6 +178,13 @@ def _optional_uuid(value: object) -> UUID | None:
     if not value:
         return None
     return UUID(str(value))
+
+
+def _metadata_run_id(payload: dict[str, object]) -> str | None:
+    metadata = payload.get("metadata")
+    if not isinstance(metadata, dict):
+        return None
+    return _optional_str(metadata.get("run_id") or metadata.get("runId"))
 
 
 def _optional_str(value: object) -> str | None:

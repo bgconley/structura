@@ -96,6 +96,49 @@ def test_extraction_worker_records_model_runtime_error_details(monkeypatch) -> N
     }
 
 
+def test_extraction_worker_passes_phase85_run_id_from_job_metadata(monkeypatch) -> None:
+    document_id = uuid4()
+    job_id = uuid4()
+    job_service = SuccessfulJobService(
+        SimpleNamespace(
+            state=SimpleNamespace(job_id=job_id, job_type="extract"),
+            document_id=document_id,
+            household_id=uuid4(),
+            payload={
+                "target_schema_name": "invoice",
+                "route_profile": "docling_plus_granite_structured",
+                "metadata": {"run_id": "phase85-20260604-smoke-001"},
+            },
+        )
+    )
+    service = CapturingExtractionService()
+    monkeypatch.setattr(extraction_worker_module.worker, "JobService", lambda: job_service)
+    monkeypatch.setattr(
+        extraction_worker_module.worker,
+        "maybe_reconcile_semantic_annotation",
+        lambda **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        extraction_worker_module.worker,
+        "_enqueue_embedding_refresh",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        extraction_worker_module.worker,
+        "_enqueue_relationship_refresh",
+        lambda *_args, **_kwargs: None,
+    )
+
+    processed = process_next_extraction_job(
+        worker_name="worker-extraction-test",
+        service=service,
+    )
+
+    assert processed is True
+    assert service.kwargs["run_id"] == "phase85-20260604-smoke-001"
+    assert job_service.completed[0]["result"]["extraction_status"] == "succeeded"
+
+
 class RecordingJobService:
     def __init__(self, claimed: object | None) -> None:
         self.claimed = claimed
@@ -106,6 +149,23 @@ class RecordingJobService:
 
     def complete_job(self, **_kwargs: object) -> None:
         raise AssertionError("failed extraction jobs should not complete")
+
+    def fail_job(self, **kwargs: object) -> None:
+        self.failed.append(kwargs)
+
+
+class SuccessfulJobService:
+    def __init__(self, claimed: object | None) -> None:
+        self.claimed = claimed
+        self.completed: list[dict[str, object]] = []
+        self.failed: list[dict[str, object]] = []
+
+    def claim_next_job_record(self, **_kwargs: object) -> object | None:
+        return self.claimed
+
+    def complete_job(self, **kwargs: object) -> SimpleNamespace:
+        self.completed.append(kwargs)
+        return SimpleNamespace(status="succeeded")
 
     def fail_job(self, **kwargs: object) -> None:
         self.failed.append(kwargs)
@@ -129,4 +189,19 @@ class ProtocolExtractionService:
                 "finish_reason": "length",
                 "usage": {"completion_tokens": 1024},
             },
+        )
+
+
+class CapturingExtractionService:
+    def __init__(self) -> None:
+        self.kwargs: dict[str, object] = {}
+
+    def extract_document(self, *_args: object, **kwargs: object) -> object:
+        self.kwargs = kwargs
+        return SimpleNamespace(
+            extraction_id=uuid4(),
+            review_status="needs_review",
+            candidate_count=1,
+            canonical_count=0,
+            review_task_count=1,
         )

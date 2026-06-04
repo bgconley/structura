@@ -25,19 +25,20 @@ def persist_extraction_plan_with_cursor(
     semantic_annotation_id: UUID,
     manifest_result: SemanticAnnotationResult,
     plan: GraniteExtractionPlan,
+    run_id: str | None = None,
 ) -> PersistedExtractionPlan:
     report = plan.to_metadata()
     cur.execute(
         """
         INSERT INTO semantic_extraction_plans (
           document_id, semantic_annotation_id, planner_version,
-          prompt_version, model_profile, status, selected_task_count,
+          prompt_version, model_profile, run_id, status, selected_task_count,
           skipped_task_count, abstention_count, missing_contract_count,
           missing_grounding_count, incompatible_schema_count,
           duplicate_suppressed_count, report_json
         )
         VALUES (
-          %s, %s, %s, %s, %s, 'planned', %s, %s, 0, 0, 0, 0, 0, %s::jsonb
+          %s, %s, %s, %s, %s, %s, 'planned', %s, %s, 0, 0, 0, 0, 0, %s::jsonb
         )
         RETURNING id
         """,
@@ -47,6 +48,7 @@ def persist_extraction_plan_with_cursor(
             PLANNER_VERSION,
             manifest_result.manifest.prompt_version,
             manifest_result.manifest.profile_name,
+            run_id,
             len(plan.selected),
             len(plan.dropped),
             Jsonb(report),

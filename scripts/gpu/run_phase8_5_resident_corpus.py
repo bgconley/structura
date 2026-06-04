@@ -12,6 +12,7 @@ from uuid import UUID
 
 from lib.db.connection import db_connection
 from lib.documents.ingestion import DocumentIngestionRequest, ingest_document_path
+from lib.model_runtime.reliability_report import build_phase85_reliability_report
 
 ACTIVE_JOB_STATUSES = ("queued", "leased", "running", "failed")
 TARGET_FAILURE_QUEUES = {"docling", "semantic-annotations", "extraction", "visual-embeddings"}
@@ -409,14 +410,30 @@ def _fetch_report(document_ids: list[UUID], *, run_id: str, title_prefix: str) -
                             document_id,
                             _SEMANTIC_REGIONS_SQL,
                         ),
+                        "planner": _rows_for_document(cur, document_id, _PLANNER_SQL),
+                        "plannerTasks": _rows_for_document(
+                            cur,
+                            document_id,
+                            _PLANNER_TASKS_SQL,
+                        ),
+                        "admissionEvents": _rows_for_document(
+                            cur,
+                            document_id,
+                            _ADMISSION_EVENTS_SQL,
+                        ),
                         "extractions": _rows_for_document(cur, document_id, _EXTRACTIONS_SQL),
                         "fields": _fields_for_document(cur, document_id),
                         "lineItems": _rows_for_document(cur, document_id, _LINE_ITEMS_SQL),
                         "observations": _rows_for_document(cur, document_id, _OBSERVATIONS_SQL),
                         "embeddings": _rows_for_document(cur, document_id, _EMBEDDINGS_SQL),
+                        "reviewTasks": _rows_for_document(cur, document_id, _REVIEW_TASKS_SQL),
                     }
                 )
-    return {"runId": run_id, "titlePrefix": title_prefix, "documents": documents}
+    return build_phase85_reliability_report(
+        run_id=run_id,
+        title_prefix=title_prefix,
+        documents=documents,
+    )
 
 
 _JOBS_SQL = """
@@ -470,6 +487,37 @@ ORDER BY COALESCE(p.page_number, dp.page_number) NULLS LAST,
          r.created_at
 """
 
+_PLANNER_SQL = """
+SELECT id, planner_version, prompt_version, model_profile, run_id, status,
+       selected_task_count, skipped_task_count, abstention_count, missing_contract_count,
+       missing_grounding_count, incompatible_schema_count, duplicate_suppressed_count,
+       report_json
+FROM semantic_extraction_plans
+WHERE document_id = %s
+ORDER BY created_at
+"""
+
+_PLANNER_TASKS_SQL = """
+SELECT id, plan_id, semantic_region_id, semantic_type, granite_task, extractor_backend,
+       resolved_document_type, target_schema, canonical_target_schema,
+       model_output_schema_name, contract_resolution_reason, compatibility_mode,
+       grounding_kind, page_number, status, skip_reason, review_required, task_json
+FROM semantic_extraction_plan_tasks
+WHERE document_id = %s
+ORDER BY created_at
+"""
+
+_ADMISSION_EVENTS_SQL = """
+SELECT plan_id, plan_task_id, semantic_annotation_id, semantic_region_id, run_id,
+       planner_version, candidate_gate_version, contract_registry_version,
+       region_envelope_version, candidate_kind, candidate_fingerprint, decision, reasons,
+       field_path, semantic_type, model_output_schema_name, source_engine,
+       evidence_concrete, payload_json
+FROM candidate_admission_events
+WHERE document_id = %s
+ORDER BY created_at
+"""
+
 _EXTRACTIONS_SQL = """
 SELECT schema_name, schema_version, extraction_scope, semantic_type, granite_task,
        semantic_annotation_id, source_semantic_region_id,
@@ -506,6 +554,13 @@ FROM embeddings
 WHERE document_id = %s AND is_active
 GROUP BY modality, model_name, embedding_dimensions
 ORDER BY modality, model_name
+"""
+
+_REVIEW_TASKS_SQL = """
+SELECT id, extraction_id, task_type, status::text AS status, priority, reason, metadata_json
+FROM review_tasks
+WHERE document_id = %s
+ORDER BY created_at
 """
 
 _FIELDS_SQL = """

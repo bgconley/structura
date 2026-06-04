@@ -15,15 +15,15 @@ def line_item_provenance(
     table_id = item.get("table_id") or (
         str(evidence_context.table_id) if evidence_context else None
     )
-    page_number = item.get("page_number") or (
-        evidence_context.page_number if evidence_context else None
-    )
+    page_number = optional_int(item.get("page_number"))
+    if page_number is None and evidence_context is not None:
+        page_number = evidence_context.page_number
     if row_index is not None:
         provenance["row_index"] = row_index
     if table_id not in (None, ""):
         provenance["table_id"] = str(table_id)
-    if page_number not in (None, ""):
-        provenance["page_number"] = int(page_number)
+    if page_number is not None:
+        provenance["page_number"] = page_number
     return provenance
 
 
@@ -49,7 +49,15 @@ def line_item_evidence(
 def optional_int(value: object) -> int | None:
     if value in (None, ""):
         return None
-    try:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
         return int(value)
-    except (TypeError, ValueError):
+    if not isinstance(value, str):
+        return None
+    try:
+        return int(value.strip())
+    except ValueError:
         return None

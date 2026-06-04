@@ -219,6 +219,7 @@ class SemanticAnnotationService:
     ) -> list[UUID]:
         queued: list[UUID] = []
         plan = _granite_extraction_plan(source, manifest_result, persisted)
+        run_id = _run_id_from_source(source)
         for spec in plan.selected:
             job_id = uuid4()
             created_job = self.jobs.create_job(
@@ -254,6 +255,7 @@ class SemanticAnnotationService:
                     metadata={
                         "schema_fit": spec.schema_fit.to_json(),
                         **spec.metadata,
+                        **({"run_id": run_id} if run_id else {}),
                     },
                 ),
                 priority=spec.priority,
@@ -283,12 +285,14 @@ class SemanticAnnotationService:
     ) -> list[UUID]:
         queued: list[UUID] = []
         plan = _granite_extraction_plan(source, manifest_result, persisted)
+        run_id = _run_id_from_source(source)
         persisted_plan = persist_extraction_plan_with_cursor(
             cur,
             document_id=source.document_id,
             semantic_annotation_id=persisted.annotation_id,
             manifest_result=manifest_result,
             plan=plan,
+            run_id=run_id,
         )
         for spec in plan.selected:
             plan_task_id = persisted_plan.selected_task_ids.get(spec.region_id)
@@ -329,6 +333,7 @@ class SemanticAnnotationService:
                     metadata={
                         "schema_fit": spec.schema_fit.to_json(),
                         **spec.metadata,
+                        **({"run_id": run_id} if run_id else {}),
                     },
                 ),
                 priority=spec.priority,
@@ -380,6 +385,16 @@ def _semantic_quality_mode(quality_mode: str) -> str:
     if quality_mode == "high_quality":
         return "high_quality"
     return "smart"
+
+
+def _run_id_from_source(source: ExtractionSourceDocument) -> str | None:
+    hints = source.metadata.get("hints")
+    if not isinstance(hints, dict):
+        return None
+    value = hints.get("runId") or hints.get("run_id")
+    if value in (None, ""):
+        return None
+    return str(value)
 
 
 def _target_schema_for_region(

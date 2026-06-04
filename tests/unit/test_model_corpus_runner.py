@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 
 import pytest
 
+from lib.model_runtime.reliability_report import PIPELINE_VERSION
 from scripts.run_model_corpus import evaluate_model_corpus_manifest
 
 
@@ -19,6 +22,8 @@ def test_model_corpus_runner_enforces_required_sections_and_thresholds() -> None
     result = evaluate_model_corpus_manifest(payload, require_model_backed=True)
 
     assert result["fixtureType"] == "model_backed"
+    assert result["runManifest"]["pipeline_version"] == PIPELINE_VERSION
+    assert result["runManifest"]["run_id"] == "phase85-fixture-run"
     assert result["metrics"]["provenance_truth_rate"] == 1.0
 
     payload["metrics"]["visual_embedding_hit_rate_at_k"] = 0.2
@@ -36,9 +41,28 @@ def test_model_corpus_example_manifest_is_valid() -> None:
     assert result["fixtureType"] == "deterministic_fixture"
 
 
+def test_model_corpus_script_runs_as_direct_entrypoint() -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_model_corpus.py",
+            "--manifest",
+            "tests/fixtures/model_corpus/phase8_5_model_manifest.example.json",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    payload = json.loads(result.stdout)
+    assert payload["fixtureType"] == "deterministic_fixture"
+    assert payload["runManifest"]["pipeline_version"] == PIPELINE_VERSION
+
+
 def _manifest(*, fixture_type: str) -> dict[str, object]:
     return {
         "fixtureType": fixture_type,
+        "runId": "phase85-fixture-run",
         "evidence": {
             "qwen": {"profile": "qwen3-vl-8b-instruct-nvfp4-local:v1"},
             "granite": {"profile": "granite-4.0-3b-vision-bf16:v1"},

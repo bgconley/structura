@@ -2,8 +2,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 DEFAULT_MANIFEST = Path("tests/fixtures/model_corpus/phase8_5_model_manifest.example.json")
 
@@ -40,6 +45,8 @@ def evaluate_model_corpus_manifest(
     *,
     require_model_backed: bool,
 ) -> dict[str, Any]:
+    from lib.model_runtime.reliability_report import build_phase85_run_manifest
+
     fixture_type = str(payload.get("fixtureType") or "")
     if require_model_backed and fixture_type != "model_backed":
         raise SystemExit("Model corpus manifest is not model-backed.")
@@ -51,8 +58,16 @@ def evaluate_model_corpus_manifest(
     thresholds = _required_mapping(payload, "thresholds")
     for metric in REQUIRED_METRICS:
         _assert_metric(metrics, thresholds, metric)
+    run_id = str(payload.get("runId") or payload.get("run_id") or "phase85-manifest")
+    manifest_overrides = payload.get("runManifest")
+    if manifest_overrides is not None and not isinstance(manifest_overrides, dict):
+        raise SystemExit("Model corpus runManifest must be an object when provided.")
     return {
         "fixtureType": fixture_type,
+        "runManifest": build_phase85_run_manifest(
+            run_id=run_id,
+            overrides=manifest_overrides,
+        ),
         "metrics": {metric: float(metrics[metric]) for metric in REQUIRED_METRICS},
     }
 

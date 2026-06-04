@@ -92,6 +92,40 @@ def test_extraction_service_realizes_semantic_task_schema_to_requested_schema() 
     assert gateway.semantic_task.metadata["target_schema_repaired"] is True
 
 
+def test_extraction_service_preserves_phase85_run_id_in_semantic_task_metadata() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    region_id = uuid4()
+    source = _source(document_id=document_id, household_id=household_id)
+    task = SemanticExtractionTask(
+        region_id=region_id,
+        annotation_id=uuid4(),
+        document_id=document_id,
+        semantic_type="invoice_line_item_table",
+        granite_task="tables_json",
+        target_schema="invoice",
+        expected_fields=("line_items", "total_amount"),
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+    )
+    gateway = RecordingGateway()
+
+    ExtractionService(
+        gateway=gateway,
+        source_loader=lambda loaded_document_id: source,
+        semantic_task_loader=lambda loaded_region_id: task,
+        persister=lambda *args, **kwargs: _persisted(),
+    ).extract_document(
+        document_id,
+        schema_name="invoice",
+        route_profile="docling_plus_granite_structured",
+        semantic_region_id=region_id,
+        run_id="phase85-20260604-smoke-001",
+    )
+
+    assert gateway.semantic_task is not None
+    assert gateway.semantic_task.metadata["run_id"] == "phase85-20260604-smoke-001"
+
+
 def test_extraction_service_corrects_line_item_task_before_gateway() -> None:
     document_id = uuid4()
     household_id = uuid4()
