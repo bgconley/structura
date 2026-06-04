@@ -10,6 +10,7 @@ from lib.model_runtime.profiles import (
     TEXT_EMBED_PROFILE,
     VISUAL_EMBED_PROFILE,
 )
+from lib.model_runtime.reliability_invariants import evaluate_hard_correctness_invariants
 from lib.model_runtime.reliability_report_normalization import dict_value, get_value
 from lib.model_runtime.reliability_versions import PIPELINE_VERSION
 
@@ -237,23 +238,57 @@ def _hard_correctness_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
         gate = _gate(report, "hardCorrectnessInvariants")
         status = str(get_value(gate, "status") or "missing")
         invalid: list[str] = []
+        recomputed = _recomputed_hard_invariants(report)
         if status != "passed":
             invalid.append("status")
         if not _is_zero_number(get_value(gate, "totalViolationCount", "total_violation_count")):
             invalid.append("totalViolationCount")
+        if recomputed is not None and not _is_zero_number(
+            get_value(recomputed, "totalViolationCount", "total_violation_count")
+        ):
+            invalid.append("recomputed.totalViolationCount")
         if invalid:
-            failures.append(
-                {
-                    "reportIndex": index,
-                    "runId": get_value(report, "runId", "run_id"),
-                    "status": status,
-                    "details": gate,
-                    "invalid": invalid,
-                }
-            )
+            failure = {
+                "reportIndex": index,
+                "runId": get_value(report, "runId", "run_id"),
+                "status": status,
+                "details": gate,
+                "invalid": invalid,
+            }
+            if recomputed is not None:
+                failure["recomputed"] = _violating_invariants_summary(recomputed)
+            failures.append(failure)
     return {
         "status": "passed" if reports and not failures else "failed",
         "failures": failures,
+    }
+
+
+def _recomputed_hard_invariants(report: dict[str, Any]) -> dict[str, Any] | None:
+    documents = get_value(report, "documents")
+    if documents is None:
+        return None
+    if not isinstance(documents, list):
+        return {
+            "status": "failed",
+            "totalViolationCount": 1,
+            "invariants": {},
+        }
+    document_rows = [row for row in documents if isinstance(row, dict)]
+    return evaluate_hard_correctness_invariants(document_rows)
+
+
+def _violating_invariants_summary(summary: dict[str, Any]) -> dict[str, Any]:
+    invariants = dict_value(get_value(summary, "invariants"))
+    violating_invariants = {
+        key: detail
+        for key, detail in invariants.items()
+        if not _is_zero_number(get_value(dict_value(detail), "violationCount", "violation_count"))
+    }
+    return {
+        "status": get_value(summary, "status"),
+        "totalViolationCount": get_value(summary, "totalViolationCount", "total_violation_count"),
+        "invariants": violating_invariants,
     }
 
 

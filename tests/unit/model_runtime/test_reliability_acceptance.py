@@ -266,6 +266,61 @@ def test_report_acceptance_fails_when_hard_invariant_count_is_boolean() -> None:
     ]
 
 
+def test_report_acceptance_recomputes_hard_invariants_from_document_rows() -> None:
+    report = _resident_report()
+    report["documents"] = [
+        {
+            "document": {"id": "doc-unsafe", "document_family": "invoice"},
+            "admissionEvents": [
+                {
+                    "decision": "admitted_review_required",
+                    "candidate_kind": "field",
+                    "candidate_fingerprint": "field-unsafe",
+                    "evidence_concrete": False,
+                    "payload_json": {
+                        "candidate": {
+                            "field_path": "invoice.total_amount",
+                            "value": "42.00",
+                            "evidence": [],
+                        }
+                    },
+                }
+            ],
+        }
+    ]
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["hardCorrectnessInvariants"]["status"] == "failed"
+    assert summary["checks"]["hardCorrectnessInvariants"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "status": "passed",
+            "details": report["acceptanceGates"]["hardCorrectnessInvariants"],
+            "invalid": ["recomputed.totalViolationCount"],
+            "recomputed": {
+                "status": "failed",
+                "totalViolationCount": 1,
+                "invariants": {
+                    "admittedCandidatesWithoutConcreteEvidence": {
+                        "description": "Admitted candidates must have concrete evidence locators.",
+                        "violationCount": 1,
+                        "examples": [
+                            {
+                                "reason": "admitted_without_concrete_evidence",
+                                "documentId": None,
+                                "entityId": "field-unsafe",
+                            }
+                        ],
+                    }
+                },
+            },
+        }
+    ]
+
+
 def test_report_acceptance_requires_gold_when_requested() -> None:
     summary = evaluate_phase85_report_acceptance([_resident_report()], require_gold=True)
 

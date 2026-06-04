@@ -4,6 +4,13 @@ import importlib.util
 from pathlib import Path
 from uuid import uuid4
 
+from lib.model_runtime.profiles import (
+    GRANITE_VISION_PROFILE,
+    QWEN_SEMANTIC_PROFILE,
+    TEXT_EMBED_PROFILE,
+    VISUAL_EMBED_PROFILE,
+)
+
 
 def _load_resident_runner():
     script_path = (
@@ -86,7 +93,17 @@ def test_planner_task_report_query_derives_missing_page_number() -> None:
 def _report(*, hard_status: str) -> dict[str, object]:
     return {
         "runId": "phase85-resident",
-        "runManifest": {},
+        "fixtureType": "model_backed",
+        "measuredAt": "2026-06-04T12:00:00+00:00",
+        "runManifest": {
+            "run_id": "phase85-resident",
+            "pipeline_version": "phase8_5_reliability_v1",
+            "model_mode": "live",
+            "semantic_profile": QWEN_SEMANTIC_PROFILE,
+            "granite_profile": GRANITE_VISION_PROFILE,
+            "text_embedding_profile": TEXT_EMBED_PROFILE,
+            "visual_embedding_profile": VISUAL_EMBED_PROFILE,
+        },
         "plannerSummary": {},
         "candidateAdmissionSummary": {},
         "envelopeSummary": {},
@@ -96,12 +113,35 @@ def _report(*, hard_status: str) -> dict[str, object]:
         "safeOutcomeSummary": {},
         "qualitySummary": {},
         "repeatabilityFingerprints": {
+            "documentFamily": "family",
+            "semanticRegions": "semantic",
             "plannerTasks": "planner",
             "candidateFingerprints": "candidates",
+            "canonicalOutput": "canonical",
+            "reviewTasks": "review",
+            "rejectionDistribution": "rejections",
         },
         "acceptanceGates": {
-            "hardCorrectnessInvariants": {"status": hard_status},
+            "hardCorrectnessInvariants": {
+                "status": hard_status,
+                "totalViolationCount": 0,
+            },
             "goldCorpusQuality": {"status": "not_evaluated"},
-            "operationalSLOs": {"status": "passed"},
+            "operationalSLOs": {
+                "status": "passed",
+                "metrics": {"targetQueueDeadLetterCount": 0},
+                "gates": _passed_operational_slo_gates(),
+            },
         },
+    }
+
+
+def _passed_operational_slo_gates() -> dict[str, dict[str, object]]:
+    return {
+        "targetQueueDeadLetters": {"status": "passed", "violationCount": 0},
+        "classifiedOperationalFailures": {"status": "passed", "violationCount": 0},
+        "retrySuccessRate": {"status": "passed", "violationCount": 0},
+        "runtimeFailureRates": {"status": "passed", "violationCount": 0},
+        "runawayFanout": {"status": "passed", "violationCount": 0},
+        "retrySafeJobs": {"status": "passed", "violationCount": 0},
     }
