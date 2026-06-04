@@ -65,6 +65,8 @@ def reject_scalar_candidate(value: object) -> tuple[bool, str | None]:
 def reject_line_item(item: dict[str, Any]) -> tuple[bool, str | None]:
     if contains_prompt_or_schema_artifact(item):
         return True, "prompt_or_schema_echo"
+    if _contains_placeholder_value(item):
+        return True, "placeholder_or_null_value"
 
     text = " ".join(
         str(item.get(key) or "")

@@ -135,8 +135,13 @@ def _number_value(value: Any) -> float | None:
     return None
 
 
-def _float_key(value: float | None) -> float | None:
-    return round(float(value), 6) if value is not None else None
+def _float_key(value: Any) -> float | None:
+    if value is None:
+        return None
+    try:
+        return round(float(value), 6)
+    except (TypeError, ValueError):
+        return None
 
 
 def _evidence(owner: dict[str, Any]) -> list[dict[str, Any]]:

@@ -158,6 +158,37 @@ def test_nested_placeholder_field_value_is_rejected_before_insertion() -> None:
     assert admission.events[0].reasons == ("placeholder_or_null_value",)
 
 
+def test_placeholder_line_item_amount_is_rejected_before_insertion() -> None:
+    context = _context()
+    candidate = LineItemCandidateFact(
+        line_item_type="service_line",
+        ordinal=1,
+        description="Headlight adjustment service",
+        service_date=date(2023, 4, 25),
+        net_amount=cast(Any, "null"),
+        currency="USD",
+        evidence=[_evidence(context)],
+        status="proposed",
+    )
+
+    admission = admit_extraction_candidates(
+        context=context,
+        field_candidates=[],
+        line_item_candidates=[candidate],
+        observation_candidates=[],
+    )
+
+    assert admission.line_item_candidates == []
+    assert admission.summary == {
+        "produced": 1,
+        "admitted": 0,
+        "rejected": 1,
+        "rejectionReasons": {"rejected_placeholder": 1},
+    }
+    assert admission.events[0].decision == "rejected_placeholder"
+    assert admission.events[0].reasons == ("placeholder_or_null_value",)
+
+
 def test_incompatible_field_schema_candidate_is_rejected_before_insertion() -> None:
     context = _context(canonical_target_schema="invoice")
     candidate = CandidateFact(
