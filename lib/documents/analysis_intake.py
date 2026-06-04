@@ -304,7 +304,9 @@ def _status(item: Mapping[str, Any], *keys: str) -> str:
 def _evidence_refs(items: Sequence[Mapping[str, Any]]) -> list[Any]:
     refs: list[Any] = []
     for item in items:
-        refs.extend(_list(_value(item, "evidence", "evidenceRefs")))
+        refs.extend(
+            _uncertain_evidence_ref(ref) for ref in _list(_value(item, "evidence", "evidenceRefs"))
+        )
     return refs
 
 
@@ -316,10 +318,14 @@ def _planner_explanations(document: Mapping[str, Any]) -> list[dict[str, Any]]:
         planner_note = _value(metadata, "plannerNote", "planner_note", "must_extract_reason")
         if reason or planner_note:
             explanations.append(
-                {
-                    "semanticType": _value(extraction, "semanticType", "semantic_type"),
-                    "reason": reason or planner_note,
-                }
+                _surface_item(
+                    {
+                        "semanticType": _value(extraction, "semanticType", "semantic_type"),
+                        "reason": reason or planner_note,
+                    },
+                    surface="review",
+                    uncertainty_label="uncertain_planner_explanation",
+                )
             )
     return explanations
 
@@ -330,9 +336,27 @@ def _quality_signals(document: Mapping[str, Any]) -> dict[str, Any]:
         for page in _rows(document, "pages")
         if _value(page, "qualitySignals", "quality_signals")
     ]
+    return _surface_item(
+        {
+            "document": _value(document, "qualitySummary", "quality_summary") or {},
+            "pages": page_signals,
+        },
+        surface="review",
+        uncertainty_label="uncertain_quality_signal",
+    )
+
+
+def _uncertain_evidence_ref(ref: Any) -> Any:
+    if isinstance(ref, Mapping):
+        return _surface_item(
+            ref,
+            surface="review",
+            uncertainty_label="uncertain_evidence_ref",
+        )
     return {
-        "document": _value(document, "qualitySummary", "quality_summary") or {},
-        "pages": page_signals,
+        "value": ref,
+        "surface": "review",
+        "uncertaintyLabel": "uncertain_evidence_ref",
     }
 
 
