@@ -15,13 +15,13 @@ from lib.extraction.models import (
     ModelRoute,
 )
 from lib.extraction.visual_input_planning import (
-    VisualInputDecision,
     crop_retry_allowed,
     is_useful_granite_output,
     plan_granite_visual_inputs,
     visual_input_attempt_json,
     visual_input_mode_from_env,
 )
+from lib.extraction.visual_input_types import VisualInputDecision
 from lib.model_runtime.contracts import (
     VisionGenerateRequest,
     VisionGenerateResponse,

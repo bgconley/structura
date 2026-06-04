@@ -5,7 +5,7 @@ from typing import Any
 from uuid import UUID
 
 from lib.extraction.models import ExtractionSourceDocument
-from lib.extraction.visual_input_planning import VisualInputPlan
+from lib.extraction.visual_input_types import VisualInputPlan
 from lib.semantic_annotations.models import SemanticExtractionTask
 
 

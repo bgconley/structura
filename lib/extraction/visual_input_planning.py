@@ -2,27 +2,37 @@ from __future__ import annotations
 
 import hashlib
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from io import BytesIO
-from typing import Any, Literal, cast
+from typing import Any
 from uuid import UUID
 
 from lib.extraction.models import ExtractionSourceDocument, ParsedElementText, ParsedPageText
+from lib.extraction.visual_input_geometry import (
+    basis_from_bbox,
+    basis_from_metadata,
+    bbox_to_pixels,
+    crop_box,
+    expanded_bbox,
+    normalize_bbox,
+    rotation_policy,
+)
+from lib.extraction.visual_input_types import (
+    MAX_CROP_AREA_RATIO,
+    MIN_CROP_SHORT_EDGE,
+    BBoxBasis,
+    CropQualityReport,
+    PixelBBox,
+    PlannedImageInput,
+    VisualInputAttempt,
+    VisualInputDecision,
+    VisualInputMode,
+    VisualInputPlan,
+    VisualInputScope,
+)
 from lib.model_runtime.contracts import ModelImageInput
 from lib.model_runtime.http_client import ModelProtocolError
 from lib.semantic_annotations.models import SemanticExtractionTask
-
-VisualInputMode = Literal["full_page", "shadow_full_page", "planned"]
-VisualInputScope = Literal[
-    "full_page",
-    "element_crop",
-    "table_crop",
-    "bbox_crop",
-    "expanded_crop",
-    "full_page_retry",
-]
-BBoxBasis = Literal["pdf_points", "image_pixels", "normalized_1000", "unknown"]
-RotationPolicy = Literal["upright", "rotate_90", "rotate_180", "rotate_270", "unknown"]
 
 _CROP_FIRST_TYPES = {
     "invoice_line_item_table",
@@ -42,148 +52,7 @@ _FULL_PAGE_TYPES = {
     "receipt_payment_summary",
     "billing_summary",
 }
-_MAX_CROP_AREA_RATIO = 0.70
-_MIN_CROP_SHORT_EDGE = 384
 _HEADER_FOOTER_BAND_RATIO = 0.08
-
-
-@dataclass(frozen=True)
-class PixelBBox:
-    x0: int
-    y0: int
-    x1: int
-    y1: int
-
-    @property
-    def width(self) -> int:
-        return max(0, self.x1 - self.x0)
-
-    @property
-    def height(self) -> int:
-        return max(0, self.y1 - self.y0)
-
-    def as_list(self) -> list[int]:
-        return [self.x0, self.y0, self.x1, self.y1]
-
-
-@dataclass(frozen=True)
-class CropQualityReport:
-    width_px: int | None = None
-    height_px: int | None = None
-    page_width_px: int | None = None
-    page_height_px: int | None = None
-    area_ratio: float | None = None
-    content_density: float | None = None
-    min_short_edge_px: int = _MIN_CROP_SHORT_EDGE
-    max_area_ratio: float = _MAX_CROP_AREA_RATIO
-    touches_page_edge: bool = False
-    header_footer_band_intersection: bool = False
-    low_resolution: bool = False
-    degraded_page_quality: bool = False
-    passed: bool = True
-    failure_reason: str | None = None
-
-    def as_json(self) -> dict[str, object]:
-        return {
-            "widthPx": self.width_px,
-            "heightPx": self.height_px,
-            "pageWidthPx": self.page_width_px,
-            "pageHeightPx": self.page_height_px,
-            "areaRatio": self.area_ratio,
-            "contentDensity": self.content_density,
-            "minShortEdgePx": self.min_short_edge_px,
-            "maxAreaRatio": self.max_area_ratio,
-            "touchesPageEdge": self.touches_page_edge,
-            "headerFooterBandIntersection": self.header_footer_band_intersection,
-            "lowResolution": self.low_resolution,
-            "degradedPageQuality": self.degraded_page_quality,
-            "passed": self.passed,
-            "failureReason": self.failure_reason,
-        }
-
-
-@dataclass(frozen=True)
-class VisualInputPlan:
-    mode: VisualInputMode
-    intended_scope: VisualInputScope
-    effective_scope: VisualInputScope
-    page_id: UUID | None
-    page_number: int | None
-    source_page_image_sha256: str | None
-    input_sha256: str | None
-    bbox: PixelBBox | None = None
-    original_bbox: list[float] | None = None
-    expanded_bbox: PixelBBox | None = None
-    bbox_basis: BBoxBasis = "unknown"
-    bbox_confidence: float | None = None
-    rotation_policy: RotationPolicy = "unknown"
-    expansion_policy: tuple[str, ...] = ()
-    fallback_reason: str | None = None
-    crop_quality: CropQualityReport = field(default_factory=CropQualityReport)
-    continuation_group: str | None = None
-    selected_attempt_index: int = 0
-
-    def as_json(self) -> dict[str, object]:
-        return {
-            "mode": self.mode,
-            "scope": self.effective_scope,
-            "intendedScope": self.intended_scope,
-            "pageId": str(self.page_id) if self.page_id else None,
-            "pageNumber": self.page_number,
-            "sourcePageImageSha256": self.source_page_image_sha256,
-            "inputSha256": self.input_sha256,
-            "bbox": self.bbox.as_list() if self.bbox else None,
-            "originalBbox": self.original_bbox,
-            "expandedBbox": self.expanded_bbox.as_list() if self.expanded_bbox else None,
-            "bboxBasis": self.bbox_basis,
-            "bboxConfidence": self.bbox_confidence,
-            "rotationPolicy": self.rotation_policy,
-            "expansionPolicy": list(self.expansion_policy),
-            "fallbackReason": self.fallback_reason,
-            "cropQuality": self.crop_quality.as_json(),
-            "continuationGroup": self.continuation_group,
-            "selectedAttemptIndex": self.selected_attempt_index,
-        }
-
-
-@dataclass(frozen=True)
-class PlannedImageInput:
-    image_input: ModelImageInput
-    plan: VisualInputPlan
-
-
-@dataclass(frozen=True)
-class VisualInputAttempt:
-    plan: VisualInputPlan | None
-    useful: bool | None
-    failure_reason: str | None = None
-
-    def as_json(self) -> dict[str, object]:
-        return {
-            "visualInputPlan": self.plan.as_json() if self.plan else None,
-            "useful": self.useful,
-            "failureReason": self.failure_reason,
-        }
-
-
-@dataclass(frozen=True)
-class VisualInputDecision:
-    inputs: tuple[PlannedImageInput, ...]
-    attempts: tuple[dict[str, object], ...] = ()
-
-    @property
-    def model_inputs(self) -> tuple[ModelImageInput, ...]:
-        return tuple(item.image_input for item in self.inputs)
-
-    @property
-    def primary_plan(self) -> VisualInputPlan | None:
-        return self.inputs[0].plan if self.inputs else None
-
-    def as_json(self) -> dict[str, object]:
-        return {
-            "inputs": [item.plan.as_json() for item in self.inputs],
-            "attempts": list(self.attempts),
-        }
 
 
 @dataclass(frozen=True)
@@ -403,8 +272,8 @@ def _crop_plan(
             candidate=candidate,
         )
     page = page_image.page
-    rotation_policy = _rotation_policy(page.rotation_degrees)
-    if rotation_policy != "upright":
+    selected_rotation_policy = rotation_policy(page.rotation_degrees)
+    if selected_rotation_policy != "upright":
         return _full_page_plan(
             mode=mode,
             page_image=page_image,
@@ -412,7 +281,14 @@ def _crop_plan(
             fallback_reason="rotation_unresolved",
             candidate=candidate,
         )
-    normalized = _bbox_to_pixels(candidate.bbox, candidate.basis, page, page_image)
+    normalized = bbox_to_pixels(
+        candidate.bbox,
+        candidate.basis,
+        page_width_px=page_image.width_px,
+        page_height_px=page_image.height_px,
+        page_width_points=page.width_points,
+        page_height_points=page.height_points,
+    )
     if normalized is None:
         return _full_page_plan(
             mode=mode,
@@ -421,11 +297,14 @@ def _crop_plan(
             fallback_reason="bbox_basis_unusable",
             candidate=candidate,
         )
-    expanded, expansion_policy = _expanded_bbox(
+    expanded, expansion_policy = expanded_bbox(
         normalized,
-        page_image=page_image,
-        semantic_task=semantic_task,
+        page_width_px=page_image.width_px,
+        page_height_px=page_image.height_px,
+        semantic_type=semantic_task.semantic_type if semantic_task else "",
+        granite_task=semantic_task.granite_task if semantic_task else None,
         scope=candidate.scope,
+        crop_first_types=_CROP_FIRST_TYPES,
     )
     quality = _crop_quality(
         page_image=page_image,
@@ -455,7 +334,7 @@ def _crop_plan(
         expanded_bbox=expanded if expansion_policy else None,
         bbox_basis=candidate.basis,
         bbox_confidence=candidate.confidence,
-        rotation_policy=rotation_policy,
+        rotation_policy=selected_rotation_policy,
         expansion_policy=expansion_policy,
         crop_quality=quality,
         continuation_group=_continuation_group(semantic_task),
@@ -484,7 +363,7 @@ def _full_page_plan(
         original_bbox=candidate.bbox if candidate else None,
         bbox_basis=candidate.basis if candidate else "unknown",
         bbox_confidence=candidate.confidence if candidate else None,
-        rotation_policy=_rotation_policy(page_image.page.rotation_degrees),
+        rotation_policy=rotation_policy(page_image.page.rotation_degrees),
         fallback_reason=fallback_reason,
         crop_quality=crop_quality
         or CropQualityReport(
@@ -553,7 +432,7 @@ def _crop_model_input(page_image: _PageImage, plan: VisualInputPlan) -> ModelIma
     except ImportError as exc:  # pragma: no cover - dependency is declared for runtime.
         raise ModelProtocolError("Pillow is required for planned Granite crop inputs.") from exc
     with Image.open(BytesIO(page_image.content)) as image:
-        cropped = image.crop(_crop_box(plan.bbox))
+        cropped = image.crop(crop_box(plan.bbox))
         output = BytesIO()
         cropped.save(output, format="PNG")
     content = output.getvalue()
@@ -602,7 +481,7 @@ def _bbox_candidate(
             None,
         )
         if table is not None:
-            basis = _basis_from_metadata(table.metadata) or _basis_from_bbox(table.bbox)
+            basis = basis_from_metadata(table.metadata) or basis_from_bbox(table.bbox)
             if (
                 basis == "unknown"
                 and table.bbox is not None
@@ -610,7 +489,7 @@ def _bbox_candidate(
                 and page.height_points
             ):
                 basis = "pdf_points"
-            bbox = _normalize_bbox(table.bbox)
+            bbox = normalize_bbox(table.bbox)
             if bbox is not None and basis != "unknown":
                 return _BBoxCandidate(
                     bbox=bbox,
@@ -633,9 +512,9 @@ def _bbox_candidate(
             if inferred is not None:
                 return inferred
     hint = metadata.get("visual_bbox_hint")
-    basis = _basis_from_metadata(metadata) or _basis_from_bbox(hint)
+    basis = basis_from_metadata(metadata) or basis_from_bbox(hint)
     confidence = _number(metadata.get("visual_bbox_confidence"))
-    bbox = _normalize_bbox(hint)
+    bbox = normalize_bbox(hint)
     if bbox is not None and basis != "unknown" and (confidence is None or confidence >= 0.75):
         return _BBoxCandidate(
             bbox=bbox,
@@ -653,10 +532,10 @@ def _candidate_from_element(
 ) -> _BBoxCandidate | None:
     if element is None:
         return None
-    bbox = _normalize_bbox(element.bbox)
+    bbox = normalize_bbox(element.bbox)
     if bbox is None:
         return None
-    basis = _basis_from_metadata(element.metadata) or _basis_from_bbox(element.bbox)
+    basis = basis_from_metadata(element.metadata) or basis_from_bbox(element.bbox)
     if basis == "unknown" and page.width_points and page.height_points:
         basis = "pdf_points"
     if basis == "unknown":
@@ -684,8 +563,8 @@ def _infer_table_bbox_from_elements(
             continue
         if element.text.lower() not in table_text:
             continue
-        bbox = _normalize_bbox(element.bbox)
-        basis = _basis_from_metadata(element.metadata) or _basis_from_bbox(element.bbox)
+        bbox = normalize_bbox(element.bbox)
+        basis = basis_from_metadata(element.metadata) or basis_from_bbox(element.bbox)
         if basis == "unknown" and page.width_points and page.height_points:
             basis = "pdf_points"
         if bbox is not None and basis != "unknown":
@@ -749,73 +628,6 @@ def _full_page_reason(
     return None
 
 
-def _bbox_to_pixels(
-    bbox: list[float],
-    basis: BBoxBasis,
-    page: ParsedPageText,
-    page_image: _PageImage,
-) -> PixelBBox | None:
-    if page_image.width_px is None or page_image.height_px is None:
-        return None
-    x0, y0, x1, y1 = bbox
-    if basis == "pdf_points":
-        if not page.width_points or not page.height_points:
-            return None
-        x_scale = page_image.width_px / page.width_points
-        y_scale = page_image.height_px / page.height_points
-        pixel = PixelBBox(
-            int(round(x0 * x_scale)),
-            int(round(y0 * y_scale)),
-            int(round(x1 * x_scale)),
-            int(round(y1 * y_scale)),
-        )
-    elif basis == "normalized_1000":
-        pixel = PixelBBox(
-            int(round(x0 / 1000 * page_image.width_px)),
-            int(round(y0 / 1000 * page_image.height_px)),
-            int(round(x1 / 1000 * page_image.width_px)),
-            int(round(y1 / 1000 * page_image.height_px)),
-        )
-    elif basis == "image_pixels":
-        pixel = PixelBBox(int(round(x0)), int(round(y0)), int(round(x1)), int(round(y1)))
-    else:
-        return None
-    return _clamp_bbox(pixel, page_image.width_px, page_image.height_px)
-
-
-def _expanded_bbox(
-    bbox: PixelBBox,
-    *,
-    page_image: _PageImage,
-    semantic_task: SemanticExtractionTask | None,
-    scope: VisualInputScope,
-) -> tuple[PixelBBox, tuple[str, ...]]:
-    if page_image.width_px is None or page_image.height_px is None:
-        return bbox, ()
-    policies: list[str] = ["safe_margin_pad"]
-    pad_x = max(12, int(round(bbox.width * 0.08)))
-    pad_y = max(12, int(round(bbox.height * 0.08)))
-    x0 = bbox.x0 - pad_x
-    y0 = bbox.y0 - pad_y
-    x1 = bbox.x1 + pad_x
-    y1 = bbox.y1 + pad_y
-    semantic_type = semantic_task.semantic_type if semantic_task else ""
-    if scope == "table_crop" or semantic_type in _CROP_FIRST_TYPES:
-        policies.extend(["table_header_band", "left_label_band"])
-        y0 -= max(24, int(round(bbox.height * 0.25)))
-        x0 -= max(24, int(round(bbox.width * 0.08)))
-    elif semantic_task and semantic_task.granite_task == "kvp":
-        policies.extend(["left_label_band", "top_label_band"])
-        y0 -= max(18, int(round(bbox.height * 0.20)))
-        x0 -= max(36, int(round(bbox.width * 0.20)))
-    clamped = _clamp_bbox(
-        PixelBBox(x0, y0, x1, y1),
-        page_image.width_px,
-        page_image.height_px,
-    )
-    return clamped or bbox, tuple(dict.fromkeys(policies))
-
-
 def _crop_quality(
     *,
     page_image: _PageImage,
@@ -837,11 +649,11 @@ def _crop_quality(
         page_image.page.metadata,
         semantic_task.metadata if semantic_task else {},
     )
-    if area_ratio > _MAX_CROP_AREA_RATIO:
+    if area_ratio > MAX_CROP_AREA_RATIO:
         failure = "crop_area_too_large"
     elif low_resolution:
         failure = "low_resolution_page_requires_full_page"
-    elif short_edge < min(_MIN_CROP_SHORT_EDGE, min(page_width, page_height)):
+    elif short_edge < min(MIN_CROP_SHORT_EDGE, min(page_width, page_height)):
         failure = "crop_too_small"
     elif density is not None and density < 0.006:
         failure = "crop_mostly_blank"
@@ -872,7 +684,7 @@ def _content_density(content: bytes, bbox: PixelBBox) -> float | None:
         return None
     try:
         with Image.open(BytesIO(content)) as image:
-            crop = image.crop(_crop_box(bbox)).convert("L")
+            crop = image.crop(crop_box(bbox)).convert("L")
             stat = ImageStat.Stat(crop)
             mean = stat.mean[0]
             extrema = crop.getextrema()
@@ -881,68 +693,6 @@ def _content_density(content: bytes, bbox: PixelBBox) -> float | None:
     if extrema[0] == extrema[1]:
         return 0.0
     return round(max(0.0, min(1.0, (255.0 - mean) / 255.0)), 6)
-
-
-def _clamp_bbox(bbox: PixelBBox, width: int, height: int) -> PixelBBox | None:
-    x0 = max(0, min(width, bbox.x0))
-    y0 = max(0, min(height, bbox.y0))
-    x1 = max(0, min(width, bbox.x1))
-    y1 = max(0, min(height, bbox.y1))
-    if x1 <= x0 or y1 <= y0:
-        return None  # type: ignore[return-value]
-    return PixelBBox(x0=x0, y0=y0, x1=x1, y1=y1)
-
-
-def _normalize_bbox(value: Any) -> list[float] | None:
-    if isinstance(value, list) and len(value) == 4:
-        return [float(item) for item in value]
-    if isinstance(value, tuple) and len(value) == 4:
-        return [float(item) for item in value]
-    if isinstance(value, dict):
-        for keys in (
-            ("l", "t", "r", "b"),
-            ("x0", "y0", "x1", "y1"),
-            ("left", "top", "right", "bottom"),
-        ):
-            if all(key in value for key in keys):
-                return [float(value[key]) for key in keys]
-        if all(key in value for key in ("x", "y", "width", "height")):
-            x = float(value["x"])
-            y = float(value["y"])
-            return [x, y, x + float(value["width"]), y + float(value["height"])]
-        nested = value.get("bbox")
-        if nested is not None:
-            return _normalize_bbox(nested)
-    return None
-
-
-def _basis_from_metadata(metadata: dict[str, Any]) -> BBoxBasis | None:
-    for key in ("visual_bbox_basis", "bbox_basis", "coordinate_basis"):
-        value = metadata.get(key)
-        if value in {"pdf_points", "image_pixels", "normalized_1000"}:
-            return cast(BBoxBasis, value)
-    return None
-
-
-def _basis_from_bbox(value: Any) -> BBoxBasis:
-    if isinstance(value, dict):
-        basis = value.get("basis") or value.get("bbox_basis") or value.get("coordinate_basis")
-        if basis in {"pdf_points", "image_pixels", "normalized_1000"}:
-            return cast(BBoxBasis, basis)
-    return "unknown"
-
-
-def _rotation_policy(rotation_degrees: int | None) -> RotationPolicy:
-    rotation = (rotation_degrees or 0) % 360
-    if rotation == 0:
-        return "upright"
-    if rotation == 90:
-        return "rotate_90"
-    if rotation == 180:
-        return "rotate_180"
-    if rotation == 270:
-        return "rotate_270"
-    return "unknown"
 
 
 def _page_quality_degraded(page_metadata: dict[str, Any], task_metadata: dict[str, Any]) -> bool:
@@ -1012,10 +762,6 @@ def _contains_echo(value: object) -> bool:
     if isinstance(value, list):
         return any(_contains_echo(item) for item in value)
     return False
-
-
-def _crop_box(bbox: PixelBBox) -> tuple[float, float, float, float]:
-    return (float(bbox.x0), float(bbox.y0), float(bbox.x1), float(bbox.y1))
 
 
 def _is_all_null_or_empty(value: object) -> bool:
