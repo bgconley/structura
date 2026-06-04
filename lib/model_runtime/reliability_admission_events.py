@@ -88,15 +88,23 @@ def _evaluate_event_telemetry(event: dict[str, Any], violations: ViolationMap) -
         if not _has_text(get_value(event, snake_key, camel_key)):
             _add_violation(violations, "admissionEventsMissingTelemetry", event, reason)
 
-    if _is_model_backed_event(event) and not _has_text(
-        get_value(event, "region_envelope_version", "regionEnvelopeVersion")
-    ):
-        _add_violation(
-            violations,
-            "admissionEventsMissingTelemetry",
-            event,
-            "missing_region_envelope_version",
-        )
+    if _is_model_backed_event(event):
+        for snake_key, camel_key, reason in (
+            ("plan_id", "planId", "missing_plan_id"),
+            ("plan_task_id", "planTaskId", "missing_plan_task_id"),
+            (
+                "semantic_annotation_id",
+                "semanticAnnotationId",
+                "missing_semantic_annotation_id",
+            ),
+            (
+                "region_envelope_version",
+                "regionEnvelopeVersion",
+                "missing_region_envelope_version",
+            ),
+        ):
+            if not _has_value(get_value(event, snake_key, camel_key)):
+                _add_violation(violations, "admissionEventsMissingTelemetry", event, reason)
 
 
 def _is_admitted(event: dict[str, Any]) -> bool:
@@ -112,6 +120,12 @@ def _is_model_backed_event(event: dict[str, Any]) -> bool:
 
 def _has_text(value: Any) -> bool:
     return isinstance(value, str) and bool(value.strip())
+
+
+def _has_value(value: Any) -> bool:
+    if value in (None, ""):
+        return False
+    return not (isinstance(value, str) and not value.strip())
 
 
 def _candidate_payload(event: dict[str, Any]) -> dict[str, Any]:
