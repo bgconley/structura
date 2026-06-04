@@ -348,6 +348,41 @@ def test_hard_invariants_normalize_camel_case_schema_artifact_values() -> None:
     ]
 
 
+def test_hard_invariants_normalize_acronym_schema_artifact_values() -> None:
+    document = _safe_document_report()
+    document["admissionEvents"].append(
+        {
+            "decision": "admitted_review_required",
+            "candidate_kind": "field",
+            "candidate_fingerprint": "schema-value-field-acronym",
+            **_admission_event_telemetry(),
+            "evidence_concrete": True,
+            "payload_json": {
+                "candidate": {
+                    "field_path": "invoice.total_amount",
+                    "value": {
+                        "format_hint": "JSONSchema",
+                    },
+                    "evidence": [{"page_id": "page-1", "semantic_region_id": "region-1"}],
+                }
+            },
+        }
+    )
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 1
+    assert summary["invariants"]["promptSchemaArtifactsAdmitted"]["violationCount"] == 1
+    assert summary["invariants"]["promptSchemaArtifactsAdmitted"]["examples"] == [
+        {
+            "reason": "admitted_prompt_or_schema_artifact",
+            "documentId": None,
+            "entityId": "schema-value-field-acronym",
+        }
+    ]
+
+
 def test_hard_invariants_flag_admitted_camel_case_placeholder_payloads() -> None:
     document = _safe_document_report()
     document["admissionEvents"].append(

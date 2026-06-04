@@ -80,5 +80,6 @@ def _is_schema_artifact_key(value: object) -> bool:
 
 def _normalized_key(value: object) -> str:
     text = str(value or "").strip().replace("-", "_").replace(" ", "_")
+    text = re.sub(r"(?<=[A-Z])(?=[A-Z][a-z])", "_", text)
     text = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", text)
     return "_".join(part for part in text.lower().split("_") if part)
