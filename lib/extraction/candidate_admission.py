@@ -284,7 +284,7 @@ def _field_rejection_decision(
     )
     if source_reason:
         return "rejected_source_provenance", (source_reason,)
-    if context.model_backed_semantic_region and not evidence_concrete:
+    if not evidence_concrete:
         return "rejected_missing_evidence", ("missing_concrete_evidence",)
     return None, ()
 
@@ -300,7 +300,7 @@ def _line_item_rejection_decision(
     rejected, reason = reject_line_item(_line_item_payload(candidate))
     if rejected:
         return decision_for_quality_reason(reason)
-    if context.model_backed_semantic_region and not evidence_concrete:
+    if not evidence_concrete:
         return "rejected_missing_evidence", ("missing_concrete_evidence",)
     return None, ()
 
@@ -313,7 +313,7 @@ def _observation_rejection_decision(
     rejected, reason = reject_observation(candidate.field_name, candidate.value)
     if rejected:
         return decision_for_quality_reason(reason)
-    if context.model_backed_semantic_region and not evidence_concrete:
+    if not evidence_concrete:
         return "rejected_missing_evidence", ("missing_concrete_evidence",)
     return None, ()
 

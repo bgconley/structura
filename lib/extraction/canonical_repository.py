@@ -10,6 +10,7 @@ from lib.extraction.candidate_repository import (
     candidate_value_json,
     canonical_column_values,
 )
+from lib.extraction.canonical_promotion_policy import candidate_auto_promotion_rejection_reason
 from lib.extraction.errors import ExtractionRepositoryError
 from lib.extraction.models import ExtractionSourceDocument, ValidationReport
 from lib.review.task_repository import upsert_review_task
@@ -29,6 +30,8 @@ def promote_candidates(
     promoted = 0
     for candidate in candidates:
         if candidate["status"] != "proposed" or (candidate["confidence"] or 0) < 0.78:
+            continue
+        if candidate_auto_promotion_rejection_reason(candidate):
             continue
         if canonical_is_human_controlled(
             cur,

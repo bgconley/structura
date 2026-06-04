@@ -267,7 +267,7 @@ def test_model_backed_candidates_are_admitted_as_review_required() -> None:
     assert admission.events[0].contract_registry_version == CONTRACT_REGISTRY_VERSION
 
 
-def test_non_model_source_engine_alias_does_not_require_model_evidence() -> None:
+def test_non_model_source_engine_alias_still_requires_concrete_candidate_evidence() -> None:
     context = _context(source_engine=" System ")
     candidate = CandidateFact(
         field_path="receipt.transaction.total",
@@ -285,9 +285,9 @@ def test_non_model_source_engine_alias_does_not_require_model_evidence() -> None
         observation_candidates=[],
     )
 
-    assert len(admission.field_candidates) == 1
-    assert admission.events[0].decision == "admitted_auto_promotable"
-    assert admission.events[0].reasons == ()
+    assert admission.field_candidates == []
+    assert admission.events[0].decision == "rejected_missing_evidence"
+    assert admission.events[0].reasons == ("missing_concrete_evidence",)
 
 
 def test_model_source_engine_alias_requires_concrete_evidence() -> None:
