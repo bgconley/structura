@@ -79,6 +79,29 @@ def test_model_backed_candidates_are_admitted_as_review_required() -> None:
     assert admission.events[0].contract_registry_version == CONTRACT_REGISTRY_VERSION
 
 
+def test_incompatible_field_schema_candidate_is_rejected_before_insertion() -> None:
+    context = _context(canonical_target_schema="invoice")
+    candidate = CandidateFact(
+        field_path="receipt.transaction.total",
+        value_type="money",
+        value={"amount": 4.65, "currency": "USD"},
+        currency="USD",
+        evidence=[_evidence(context)],
+        status="proposed",
+    )
+
+    admission = admit_extraction_candidates(
+        context=context,
+        field_candidates=[candidate],
+        line_item_candidates=[],
+        observation_candidates=[],
+    )
+
+    assert admission.field_candidates == []
+    assert admission.events[0].decision == "rejected_family_schema"
+    assert admission.events[0].reasons == ("candidate_schema_incompatible",)
+
+
 def test_admitted_candidates_carry_admission_fingerprints_for_report_evidence() -> None:
     context = _context()
 
@@ -334,7 +357,7 @@ class JsonSerializingCursor(RecordingCursor):
         self.payloads.append(json.loads(serialized))
 
 
-def _context() -> CandidateAdmissionContext:
+def _context(*, canonical_target_schema: str = "receipt") -> CandidateAdmissionContext:
     return CandidateAdmissionContext(
         document_id=uuid4(),
         run_scope=ExtractionRunScope.semantic_region(
@@ -344,7 +367,7 @@ def _context() -> CandidateAdmissionContext:
             granite_task="kvp",
             plan_id=uuid4(),
             plan_task_id=uuid4(),
-            canonical_target_schema="receipt",
+            canonical_target_schema=canonical_target_schema,
             compatibility_mode="exact",
             contract_resolution_reason="exact_contract",
             region_envelope_version="phase8_5-region-envelope-v1",

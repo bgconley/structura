@@ -36,6 +36,10 @@ from lib.extraction.candidate_quality import (
     reject_observation,
     reject_scalar_candidate,
 )
+from lib.extraction.candidate_schema_policy import (
+    canonical_candidate_schema_rejection_reason,
+    field_path_schema_rejection_reason,
+)
 from lib.extraction.evidence import has_concrete_evidence
 from lib.extraction.models import (
     CandidateFact,
@@ -264,8 +268,9 @@ def _field_rejection_decision(
     candidate: CandidateFact,
     evidence_concrete: bool,
 ) -> tuple[str | None, tuple[str, ...]]:
-    if _document_observation_canonical_context(context):
-        return "rejected_family_schema", ("document_observation_is_review_only",)
+    schema_reason = field_path_schema_rejection_reason(context, candidate.field_path)
+    if schema_reason:
+        return "rejected_family_schema", (schema_reason,)
     rejected, reason = reject_scalar_candidate(candidate.value)
     if rejected:
         return decision_for_quality_reason(reason)
@@ -279,8 +284,9 @@ def _line_item_rejection_decision(
     candidate: LineItemCandidateFact,
     evidence_concrete: bool,
 ) -> tuple[str | None, tuple[str, ...]]:
-    if _document_observation_canonical_context(context):
-        return "rejected_family_schema", ("document_observation_is_review_only",)
+    schema_reason = canonical_candidate_schema_rejection_reason(context)
+    if schema_reason:
+        return "rejected_family_schema", (schema_reason,)
     rejected, reason = reject_line_item(_line_item_payload(candidate))
     if rejected:
         return decision_for_quality_reason(reason)
@@ -474,10 +480,6 @@ def _rejected_summary(event: CandidateAdmissionEvent) -> dict[str, Any]:
 
 def _is_rejected(event: CandidateAdmissionEvent) -> bool:
     return event.decision.startswith("rejected_")
-
-
-def _document_observation_canonical_context(context: CandidateAdmissionContext) -> bool:
-    return context.run_scope.canonical_target_schema == "document_observation"
 
 
 def _candidate_kind(value: object) -> CandidateKind:
