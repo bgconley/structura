@@ -80,6 +80,34 @@ def test_hard_invariants_flag_admitted_prompt_echo_phrases() -> None:
     ]
 
 
+def test_hard_invariants_flag_title_derived_seller_source_engine_alias() -> None:
+    document = _safe_document_report()
+    document["fields"].append(
+        {
+            "id": "field-title-seller",
+            "field_path": "invoice.seller.display_name",
+            "review_status": "auto_accepted",
+            "value": "Acme Services",
+            "evidence": [{"sourceEngine": "document_title"}],
+        }
+    )
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 1
+    assert (
+        summary["invariants"]["titleDerivedMerchantSellerWithoutAllowlist"]["violationCount"] == 1
+    )
+    assert summary["invariants"]["titleDerivedMerchantSellerWithoutAllowlist"]["examples"] == [
+        {
+            "reason": "title_derived_merchant_seller_without_allowlist",
+            "documentId": "doc-safe",
+            "entityId": "field-title-seller",
+        }
+    ]
+
+
 def test_hard_invariants_flag_rejected_candidate_rows_inserted() -> None:
     document = _safe_document_report()
     document["admissionEvents"].append(

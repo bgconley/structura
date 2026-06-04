@@ -336,7 +336,10 @@ def _title_derivation_allowed(mapping: dict[str, Any]) -> bool:
 
 
 def _evidence_is_document_title(evidence: dict[str, Any]) -> bool:
-    source = str(get_value(evidence, "source", "sourceKind", "source_kind") or "").lower()
+    source = str(
+        get_value(evidence, "source", "sourceKind", "source_kind", "sourceEngine", "source_engine")
+        or ""
+    ).lower()
     return source in {"document_title", "title"} or "document_title" in source
 
 
