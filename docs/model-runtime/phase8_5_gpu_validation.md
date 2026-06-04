@@ -98,6 +98,8 @@ release evidence; live or required reports must include current
 Report acceptance requires the full repeatability fingerprint set:
 `documentFamily`, `semanticRegions`, `plannerTasks`, `candidateFingerprints`,
 `canonicalOutput`, `reviewTasks`, and `rejectionDistribution`.
+Repeatability comparisons require distinct `runId` values so the same report
+cannot be submitted twice as two-pass evidence.
 Hard correctness acceptance requires
 `acceptanceGates.hardCorrectnessInvariants.status = passed` and
 `totalViolationCount = 0`.

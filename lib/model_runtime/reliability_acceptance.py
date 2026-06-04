@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from datetime import datetime
 from typing import Any
 
@@ -334,7 +335,14 @@ def _gold_metric_failure_keys(gate: dict[str, Any]) -> list[str]:
 
 def _repeatability_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
     missing_by_report: list[dict[str, Any]] = []
+    missing_run_ids: list[dict[str, int]] = []
+    run_ids: list[str] = []
     for index, report in enumerate(reports):
+        run_id = get_value(report, "runId", "run_id")
+        if not isinstance(run_id, str) or not run_id.strip():
+            missing_run_ids.append({"reportIndex": index})
+        else:
+            run_ids.append(run_id.strip())
         fingerprints = dict_value(get_value(report, "repeatabilityFingerprints"))
         missing = [key for key in REPEATABILITY_KEYS if not get_value(fingerprints, key)]
         if missing:
@@ -345,12 +353,15 @@ def _repeatability_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
                     "missing": missing,
                 }
             )
-    if missing_by_report:
+    duplicate_run_ids = sorted(run_id for run_id, count in Counter(run_ids).items() if count > 1)
+    if missing_by_report or missing_run_ids or duplicate_run_ids:
         return {
             "status": "failed",
             "drift": [],
             "baseline": {},
             "missingByReport": missing_by_report,
+            "missingRunIds": missing_run_ids,
+            "duplicateRunIds": duplicate_run_ids,
             "comparisons": [],
         }
     if len(reports) < 2:
@@ -359,6 +370,8 @@ def _repeatability_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
             "drift": [],
             "baseline": {},
             "missingByReport": [],
+            "missingRunIds": [],
+            "duplicateRunIds": [],
             "comparisons": [],
         }
     baseline = dict_value(get_value(reports[0], "repeatabilityFingerprints"))
@@ -377,6 +390,8 @@ def _repeatability_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
         "status": "passed" if not drift else "failed",
         "drift": drift,
         "missingByReport": [],
+        "missingRunIds": [],
+        "duplicateRunIds": [],
         "comparisons": comparisons,
     }
 

@@ -180,6 +180,13 @@ def test_gpu_validation_docs_require_full_repeatability_fingerprint_set() -> Non
     ) in normalized
 
 
+def test_gpu_validation_docs_require_distinct_repeatability_run_ids() -> None:
+    content = Path("docs/model-runtime/phase8_5_gpu_validation.md").read_text(encoding="utf-8")
+    normalized = re.sub(r"\s+", " ", content)
+
+    assert "Repeatability comparisons require distinct `runId` values" in normalized
+
+
 def test_gpu_validation_docs_require_zero_hard_correctness_count() -> None:
     content = Path("docs/model-runtime/phase8_5_gpu_validation.md").read_text(encoding="utf-8")
     normalized = re.sub(r"\s+", " ", content)

@@ -235,6 +235,29 @@ def test_report_acceptance_compares_repeatability_fingerprints_across_two_passes
     assert summary["checks"]["repeatabilityFingerprints"]["drift"] == ["candidateFingerprints"]
 
 
+def test_report_acceptance_rejects_duplicate_run_ids_for_repeatability() -> None:
+    first = _resident_report()
+    second = deepcopy(first)
+
+    summary = evaluate_phase85_report_acceptance([first, second])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["repeatabilityFingerprints"]["status"] == "failed"
+    assert summary["checks"]["repeatabilityFingerprints"]["duplicateRunIds"] == ["phase85-pass-1"]
+
+
+def test_report_acceptance_requires_run_ids_for_repeatability() -> None:
+    first = _resident_report()
+    second = deepcopy(first)
+    second.pop("runId")
+
+    summary = evaluate_phase85_report_acceptance([first, second])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["repeatabilityFingerprints"]["status"] == "failed"
+    assert summary["checks"]["repeatabilityFingerprints"]["missingRunIds"] == [{"reportIndex": 1}]
+
+
 def test_report_acceptance_requires_full_repeatability_fingerprint_set() -> None:
     report = _resident_report()
     del report["repeatabilityFingerprints"]["canonicalOutput"]
