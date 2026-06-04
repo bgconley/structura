@@ -600,6 +600,30 @@ def test_rejected_payload_candidate_kind_is_normalized_for_event() -> None:
     assert admission.rejected_candidates[0]["candidateKind"] == "line_item"
 
 
+def test_rejected_payload_field_path_is_trimmed_for_event() -> None:
+    context = _context()
+
+    admission = admit_extraction_candidates(
+        context=context,
+        field_candidates=[],
+        line_item_candidates=[],
+        observation_candidates=[],
+        rejected_candidate_payloads=[
+            {
+                "candidate_kind": "field",
+                "field_path": " receipt.transaction.total ",
+                "payload": {"value": {"amount": 4.65, "currency": "USD"}},
+                "decision": "rejected_missing_evidence",
+                "reasons": ["missing_concrete_evidence"],
+                "evidence_concrete": False,
+            }
+        ],
+    )
+
+    assert admission.events[0].field_path == "receipt.transaction.total"
+    assert admission.rejected_candidates[0]["fieldPath"] == "receipt.transaction.total"
+
+
 def test_rejected_payload_string_reason_stays_whole() -> None:
     context = _context()
 

@@ -499,7 +499,8 @@ def _dict(value: object) -> dict[str, Any]:
 def _optional_string(value: object) -> str | None:
     if value in (None, ""):
         return None
-    return str(value)
+    text = str(value).strip()
+    return text or None
 
 
 def _bool_value(value: object) -> bool:
