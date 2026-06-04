@@ -81,13 +81,18 @@ def _truth_surface(document: Mapping[str, Any]) -> dict[str, Any]:
         for observation in _merged_rows(document, "observations", "canonicalObservations")
         if _status(observation, "status") in TRUTH_OBSERVATION_STATUSES
     ]
-    user_confirmed = [
+    explicit_user_confirmed = [
+        _surface_item(fact, surface="truth")
+        for fact in _merged_rows(document, "userConfirmedFacts", "user_confirmed_facts")
+    ]
+    derived_user_confirmed = [
         item
         for item in [*canonical_fields, *canonical_line_items, *canonical_observations]
         if _status(item, "reviewStatus", "review_status", "status")
         in {"user_confirmed", "user_corrected"}
         or _value(item, "sourceKind", "source_kind") == "human"
     ]
+    user_confirmed = _dedupe_rows([*explicit_user_confirmed, *derived_user_confirmed])
     return {
         "canonicalFields": canonical_fields,
         "canonicalLineItems": canonical_line_items,
@@ -186,7 +191,12 @@ def _document_quality(
     explicit = _mapping(_value(document, "documentQuality", "document_quality"))
     canonical_count = sum(
         len(truth.get(key, []))
-        for key in ("canonicalFields", "canonicalLineItems", "canonicalObservations")
+        for key in (
+            "canonicalFields",
+            "canonicalLineItems",
+            "canonicalObservations",
+            "userConfirmedFacts",
+        )
     )
     candidate_count = sum(
         len(review.get(key, []))
@@ -403,6 +413,20 @@ def _merged_rows(mapping: Mapping[str, Any], *keys: str) -> list[Mapping[str, An
                 seen_ids.add(row_id_text)
             rows.append(row)
     return rows
+
+
+def _dedupe_rows(rows: Sequence[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
+    deduped: list[Mapping[str, Any]] = []
+    seen_ids: set[str] = set()
+    for row in rows:
+        row_id = _value(row, "id")
+        if row_id not in (None, ""):
+            row_id_text = str(row_id)
+            if row_id_text in seen_ids:
+                continue
+            seen_ids.add(row_id_text)
+        deduped.append(row)
+    return deduped
 
 
 def _rows(mapping: Mapping[str, Any], *keys: str) -> list[Mapping[str, Any]]:
