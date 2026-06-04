@@ -96,6 +96,7 @@ def test_planner_task_report_query_derives_missing_page_number() -> None:
         "dp.page_number, dep.page_number, dtp.page_number)"
     )
     assert page_number_expr in runner._PLANNER_TASKS_SQL
+    assert "task.visual_plan_summary" in runner._PLANNER_TASKS_SQL
     assert "LEFT JOIN semantic_region_annotations region" in runner._PLANNER_TASKS_SQL
     assert "LEFT JOIN document_elements de" in runner._PLANNER_TASKS_SQL
     assert "LEFT JOIN document_tables dt" in runner._PLANNER_TASKS_SQL

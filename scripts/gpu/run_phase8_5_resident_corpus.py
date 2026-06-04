@@ -522,6 +522,7 @@ SELECT task.id, task.plan_id, task.semantic_region_id, task.semantic_type,
        task.contract_resolution_reason, task.compatibility_mode, task.grounding_kind,
        COALESCE(task.page_number, psa.page_number, dp.page_number, dep.page_number, dtp.page_number)
          AS page_number,
+       task.visual_plan_summary,
        task.status, task.skip_reason, task.review_required, task.task_json
 FROM semantic_extraction_plan_tasks task
 LEFT JOIN semantic_region_annotations region ON region.id = task.semantic_region_id

@@ -20,6 +20,7 @@ from lib.extraction.canonical_repository import (
     update_document_rollups,
 )
 from lib.extraction.errors import ExtractionRepositoryError
+from lib.extraction.extraction_plan_task_repository import update_plan_task_visual_summary
 from lib.extraction.models import (
     CandidateFact,
     ClassificationDecision,
@@ -181,6 +182,11 @@ def _persist_extraction_rows(
                 review_status=review_status,
                 raw_asset_id=raw_asset_id,
                 run_scope=run_scope,
+            )
+            update_plan_task_visual_summary(
+                cur,
+                plan_task_id=run_scope.plan_task_id,
+                extraction_metadata=extraction_for_insert.metadata,
             )
             persist_candidate_admission_events(
                 cur,
