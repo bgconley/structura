@@ -14,6 +14,7 @@ from lib.model_runtime.reliability_report_normalization import (
     int_value,
     list_value,
     normalized_decision,
+    normalized_text,
     sum_values,
 )
 from lib.model_runtime.reliability_versions import (
@@ -224,7 +225,7 @@ def extraction_pressure(documents: list[dict[str, Any]]) -> dict[str, Any]:
     planner_rows = all_rows(documents, "planner")
     tasks = all_rows(documents, "plannerTasks")
     selected_tasks = [
-        task for task in tasks if str(get_value(task, "status") or "").startswith("selected")
+        task for task in tasks if normalized_text(get_value(task, "status")).startswith("selected")
     ]
     selected_by_backend = Counter(
         str(get_value(task, "extractor_backend", "extractorBackend") or "unknown")
@@ -250,7 +251,9 @@ def extraction_pressure(documents: list[dict[str, Any]]) -> dict[str, Any]:
         "maxTasksPerDocumentPolicy": int_value(max_doc),
         "maxTasksPerPagePolicy": int_value(max_page),
         "budgetExceededCount": sum(
-            1 for task in tasks if str(get_value(task, "status") or "") == "skipped_budget_exceeded"
+            1
+            for task in tasks
+            if normalized_text(get_value(task, "status")) == "skipped_budget_exceeded"
         )
         or sum_values(planner_rows, "skipped_task_count", "skippedTaskCount"),
         "estimatedVisualTokens": estimated_visual,

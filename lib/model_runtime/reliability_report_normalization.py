@@ -115,4 +115,8 @@ def snake(key: str) -> str:
 
 
 def normalized_decision(value: Any) -> str:
+    return normalized_text(value)
+
+
+def normalized_text(value: Any) -> str:
     return str(value or "").strip().lower()

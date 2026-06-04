@@ -14,6 +14,7 @@ from lib.model_runtime.reliability_report_normalization import (
     int_value,
     list_value,
     normalized_decision,
+    normalized_text,
     sum_values,
 )
 from lib.model_runtime.reliability_summaries import (
@@ -223,7 +224,9 @@ def recomputed_extraction_pressure(report: dict[str, Any]) -> dict[str, Any] | N
     if not planner_rows and not task_rows:
         return None
     selected_tasks = [
-        task for task in task_rows if str(get_value(task, "status") or "").startswith("selected")
+        task
+        for task in task_rows
+        if normalized_text(get_value(task, "status")).startswith("selected")
     ]
     selected_by_backend = Counter(
         str(get_value(task, "extractor_backend", "extractorBackend") or "unknown")
@@ -239,7 +242,9 @@ def recomputed_extraction_pressure(report: dict[str, Any]) -> dict[str, Any] | N
         for task in task_rows
     )
     skipped_budget_count = sum(
-        1 for task in task_rows if str(get_value(task, "status") or "") == "skipped_budget_exceeded"
+        1
+        for task in task_rows
+        if normalized_text(get_value(task, "status")) == "skipped_budget_exceeded"
     )
     return {
         "plannedTaskCount": sum_values(planner_rows, "selected_task_count", "selectedTaskCount")
