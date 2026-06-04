@@ -73,11 +73,10 @@ def report_lineage_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
             pipeline_version=pipeline_version,
             model_mode=model_mode,
         )
-        _validate_model_backed_manifest(
+        _validate_run_manifest_lineage(
             missing=missing,
             invalid=invalid,
             run_manifest=run_manifest,
-            model_mode=model_mode,
         )
 
         if missing or invalid:
@@ -144,16 +143,12 @@ def _validate_report_identity(
             invalid.append("fixtureType/runManifest.model_mode")
 
 
-def _validate_model_backed_manifest(
+def _validate_run_manifest_lineage(
     *,
     missing: list[str],
     invalid: list[str],
     run_manifest: dict[str, Any],
-    model_mode: Any,
 ) -> None:
-    if not isinstance(model_mode, str) or model_mode.strip() not in {"live", "required"}:
-        return
-
     for profile_key, expected_profile in EXPECTED_LIVE_MODEL_PROFILES.items():
         actual_profile = get_value(run_manifest, profile_key, _camelize(profile_key))
         lineage_name = f"runManifest.{profile_key}"

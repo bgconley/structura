@@ -134,6 +134,39 @@ def test_report_lineage_fails_for_stale_task12_manifest_lineage() -> None:
     ]
 
 
+def test_report_lineage_requires_full_manifest_for_deterministic_fixture() -> None:
+    report = _lineage_report(
+        fixture_type="deterministic_fixture",
+        model_mode="fixture",
+    )
+    for key in (
+        "semantic_profile",
+        "granite_profile",
+        "text_embedding_profile",
+        "visual_embedding_profile",
+        *_task12_manifest_lineage(),
+    ):
+        report["runManifest"].pop(key)
+
+    summary = report_lineage_check([report])
+
+    assert summary["status"] == "failed"
+    assert summary["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "missing": [
+                "runManifest.semantic_profile",
+                "runManifest.granite_profile",
+                "runManifest.text_embedding_profile",
+                "runManifest.visual_embedding_profile",
+                *(f"runManifest.{key}" for key in _task12_manifest_lineage()),
+            ],
+            "invalid": [],
+        }
+    ]
+
+
 def test_report_lineage_fails_for_missing_manifest_run_id() -> None:
     report = _lineage_report()
     report["runManifest"].pop("run_id")
@@ -168,15 +201,19 @@ def test_report_lineage_fails_for_mismatched_manifest_run_id() -> None:
     ]
 
 
-def _lineage_report() -> dict[str, Any]:
+def _lineage_report(
+    *,
+    fixture_type: str = "model_backed",
+    model_mode: str = "live",
+) -> dict[str, Any]:
     return {
         "runId": "phase85-pass-1",
-        "fixtureType": "model_backed",
+        "fixtureType": fixture_type,
         "measuredAt": "2026-06-04T12:00:00+00:00",
         "runManifest": {
             "run_id": "phase85-pass-1",
             "pipeline_version": "phase8_5_reliability_v1",
-            "model_mode": "live",
+            "model_mode": model_mode,
             "semantic_profile": QWEN_SEMANTIC_PROFILE,
             "granite_profile": GRANITE_VISION_PROFILE,
             "text_embedding_profile": TEXT_EMBED_PROFILE,
