@@ -84,6 +84,33 @@ def test_reliability_report_includes_gold_metric_summary_when_documents_provide_
     assert gold["metrics"]["lineItemRowF1ByFamily"]["status"] == "passed"
 
 
+def test_reliability_report_combines_all_document_gold_metric_sources() -> None:
+    failing_metrics = _gold_metrics()
+    failing_metrics["expectedCalibrationError"] = 0.5
+
+    report = build_phase85_reliability_report(
+        run_id="phase85-20260604-gold-002",
+        title_prefix="Phase 8.5 Gold",
+        documents=[
+            {
+                "document": {"id": "doc-gold-pass"},
+                "goldMetrics": _gold_metrics(),
+                "goldThresholds": _gold_thresholds(),
+            },
+            {
+                "document": {"id": "doc-gold-fail"},
+                "goldMetrics": failing_metrics,
+                "goldThresholds": _gold_thresholds(),
+            },
+        ],
+    )
+
+    gold = report["acceptanceGates"]["goldCorpusQuality"]
+    assert gold["status"] == "failed"
+    assert gold["failedMetrics"] == ["expectedCalibrationError"]
+    assert gold["metrics"]["expectedCalibrationError"]["status"] == "failed"
+
+
 def _gold_metrics() -> dict[str, object]:
     return {
         "familyTop1Accuracy": 0.92,
