@@ -237,6 +237,14 @@ def test_gpu_validation_docs_require_zero_hard_correctness_count() -> None:
     assert "Hard correctness and operational SLO counters must be numeric zero" in normalized
 
 
+def test_gpu_validation_docs_describe_title_derived_source_invariant() -> None:
+    content = Path("docs/model-runtime/phase8_5_gpu_validation.md").read_text(encoding="utf-8")
+    normalized = re.sub(r"\s+", " ", content)
+
+    assert "Document-title-derived merchant or seller fields are violations" in normalized
+    assert "evidence refs or row-level source fields" in normalized
+
+
 def test_gpu_validation_docs_require_zero_target_dead_letters() -> None:
     content = Path("docs/model-runtime/phase8_5_gpu_validation.md").read_text(encoding="utf-8")
     normalized = re.sub(r"\s+", " ", content)

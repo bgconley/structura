@@ -308,6 +308,8 @@ def _is_title_derived_merchant_or_seller(
         return False
     if _title_derivation_allowed(field) or _title_derivation_allowed(document):
         return False
+    if _source_is_document_title(field):
+        return True
     evidence = list_value(get_value(field, "evidence", "evidence_json", "evidenceJson"))
     return any(_evidence_is_document_title(item) for item in evidence if isinstance(item, dict))
 
@@ -330,8 +332,12 @@ def _title_derivation_allowed(mapping: dict[str, Any]) -> bool:
 
 
 def _evidence_is_document_title(evidence: dict[str, Any]) -> bool:
+    return _source_is_document_title(evidence)
+
+
+def _source_is_document_title(mapping: dict[str, Any]) -> bool:
     source = str(
-        get_value(evidence, "source", "sourceKind", "source_kind", "sourceEngine", "source_engine")
+        get_value(mapping, "source", "sourceKind", "source_kind", "sourceEngine", "source_engine")
         or ""
     ).lower()
     return source in {"document_title", "title"} or "document_title" in source

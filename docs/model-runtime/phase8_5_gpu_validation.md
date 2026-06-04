@@ -107,6 +107,9 @@ evidence.
 Hard correctness acceptance requires
 `acceptanceGates.hardCorrectnessInvariants.status = passed` and
 `totalViolationCount = 0`.
+Document-title-derived merchant or seller fields are violations whether the
+title provenance appears in evidence refs or row-level source fields, unless the
+document or field is explicitly allowlisted.
 Operational SLO acceptance requires
 `acceptanceGates.operationalSLOs.status = passed` and
 `metrics.targetQueueDeadLetterCount = 0`.
