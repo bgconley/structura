@@ -106,6 +106,18 @@ def test_gpu_validation_docs_require_report_lineage() -> None:
     ) in normalized
 
 
+def test_gpu_validation_docs_require_full_repeatability_fingerprint_set() -> None:
+    content = Path("docs/model-runtime/phase8_5_gpu_validation.md").read_text(encoding="utf-8")
+    normalized = re.sub(r"\s+", " ", content)
+
+    assert (
+        "Report acceptance requires the full repeatability fingerprint set: "
+        "`documentFamily`, `semanticRegions`, `plannerTasks`, "
+        "`candidateFingerprints`, `canonicalOutput`, `reviewTasks`, and "
+        "`rejectionDistribution`"
+    ) in normalized
+
+
 def test_gpu_validation_docs_describe_manifest_builder_inputs() -> None:
     content = Path("docs/model-runtime/phase8_5_gpu_validation.md").read_text(encoding="utf-8")
     normalized = re.sub(r"\s+", " ", content)

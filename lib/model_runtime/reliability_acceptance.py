@@ -33,7 +33,15 @@ REQUIRED_REPORT_SUMMARIES = (
     "repeatabilityFingerprints",
     "acceptanceGates",
 )
-REPEATABILITY_KEYS = ("plannerTasks", "candidateFingerprints")
+REPEATABILITY_KEYS = (
+    "documentFamily",
+    "semanticRegions",
+    "plannerTasks",
+    "candidateFingerprints",
+    "canonicalOutput",
+    "reviewTasks",
+    "rejectionDistribution",
+)
 
 __all__ = [
     "REQUIRED_REPORT_SUMMARIES",
@@ -236,8 +244,34 @@ def _gold_check(reports: list[dict[str, Any]], *, require_gold: bool) -> dict[st
 
 
 def _repeatability_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
+    missing_by_report: list[dict[str, Any]] = []
+    for index, report in enumerate(reports):
+        fingerprints = dict_value(get_value(report, "repeatabilityFingerprints"))
+        missing = [key for key in REPEATABILITY_KEYS if not get_value(fingerprints, key)]
+        if missing:
+            missing_by_report.append(
+                {
+                    "reportIndex": index,
+                    "runId": get_value(report, "runId", "run_id"),
+                    "missing": missing,
+                }
+            )
+    if missing_by_report:
+        return {
+            "status": "failed",
+            "drift": [],
+            "baseline": {},
+            "missingByReport": missing_by_report,
+            "comparisons": [],
+        }
     if len(reports) < 2:
-        return {"status": "not_required", "drift": [], "baseline": {}}
+        return {
+            "status": "not_required",
+            "drift": [],
+            "baseline": {},
+            "missingByReport": [],
+            "comparisons": [],
+        }
     baseline = dict_value(get_value(reports[0], "repeatabilityFingerprints"))
     drift: list[str] = []
     comparisons: list[dict[str, Any]] = []
@@ -253,6 +287,7 @@ def _repeatability_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "status": "passed" if not drift else "failed",
         "drift": drift,
+        "missingByReport": [],
         "comparisons": comparisons,
     }
 

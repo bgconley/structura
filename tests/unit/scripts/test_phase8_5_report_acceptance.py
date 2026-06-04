@@ -59,8 +59,13 @@ def _report(run_id: str, *, candidate_fingerprint: str) -> dict[str, object]:
         "safeOutcomeSummary": {},
         "qualitySummary": {},
         "repeatabilityFingerprints": {
+            "documentFamily": "stable-family",
+            "semanticRegions": "stable-semantic",
             "plannerTasks": "stable-planner",
             "candidateFingerprints": candidate_fingerprint,
+            "canonicalOutput": "stable-canonical",
+            "reviewTasks": "stable-review",
+            "rejectionDistribution": "stable-rejections",
         },
         "acceptanceGates": {
             "hardCorrectnessInvariants": {"status": "passed"},

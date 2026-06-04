@@ -133,6 +133,36 @@ def test_report_acceptance_compares_repeatability_fingerprints_across_two_passes
     assert summary["checks"]["repeatabilityFingerprints"]["drift"] == ["candidateFingerprints"]
 
 
+def test_report_acceptance_requires_full_repeatability_fingerprint_set() -> None:
+    report = _resident_report()
+    del report["repeatabilityFingerprints"]["canonicalOutput"]
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["repeatabilityFingerprints"]["status"] == "failed"
+    assert summary["checks"]["repeatabilityFingerprints"]["missingByReport"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "missing": ["canonicalOutput"],
+        }
+    ]
+
+
+def test_report_acceptance_compares_all_repeatability_fingerprints() -> None:
+    first = _resident_report()
+    second = deepcopy(first)
+    second["runId"] = "phase85-pass-2"
+    second["repeatabilityFingerprints"]["canonicalOutput"] = "changed-canonical"
+
+    summary = evaluate_phase85_report_acceptance([first, second])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["repeatabilityFingerprints"]["status"] == "failed"
+    assert summary["checks"]["repeatabilityFingerprints"]["drift"] == ["canonicalOutput"]
+
+
 def _resident_report() -> dict[str, Any]:
     return {
         "runId": "phase85-pass-1",

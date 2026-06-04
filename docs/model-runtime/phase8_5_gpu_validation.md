@@ -95,5 +95,8 @@ Report acceptance also requires `fixtureType`, `measuredAt`, and
 release evidence; live or required reports must include current
 `semantic_profile`, `granite_profile`, `text_embedding_profile`, and
 `visual_embedding_profile` lineage.
+Report acceptance requires the full repeatability fingerprint set:
+`documentFamily`, `semanticRegions`, `plannerTasks`, `candidateFingerprints`,
+`canonicalOutput`, `reviewTasks`, and `rejectionDistribution`.
 Use `scripts/gpu/phase8_5_report_acceptance.py` directly when re-checking already
 captured report files.
