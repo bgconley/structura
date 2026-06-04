@@ -364,6 +364,34 @@ def test_report_acceptance_fails_when_hard_invariant_count_is_nonzero() -> None:
     ]
 
 
+def test_report_acceptance_fails_when_hard_invariant_detail_has_violations() -> None:
+    report = _resident_report()
+    report["acceptanceGates"]["hardCorrectnessInvariants"]["invariants"] = {
+        "promptSchemaArtifactsAdmitted": {
+            "status": "failed",
+            "violationCount": 1,
+            "examples": [{"reason": "admitted_prompt_or_schema_artifact"}],
+        }
+    }
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["hardCorrectnessInvariants"]["status"] == "failed"
+    assert summary["checks"]["hardCorrectnessInvariants"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "status": "passed",
+            "details": report["acceptanceGates"]["hardCorrectnessInvariants"],
+            "invalid": [
+                "invariants.promptSchemaArtifactsAdmitted.status",
+                "invariants.promptSchemaArtifactsAdmitted.violationCount",
+            ],
+        }
+    ]
+
+
 def test_report_acceptance_fails_when_hard_invariant_count_is_boolean() -> None:
     report = _resident_report()
     report["acceptanceGates"]["hardCorrectnessInvariants"]["totalViolationCount"] = False

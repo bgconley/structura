@@ -213,31 +213,6 @@ def _required_summaries_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def _gate_check(
-    reports: list[dict[str, Any]],
-    gate_name: str,
-    *,
-    required_status: str,
-) -> dict[str, Any]:
-    failures: list[dict[str, Any]] = []
-    for index, report in enumerate(reports):
-        gate = _gate(report, gate_name)
-        status = str(get_value(gate, "status") or "missing")
-        if status != required_status:
-            failures.append(
-                {
-                    "reportIndex": index,
-                    "runId": get_value(report, "runId", "run_id"),
-                    "status": status,
-                    "details": gate,
-                }
-            )
-    return {
-        "status": "passed" if reports and not failures else "failed",
-        "failures": failures,
-    }
-
-
 def _hard_correctness_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
     failures: list[dict[str, Any]] = []
     for index, report in enumerate(reports):
@@ -249,6 +224,7 @@ def _hard_correctness_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
             invalid.append("status")
         if not _is_zero_number(get_value(gate, "totalViolationCount", "total_violation_count")):
             invalid.append("totalViolationCount")
+        invalid.extend(_hard_invariant_detail_invalids(gate))
         if recomputed is not None and not _is_zero_number(
             get_value(recomputed, "totalViolationCount", "total_violation_count")
         ):
@@ -268,6 +244,20 @@ def _hard_correctness_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
         "status": "passed" if reports and not failures else "failed",
         "failures": failures,
     }
+
+
+def _hard_invariant_detail_invalids(gate: dict[str, Any]) -> list[str]:
+    invalid: list[str] = []
+    invariants = dict_value(get_value(gate, "invariants"))
+    for invariant_name, detail_value in sorted(invariants.items()):
+        detail = dict_value(detail_value)
+        status = get_value(detail, "status")
+        if status is not None and status != "passed":
+            invalid.append(f"invariants.{invariant_name}.status")
+        violation_count = get_value(detail, "violationCount", "violation_count")
+        if not _is_zero_number(violation_count):
+            invalid.append(f"invariants.{invariant_name}.violationCount")
+    return invalid
 
 
 def _operational_slo_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
