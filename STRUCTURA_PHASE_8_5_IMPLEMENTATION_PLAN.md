@@ -145,16 +145,18 @@ Primary source URLs:
 
 1. Lock contracts and tests around explicit Qwen3-VL 8B intent.
 2. Persist semantic intent fields in semantic and Granite extraction job payloads.
-3. Introduce `lib/extraction/rescue_policy.py` and replace `needs_review`-driven rescue.
-4. Enforce semantic rescue dedupe/caps in `lib/semantic_annotations/jobs.py`.
+3. Keep uncertainty on the review/skip path; do not introduce a default rescue
+   policy or hidden second Qwen pass.
+4. Enforce Smart Parse and Granite job dedupe/caps in
+   `lib/semantic_annotations/jobs.py` and the planner.
 5. Fix `scripts/gpu/run_phase8_5_private_corpus.py` so standard mode is Docling
    -> smart semantic -> Granite -> validation -> visual embedding.
-6. Add explicit `--high-quality`, `--allow-8b-rescue`, and `--rescue-stress`
-   flags; `--rescue-stress` is synthetic and not a release corpus default.
-7. Add separate Viewer/API controls for High Quality Parse and Allow 8B Rescue.
+6. Keep standard/private/resident corpus runs on the Smart Parse path unless a
+   future explicit plan reintroduces separate escalation.
+7. Keep Viewer/API controls limited to Smart Parse diagnostics in the active
+   runtime.
 8. Run standard private corpus, Qwen3-VL-8B FP8 semantic JSON, Granite targeted extraction,
-   optional HQ, optional permitted-rescue, visual embedding, and CI gates as
-   separate evidence streams.
+   visual embedding, and CI gates as separate evidence streams.
 9. Before full corpus reruns after semantic changes, run the semantic-only canary
    (`scripts/gpu/run_phase8_5_semantic_canary.py`) to inspect Docling audit
    anchors, Qwen document-family votes, image fan-in/fallback telemetry, and
@@ -1251,7 +1253,7 @@ Validation rules:
   ssh -i /Users/brennanconley/vibecode/infx/ubuntu24_ed25519 bgconley@10.25.0.50
   cd /tank/repos/structura
   git pull --ff-only
-  docker compose --profile models-live up -d model-qwen model-granite model-embed
+  docker compose --profile models-live up -d model-qwen-semantic model-granite model-embed
   docker compose --profile visual-embed-live up -d model-vl-embed
   bash scripts/gpu/phase8_5_model_smoke.sh
   ```
@@ -1355,12 +1357,10 @@ bash scripts/gpu/phase8_5_model_smoke.sh
 python scripts/run_model_corpus.py --require-model-backed --manifest tests/fixtures/model_corpus/phase8_5_model_manifest.json
 ```
 
-Run optional HQ/rescue gates separately from the standard corpus gate:
+Run ad hoc private-document diagnostics separately from the release corpus gate:
 
 ```bash
 python scripts/gpu/run_phase8_5_private_corpus.py --pdf /path/to/private.pdf
-python scripts/gpu/run_phase8_5_private_corpus.py --pdf /path/to/private.pdf --high-quality
-python scripts/gpu/run_phase8_5_private_corpus.py --pdf /path/to/private.pdf --allow-8b-rescue
 ```
 
 Required browser checks:

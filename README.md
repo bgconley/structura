@@ -24,7 +24,7 @@ annotation/model-runtime foundation in progress:
 - Phase 6 contacts, aliases, document-contact links, duplicate merge suggestions, watched-folder PDF intake, filing rules, dry-run explanations, reviewable filing suggestions, operator maintenance CLI commands, and Automation Workbench UI
 - Phase 7 document relationships, relationship suggestions, accept/reject review actions, relationship worker, related-document Viewer panel, timelines, deadlines, relationship/deadline search filters, smart views, and Relationships/Timelines UI
 - Phase 8 difficult-document quality detection, review-required uncertainty, selective fixture visual byte embeddings, Qwen-eligible handwriting fallback with honest Docling provenance until live mode is enabled, visual/hybrid retrieval policy, and difficult-document Viewer/Search/Review cues
-- Phase 8.5 semantic annotation manifests, Qwen Smart/High Quality annotation profiles, targeted Granite extraction jobs, semantic worker/runtime profile, bounded internal model HTTP clients, fixture-vs-live mode separation, model service health snapshots, and model-corpus gate scaffolding
+- Phase 8.5 semantic annotation manifests, Qwen3-VL-8B Smart Parse semantic planning on `model-qwen-semantic`, targeted Granite extraction jobs, semantic worker/runtime profile, bounded internal model HTTP clients, fixture-vs-live mode separation, model service health snapshots, and model-corpus gate scaffolding
 
 ## Local Commands
 
@@ -56,7 +56,7 @@ STRUCTURA_E2E_LIVE=1 npx playwright test tests/e2e/phase1-live.spec.ts tests/e2e
 
 Use `make integration-test` for DB-backed integration validation. It creates a disposable migrated database from `STRUCTURA_INTEGRATION_BASE_DATABASE_URL`, runs `tests/integration`, and drops the database afterward so test fixtures do not pollute the canonical runtime DB.
 
-Use `make golden-corpus` for the sanitized deterministic benchmark manifest. Use `python scripts/run_golden_corpus.py --require-model-backed --manifest <path>` for model-backed release-candidate corpus evidence once real model adapters are configured. Use `make backup-restore-rehearsal` with `STRUCTURA_INTEGRATION_BASE_DATABASE_URL` to run a disposable PostgreSQL migration/restore rehearsal.
+Use `make golden-corpus` for the sanitized deterministic benchmark manifest. Use `make model-corpus-release MODEL_CORPUS_RELEASE_MANIFEST=<path>` or `python scripts/run_model_corpus.py --require-model-backed --manifest <path>` for model-backed release-candidate corpus evidence once real model adapters are configured. Use `make backup-restore-rehearsal` with `STRUCTURA_INTEGRATION_BASE_DATABASE_URL` to run a disposable PostgreSQL migration/restore rehearsal.
 
 Model placeholders are behind a separate profile. They are health placeholders only; they do not provide Granite or embedding inference:
 

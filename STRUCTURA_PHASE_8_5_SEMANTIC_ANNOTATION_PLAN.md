@@ -53,20 +53,24 @@ Uncertain, incomplete, unreconciled, or ambiguous outputs become
 `needs_human_review` or `insufficient_signal`; they do not trigger another
 automatic Qwen pass.
 
-Persisted semantic job intent fields:
+Active semantic job intent fields:
 
-- `semantic_quality_mode`: `smart` or `high_quality`
-- `allow_8b_rescue`: `true` or `false`
+- `semantic_quality_mode`: `smart`
 - `requested_by_user_id`
 - `user_intent_reason`
+
+Legacy `high_quality` and `allow_8b_rescue` values must not be emitted by
+standard ingest. Any future re-enable requires a new plan and a separate
+release gate.
 
 ## Runtime Profiles
 
 - Smart Parse: `qwen3-vl-8b-fp8-semantic:v1`
 - Historical comparator: `qwen3-vl-4b-semantic:v1`
-- Deferred High Quality/Rescue: `qwen3-vl-8b-semantic-hq:v1`, disabled unless
-  a future explicit evaluation re-enables it
 - Structured extraction: `granite-4.0-3b-vision-bf16:v1`
+
+No active runtime profile exists for a separate second-pass Qwen escalation
+service.
 
 The Qwen3-VL-8B FP8 smart profile uses four page images per semantic request,
 preserving the historical Qwen3-VL-2B fan-in shape for short PDFs. It runs on
@@ -138,13 +142,9 @@ supersede prior current manifests atomically.
 4. The semantic gateway produces and validates a Qwen manifest.
 5. The manifest is persisted and grounded Granite extraction jobs are queued.
 6. `worker-extraction` resolves `semantic_region_id` and passes the task to Granite.
-7. `RescuePolicy` may enqueue one bounded `rescue` semantic pass only when the
-   user persisted `allow_8b_rescue = true`, the issue is semantically
-   recoverable, and the same document/region/failure class has not already been
-   rescued.
-
-Do not treat `validation.needs_review`, low confidence, high-risk document
-family, or human-review policy as rescue triggers by themselves.
+7. Uncertain, unsupported, or incomplete output is classified as
+   `needs_human_review`, `insufficient_signal`, `no_extraction_target`, or a
+   planner skip. It does not enqueue a second Qwen pass.
 
 ## Outcome Vocabulary
 
@@ -164,11 +164,9 @@ Runtime defects are the only `pipeline_failed` cases.
 ## API/UI Surface
 
 - `GET /api/v1/documents/{documentId}/semantic-annotations/current`
-- `POST /api/v1/documents/{documentId}/semantic-annotations/high-quality`
-- `POST /api/v1/documents/{documentId}/semantic-annotations/allow-8b-rescue`
 
-The Viewer exposes Smart Parse manifest diagnostics, a deliberate High Quality
-Parse action, and a separate Allow 8B Rescue action. There is no hidden
+The Viewer exposes Smart Parse manifest diagnostics only. There are no active
+second-pass Qwen controls in the default runtime, and there is no hidden
 automatic escalation.
 
 ## Phase 9 Seams
@@ -184,12 +182,13 @@ Minimum Phase 8.5 gates:
 - Migration-from-scratch includes `075_phase8_5_semantic_annotations.sql`.
 - Semantic manifest policy rejects unknown semantic types, unsupported Granite tasks,
   invalid Docling IDs, and unreviewed unmatched regions.
-- Qwen smart/HQ gateways read page images and preserve truthful provenance.
+- Qwen Smart Parse reads page images and preserves truthful provenance.
 - Granite targeted extraction receives semantic region context.
-- Standard ingest never enqueues Qwen3-VL 8B.
-- `needs_review` alone never enqueues rescue.
-- Rescue requires persisted `allow_8b_rescue = true` and is capped/deduped.
-- Private corpus standard mode does not secretly run High Quality.
+- Standard ingest runs one Smart Parse semantic pass and never enqueues hidden
+  second-pass Qwen escalation.
+- `needs_review`, low confidence, high-risk family, or human-review policy never
+  enqueues another Qwen pass.
+- Private corpus standard mode does not secretly run a second semantic pass.
 - Quality outcomes stay distinct from runtime `pipeline_failed`.
 - OpenAPI and event contracts cover semantic annotation routes/jobs.
 - GPU validation must include unit, integration, SAST/type checks, web build, Compose

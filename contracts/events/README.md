@@ -13,7 +13,7 @@ These schemas define queue payloads for the async pipeline.
 
 1. `ingest_document_job`
 2. `classify_document_job`
-3. `semantic_annotate_document_job` after Docling parse for Smart/High Quality planning
+3. `semantic_annotate_document_job` after Docling parse for Smart Parse semantic planning
 4. one or more `extract_document_job`, optionally scoped to semantic regions
 5. one or more `embed_document_job`
 6. optional `analyze_documents_job`
