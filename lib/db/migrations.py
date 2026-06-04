@@ -32,6 +32,7 @@ BASELINE_SQL_FILES = (
     "081_phase8_5_semantic_family_reconciliation.sql",
     "082_phase8_5_semantic_region_asset_scope.sql",
     "083_phase8_5_reliable_extraction_platform.sql",
+    "084_phase8_5_plan_task_page_numbers.sql",
 )
 
 

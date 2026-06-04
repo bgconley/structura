@@ -15,7 +15,7 @@ def test_baseline_migration_scripts_are_present_and_ordered() -> None:
     plan = baseline_migration_plan("database")
 
     assert plan.scripts[0].name == "001_extensions.sql"
-    assert plan.scripts[-1].name == "083_phase8_5_reliable_extraction_platform.sql"
+    assert plan.scripts[-1].name == "084_phase8_5_plan_task_page_numbers.sql"
     assert all(script.exists() for script in plan.scripts)
 
 
@@ -210,3 +210,17 @@ def test_phase8_5_reliable_extraction_platform_migration_is_baseline_migration()
     assert "ADD COLUMN IF NOT EXISTS plan_id" in sql
     assert "ADD COLUMN IF NOT EXISTS plan_task_id" in sql
     assert "candidate_admission_events_plan_task_idx" in sql
+
+
+def test_phase8_5_plan_task_page_numbers_migration_is_baseline_migration() -> None:
+    plan = baseline_migration_plan("database")
+    names = [script.name for script in plan.scripts]
+
+    assert "084_phase8_5_plan_task_page_numbers.sql" in names
+
+    sql = Path("database/084_phase8_5_plan_task_page_numbers.sql").read_text(encoding="utf-8")
+    assert "UPDATE semantic_extraction_plan_tasks task" in sql
+    assert "LEFT JOIN page_semantic_annotations psa" in sql
+    assert "LEFT JOIN document_elements de" in sql
+    assert "LEFT JOIN document_tables dt" in sql
+    assert "task.page_number IS NULL" in sql
