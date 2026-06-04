@@ -1,0 +1,37 @@
+from __future__ import annotations
+
+from typing import Any
+
+
+def unwrap_model_output_payload(payload: Any) -> tuple[dict[str, Any], list[str]]:
+    repairs: list[str] = []
+    if not isinstance(payload, dict):
+        repairs.append(f"coerced_{type(payload).__name__}_payload_to_observation_shell")
+        if isinstance(payload, list):
+            fields = [
+                {"name": f"item_{index + 1}", "value": item} for index, item in enumerate(payload)
+            ]
+            return {"fields": fields}, repairs
+        if payload is None:
+            return {}, repairs
+        return {"fields": [{"name": "raw_text", "value": str(payload)}]}, repairs
+    normalized = payload.get("normalized")
+    if isinstance(normalized, dict):
+        repairs.append("unwrapped_normalized_payload")
+        return _merged_wrapper_payload(payload, normalized, wrapper_key="normalized"), repairs
+    data = payload.get("data")
+    if isinstance(data, dict):
+        repairs.append("unwrapped_data_payload")
+        return _merged_wrapper_payload(payload, data, wrapper_key="data"), repairs
+    return payload, repairs
+
+
+def _merged_wrapper_payload(
+    payload: dict[str, Any],
+    wrapped: dict[str, Any],
+    *,
+    wrapper_key: str,
+) -> dict[str, Any]:
+    merged = {key: value for key, value in payload.items() if key != wrapper_key}
+    merged.update(wrapped)
+    return merged
