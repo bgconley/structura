@@ -19,4 +19,6 @@ JSON object; if it includes `runId` or `run_id`, that value must match the
 evidence section `runId`. It must also include a Phase 8.5 `runManifest` with
 the active `pipeline_version` and report evidence such as `acceptanceGates`,
 `metrics`, `checks`, or `documents`; deterministic fixture artifacts are not
-valid release evidence.
+valid release evidence. The artifact `metrics` object must include the
+section-specific metric values claimed by the manifest, such as Qwen route/review
+rates, Granite table/KVP scores, or text/visual retrieval hit rates.

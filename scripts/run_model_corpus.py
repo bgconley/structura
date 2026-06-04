@@ -20,6 +20,18 @@ REQUIRED_EVIDENCE_ARTIFACT_PAYLOAD_KEYS = (
     "documents",
     "metrics",
 )
+EVIDENCE_SECTION_METRICS = {
+    "qwen": (
+        "qwen_handwriting_route_success_rate",
+        "qwen_review_required_rate",
+    ),
+    "granite": (
+        "granite_table_structure_score",
+        "granite_kvp_exact_match",
+    ),
+    "textEmbedding": ("text_embedding_hit_rate_at_k",),
+    "visualEmbedding": ("visual_embedding_hit_rate_at_k",),
+}
 REQUIRED_METRICS = (
     "qwen_handwriting_route_success_rate",
     "qwen_review_required_rate",
@@ -64,6 +76,7 @@ def evaluate_model_corpus_manifest(
     if require_model_backed and fixture_type != "model_backed":
         raise SystemExit("Model corpus manifest is not model-backed.")
     evidence = _required_mapping(payload, "evidence")
+    metrics = _required_mapping(payload, "metrics")
     for section in REQUIRED_EVIDENCE_SECTIONS:
         if section not in evidence or not isinstance(evidence[section], dict):
             raise SystemExit(f"Model corpus evidence section missing: {section}")
@@ -71,9 +84,9 @@ def evaluate_model_corpus_manifest(
             _assert_model_backed_evidence(
                 section,
                 evidence[section],
+                metrics=metrics,
                 manifest_path=manifest_path,
             )
-    metrics = _required_mapping(payload, "metrics")
     thresholds = _required_mapping(payload, "thresholds")
     for metric in REQUIRED_METRICS:
         _assert_metric(metrics, thresholds, metric)
@@ -130,6 +143,7 @@ def _assert_model_backed_evidence(
     section: str,
     evidence: dict[str, Any],
     *,
+    metrics: dict[str, Any],
     manifest_path: Path | None,
 ) -> None:
     for key in REQUIRED_MODEL_BACKED_EVIDENCE_KEYS:
@@ -149,6 +163,7 @@ def _assert_model_backed_evidence(
             f"{artifact_run_id} != {evidence['runId']}"
         )
     _assert_evidence_artifact_lineage(section, evidence_artifact, evidence_path)
+    _assert_evidence_artifact_metrics(section, evidence_artifact, metrics, evidence_path)
 
 
 def _evidence_summary(evidence: dict[str, Any]) -> dict[str, str]:
@@ -217,6 +232,41 @@ def _assert_evidence_artifact_lineage(
         raise SystemExit(
             f"Model corpus evidence {section} evidencePath must include report evidence: {path}"
         )
+
+
+def _assert_evidence_artifact_metrics(
+    section: str,
+    artifact: dict[str, Any],
+    metrics: dict[str, Any],
+    path: Path,
+) -> None:
+    artifact_metrics = artifact.get("metrics")
+    if not isinstance(artifact_metrics, dict):
+        raise SystemExit(
+            f"Model corpus evidence {section} evidencePath must include metric evidence: {path}"
+        )
+    for metric in EVIDENCE_SECTION_METRICS[section]:
+        if metric not in artifact_metrics:
+            raise SystemExit(
+                f"Model corpus evidence {section} evidencePath missing metric evidence "
+                f"{metric}: {path}"
+            )
+        actual = _metric_float(artifact_metrics[metric], section=section, metric=metric, path=path)
+        expected = _metric_float(metrics[metric], section=section, metric=metric, path=path)
+        if abs(actual - expected) > 1e-9:
+            raise SystemExit(
+                f"Model corpus evidence {section} metric mismatch for {metric}: "
+                f"{actual:.4f} != {expected:.4f}"
+            )
+
+
+def _metric_float(value: Any, *, section: str, metric: str, path: Path) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError) as exc:
+        raise SystemExit(
+            f"Model corpus evidence {section} metric {metric} must be numeric: {path}"
+        ) from exc
 
 
 def _expected_pipeline_version() -> str:

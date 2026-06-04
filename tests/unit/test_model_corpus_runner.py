@@ -229,6 +229,78 @@ def test_model_corpus_script_rejects_fixture_evidence_artifacts(tmp_path) -> Non
     assert "fixture-backed" in result.stderr
 
 
+def test_model_corpus_script_requires_section_metric_evidence(tmp_path) -> None:
+    payload = _manifest(fixture_type="model_backed")
+    _write_evidence_artifacts(tmp_path, payload, fixture_type="model_backed")
+    qwen_evidence = payload["evidence"]["qwen"]  # type: ignore[index]
+    assert isinstance(qwen_evidence, dict)
+    (tmp_path / qwen_evidence["evidencePath"]).write_text(  # type: ignore[index]
+        json.dumps(_evidence_artifact(str(qwen_evidence["runId"]), fixture_type="model_backed")),
+        encoding="utf-8",
+    )
+    manifest = tmp_path / "phase8_5_model_manifest.json"
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_model_corpus.py",
+            "--require-model-backed",
+            "--manifest",
+            str(manifest),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "qwen" in result.stderr
+    assert "qwen_handwriting_route_success_rate" in result.stderr
+    assert "missing metric evidence" in result.stderr
+
+
+def test_model_corpus_script_requires_evidence_metric_values_to_match_manifest(
+    tmp_path,
+) -> None:
+    payload = _manifest(fixture_type="model_backed")
+    _write_evidence_artifacts(tmp_path, payload, fixture_type="model_backed")
+    visual_evidence = payload["evidence"]["visualEmbedding"]  # type: ignore[index]
+    assert isinstance(visual_evidence, dict)
+    metrics = _section_metrics(payload, "visualEmbedding")
+    metrics["visual_embedding_hit_rate_at_k"] = 0.1
+    (tmp_path / visual_evidence["evidencePath"]).write_text(  # type: ignore[index]
+        json.dumps(
+            _evidence_artifact(
+                str(visual_evidence["runId"]),
+                fixture_type="model_backed",
+                metrics=metrics,
+            )
+        ),
+        encoding="utf-8",
+    )
+    manifest = tmp_path / "phase8_5_model_manifest.json"
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_model_corpus.py",
+            "--require-model-backed",
+            "--manifest",
+            str(manifest),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "visualEmbedding" in result.stderr
+    assert "visual_embedding_hit_rate_at_k" in result.stderr
+    assert "metric mismatch" in result.stderr
+
+
 def _manifest(*, fixture_type: str) -> dict[str, object]:
     return {
         "fixtureType": fixture_type,
@@ -326,7 +398,11 @@ def _write_evidence_artifacts(
         evidence["evidencePath"] = f"evidence/{section}.json"
         artifact: dict[str, object]
         if fixture_type:
-            artifact = _evidence_artifact(str(evidence["runId"]), fixture_type=fixture_type)
+            artifact = _evidence_artifact(
+                str(evidence["runId"]),
+                fixture_type=fixture_type,
+                metrics=_section_metrics(payload, section),
+            )
         else:
             artifact = {"runId": evidence["runId"]}
         (evidence_dir / f"{section}.json").write_text(
@@ -335,7 +411,12 @@ def _write_evidence_artifacts(
         )
 
 
-def _evidence_artifact(run_id: str, *, fixture_type: str) -> dict[str, object]:
+def _evidence_artifact(
+    run_id: str,
+    *,
+    fixture_type: str,
+    metrics: dict[str, object] | None = None,
+) -> dict[str, object]:
     return {
         "fixtureType": fixture_type,
         "runId": run_id,
@@ -343,5 +424,23 @@ def _evidence_artifact(run_id: str, *, fixture_type: str) -> dict[str, object]:
             "run_id": run_id,
             "pipeline_version": PIPELINE_VERSION,
         },
-        "metrics": {"source": "unit-test"},
+        "metrics": metrics or {"source": "unit-test"},
     }
+
+
+def _section_metrics(payload: dict[str, object], section: str) -> dict[str, object]:
+    metric_names = {
+        "qwen": (
+            "qwen_handwriting_route_success_rate",
+            "qwen_review_required_rate",
+        ),
+        "granite": (
+            "granite_table_structure_score",
+            "granite_kvp_exact_match",
+        ),
+        "textEmbedding": ("text_embedding_hit_rate_at_k",),
+        "visualEmbedding": ("visual_embedding_hit_rate_at_k",),
+    }[section]
+    metrics = payload["metrics"]
+    assert isinstance(metrics, dict)
+    return {name: metrics[name] for name in metric_names}
