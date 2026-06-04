@@ -197,9 +197,9 @@ def visual_input_plan_summary(documents: list[dict[str, Any]]) -> dict[str, Any]
     routes: Counter[str] = Counter()
     for extraction in all_rows(documents, "extractions"):
         plan = dict_value(get_value(extraction, "visual_plan", "visualPlan"))
-        route = get_value(plan, "route", "selectedRoute", "mode")
+        route = normalized_text(get_value(plan, "route", "selectedRoute", "mode"))
         if route:
-            routes[str(route)] += 1
+            routes[route] += 1
     return {"routeDistribution": dict(sorted(routes.items()))}
 
 

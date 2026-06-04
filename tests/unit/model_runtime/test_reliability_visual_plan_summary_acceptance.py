@@ -31,6 +31,36 @@ def test_report_acceptance_fails_when_visual_plan_summary_is_stale() -> None:
     ]
 
 
+def test_report_visual_plan_summary_normalizes_route_distribution() -> None:
+    report = build_phase85_reliability_report(
+        run_id="phase85-visual-plan-normalized-routes",
+        title_prefix="Phase 8.5 Visual Plan Summary",
+        documents=[_document_report_with_cased_routes()],
+    )
+
+    assert report["visualInputPlanSummary"] == {
+        "routeDistribution": {"crop": 1, "full_page": 2},
+    }
+
+    report["visualInputPlanSummary"] = {
+        "routeDistribution": {" Crop ": 1, " Full_Page ": 2},
+    }
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["visualInputPlanSummary"]["status"] == "failed"
+    assert summary["checks"]["visualInputPlanSummary"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-visual-plan-normalized-routes",
+            "invalid": ["routeDistribution"],
+            "details": report["visualInputPlanSummary"],
+            "recomputed": {"routeDistribution": {"crop": 1, "full_page": 2}},
+        }
+    ]
+
+
 def _document_report() -> dict[str, Any]:
     return {
         "document": {
@@ -48,6 +78,33 @@ def _document_report() -> dict[str, Any]:
                 "status": "completed",
                 "review_status": "needs_review",
                 "visual_plan": {"selectedRoute": "crop"},
+            },
+        ],
+    }
+
+
+def _document_report_with_cased_routes() -> dict[str, Any]:
+    return {
+        "document": {
+            "id": "doc-visual-plan-cased-routes",
+            "document_family": "invoice",
+            "review_status": "needs_review",
+        },
+        "extractions": [
+            {
+                "status": "completed",
+                "review_status": "needs_review",
+                "visual_plan": {"route": " Full_Page "},
+            },
+            {
+                "status": "completed",
+                "review_status": "needs_review",
+                "visual_plan": {"selectedRoute": " full_page "},
+            },
+            {
+                "status": "completed",
+                "review_status": "needs_review",
+                "visual_plan": {"mode": " Crop "},
             },
         ],
     }

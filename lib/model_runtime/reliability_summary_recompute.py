@@ -177,9 +177,9 @@ def recomputed_visual_input_plan_summary(report: dict[str, Any]) -> dict[str, An
     routes: Counter[str] = Counter()
     for extraction in all_rows(document_rows, "extractions"):
         plan = dict_value(get_value(extraction, "visual_plan", "visualPlan"))
-        route = get_value(plan, "route", "selectedRoute", "mode")
+        route = normalized_text(get_value(plan, "route", "selectedRoute", "mode"))
         if route:
-            routes[str(route)] += 1
+            routes[route] += 1
     if not routes:
         return None
     return {"routeDistribution": dict(sorted(routes.items()))}
