@@ -92,3 +92,44 @@ def test_phase9_intake_detects_raw_output_debug_payload_aliases() -> None:
         "model_output_payloads",
         "visual_plan_internals",
     }
+
+
+def test_phase9_intake_includes_document_extraction_debug_refs() -> None:
+    intake = build_phase9_document_intake(
+        {
+            "id": "doc-document-extraction-debug",
+            "extractions": [
+                {
+                    "id": "extraction-document-1",
+                    "schemaName": "invoice",
+                    "promptVersion": "phase8_5-granite-structured-v1",
+                    "normalizationJson": {
+                        "regionEnvelope": {"observations": [{"field_name": "debug_only"}]},
+                        "repairs": ["wrapped_debug_payload"],
+                    },
+                    "rawOutputJson": {
+                        "modelOutputPayload": {"invoice_number": "debug-only-invoice"},
+                        "adapterTrace": {"finish_reason": "stop"},
+                        "visualInputPlan": {"scope": "full_page"},
+                    },
+                }
+            ],
+        }
+    )
+
+    truth_json = json.dumps(intake["truth"], sort_keys=True)
+    assert "debug-only-invoice" not in truth_json
+    assert intake["debug"]["surfaceRefs"] == [
+        {
+            "extractionId": "extraction-document-1",
+            "schemaName": "invoice",
+        }
+    ]
+    assert set(intake["debug"]["availableSurfaces"]) >= {
+        "prompt_versions",
+        "region_envelope",
+        "normalization_repairs",
+        "adapter_traces",
+        "model_output_payloads",
+        "visual_plan_internals",
+    }

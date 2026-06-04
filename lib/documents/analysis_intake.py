@@ -122,15 +122,18 @@ def _review_surface(document: Mapping[str, Any]) -> dict[str, Any]:
 def _debug_surface(document: Mapping[str, Any]) -> dict[str, Any]:
     available: set[str] = set()
     refs: list[dict[str, Any]] = []
-    for extraction in _rows(document, "semanticRegionExtractions"):
+    for extraction in _debug_extractions(document):
         ref: dict[str, Any] = {
             "extractionId": _value(extraction, "id"),
+            "schemaName": _value(extraction, "schemaName", "schema_name"),
             "semanticType": _value(extraction, "semanticType", "semantic_type"),
         }
         if _value(extraction, "promptVersion", "prompt_version"):
             available.add("prompt_versions")
-        normalization = _mapping(_value(extraction, "normalization", "normalization_json"))
-        metadata = _mapping(_value(extraction, "metadata", "metadata_json"))
+        normalization = _mapping(
+            _value(extraction, "normalization", "normalization_json", "normalizationJson")
+        )
+        metadata = _mapping(_value(extraction, "metadata", "metadata_json", "metadataJson"))
         raw_output = _mapping(
             _value(extraction, "rawOutputJson", "raw_output_json", "rawOutput", "raw_output")
         )
@@ -160,6 +163,12 @@ def _debug_surface(document: Mapping[str, Any]) -> dict[str, Any]:
         "availableSurfaces": sorted(available),
         "surfaceRefs": refs,
     }
+
+
+def _debug_extractions(document: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    return _dedupe_rows(
+        [*_rows(document, "semanticRegionExtractions"), *_rows(document, "extractions")]
+    )
 
 
 def _surface_item(
