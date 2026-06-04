@@ -91,3 +91,12 @@ def test_model_corpus_readme_requires_manifest_profile_lineage() -> None:
         "runManifest model profile fields must match the corresponding "
         "evidence section `profile` values"
     ) in normalized
+
+
+def test_gpu_validation_docs_require_report_lineage() -> None:
+    content = Path("docs/model-runtime/phase8_5_gpu_validation.md").read_text(encoding="utf-8")
+    normalized = re.sub(r"\s+", " ", content)
+
+    assert (
+        "Report acceptance also requires `fixtureType`, `measuredAt`, and `runManifest.model_mode`"
+    ) in normalized

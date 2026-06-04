@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
+from lib.model_runtime.reliability_manifest import PIPELINE_VERSION
 from lib.model_runtime.reliability_report_normalization import dict_value, get_value
 
+VALID_FIXTURE_TYPES = frozenset({"deterministic_fixture", "model_backed"})
+VALID_MODEL_MODES = frozenset({"fixture", "live", "required"})
 REQUIRED_REPORT_SUMMARIES = (
     "runManifest",
     "plannerSummary",
@@ -33,6 +37,7 @@ def evaluate_phase85_report_acceptance(
     require_gold: bool = False,
 ) -> dict[str, Any]:
     checks = {
+        "reportLineage": _report_lineage_check(reports),
         "requiredSummaries": _required_summaries_check(reports),
         "hardCorrectnessInvariants": _gate_check(
             reports,
@@ -66,6 +71,74 @@ def assert_phase85_report_acceptance(summary: dict[str, Any]) -> None:
     ]
     reason = ", ".join(failed) if failed else "unknown"
     raise SystemExit(f"Phase 8.5 report acceptance failed: {reason}")
+
+
+def _report_lineage_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
+    failures: list[dict[str, Any]] = []
+    for index, report in enumerate(reports):
+        missing: list[str] = []
+        invalid: list[str] = []
+        fixture_type = get_value(report, "fixtureType", "fixture_type")
+        measured_at = get_value(report, "measuredAt", "measured_at")
+        run_manifest = dict_value(get_value(report, "runManifest", "run_manifest"))
+        pipeline_version = get_value(run_manifest, "pipeline_version", "pipelineVersion")
+        model_mode = get_value(run_manifest, "model_mode", "modelMode")
+
+        if not isinstance(fixture_type, str) or not fixture_type.strip():
+            missing.append("fixtureType")
+        elif fixture_type.strip() not in VALID_FIXTURE_TYPES:
+            invalid.append("fixtureType")
+
+        if not isinstance(measured_at, str) or not measured_at.strip():
+            missing.append("measuredAt")
+        elif _parse_report_timestamp(measured_at) is None:
+            invalid.append("measuredAt")
+
+        if pipeline_version in (None, ""):
+            missing.append("runManifest.pipeline_version")
+        elif pipeline_version != PIPELINE_VERSION:
+            invalid.append("runManifest.pipeline_version")
+
+        if not isinstance(model_mode, str) or not model_mode.strip():
+            missing.append("runManifest.model_mode")
+        elif model_mode.strip() not in VALID_MODEL_MODES:
+            invalid.append("runManifest.model_mode")
+
+        if isinstance(fixture_type, str) and isinstance(model_mode, str):
+            expected_fixture_type = (
+                "model_backed"
+                if model_mode.strip() in {"live", "required"}
+                else "deterministic_fixture"
+            )
+            if fixture_type.strip() != expected_fixture_type:
+                invalid.append("fixtureType/runManifest.model_mode")
+
+        if missing or invalid:
+            failures.append(
+                {
+                    "reportIndex": index,
+                    "runId": get_value(report, "runId", "run_id"),
+                    "missing": missing,
+                    "invalid": invalid,
+                }
+            )
+    return {
+        "status": "passed" if reports and not failures else "failed",
+        "failures": failures,
+    }
+
+
+def _parse_report_timestamp(value: str) -> datetime | None:
+    normalized = value.strip()
+    if normalized.endswith("Z"):
+        normalized = normalized[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return None
+    return parsed
 
 
 def _required_summaries_check(reports: list[dict[str, Any]]) -> dict[str, Any]:

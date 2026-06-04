@@ -33,7 +33,12 @@ def test_phase8_5_report_acceptance_cli_fails_on_repeatability_drift(tmp_path: P
 def _report(run_id: str, *, candidate_fingerprint: str) -> dict[str, object]:
     return {
         "runId": run_id,
-        "runManifest": {"pipeline_version": "phase8_5_reliability_v1"},
+        "fixtureType": "model_backed",
+        "measuredAt": "2026-06-04T12:00:00+00:00",
+        "runManifest": {
+            "pipeline_version": "phase8_5_reliability_v1",
+            "model_mode": "live",
+        },
         "plannerSummary": {},
         "candidateAdmissionSummary": {},
         "envelopeSummary": {},

@@ -9,11 +9,31 @@ def test_report_acceptance_passes_for_resident_report_without_gold_metrics() -> 
     summary = evaluate_phase85_report_acceptance([_resident_report()])
 
     assert summary["status"] == "passed"
+    assert summary["checks"]["reportLineage"]["status"] == "passed"
     assert summary["checks"]["requiredSummaries"]["status"] == "passed"
     assert summary["checks"]["hardCorrectnessInvariants"]["status"] == "passed"
     assert summary["checks"]["operationalSLOs"]["status"] == "passed"
     assert summary["checks"]["goldCorpusQuality"]["status"] == "not_required"
     assert summary["checks"]["repeatabilityFingerprints"]["status"] == "not_required"
+
+
+def test_report_acceptance_fails_for_missing_report_lineage() -> None:
+    report = _resident_report()
+    report.pop("fixtureType")
+    report["runManifest"].pop("model_mode")  # type: ignore[union-attr]
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["reportLineage"]["status"] == "failed"
+    assert summary["checks"]["reportLineage"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "missing": ["fixtureType", "runManifest.model_mode"],
+            "invalid": [],
+        }
+    ]
 
 
 def test_report_acceptance_fails_for_missing_summaries_and_failed_gates() -> None:
@@ -52,7 +72,12 @@ def test_report_acceptance_compares_repeatability_fingerprints_across_two_passes
 def _resident_report() -> dict[str, object]:
     return {
         "runId": "phase85-pass-1",
-        "runManifest": {"pipeline_version": "phase8_5_reliability_v1"},
+        "fixtureType": "model_backed",
+        "measuredAt": "2026-06-04T12:00:00+00:00",
+        "runManifest": {
+            "pipeline_version": "phase8_5_reliability_v1",
+            "model_mode": "live",
+        },
         "plannerSummary": {"selectedTaskCount": 2},
         "candidateAdmissionSummary": {"admittedCount": 2, "rejectedCount": 0},
         "envelopeSummary": {"concreteEvidenceCoverage": 1.0},
