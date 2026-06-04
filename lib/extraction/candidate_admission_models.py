@@ -12,6 +12,7 @@ from lib.extraction.models import (
     ObservationCandidateFact,
 )
 from lib.model_runtime.reliability_versions import CANDIDATE_GATE_VERSION, PLANNER_VERSION
+from lib.model_runtime.source_engines import is_model_source_engine
 
 CandidateKind = Literal["field", "line_item", "observation"]
 
@@ -53,8 +54,8 @@ class CandidateAdmissionContext:
 
     @property
     def model_backed_semantic_region(self) -> bool:
-        return (
-            self.run_scope.extraction_scope == "semantic_region" and self.source_engine != "system"
+        return self.run_scope.extraction_scope == "semantic_region" and is_model_source_engine(
+            self.source_engine
         )
 
 

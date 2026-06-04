@@ -101,6 +101,29 @@ def test_model_backed_candidates_are_admitted_as_review_required() -> None:
     assert admission.events[0].contract_registry_version == CONTRACT_REGISTRY_VERSION
 
 
+def test_non_model_source_engine_alias_does_not_require_model_evidence() -> None:
+    context = _context(source_engine=" System ")
+    candidate = CandidateFact(
+        field_path="receipt.transaction.total",
+        value_type="money",
+        value={"amount": 4.65, "currency": "USD"},
+        currency="USD",
+        evidence=[],
+        status="proposed",
+    )
+
+    admission = admit_extraction_candidates(
+        context=context,
+        field_candidates=[candidate],
+        line_item_candidates=[],
+        observation_candidates=[],
+    )
+
+    assert len(admission.field_candidates) == 1
+    assert admission.events[0].decision == "admitted_auto_promotable"
+    assert admission.events[0].reasons == ()
+
+
 def test_blank_observation_field_name_is_rejected_before_insertion() -> None:
     context = _context()
     candidate = ObservationCandidateFact(
@@ -849,7 +872,11 @@ class JsonSerializingCursor(RecordingCursor):
         self.payloads.append(json.loads(serialized))
 
 
-def _context(*, canonical_target_schema: str = "receipt") -> CandidateAdmissionContext:
+def _context(
+    *,
+    canonical_target_schema: str = "receipt",
+    source_engine: str = "granite_vision_3b",
+) -> CandidateAdmissionContext:
     return CandidateAdmissionContext(
         document_id=uuid4(),
         run_scope=ExtractionRunScope.semantic_region(
@@ -864,7 +891,7 @@ def _context(*, canonical_target_schema: str = "receipt") -> CandidateAdmissionC
             contract_resolution_reason="exact_contract",
             region_envelope_version="phase8_5-region-envelope-v1",
         ),
-        source_engine="granite_vision_3b",
+        source_engine=source_engine,
         model_output_schema_name="granite_receipt_payment_summary.v1",
     )
 
