@@ -45,6 +45,40 @@ def test_report_acceptance_fails_when_task15_control_summaries_are_stale() -> No
     assert summary["checks"]["dedupeSummary"]["status"] == "failed"
 
 
+def test_report_acceptance_normalizes_cased_duplicate_rejection_decisions() -> None:
+    report = build_phase85_reliability_report(
+        run_id="phase85-control-summary",
+        title_prefix="Phase 8.5 Control Summary",
+        documents=[_document_report_with_cased_duplicate_rejection()],
+    )
+    report["dedupeSummary"] = {
+        "plannerDuplicateSuppressedCount": 0,
+        "admissionDuplicateRejectionCount": 0,
+        "totalDuplicateSuppressionCount": 0,
+    }
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["dedupeSummary"]["status"] == "failed"
+    assert summary["checks"]["dedupeSummary"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-control-summary",
+            "invalid": [
+                "admissionDuplicateRejectionCount",
+                "totalDuplicateSuppressionCount",
+            ],
+            "details": report["dedupeSummary"],
+            "recomputed": {
+                "plannerDuplicateSuppressedCount": 0,
+                "admissionDuplicateRejectionCount": 1,
+                "totalDuplicateSuppressionCount": 1,
+            },
+        }
+    ]
+
+
 def _document_report() -> dict[str, Any]:
     return {
         "document": {
@@ -101,6 +135,26 @@ def _document_report() -> dict[str, Any]:
                     }
                 },
             }
+        ],
+    }
+
+
+def _document_report_with_cased_duplicate_rejection() -> dict[str, Any]:
+    return {
+        "document": {
+            "id": "doc-control-summary",
+            "document_family": "invoice",
+            "review_status": "needs_review",
+        },
+        "planner": [{"duplicate_suppressed_count": 0}],
+        "admissionEvents": [
+            {
+                "decision": " Rejected_Duplicate ",
+                "candidate_fingerprint": "candidate-duplicate",
+                "reasons": ["duplicate_candidate"],
+                "evidence_concrete": False,
+                **_admission_event_telemetry(),
+            },
         ],
     }
 

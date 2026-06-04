@@ -166,7 +166,7 @@ def dedupe_summary(documents: list[dict[str, Any]]) -> dict[str, Any]:
     admission_duplicate_rejections = sum(
         1
         for event in all_rows(documents, "admissionEvents")
-        if str(get_value(event, "decision")) == "rejected_duplicate"
+        if normalized_decision(get_value(event, "decision")) == "rejected_duplicate"
     )
     return {
         "plannerDuplicateSuppressedCount": planner_duplicate_suppressed,
