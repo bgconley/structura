@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from lib.model_runtime.reliability_invariants import evaluate_hard_correctness_invariants
 from lib.model_runtime.reliability_report import build_phase85_reliability_report
 
@@ -43,6 +45,44 @@ def test_hard_invariants_flag_admitted_artifacts_placeholders_and_fabrication() 
     assert summary["invariants"]["aggregateSchemasFromIncompatibleFamilies"]["violationCount"] == 1
 
 
+def test_hard_invariants_flag_rejected_candidate_rows_inserted() -> None:
+    document = _safe_document_report()
+    document["admissionEvents"].append(
+        {
+            "decision": "rejected_missing_evidence",
+            "candidate_kind": "field",
+            "candidate_fingerprint": "rejected-field-fingerprint",
+            "field_path": "invoice.total_amount",
+            "payload_json": {
+                "field_path": "invoice.total_amount",
+                "value": "42.00",
+            },
+        }
+    )
+    document["fields"].append(
+        {
+            "id": "field-rejected",
+            "candidate_fingerprint": "rejected-field-fingerprint",
+            "field_path": "invoice.total_amount",
+            "value": "42.00",
+            "status": "proposed",
+        }
+    )
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 1
+    assert summary["invariants"]["rejectedCandidatesInserted"]["violationCount"] == 1
+    assert summary["invariants"]["rejectedCandidatesInserted"]["examples"] == [
+        {
+            "reason": "rejected_candidate_inserted",
+            "documentId": "doc-safe",
+            "entityId": "field-rejected",
+        }
+    ]
+
+
 def test_reliability_report_includes_hard_invariant_summary() -> None:
     report = build_phase85_reliability_report(
         run_id="phase85-20260604-smoke-001",
@@ -59,7 +99,7 @@ def test_reliability_report_includes_hard_invariant_summary() -> None:
     )
 
 
-def _safe_document_report() -> dict[str, object]:
+def _safe_document_report() -> dict[str, Any]:
     return {
         "document": {
             "id": "doc-safe",
@@ -122,7 +162,7 @@ def _safe_document_report() -> dict[str, object]:
     }
 
 
-def _unsafe_document_report() -> dict[str, object]:
+def _unsafe_document_report() -> dict[str, Any]:
     return {
         "document": {
             "id": "doc-unsafe",
@@ -175,7 +215,7 @@ def _unsafe_document_report() -> dict[str, object]:
     }
 
 
-def _artifact_document_report() -> dict[str, object]:
+def _artifact_document_report() -> dict[str, Any]:
     return {
         "document": {
             "id": "doc-artifact",

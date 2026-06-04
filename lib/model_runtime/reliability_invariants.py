@@ -9,6 +9,7 @@ from lib.model_runtime.reliability_invariant_rules import (
     evaluate_extractions,
     evaluate_planner_tasks,
 )
+from lib.model_runtime.reliability_rejected_candidates import evaluate_rejected_candidate_insertions
 
 _INVARIANTS: tuple[tuple[str, str], ...] = (
     (
@@ -34,6 +35,10 @@ _INVARIANTS: tuple[tuple[str, str], ...] = (
     (
         "admittedCandidatesWithoutConcreteEvidence",
         "Admitted candidates must have concrete evidence locators.",
+    ),
+    (
+        "rejectedCandidatesInserted",
+        "Rejected candidates must not be inserted as field, line-item, or observation rows.",
     ),
     (
         "modelBackedSemanticRegionAutoAccepted",
@@ -64,6 +69,7 @@ def evaluate_hard_correctness_invariants(
 
     evaluate_planner_tasks(documents, violations)
     evaluate_admission_events(documents, violations)
+    evaluate_rejected_candidate_insertions(documents, violations)
     evaluate_extractions(documents, violations)
     evaluate_canonical_fields(documents, violations)
 
