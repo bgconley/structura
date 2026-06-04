@@ -71,20 +71,37 @@ def has_concrete_evidence(evidence: list[Evidence] | None) -> bool:
 
 
 def is_concrete_evidence_ref(item: Evidence) -> bool:
-    has_page_context = item.get("page_id") is not None or item.get("page_number") is not None
+    has_page_context = (
+        _evidence_value(item, "page_id", "pageId") is not None
+        or _evidence_value(item, "page_number", "pageNumber") is not None
+    )
     if not has_page_context:
         return False
-    if item.get("bbox") is not None or item.get("element_id") is not None:
+    if item.get("bbox") is not None or _evidence_value(item, "element_id", "elementId") is not None:
         return True
-    if item.get("table_id") is not None and item.get("row_index") is not None:
+    if (
+        _evidence_value(item, "table_id", "tableId") is not None
+        and _evidence_value(item, "row_index", "rowIndex") is not None
+    ):
         return True
-    if item.get("semantic_region_id") is not None:
+    if _evidence_value(item, "semantic_region_id", "semanticRegionId") is not None:
         return True
-    if item.get("text_span") is not None:
+    if _evidence_value(item, "text_span", "textSpan") is not None:
         return True
-    if item.get("source_engine") in {"granite_vision_3b", "qwen3_vl_8b"}:
+    if _evidence_value(item, "source_engine", "sourceEngine") in {
+        "granite_vision_3b",
+        "qwen3_vl_8b",
+    }:
         return False
-    return bool(item.get("source_text"))
+    return bool(_evidence_value(item, "source_text", "sourceText"))
+
+
+def _evidence_value(item: Evidence, *keys: str) -> Any:
+    for key in keys:
+        value = item.get(key)
+        if value is not None:
+            return value
+    return None
 
 
 def _element_evidence(

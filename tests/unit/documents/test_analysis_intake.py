@@ -175,6 +175,71 @@ def test_phase9_intake_requires_structura_owned_evidence_locator() -> None:
     assert semantic_region_anchored["eligibility"] == "analysis_enabled_with_uncertainty"
 
 
+def test_phase9_intake_requires_page_context_for_structural_locators() -> None:
+    bbox_without_page = build_phase9_document_intake(
+        {
+            "id": "doc-bbox-without-page",
+            "fields": [
+                {
+                    "fieldPath": "invoice.total_amount",
+                    "value": {"amount": 42.5, "currency": "USD"},
+                    "reviewStatus": "auto_accepted",
+                    "evidence": [{"bbox": [1, 2, 3, 4], "sourceEngine": "granite_vision_3b"}],
+                }
+            ],
+        }
+    )
+
+    assert bbox_without_page["documentQuality"]["evidence_locator_coverage"] == 0.0
+    assert bbox_without_page["eligibility"] == "analysis_review_only_evidence_sparse"
+
+    table_without_row = build_phase9_document_intake(
+        {
+            "id": "doc-table-without-row",
+            "fields": [
+                {
+                    "fieldPath": "invoice.total_amount",
+                    "value": {"amount": 42.5, "currency": "USD"},
+                    "reviewStatus": "auto_accepted",
+                    "evidence": [
+                        {
+                            "tableId": "table-1",
+                            "pageNumber": 1,
+                            "sourceEngine": "granite_vision_3b",
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+
+    assert table_without_row["documentQuality"]["evidence_locator_coverage"] == 0.0
+    assert table_without_row["eligibility"] == "analysis_review_only_evidence_sparse"
+
+    element_with_page = build_phase9_document_intake(
+        {
+            "id": "doc-element-with-page",
+            "fields": [
+                {
+                    "fieldPath": "invoice.total_amount",
+                    "value": {"amount": 42.5, "currency": "USD"},
+                    "reviewStatus": "auto_accepted",
+                    "evidence": [
+                        {
+                            "elementId": "element-1",
+                            "pageNumber": 1,
+                            "sourceEngine": "granite_vision_3b",
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+
+    assert element_with_page["documentQuality"]["evidence_locator_coverage"] == 1.0
+    assert element_with_page["eligibility"] == "analysis_enabled_with_uncertainty"
+
+
 def test_phase9_output_mutation_guard_blocks_state_changes() -> None:
     violations = phase9_mutation_violations(
         {

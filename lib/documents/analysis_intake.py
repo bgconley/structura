@@ -4,6 +4,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from lib.documents import analysis_mutation_policy
+from lib.extraction.evidence import is_concrete_evidence_ref
 
 ACCEPTED_REVIEW_STATUSES = {"auto_accepted", "user_confirmed", "user_corrected"}
 TRUTH_OBSERVATION_STATUSES = {"promoted", "auto_accepted", "user_confirmed", "user_corrected"}
@@ -377,18 +378,7 @@ def _collect_evidence(value: Any) -> list[Any]:
 def _has_concrete_locator(evidence: Any) -> bool:
     if not isinstance(evidence, Mapping):
         return False
-    if any(
-        _value(evidence, key) not in (None, "", [])
-        for key in ("bbox", "elementId", "element_id", "tableId", "table_id")
-    ):
-        return True
-    semantic_region_id = _value(evidence, "semanticRegionId", "semantic_region_id")
-    page_locator = _value(evidence, "pageId", "page_id", "pageNumber", "page_number")
-    return semantic_region_id not in (None, "", []) and page_locator not in (
-        None,
-        "",
-        [],
-    )
+    return is_concrete_evidence_ref(dict(evidence))
 
 
 def _review_required_rows(mapping: Mapping[str, Any], *keys: str) -> list[Mapping[str, Any]]:
