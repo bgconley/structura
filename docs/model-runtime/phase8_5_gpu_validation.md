@@ -64,6 +64,11 @@ The committed example model-corpus manifest is deterministic documentation only.
 Release validation must use a private `phase8_5_model_manifest.json` with
 `fixtureType = "model_backed"`.
 
+Use `make model-corpus` only as a deterministic manifest shape check. Use
+`make model-corpus-release MODEL_CORPUS_RELEASE_MANIFEST=/path/to/private/phase8_5_model_manifest.json`
+or `make release-readiness` for the release gate; both require model-backed
+evidence and fail fast when the private manifest is missing or fixture-backed.
+
 For the Phase 8.5 reliability acceptance gate, run the resident corpus twice and
 compare the committed report gates/fingerprints with the current wrapper:
 
