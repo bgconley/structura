@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from lib.extraction.contract_registry import resolved_document_type_from_task_metadata
 from lib.extraction.evidence_context import evidence_context_for_task
 from lib.extraction.granite_budgets import GraniteTaskBudget
 from lib.extraction.granite_prompting import granite_prompt
@@ -102,6 +103,9 @@ class VisionExtractionGateway:
                 source_engine=response.source_engine,
                 visual_plan=decision.primary_plan,
             ),
+            semantic_type=semantic_task.semantic_type if semantic_task is not None else None,
+            target_schema=schema_name,
+            resolved_document_type=_resolved_document_type(semantic_task, schema_name),
         )
         useful = is_useful_granite_output(
             normalized_json=normalized_json,
@@ -148,6 +152,9 @@ class VisionExtractionGateway:
                     source_engine=retry_response.source_engine,
                     visual_plan=retry_decision.primary_plan,
                 ),
+                semantic_type=semantic_task.semantic_type if semantic_task is not None else None,
+                target_schema=schema_name,
+                resolved_document_type=_resolved_document_type(semantic_task, schema_name),
             )
             retry_useful = is_useful_granite_output(
                 normalized_json=retry_normalized_json,
@@ -323,3 +330,16 @@ def _semantic_task_json(task: SemanticExtractionTask | None) -> dict[str, object
         "confidence": task.confidence,
         "reason": task.reason,
     }
+
+
+def _resolved_document_type(
+    task: SemanticExtractionTask | None,
+    schema_name: str,
+) -> str:
+    if task is None:
+        return schema_name
+    return resolved_document_type_from_task_metadata(
+        metadata=task.metadata,
+        semantic_type=task.semantic_type,
+        target_schema=schema_name,
+    )

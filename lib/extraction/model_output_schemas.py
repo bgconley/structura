@@ -12,6 +12,7 @@ from lib.extraction.contract_registry import (
     resolved_document_type_from_task_metadata,
 )
 from lib.semantic_annotations.models import SemanticExtractionTask
+from lib.semantic_annotations.task_routing import corrected_granite_task_for_semantic_type
 
 
 @dataclass(frozen=True)
@@ -36,13 +37,21 @@ def model_output_schema_for_task(
     resolution = resolve_model_output_contract(
         resolved_document_type=resolved_document_type,
         semantic_type=semantic_task.semantic_type,
-        granite_task=semantic_task.granite_task,
+        granite_task=_contract_granite_task(semantic_task),
         target_schema=schema_name,
         allow_generic_fallback=schema_name == "document_observation",
     )
     if resolution.schema_name is None:
         return None
     return load_model_output_schema(resolution.schema_name)
+
+
+def _contract_granite_task(semantic_task: SemanticExtractionTask) -> str:
+    granite_task, _repair = corrected_granite_task_for_semantic_type(
+        semantic_type=semantic_task.semantic_type,
+        granite_task=semantic_task.granite_task,
+    )
+    return granite_task or semantic_task.granite_task
 
 
 @lru_cache(maxsize=16)

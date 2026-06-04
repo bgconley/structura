@@ -249,7 +249,7 @@ def test_granite_gateway_routes_coverage_decision_to_healthcare_contract() -> No
     assert client.request.response_json_schema is not None
 
 
-def test_granite_gateway_routes_retail_order_tables_to_receipt_line_schema() -> None:
+def test_granite_gateway_routes_retail_order_tables_to_retail_contract() -> None:
     client = FakeVisionClient(
         source_engine="granite_vision_3b",
         profile_name=GRANITE_VISION_PROFILE,
@@ -266,7 +266,7 @@ def test_granite_gateway_routes_retail_order_tables_to_receipt_line_schema() -> 
         grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
     )
 
-    GraniteVisionExtractionGateway(client=client).extract(
+    result = GraniteVisionExtractionGateway(client=client).extract(
         source,
         schema_name="receipt",
         route_profile="docling_plus_granite_structured",
@@ -275,13 +275,17 @@ def test_granite_gateway_routes_retail_order_tables_to_receipt_line_schema() -> 
 
     assert client.request is not None
     assert client.request.prompt.startswith("<tables_json>")
-    assert "Do not include source_text" in client.request.prompt
-    assert client.request.response_schema_name == "granite_receipt_line_items.v1"
+    assert client.request.response_schema_name == "granite_retail_order.v1"
     assert client.request.response_json_schema is not None
     line_items = client.request.response_json_schema["properties"]["line_items"]
-    assert line_items["maxItems"] == 16
+    assert line_items["maxItems"] == 40
     item_properties = line_items["items"]["properties"]
-    assert "source_text" not in item_properties
+    assert "source_text" in item_properties
+    assert result.normalization_json["regionEnvelope"]["resolved_document_type"] == "retail_order"
+    assert (
+        result.normalization_json["regionEnvelope"]["model_output_schema_name"]
+        == "granite_retail_order.v1"
+    )
 
 
 def test_granite_gateway_routes_service_record_tables_to_service_record_schema() -> None:

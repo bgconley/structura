@@ -157,6 +157,52 @@ def test_receipt_payment_summary_concretizes_region_evidence_for_candidates() ->
     assert all(has_concrete_evidence(candidate.evidence) for candidate in candidates)
 
 
+def test_receipt_payment_summary_persists_region_envelope_projection() -> None:
+    document_id = uuid4()
+    annotation_id = uuid4()
+    region_id = uuid4()
+    page_id = uuid4()
+
+    normalized, metadata = normalize_granite_region_output(
+        document_id=document_id,
+        schema_name="receipt",
+        model_output_schema_name="granite_receipt_payment_summary.v1",
+        payload={
+            "merchant_name": "Coffee Shop",
+            "transaction_date": "2026-05-01",
+            "subtotal": "$4.25",
+            "tax": "$0.40",
+            "total": "$4.65",
+            "confidence": {"overall": 0.83},
+        },
+        evidence_context=EvidenceContext(
+            source_engine="granite_vision_3b",
+            document_id=document_id,
+            semantic_annotation_id=annotation_id,
+            semantic_region_id=region_id,
+            page_id=page_id,
+            page_number=1,
+        ),
+        semantic_type="receipt_payment_summary",
+        target_schema="receipt",
+        resolved_document_type="receipt",
+    )
+
+    envelope = metadata["regionEnvelope"]
+    assert metadata["regionEnvelopeVersion"] == "phase8_5-region-envelope-v1"
+    assert metadata["normalizedProjectionDerivedFromEnvelope"] is True
+    assert envelope["document_id"] == str(document_id)
+    assert envelope["semantic_annotation_id"] == str(annotation_id)
+    assert envelope["semantic_region_id"] == str(region_id)
+    assert envelope["semantic_type"] == "receipt_payment_summary"
+    assert envelope["model_output_schema_name"] == "granite_receipt_payment_summary.v1"
+    assert envelope["coverage"]["normalized_projection"] == normalized
+    assert {fact["name"] for fact in envelope["facts"]} >= {
+        "receipt.merchant.display_name",
+        "receipt.transaction.total",
+    }
+
+
 def test_receipt_payment_summary_parses_model_datetime_before_candidate_insert() -> None:
     document_id = uuid4()
 
@@ -274,11 +320,9 @@ def test_empty_kvp_output_keeps_region_level_evidence_for_validation() -> None:
             "confidence": {},
         },
     )
-    assert [
-        check
-        for check in validation.checks
-        if check["code"] == "evidence.concrete_locator"
-    ][0]["status"] == "passed"
+    assert [check for check in validation.checks if check["code"] == "evidence.concrete_locator"][
+        0
+    ]["status"] == "passed"
 
 
 def test_healthcare_coverage_decision_maps_to_grounded_observations() -> None:
@@ -324,9 +368,7 @@ def test_healthcare_coverage_decision_maps_to_grounded_observations() -> None:
         ("contact_1.contact_type", "appeal"),
         ("contact_1.phone", "555-0100"),
     ]
-    assert all(
-        has_concrete_evidence(item["evidence"]) for item in normalized["observations"]
-    )
+    assert all(has_concrete_evidence(item["evidence"]) for item in normalized["observations"])
 
 
 def test_observation_mapper_drops_schema_and_prompt_echo_fields() -> None:

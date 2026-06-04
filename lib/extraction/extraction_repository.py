@@ -7,6 +7,8 @@ from uuid import UUID
 from psycopg.types.json import Jsonb
 
 from lib.db.connection import db_connection
+from lib.extraction.candidate_admission import persist_candidate_admission_events
+from lib.extraction.candidate_admission_boundary import apply_candidate_admission_boundary
 from lib.extraction.candidate_repository import (
     insert_field_candidate,
     insert_line_item_candidate,
@@ -124,6 +126,16 @@ def _persist_extraction_rows(
         run_scope=run_scope,
     )
     status = _status_for_persisted_extraction(validation)
+    admission_boundary = apply_candidate_admission_boundary(
+        extraction=extraction,
+        source=source,
+        run_scope=run_scope,
+        field_candidates=field_candidates,
+        line_item_candidates=line_item_candidates,
+        observation_candidates=observation_candidates,
+    )
+    extraction_for_insert = admission_boundary.extraction
+    admission = admission_boundary.admission
     with db_connection() as conn:
         with conn.cursor() as cur:
             _lock_document(cur, source.document_id)
@@ -139,9 +151,9 @@ def _persist_extraction_rows(
                 stored=raw_object,
                 asset_role="raw_model_output",
                 mime_type="application/json",
-                metadata=_artifact_metadata(extraction, run_scope),
-                model_name=extraction.route.model_name,
-                model_version=extraction.route.model_version,
+                metadata=_artifact_metadata(extraction_for_insert, run_scope),
+                model_name=extraction_for_insert.route.model_name,
+                model_version=extraction_for_insert.route.model_version,
             )
             _insert_artifact_asset(
                 cur,
@@ -149,20 +161,20 @@ def _persist_extraction_rows(
                 stored=normalized_object,
                 asset_role="normalized_extraction_json",
                 mime_type="application/json",
-                metadata=_artifact_metadata(extraction, run_scope),
-                model_name=extraction.route.model_name,
-                model_version=extraction.route.model_version,
+                metadata=_artifact_metadata(extraction_for_insert, run_scope),
+                model_name=extraction_for_insert.route.model_name,
+                model_version=extraction_for_insert.route.model_version,
             )
             _supersede_current_extractions(
                 cur,
                 source.document_id,
-                extraction.schema_name,
+                extraction_for_insert.schema_name,
                 extraction_scope=run_scope.extraction_scope,
                 source_semantic_region_id=run_scope.source_semantic_region_id,
             )
             extraction_id = _insert_extraction_run_row(
                 cur,
-                extraction=extraction,
+                extraction=extraction_for_insert,
                 source=source,
                 validation=validation,
                 status=status,
@@ -170,39 +182,44 @@ def _persist_extraction_rows(
                 raw_asset_id=raw_asset_id,
                 run_scope=run_scope,
             )
+            persist_candidate_admission_events(
+                cur,
+                extraction_id=extraction_id,
+                events=admission.events,
+            )
             inserted_candidates = [
                 insert_field_candidate(
                     cur,
                     source.document_id,
                     extraction_id,
-                    extraction.route.source_engine,
+                    extraction_for_insert.route.source_engine,
                     candidate,
                 )
-                for candidate in field_candidates
+                for candidate in admission.field_candidates
             ]
             inserted_line_item_candidates = [
                 insert_line_item_candidate(
                     cur,
                     source.document_id,
                     extraction_id,
-                    extraction.route.source_engine,
+                    extraction_for_insert.route.source_engine,
                     line_item,
                 )
-                for line_item in line_item_candidates
+                for line_item in admission.line_item_candidates
             ]
             inserted_observation_candidates = [
                 insert_observation_candidate(
                     cur,
                     source.document_id,
                     extraction_id,
-                    extraction.route.source_engine,
+                    extraction_for_insert.route.source_engine,
                     observation,
                     semantic_annotation_id=run_scope.semantic_annotation_id,
                     source_semantic_region_id=run_scope.source_semantic_region_id,
                     semantic_type=run_scope.semantic_type,
-                    model_output_schema_name=extraction.model_output_schema_name,
+                    model_output_schema_name=extraction_for_insert.model_output_schema_name,
                 )
-                for observation in observation_candidates
+                for observation in admission.observation_candidates
             ]
             canonical_count = promote_candidates(
                 cur,
@@ -242,9 +259,7 @@ def _persist_extraction_rows(
     return PersistedExtraction(
         extraction_id=extraction_id,
         review_status=review_status,
-        candidate_count=len(field_candidates)
-        + len(line_item_candidates)
-        + len(observation_candidates),
+        candidate_count=admission.candidate_count,
         canonical_count=canonical_count,
         review_task_count=review_task_count,
     )

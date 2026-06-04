@@ -95,6 +95,8 @@ _GENERIC_REVIEW_ONLY_CONTRACTS: dict[tuple[str, str], str] = {
     ("generic_form_kvp", "kvp"): "granite_generic_kvp.v1",
     ("generic_form_kvp", "tables_json"): "granite_generic_kvp.v1",
     ("unsupported_document_region", "kvp"): "granite_generic_kvp.v1",
+    ("document_header", "kvp"): "granite_generic_kvp.v1",
+    ("document_footer", "kvp"): "granite_generic_kvp.v1",
     ("invoice_line_item_table", "tables_json"): "granite_generic_kvp.v1",
     ("receipt_line_item_table", "tables_json"): "granite_generic_kvp.v1",
     ("retail_order_line_item_table", "tables_json"): "granite_generic_kvp.v1",

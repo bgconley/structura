@@ -19,6 +19,15 @@ from lib.extraction.normalization import (
     line_item_candidates_from_extraction,
     observation_candidates_from_extraction,
 )
+from lib.extraction.region_envelope import (
+    region_envelope_from_normalization_json,
+    to_normalization_projection,
+)
+from lib.extraction.region_envelope_candidates import (
+    field_candidates_from_region_envelope,
+    line_item_candidates_from_region_envelope,
+    observation_candidates_from_region_envelope,
+)
 from lib.extraction.repository import (
     load_extraction_source,
     persist_classification,
@@ -167,6 +176,12 @@ class ExtractionService:
         model_output_payload = gateway_result.raw_output_json.get("modelOutputPayload")
         if not isinstance(model_output_payload, dict):
             model_output_payload = None
+        region_envelope = region_envelope_from_normalization_json(gateway_result.normalization_json)
+        if region_envelope is not None:
+            gateway_result = replace(
+                gateway_result,
+                normalized_json=to_normalization_projection(region_envelope),
+            )
         validation = (
             validate_semantic_region_payload(
                 gateway_result.normalized_json,
@@ -187,27 +202,47 @@ class ExtractionService:
         require_concrete_candidate_evidence = (
             semantic_task is not None and gateway_result.route.source_engine != "system"
         )
-        field_candidates = field_candidates_from_extraction(
-            document_id=document_id,
-            schema_name=normalized_schema_name,
-            payload=gateway_result.normalized_json,
-            validation=validation,
-            source_engine=gateway_result.route.source_engine,
-            require_concrete_evidence=require_concrete_candidate_evidence,
-        )
-        line_item_candidates = line_item_candidates_from_extraction(
-            schema_name=normalized_schema_name,
-            payload=gateway_result.normalized_json,
-            validation=validation,
-            source_engine=gateway_result.route.source_engine,
-            require_concrete_evidence=require_concrete_candidate_evidence,
-        )
-        observation_candidates = observation_candidates_from_extraction(
-            schema_name=normalized_schema_name,
-            payload=gateway_result.normalized_json,
-            validation=validation,
-            require_concrete_evidence=require_concrete_candidate_evidence,
-        )
+        if region_envelope is not None:
+            field_candidates = field_candidates_from_region_envelope(
+                document_id=document_id,
+                envelope=region_envelope,
+                validation=validation,
+                source_engine=gateway_result.route.source_engine,
+                require_concrete_evidence=require_concrete_candidate_evidence,
+            )
+            line_item_candidates = line_item_candidates_from_region_envelope(
+                envelope=region_envelope,
+                validation=validation,
+                source_engine=gateway_result.route.source_engine,
+                require_concrete_evidence=require_concrete_candidate_evidence,
+            )
+            observation_candidates = observation_candidates_from_region_envelope(
+                envelope=region_envelope,
+                validation=validation,
+                require_concrete_evidence=require_concrete_candidate_evidence,
+            )
+        else:
+            field_candidates = field_candidates_from_extraction(
+                document_id=document_id,
+                schema_name=normalized_schema_name,
+                payload=gateway_result.normalized_json,
+                validation=validation,
+                source_engine=gateway_result.route.source_engine,
+                require_concrete_evidence=require_concrete_candidate_evidence,
+            )
+            line_item_candidates = line_item_candidates_from_extraction(
+                schema_name=normalized_schema_name,
+                payload=gateway_result.normalized_json,
+                validation=validation,
+                source_engine=gateway_result.route.source_engine,
+                require_concrete_evidence=require_concrete_candidate_evidence,
+            )
+            observation_candidates = observation_candidates_from_extraction(
+                schema_name=normalized_schema_name,
+                payload=gateway_result.normalized_json,
+                validation=validation,
+                require_concrete_evidence=require_concrete_candidate_evidence,
+            )
         persisted = self.persister(
             gateway_result,
             source=source,

@@ -5,11 +5,9 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from lib.extraction.evidence_concretizer import (
-    concretize_normalized_evidence,
-    evidence_ref_from_context,
-)
+from lib.extraction.evidence_concretizer import evidence_ref_from_context
 from lib.extraction.evidence_context import EvidenceContext
+from lib.extraction.region_envelope_projection import finalized_region_output
 
 _NON_LINE_ITEM_HEADINGS = {
     "customer information",
@@ -56,25 +54,44 @@ def normalize_granite_region_output(
     model_output_schema_name: str | None,
     payload: Any,
     evidence_context: EvidenceContext | None = None,
+    semantic_type: str | None = None,
+    target_schema: str | None = None,
+    resolved_document_type: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     model_payload, wrapper_repairs = _unwrapped_payload(payload)
+
+    def finalize(
+        normalized: dict[str, Any],
+        metadata: dict[str, Any],
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        return _finalized_output(
+            normalized,
+            metadata,
+            wrapper_repairs,
+            evidence_context,
+            model_output_schema_name=model_output_schema_name,
+            semantic_type=semantic_type,
+            target_schema=target_schema or schema_name,
+            resolved_document_type=resolved_document_type,
+        )
+
     if model_output_schema_name == "granite_invoice_line_items.v1":
         normalized, metadata = _invoice_line_items_output(
             document_id,
             model_payload,
             evidence_context=evidence_context,
         )
-        return _finalized_output(normalized, metadata, wrapper_repairs, evidence_context)
+        return finalize(normalized, metadata)
     if model_output_schema_name == "granite_payment_summary.v1":
         normalized, metadata = _invoice_payment_output(document_id, model_payload)
-        return _finalized_output(normalized, metadata, wrapper_repairs, evidence_context)
+        return finalize(normalized, metadata)
     if model_output_schema_name == "granite_medical_service_lines.v1":
         normalized, metadata = _medical_service_lines_output(
             document_id,
             model_payload,
             evidence_context=evidence_context,
         )
-        return _finalized_output(normalized, metadata, wrapper_repairs, evidence_context)
+        return finalize(normalized, metadata)
     if model_output_schema_name in {
         "granite_receipt_line_items.v1",
         "granite_retail_order.v1",
@@ -85,28 +102,28 @@ def normalize_granite_region_output(
             evidence_context=evidence_context,
         )
         metadata["mapper"] = model_output_schema_name
-        return _finalized_output(normalized, metadata, wrapper_repairs, evidence_context)
+        return finalize(normalized, metadata)
     if model_output_schema_name == "granite_service_record_line_items.v1":
         normalized, metadata = _service_record_line_items_output(
             document_id,
             model_payload,
             evidence_context=evidence_context,
         )
-        return _finalized_output(normalized, metadata, wrapper_repairs, evidence_context)
+        return finalize(normalized, metadata)
     if model_output_schema_name == "granite_receipt_payment_summary.v1":
         normalized, metadata = _receipt_payment_output(
             document_id,
             model_payload,
             evidence_context=evidence_context,
         )
-        return _finalized_output(normalized, metadata, wrapper_repairs, evidence_context)
+        return finalize(normalized, metadata)
     if model_output_schema_name == "granite_healthcare_coverage_decision.v1":
         normalized, metadata = _healthcare_coverage_decision_output(
             document_id,
             model_payload,
             evidence_context=evidence_context,
         )
-        return _finalized_output(normalized, metadata, wrapper_repairs, evidence_context)
+        return finalize(normalized, metadata)
     if schema_name == "document_observation" or model_output_schema_name in {
         "granite_real_estate_title_seller_info.v1",
         "granite_mortgage_escrow_statement.v1",
@@ -119,19 +136,17 @@ def normalize_granite_region_output(
             model_output_schema_name=model_output_schema_name,
             evidence_context=evidence_context,
         )
-        return _finalized_output(normalized, metadata, wrapper_repairs, evidence_context)
+        return finalize(normalized, metadata)
     if schema_name == "invoice" and _has_flat_invoice_line_items(model_payload):
         normalized, metadata = _invoice_line_items_output(
             document_id,
             model_payload,
             evidence_context=evidence_context,
         )
-        return _finalized_output(normalized, metadata, wrapper_repairs, evidence_context)
-    return _finalized_output(
+        return finalize(normalized, metadata)
+    return finalize(
         model_payload,
         {"mapper": None, "repairs": [], "rejected_fields": []},
-        wrapper_repairs,
-        evidence_context,
     )
 
 
@@ -140,13 +155,22 @@ def _finalized_output(
     metadata: dict[str, Any],
     wrapper_repairs: list[str],
     evidence_context: EvidenceContext | None,
+    *,
+    model_output_schema_name: str | None,
+    semantic_type: str | None,
+    target_schema: str | None,
+    resolved_document_type: str | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    repairs = [*wrapper_repairs, *metadata.get("repairs", [])]
-    if evidence_context is not None:
-        normalized = concretize_normalized_evidence(normalized, evidence_context)
-        repairs.append("attached_region_evidence_context")
-    metadata["repairs"] = repairs
-    return normalized, metadata
+    return finalized_region_output(
+        normalized,
+        metadata,
+        wrapper_repairs,
+        evidence_context,
+        model_output_schema_name=model_output_schema_name,
+        semantic_type=semantic_type,
+        target_schema=target_schema,
+        resolved_document_type=resolved_document_type,
+    )
 
 
 def invoice_line_item_dicts_from_payload(

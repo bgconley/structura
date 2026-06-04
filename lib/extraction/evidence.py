@@ -71,15 +71,14 @@ def has_concrete_evidence(evidence: list[Evidence] | None) -> bool:
 
 
 def is_concrete_evidence_ref(item: Evidence) -> bool:
-    if not item.get("page_number"):
+    has_page_context = item.get("page_id") is not None or item.get("page_number") is not None
+    if not has_page_context:
         return False
     if item.get("bbox") is not None or item.get("element_id") is not None:
         return True
-    if item.get("page_id") is not None and item.get("semantic_region_id") is not None:
-        return True
     if item.get("table_id") is not None and item.get("row_index") is not None:
         return True
-    if item.get("table_id") is not None and item.get("semantic_region_id") is not None:
+    if item.get("semantic_region_id") is not None:
         return True
     if item.get("text_span") is not None:
         return True

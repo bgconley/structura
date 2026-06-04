@@ -14,6 +14,7 @@ from lib.extraction.models import (
     ParsedPageText,
     PersistedExtraction,
 )
+from lib.extraction.service import CreatedJob as ServiceCreatedJob
 from lib.extraction.service import ExtractionService
 from lib.semantic_annotations.models import SemanticExtractionTask, SemanticGroundingRef
 
@@ -304,6 +305,60 @@ def test_extraction_service_does_not_enqueue_rescue_if_persist_fails() -> None:
     assert jobs.created == []
 
 
+def test_extraction_service_builds_candidates_from_region_envelope() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    region_id = uuid4()
+    annotation_id = uuid4()
+    page_id = uuid4()
+    source = _source(document_id=document_id, household_id=household_id)
+    task = SemanticExtractionTask(
+        region_id=region_id,
+        annotation_id=annotation_id,
+        document_id=document_id,
+        semantic_type="receipt_payment_summary",
+        granite_task="kvp",
+        target_schema="receipt",
+        expected_fields=("total", "payment_method"),
+        grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+    )
+    captured: dict[str, Any] = {}
+
+    def persist(*args: object, **kwargs: object) -> PersistedExtraction:
+        captured["extraction"] = args[0]
+        captured.update(kwargs)
+        return _persisted()
+
+    ExtractionService(
+        gateway=EnvelopeOnlyGateway(
+            document_id=document_id,
+            annotation_id=annotation_id,
+            region_id=region_id,
+            page_id=page_id,
+        ),
+        source_loader=lambda loaded_document_id: source,
+        semantic_task_loader=lambda loaded_region_id: task,
+        persister=persist,
+    ).extract_document(
+        document_id,
+        schema_name="receipt",
+        route_profile="docling_plus_granite_structured",
+        semantic_region_id=region_id,
+    )
+
+    assert captured["field_candidates"]
+    assert [candidate.field_path for candidate in captured["field_candidates"]] == [
+        "receipt.transaction.total"
+    ]
+    assert captured["line_item_candidates"] == []
+    assert captured["observation_candidates"] == []
+    persisted_extraction = captured["extraction"]
+    persisted_total = persisted_extraction.normalized_json["transaction"]["total"]
+    assert persisted_total["amount"] == 4.65
+    assert persisted_total["currency"] == "USD"
+    assert persisted_total["evidence"][0]["semantic_region_id"] == str(region_id)
+
+
 def test_live_classification_does_not_enqueue_broad_document_extraction(monkeypatch) -> None:
     document_id = uuid4()
     household_id = uuid4()
@@ -382,19 +437,135 @@ class RecordingGateway:
         )
 
 
+class EnvelopeOnlyGateway:
+    def __init__(
+        self,
+        *,
+        document_id: UUID,
+        annotation_id: UUID,
+        region_id: UUID,
+        page_id: UUID,
+    ) -> None:
+        self.document_id = document_id
+        self.annotation_id = annotation_id
+        self.region_id = region_id
+        self.page_id = page_id
+
+    def extract(
+        self,
+        source: ExtractionSourceDocument,
+        *,
+        schema_name: str,
+        route_profile: str,
+        semantic_task: SemanticExtractionTask | None = None,
+    ) -> GatewayExtraction:
+        del source, semantic_task
+        evidence = {
+            "document_id": str(self.document_id),
+            "source_engine": "granite_vision_3b",
+            "semantic_annotation_id": str(self.annotation_id),
+            "semantic_region_id": str(self.region_id),
+            "page_id": str(self.page_id),
+            "page_number": 1,
+            "source_text": "$4.65",
+            "confidence": 0.83,
+        }
+        return GatewayExtraction(
+            schema_name=schema_name,
+            schema_version="v1",
+            route=ModelRoute(
+                source_engine="granite_vision_3b",
+                model_name="granite",
+                model_version="v1",
+                prompt_version="phase8_5-granite-structured-v1",
+                route_profile=route_profile,
+            ),
+            normalized_json={
+                "schema_name": "receipt",
+                "schema_version": "v1",
+                "document_id": str(self.document_id),
+                "transaction": {},
+                "confidence": {"overall": 0.83},
+            },
+            raw_output_json={
+                "modelInvoked": True,
+                "modelOutputPayload": {
+                    "merchant_name": None,
+                    "transaction_date": None,
+                    "subtotal": None,
+                    "tax": None,
+                    "tip": None,
+                    "total": "$4.65",
+                    "payment_method": None,
+                    "confidence": {"overall": 0.83},
+                },
+            },
+            model_output_schema_name="granite_receipt_payment_summary.v1",
+            model_output_schema_version="v1",
+            normalization_json={
+                "regionEnvelopeVersion": "phase8_5-region-envelope-v1",
+                "normalizedProjectionDerivedFromEnvelope": True,
+                "regionEnvelope": {
+                    "document_id": str(self.document_id),
+                    "semantic_annotation_id": str(self.annotation_id),
+                    "semantic_region_id": str(self.region_id),
+                    "resolved_document_type": "receipt",
+                    "semantic_type": "receipt_payment_summary",
+                    "target_schema": "receipt",
+                    "model_output_schema_name": "granite_receipt_payment_summary.v1",
+                    "coverage": {
+                        "schema_name": "receipt",
+                        "schema_version": "v1",
+                        "confidence": {"overall": 0.83},
+                        "normalized_projection": {
+                            "schema_name": "receipt",
+                            "schema_version": "v1",
+                            "document_id": str(self.document_id),
+                            "merchant": {},
+                            "transaction": {
+                                "total": {
+                                    "amount": 4.65,
+                                    "currency": "USD",
+                                    "evidence": [evidence],
+                                },
+                                "evidence": [evidence],
+                            },
+                            "line_items": [],
+                            "confidence": {"overall": 0.83},
+                        },
+                    },
+                    "facts": [
+                        {
+                            "name": "receipt.transaction.total",
+                            "value": {"amount": 4.65, "currency": "USD"},
+                            "value_type": "money",
+                            "confidence": 0.83,
+                            "evidence": [evidence],
+                        }
+                    ],
+                    "line_items": [],
+                    "table_rows": [],
+                    "observations": [],
+                    "warnings": [],
+                    "abstentions": [],
+                },
+            },
+        )
+
+
 class RecordingJobs:
     def __init__(self) -> None:
         self.created: list[dict[str, Any]] = []
 
-    def create_job(self, **kwargs: object) -> CreatedJob:
+    def create_job(self, **kwargs: object) -> ServiceCreatedJob:
         if "job_id" not in kwargs:
             kwargs["job_id"] = uuid4()
         self.created.append(kwargs)
-        return CreatedJob(job_id=kwargs["job_id"])  # type: ignore[arg-type]
+        return RecordedJob(job_id=kwargs["job_id"])  # type: ignore[arg-type]
 
 
-@dataclass(frozen=True)
-class CreatedJob:
+@dataclass
+class RecordedJob:
     job_id: UUID
 
 

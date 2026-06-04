@@ -4,6 +4,7 @@ from copy import deepcopy
 from typing import Any
 
 from lib.extraction.evidence_context import EvidenceContext
+from lib.extraction.region_envelope import EvidenceRef, RegionExtractionEnvelope
 
 _SKIP_RECURSION_KEYS = {
     "confidence",
@@ -134,9 +135,7 @@ def _ensure_evidence(value: dict[str, Any], evidence_context: EvidenceContext) -
     evidence = value.get("evidence")
     if isinstance(evidence, list) and evidence:
         value["evidence"] = [
-            _merge_ref(entry, evidence_context)
-            for entry in evidence
-            if isinstance(entry, dict)
+            _merge_ref(entry, evidence_context) for entry in evidence if isinstance(entry, dict)
         ]
         return
     value["evidence"] = [
@@ -181,3 +180,93 @@ def _confidence(value: dict[str, Any]) -> float | None:
     if isinstance(candidate, int | float):
         return float(candidate)
     return None
+
+
+def attach_evidence_to_envelope(
+    *,
+    envelope: RegionExtractionEnvelope,
+    ctx: EvidenceContext,
+) -> RegionExtractionEnvelope:
+    copied = envelope.model_copy(deep=True)
+    projection = copied.coverage.get("normalized_projection")
+    if isinstance(projection, dict):
+        copied.coverage["normalized_projection"] = concretize_normalized_evidence(
+            projection,
+            ctx,
+        )
+    for fact in copied.facts:
+        fact.evidence = _ensure_envelope_evidence(
+            fact.evidence,
+            ctx,
+            source_text=fact.source_text or fact.value,
+            confidence=fact.confidence,
+        )
+    for item in copied.line_items:
+        item.evidence = _ensure_envelope_evidence(
+            item.evidence,
+            ctx,
+            source_text=item.description,
+            confidence=item.confidence,
+        )
+    for row in copied.table_rows:
+        row.evidence = _ensure_envelope_evidence(
+            row.evidence,
+            ctx,
+            source_text=None,
+            confidence=row.confidence,
+        )
+    for obs in copied.observations:
+        obs.evidence = _ensure_envelope_evidence(
+            obs.evidence,
+            ctx,
+            source_text=obs.source_text or obs.value,
+            confidence=obs.confidence,
+        )
+    return copied
+
+
+def has_concrete_locator(ref: EvidenceRef) -> bool:
+    has_page_context = ref.page_id is not None or ref.page_number is not None
+    if not has_page_context:
+        return False
+    if ref.element_id or ref.bbox:
+        return True
+    if ref.table_id and ref.row_index is not None:
+        return True
+    if ref.semantic_region_id:
+        return True
+    return False
+
+
+def _ensure_envelope_evidence(
+    refs: list[EvidenceRef],
+    ctx: EvidenceContext,
+    *,
+    source_text: object | None,
+    confidence: float | None,
+) -> list[EvidenceRef]:
+    if refs:
+        return [_merge_envelope_ref(ref, ctx) for ref in refs]
+    return [
+        EvidenceRef.model_validate(
+            evidence_ref_from_context(
+                evidence_context=ctx,
+                source_text=source_text,
+                confidence=confidence,
+            )
+        )
+    ]
+
+
+def _merge_envelope_ref(ref: EvidenceRef, ctx: EvidenceContext) -> EvidenceRef:
+    contextual = evidence_ref_from_context(
+        evidence_context=ctx,
+        source_text=ref.source_text,
+        confidence=ref.confidence,
+    )
+    return EvidenceRef.model_validate(
+        {
+            **ref.model_dump(mode="json", exclude_none=True),
+            **{key: value for key, value in contextual.items() if key != "source_text"},
+        }
+    )
