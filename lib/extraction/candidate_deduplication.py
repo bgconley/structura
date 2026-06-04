@@ -45,6 +45,7 @@ def line_item_exact_key(fact: LineItemCandidateFact) -> tuple[Any, ...]:
         float_key(fact.tax_amount),
         float_key(fact.net_amount),
         normalized_text_key(fact.currency),
+        evidence_locator_key(fact.evidence),
     )
 
 
@@ -110,6 +111,29 @@ def observation_key(candidate: ObservationCandidateFact) -> tuple[Any, ...]:
         normalized_text_key(candidate.field_name),
         normalized_text_key(candidate.value_type),
         json_key(candidate.value),
+        evidence_locator_key(candidate.evidence),
+    )
+
+
+def evidence_locator_key(evidence: list[dict[str, Any]]) -> tuple[Any, ...]:
+    first = evidence[0] if evidence else {}
+    if not _has_deduplication_locator(first):
+        return ()
+    return (
+        normalized_text_key(first.get("semantic_region_id")),
+        first.get("page_number"),
+        normalized_text_key(first.get("page_id")),
+        normalized_text_key(first.get("element_id")),
+        normalized_text_key(first.get("table_id")),
+        first.get("row_index"),
+        json_key(first.get("bbox")) if first.get("bbox") is not None else "",
+    )
+
+
+def _has_deduplication_locator(evidence: dict[str, Any]) -> bool:
+    return any(
+        evidence.get(key) not in (None, "", [])
+        for key in ("semantic_region_id", "table_id", "element_id", "bbox")
     )
 
 

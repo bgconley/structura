@@ -42,6 +42,48 @@ def test_candidate_deduplication_prefers_rich_line_items_over_sparse_duplicates(
     ]
 
 
+def test_candidate_deduplication_preserves_same_line_item_from_distinct_rows() -> None:
+    first = LineItemCandidateFact(
+        line_item_type="invoice_item",
+        ordinal=1,
+        description="Monthly service fee",
+        net_amount=99.00,
+        currency="USD",
+        evidence=[
+            {
+                "page_number": 1,
+                "semantic_region_id": "region-1",
+                "table_id": "table-1",
+                "row_index": 1,
+            }
+        ],
+    )
+    second = LineItemCandidateFact(
+        line_item_type="invoice_item",
+        ordinal=2,
+        description="Monthly service fee",
+        net_amount=99.00,
+        currency="USD",
+        evidence=[
+            {
+                "page_number": 1,
+                "semantic_region_id": "region-1",
+                "table_id": "table-1",
+                "row_index": 2,
+            }
+        ],
+    )
+
+    candidates = dedupe_line_item_candidates([first, second])
+
+    assert [
+        (item.ordinal, item.description, item.evidence[0]["row_index"]) for item in candidates
+    ] == [
+        (1, "Monthly service fee", 1),
+        (2, "Monthly service fee", 2),
+    ]
+
+
 def test_candidate_deduplication_collapses_equivalent_observations() -> None:
     first = ObservationCandidateFact(
         observation_family="vehicle",
@@ -68,3 +110,27 @@ def test_candidate_deduplication_collapses_equivalent_observations() -> None:
     candidates = dedupe_observation_candidates([first, duplicate, distinct])
 
     assert [item.value for item in candidates] == ["TIRE PR", "AXLE OIL"]
+
+
+def test_candidate_deduplication_preserves_same_observation_from_distinct_regions() -> None:
+    first = ObservationCandidateFact(
+        observation_family="vehicle",
+        field_name="service_note",
+        value_type="string",
+        value="Customer requested inspection",
+        evidence=[{"page_number": 1, "semantic_region_id": "region-1"}],
+    )
+    second = ObservationCandidateFact(
+        observation_family="vehicle",
+        field_name="service_note",
+        value_type="string",
+        value="Customer requested inspection",
+        evidence=[{"page_number": 2, "semantic_region_id": "region-2"}],
+    )
+
+    candidates = dedupe_observation_candidates([first, second])
+
+    assert [(item.value, item.evidence[0]["semantic_region_id"]) for item in candidates] == [
+        ("Customer requested inspection", "region-1"),
+        ("Customer requested inspection", "region-2"),
+    ]
