@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -12,68 +11,27 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from lib.model_runtime.model_corpus_manifest import (  # noqa: E402
+    AGGREGATE_EVIDENCE_METRICS,
+    EVIDENCE_ARTIFACT_PROFILE_KEYS,
+    EVIDENCE_ARTIFACT_RUN_MANIFEST_PROFILE_KEYS,
+    EVIDENCE_SECTION_METRICS,
+    MANIFEST_RUN_PROFILE_KEYS,
+    MODEL_BACKED_ARTIFACT_FIXTURE_TYPE,
+    MODEL_BACKED_RUN_MODES,
+    REQUIRED_EVIDENCE_ARTIFACT_PAYLOAD_KEYS,
+    REQUIRED_EVIDENCE_SECTIONS,
+    REQUIRED_METRICS,
+    REQUIRED_MODEL_BACKED_EVIDENCE_KEYS,
+    evidence_metric_number,
+    fixture_type,
+    manifest_number,
+)
 from lib.model_runtime.model_corpus_report_statuses import (  # noqa: E402
     assert_model_corpus_report_statuses_pass,
 )
 
 DEFAULT_MANIFEST = Path("tests/fixtures/model_corpus/phase8_5_model_manifest.example.json")
-
-VALID_FIXTURE_TYPES = frozenset({"deterministic_fixture", "model_backed"})
-REQUIRED_EVIDENCE_SECTIONS = ("qwen", "granite", "textEmbedding", "visualEmbedding")
-REQUIRED_MODEL_BACKED_EVIDENCE_KEYS = ("profile", "runId", "measuredAt", "evidencePath")
-EVIDENCE_ARTIFACT_PROFILE_KEYS = (
-    "profile",
-    "profileName",
-    "profile_name",
-    "modelProfile",
-    "model_profile",
-)
-EVIDENCE_ARTIFACT_RUN_MANIFEST_PROFILE_KEYS = {
-    "qwen": ("semantic_profile", "qwen_semantic_profile"),
-    "granite": ("granite_profile",),
-    "textEmbedding": ("text_embedding_profile", "text_embed_profile"),
-    "visualEmbedding": ("visual_embedding_profile", "visual_embed_profile"),
-}
-MANIFEST_RUN_PROFILE_KEYS = {
-    "qwen": "semantic_profile",
-    "granite": "granite_profile",
-    "textEmbedding": "text_embedding_profile",
-    "visualEmbedding": "visual_embedding_profile",
-}
-MODEL_BACKED_RUN_MODES = frozenset({"live", "required"})
-REQUIRED_EVIDENCE_ARTIFACT_PAYLOAD_KEYS = (
-    "acceptanceGates",
-    "checks",
-    "documents",
-    "metrics",
-)
-MODEL_BACKED_ARTIFACT_FIXTURE_TYPE = "model_backed"
-EVIDENCE_SECTION_METRICS = {
-    "qwen": (
-        "qwen_handwriting_route_success_rate",
-        "qwen_review_required_rate",
-    ),
-    "granite": (
-        "granite_table_structure_score",
-        "granite_kvp_exact_match",
-    ),
-    "textEmbedding": ("text_embedding_hit_rate_at_k",),
-    "visualEmbedding": ("visual_embedding_hit_rate_at_k",),
-}
-AGGREGATE_EVIDENCE_METRICS = (
-    "hybrid_hit_rate_at_k",
-    "provenance_truth_rate",
-)
-REQUIRED_METRICS = (
-    "qwen_handwriting_route_success_rate",
-    "qwen_review_required_rate",
-    "granite_table_structure_score",
-    "granite_kvp_exact_match",
-    "text_embedding_hit_rate_at_k",
-    "visual_embedding_hit_rate_at_k",
-    "hybrid_hit_rate_at_k",
-    "provenance_truth_rate",
-)
 
 
 def main() -> int:
@@ -110,13 +68,13 @@ def evaluate_model_corpus_manifest(
     )
     from lib.model_runtime.reliability_report import build_phase85_run_manifest
 
-    fixture_type = _fixture_type(payload)
-    if require_model_backed and fixture_type != "model_backed":
+    corpus_fixture_type = fixture_type(payload)
+    if require_model_backed and corpus_fixture_type != "model_backed":
         raise SystemExit("Model corpus manifest is not model-backed.")
     manifest_overrides = payload.get("runManifest")
     if manifest_overrides is not None and not isinstance(manifest_overrides, dict):
         raise SystemExit("Model corpus runManifest must be an object when provided.")
-    if fixture_type == "model_backed":
+    if corpus_fixture_type == "model_backed":
         _assert_model_backed_manifest_run_mode(manifest_overrides)
     evidence = _required_mapping(payload, "evidence")
     metrics = _required_mapping(payload, "metrics")
@@ -124,7 +82,7 @@ def evaluate_model_corpus_manifest(
     for section in REQUIRED_EVIDENCE_SECTIONS:
         if section not in evidence or not isinstance(evidence[section], dict):
             raise SystemExit(f"Model corpus evidence section missing: {section}")
-        if fixture_type == "model_backed":
+        if corpus_fixture_type == "model_backed":
             artifact = _assert_model_backed_evidence(
                 section,
                 evidence[section],
@@ -147,7 +105,7 @@ def evaluate_model_corpus_manifest(
         run_id=run_id,
         overrides=manifest_overrides,
     )
-    if fixture_type == "model_backed":
+    if corpus_fixture_type == "model_backed":
         _assert_model_backed_evidence_profiles(
             evidence,
             expected_profiles={
@@ -159,13 +117,13 @@ def evaluate_model_corpus_manifest(
         )
         _assert_model_backed_manifest_profiles(evidence, run_manifest)
     return {
-        "fixtureType": fixture_type,
+        "fixtureType": corpus_fixture_type,
         "evidence": {
             section: _evidence_summary(evidence[section]) for section in REQUIRED_EVIDENCE_SECTIONS
         },
         "runManifest": run_manifest,
         "metrics": {
-            metric: _manifest_number(metrics[metric], kind="metric", metric=metric)
+            metric: manifest_number(metrics[metric], kind="metric", metric=metric)
             for metric in REQUIRED_METRICS
         },
         "goldCorpusMetrics": gold_summary,
@@ -186,20 +144,6 @@ def _required_mapping(payload: dict[str, Any], key: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise SystemExit(f"Model corpus manifest must include object: {key}")
     return value
-
-
-def _fixture_type(payload: dict[str, Any]) -> str:
-    value = payload.get("fixtureType")
-    if not isinstance(value, str) or not value.strip():
-        raise SystemExit(
-            "Model corpus manifest fixtureType must be deterministic_fixture or model_backed."
-        )
-    fixture_type = value.strip()
-    if fixture_type not in VALID_FIXTURE_TYPES:
-        raise SystemExit(
-            "Model corpus manifest fixtureType must be deterministic_fixture or model_backed."
-        )
-    return fixture_type
 
 
 def _assert_model_backed_manifest_run_mode(run_manifest: Any) -> None:
@@ -255,24 +199,10 @@ def _assert_metric(metrics: dict[str, Any], thresholds: dict[str, Any], metric: 
         raise SystemExit(f"Model corpus metric missing: {metric}")
     if metric not in thresholds:
         raise SystemExit(f"Model corpus threshold missing: {metric}")
-    actual = _manifest_number(metrics[metric], kind="metric", metric=metric)
-    expected = _manifest_number(thresholds[metric], kind="threshold", metric=metric)
+    actual = manifest_number(metrics[metric], kind="metric", metric=metric)
+    expected = manifest_number(thresholds[metric], kind="threshold", metric=metric)
     if actual < expected:
         raise SystemExit(f"Model corpus {metric} {actual:.4f} is below {expected:.4f}.")
-
-
-def _manifest_number(value: Any, *, kind: str, metric: str) -> float:
-    if isinstance(value, bool):
-        raise SystemExit(f"Model corpus {kind} {metric} must be numeric.")
-    try:
-        number = float(value)
-    except (TypeError, ValueError) as exc:
-        raise SystemExit(f"Model corpus {kind} {metric} must be numeric.") from exc
-    if not math.isfinite(number):
-        raise SystemExit(f"Model corpus {kind} {metric} must be finite.")
-    if number < 0 or number > 1:
-        raise SystemExit(f"Model corpus {kind} {metric} must be between 0 and 1.")
-    return number
 
 
 def _assert_model_backed_evidence(
@@ -494,8 +424,12 @@ def _assert_evidence_artifact_metrics(
                 f"Model corpus evidence {section} evidencePath missing metric evidence "
                 f"{metric}: {path}"
             )
-        actual = _metric_float(artifact_metrics[metric], section=section, metric=metric, path=path)
-        expected = _metric_float(metrics[metric], section=section, metric=metric, path=path)
+        actual = evidence_metric_number(
+            artifact_metrics[metric], section=section, metric=metric, path=path
+        )
+        expected = evidence_metric_number(
+            metrics[metric], section=section, metric=metric, path=path
+        )
         if abs(actual - expected) > 1e-9:
             raise SystemExit(
                 f"Model corpus evidence {section} metric mismatch for {metric}: "
@@ -514,8 +448,10 @@ def _assert_aggregate_metric_evidence(
             if not isinstance(artifact_metrics, dict) or metric not in artifact_metrics:
                 continue
             seen = True
-            actual = _metric_float(artifact_metrics[metric], section=section, metric=metric)
-            expected = _metric_float(metrics[metric], section=section, metric=metric)
+            actual = evidence_metric_number(
+                artifact_metrics[metric], section=section, metric=metric
+            )
+            expected = evidence_metric_number(metrics[metric], section=section, metric=metric)
             if abs(actual - expected) > 1e-9:
                 raise SystemExit(
                     f"Model corpus evidence {section} metric mismatch for {metric}: "
@@ -523,31 +459,6 @@ def _assert_aggregate_metric_evidence(
                 )
         if not seen:
             raise SystemExit(f"Model corpus aggregate metric evidence missing {metric}.")
-
-
-def _metric_float(
-    value: Any,
-    *,
-    section: str,
-    metric: str,
-    path: Path | None = None,
-) -> float:
-    suffix = f": {path}" if path is not None else "."
-    if isinstance(value, bool):
-        raise SystemExit(f"Model corpus evidence {section} metric {metric} must be numeric{suffix}")
-    try:
-        number = float(value)
-    except (TypeError, ValueError) as exc:
-        raise SystemExit(
-            f"Model corpus evidence {section} metric {metric} must be numeric{suffix}"
-        ) from exc
-    if not math.isfinite(number):
-        raise SystemExit(f"Model corpus evidence {section} metric {metric} must be finite{suffix}")
-    if number < 0 or number > 1:
-        raise SystemExit(
-            f"Model corpus evidence {section} metric {metric} must be between 0 and 1{suffix}"
-        )
-    return number
 
 
 def _parse_measured_at(
