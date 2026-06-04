@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from uuid import UUID, uuid4
 
-from lib.semantic_annotations.extraction_plan import GraniteJobSpec, plan_granite_jobs
+from lib.semantic_annotations.extraction_plan import (
+    GraniteJobSpec,
+    dropped_task_status_and_reason,
+    plan_granite_jobs,
+)
 from lib.semantic_annotations.models import SemanticGroundingRef, SemanticRegionAnnotation
 from lib.semantic_annotations.schema_fit import SchemaFitDecision
 
@@ -67,6 +71,29 @@ def test_granite_plan_drops_incompatible_specs() -> None:
     assert plan.warnings == (f"granite_plan_incompatible_schema:{spec.region_id}",)
 
 
+def test_granite_plan_records_suppressed_duplicate_specs() -> None:
+    page_id = uuid4()
+    selected = _generic_form_spec(index=0, page_id=page_id)
+    duplicate = _generic_form_spec(
+        index=0,
+        page_id=page_id,
+        priority=selected.priority + 10,
+        ordinal=selected.ordinal + 1,
+    )
+
+    plan = plan_granite_jobs([selected, duplicate], quality_mode="smart")
+
+    assert [spec.region_id for spec in plan.selected] == [selected.region_id]
+    assert [spec.region_id for spec in plan.dropped] == [duplicate.region_id]
+    assert plan.summary_counts()["duplicate_suppressed_count"] == 1
+    assert plan.to_metadata()["duplicateSuppressedCount"] == 1
+    assert plan.warnings == (f"granite_plan_duplicate_suppressed:{duplicate.region_id}",)
+    assert dropped_task_status_and_reason(plan.dropped[0]) == (
+        "suppressed_duplicate",
+        "duplicate_suppressed",
+    )
+
+
 def _generic_form_spec(
     *,
     index: int,
@@ -75,6 +102,8 @@ def _generic_form_spec(
     model_output_schema_name: str = "granite_generic_kvp.v1",
     compatibility_mode: str | None = "generic",
     contract_resolution_reason: str = "generic_observation_fallback",
+    priority: int | None = None,
+    ordinal: int | None = None,
 ) -> GraniteJobSpec:
     return GraniteJobSpec(
         region=SemanticRegionAnnotation(
@@ -93,8 +122,8 @@ def _generic_form_spec(
         contract_resolution_reason=contract_resolution_reason,
         compatibility_mode=compatibility_mode,
         extractor_backend="granite_region",
-        priority=10 + index,
-        ordinal=index,
+        priority=priority if priority is not None else 10 + index,
+        ordinal=ordinal if ordinal is not None else index,
         schema_fit=SchemaFitDecision(
             target_schema="document_observation",
             requested_target_schema="document_observation",

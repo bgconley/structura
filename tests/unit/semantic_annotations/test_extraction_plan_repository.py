@@ -165,6 +165,56 @@ def test_persist_extraction_plan_classifies_dropped_task_reasons() -> None:
     ]
 
 
+def test_persist_extraction_plan_records_suppressed_duplicate_tasks() -> None:
+    document_id = uuid4()
+    annotation_id = uuid4()
+    page_id = uuid4()
+    plan_id = uuid4()
+    task_ids = [uuid4(), uuid4()]
+    cursor_rows: list[dict[str, object]] = [{"id": plan_id}]
+    for task_id in task_ids:
+        cursor_rows.append({"id": task_id})
+    cursor = RecordingCursor(rows=cursor_rows)
+    selected = _spec(page_id=page_id, region_id=uuid4())
+    duplicate = _spec(
+        page_id=page_id,
+        region_id=uuid4(),
+        priority=selected.priority + 10,
+        ordinal=selected.ordinal + 1,
+    )
+    plan = plan_granite_jobs([selected, duplicate], quality_mode="smart")
+
+    persisted = persist_extraction_plan_with_cursor(
+        cursor,
+        document_id=document_id,
+        semantic_annotation_id=annotation_id,
+        manifest_result=SemanticAnnotationResult(
+            manifest=_manifest(
+                document_id=document_id,
+                page_id=page_id,
+                regions=[selected.region, duplicate.region],
+            )
+        ),
+        plan=plan,
+        run_id="phase85-20260604-smoke-001",
+    )
+
+    assert persisted.selected_task_ids == {selected.region_id: task_ids[0]}
+    plan_params = next(
+        params for sql, params in cursor.calls if "INSERT INTO semantic_extraction_plans" in sql
+    )
+    assert plan_params[6:13] == (1, 1, 0, 0, 0, 0, 1)
+    task_params = [
+        params
+        for sql, params in cursor.calls
+        if "INSERT INTO semantic_extraction_plan_tasks" in sql
+    ]
+    assert [(params[15], params[16]) for params in task_params] == [
+        ("selected", None),
+        ("suppressed_duplicate", "duplicate_suppressed"),
+    ]
+
+
 class RecordingCursor:
     def __init__(self, *, rows: list[dict[str, object]]) -> None:
         self.rows = list(rows)
@@ -213,6 +263,8 @@ def _spec(
     model_output_schema_name: str = "granite_receipt_line_items.v1",
     contract_resolution_reason: str = "exact_contract",
     compatibility_mode: str | None = "exact",
+    priority: int = 20,
+    ordinal: int = 0,
 ) -> GraniteJobSpec:
     return GraniteJobSpec(
         region=SemanticRegionAnnotation(
@@ -230,8 +282,8 @@ def _spec(
         contract_resolution_reason=contract_resolution_reason,
         compatibility_mode=compatibility_mode,
         extractor_backend="granite_region",
-        priority=20,
-        ordinal=0,
+        priority=priority,
+        ordinal=ordinal,
         schema_fit=SchemaFitDecision(
             target_schema="receipt",
             requested_target_schema="receipt",

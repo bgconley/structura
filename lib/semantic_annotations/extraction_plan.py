@@ -56,14 +56,17 @@ class GraniteExtractionPlan:
         missing_contract_count = 0
         missing_grounding_count = 0
         incompatible_schema_count = 0
+        duplicate_suppressed_count = 0
         for spec in self.dropped:
-            reason = _selected_spec_violation(spec)
+            reason = _dropped_spec_reason(spec)
             if reason == "missing_contract":
                 missing_contract_count += 1
             elif reason == "missing_grounding":
                 missing_grounding_count += 1
             elif reason == "incompatible_schema":
                 incompatible_schema_count += 1
+            elif reason == "duplicate_suppressed":
+                duplicate_suppressed_count += 1
         return {
             "selected_task_count": len(self.selected),
             "skipped_task_count": len(self.dropped),
@@ -71,7 +74,7 @@ class GraniteExtractionPlan:
             "missing_contract_count": missing_contract_count,
             "missing_grounding_count": missing_grounding_count,
             "incompatible_schema_count": incompatible_schema_count,
-            "duplicate_suppressed_count": 0,
+            "duplicate_suppressed_count": duplicate_suppressed_count,
         }
 
     def to_metadata(self) -> dict[str, object]:
@@ -112,7 +115,7 @@ def plan_granite_jobs(
     quality_mode: str,
 ) -> GraniteExtractionPlan:
     selectable_specs, invalid_specs, invalid_warnings = _partition_selectable_specs(specs)
-    deduped = _dedupe_specs(selectable_specs)
+    deduped, duplicate_suppressed_specs = _dedupe_specs(selectable_specs)
     buckets: dict[str, list[GraniteJobSpec]] = defaultdict(list)
     for spec in deduped:
         buckets[_bucket(spec)].append(spec)
@@ -139,7 +142,13 @@ def plan_granite_jobs(
 
     selected: list[GraniteJobSpec] = []
     selected_by_page: dict[str, int] = defaultdict(int)
-    warnings: list[str] = list(invalid_warnings)
+    warnings: list[str] = [
+        *invalid_warnings,
+        *(
+            f"granite_plan_duplicate_suppressed:{spec.region_id}"
+            for spec in duplicate_suppressed_specs
+        ),
+    ]
 
     def select_if_allowed(spec: GraniteJobSpec) -> bool:
         page_key = _page_key(spec)
@@ -174,7 +183,11 @@ def plan_granite_jobs(
                 break
             if select_if_allowed(spec):
                 selected_ids.add(id(spec))
-    dropped = (*invalid_specs, *(spec for spec in deduped if id(spec) not in selected_ids))
+    dropped = (
+        *invalid_specs,
+        *duplicate_suppressed_specs,
+        *(spec for spec in deduped if id(spec) not in selected_ids),
+    )
     for spec in dropped:
         must_extract_reason = spec.region.metadata.get("must_extract_reason")
         if must_extract_reason:
@@ -194,8 +207,10 @@ def plan_granite_jobs(
 
 
 def dropped_task_status_and_reason(spec: GraniteJobSpec) -> tuple[str, str]:
-    reason = _selected_spec_violation(spec)
-    if reason is not None:
+    reason = _dropped_spec_reason(spec)
+    if reason == "duplicate_suppressed":
+        return "suppressed_duplicate", "duplicate_suppressed"
+    if reason in {"missing_contract", "missing_grounding", "incompatible_schema"}:
         return f"skipped_{reason}", reason
     return "skipped_budget_exceeded", "planner_budget_or_fanout_policy"
 
@@ -300,14 +315,40 @@ def _source_rank(spec: GraniteJobSpec) -> int:
     return 2
 
 
-def _dedupe_specs(specs: list[GraniteJobSpec]) -> list[GraniteJobSpec]:
+def _dropped_spec_reason(spec: GraniteJobSpec) -> str | None:
+    metadata_reason = spec.metadata.get("planner_drop_reason")
+    if isinstance(metadata_reason, str) and metadata_reason.strip():
+        return _normalized_taxonomy(metadata_reason)
+    return _selected_spec_violation(spec)
+
+
+def _dedupe_specs(
+    specs: list[GraniteJobSpec],
+) -> tuple[list[GraniteJobSpec], tuple[GraniteJobSpec, ...]]:
     best: dict[tuple[Any, ...], GraniteJobSpec] = {}
+    suppressed: list[GraniteJobSpec] = []
     for spec in specs:
         key = _dedupe_key(spec)
         current = best.get(key)
-        if current is None or _sort_key(spec) < _sort_key(current):
+        if current is None:
             best[key] = spec
-    return list(best.values())
+            continue
+        if _sort_key(spec) < _sort_key(current):
+            suppressed.append(_with_drop_reason(current, "duplicate_suppressed"))
+            best[key] = spec
+        else:
+            suppressed.append(_with_drop_reason(spec, "duplicate_suppressed"))
+    return list(best.values()), tuple(suppressed)
+
+
+def _with_drop_reason(spec: GraniteJobSpec, reason: str) -> GraniteJobSpec:
+    return replace(
+        spec,
+        metadata={
+            **spec.metadata,
+            "planner_drop_reason": reason,
+        },
+    )
 
 
 def _dedupe_key(spec: GraniteJobSpec) -> tuple[Any, ...]:
