@@ -481,6 +481,32 @@ def test_hard_invariants_flag_fabricated_canonical_field_alias_rows() -> None:
     ]
 
 
+def test_hard_invariants_normalize_required_field_paths_before_fabrication_check() -> None:
+    document = _safe_document_report()
+    document["canonicalFields"] = [
+        {
+            "id": "canonical-field-camel-path-fabricated",
+            "fieldPath": " Invoice.InvoiceNumber ",
+            "reviewStatus": "accepted",
+            "value": "INV-1001",
+            "evidence": [],
+        }
+    ]
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 1
+    assert summary["invariants"]["fabricatedCanonicalRequiredFields"]["violationCount"] == 1
+    assert summary["invariants"]["fabricatedCanonicalRequiredFields"]["examples"] == [
+        {
+            "reason": "fabricated_required_field",
+            "documentId": "doc-safe",
+            "entityId": "canonical-field-camel-path-fabricated",
+        }
+    ]
+
+
 def test_reliability_report_includes_hard_invariant_summary() -> None:
     report = build_phase85_reliability_report(
         run_id="phase85-20260604-smoke-001",

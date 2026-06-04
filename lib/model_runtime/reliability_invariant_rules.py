@@ -8,6 +8,7 @@ from lib.model_runtime.reliability_report_normalization import (
     dict_value,
     get_value,
     list_value,
+    snake,
 )
 from lib.model_runtime.source_engines import (
     is_model_source_engine,
@@ -84,7 +85,7 @@ def evaluate_canonical_fields(documents: list[dict[str, Any]], violations: Viola
         for field in _canonical_field_rows(doc):
             if not _is_accepted_field(field):
                 continue
-            field_path = str(get_value(field, "field_path", "fieldPath") or "")
+            field_path = _normalized_field_path(get_value(field, "field_path", "fieldPath"))
             if _is_fabricated_required_field(field, field_path):
                 _add_violation(
                     violations,
@@ -301,6 +302,19 @@ def _is_required_field(field_path: str) -> bool:
 
 def _normalized_text(value: Any) -> str:
     return str(value or "").strip().lower()
+
+
+def _normalized_field_path(value: Any) -> str:
+    return ".".join(
+        _normalized_path_segment(segment)
+        for segment in str(value or "").split(".")
+        if segment.strip()
+    )
+
+
+def _normalized_path_segment(value: Any) -> str:
+    segment = snake(str(value or "").strip()).replace("-", "_").replace(" ", "_").lower()
+    return "_".join(part for part in segment.split("_") if part)
 
 
 def _is_title_derived_merchant_or_seller(
