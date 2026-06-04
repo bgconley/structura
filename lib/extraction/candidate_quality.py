@@ -30,7 +30,7 @@ def reject_observation(field_name: str, value: object) -> tuple[bool, str | None
     name = str(field_name or "").strip().lower()
     val = "" if value is None else str(value).strip().lower()
 
-    if name in PLACEHOLDER_FIELD_NAMES:
+    if not name or name in PLACEHOLDER_FIELD_NAMES:
         return True, "placeholder_field_name"
     if val in PLACEHOLDER_VALUES:
         return True, "placeholder_or_null_value"

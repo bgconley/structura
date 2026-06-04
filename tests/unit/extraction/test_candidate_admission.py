@@ -101,6 +101,34 @@ def test_model_backed_candidates_are_admitted_as_review_required() -> None:
     assert admission.events[0].contract_registry_version == CONTRACT_REGISTRY_VERSION
 
 
+def test_blank_observation_field_name_is_rejected_before_insertion() -> None:
+    context = _context()
+    candidate = ObservationCandidateFact(
+        observation_family="document_observation",
+        field_name="   ",
+        value_type="string",
+        value="visible escrow note",
+        evidence=[_evidence(context)],
+    )
+
+    admission = admit_extraction_candidates(
+        context=context,
+        field_candidates=[],
+        line_item_candidates=[],
+        observation_candidates=[candidate],
+    )
+
+    assert admission.observation_candidates == []
+    assert admission.summary == {
+        "produced": 1,
+        "admitted": 0,
+        "rejected": 1,
+        "rejectionReasons": {"rejected_placeholder": 1},
+    }
+    assert admission.events[0].decision == "rejected_placeholder"
+    assert admission.events[0].reasons == ("placeholder_field_name",)
+
+
 def test_incompatible_field_schema_candidate_is_rejected_before_insertion() -> None:
     context = _context(canonical_target_schema="invoice")
     candidate = CandidateFact(
