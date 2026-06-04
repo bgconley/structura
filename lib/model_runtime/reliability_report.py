@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from lib.model_runtime.reliability_fingerprints import repeatability_fingerprints
+from lib.model_runtime.reliability_gold_metrics import evaluate_gold_corpus_metrics_from_documents
 from lib.model_runtime.reliability_invariants import evaluate_hard_correctness_invariants
 from lib.model_runtime.reliability_manifest import PIPELINE_VERSION, build_phase85_run_manifest
 from lib.model_runtime.reliability_operational_slos import evaluate_operational_slos
@@ -56,6 +57,7 @@ def build_phase85_reliability_report(
     report["qualitySummary"] = quality_summary(safe_documents)
     report["acceptanceGates"] = {
         "hardCorrectnessInvariants": evaluate_hard_correctness_invariants(safe_documents),
+        "goldCorpusQuality": evaluate_gold_corpus_metrics_from_documents(safe_documents),
         "operationalSLOs": evaluate_operational_slos(safe_documents),
     }
     report["repeatabilityFingerprints"] = repeatability_fingerprints(

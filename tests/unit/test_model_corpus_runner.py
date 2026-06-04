@@ -25,9 +25,19 @@ def test_model_corpus_runner_enforces_required_sections_and_thresholds() -> None
     assert result["runManifest"]["pipeline_version"] == PIPELINE_VERSION
     assert result["runManifest"]["run_id"] == "phase85-fixture-run"
     assert result["metrics"]["provenance_truth_rate"] == 1.0
+    assert result["goldCorpusMetrics"]["status"] == "passed"
+    assert result["goldCorpusMetrics"]["metrics"]["expectedCalibrationError"]["status"] == "passed"
 
     payload["metrics"]["visual_embedding_hit_rate_at_k"] = 0.2
     with pytest.raises(SystemExit, match="visual_embedding_hit_rate_at_k"):
+        evaluate_model_corpus_manifest(payload, require_model_backed=True)
+
+
+def test_model_corpus_runner_requires_gold_corpus_baseline_metrics() -> None:
+    payload = _manifest(fixture_type="model_backed")
+    del payload["goldMetrics"]["expectedCalibrationError"]
+
+    with pytest.raises(SystemExit, match="expectedCalibrationError"):
         evaluate_model_corpus_manifest(payload, require_model_backed=True)
 
 
@@ -88,5 +98,45 @@ def _manifest(*, fixture_type: str) -> dict[str, object]:
             "visual_embedding_hit_rate_at_k": 0.75,
             "hybrid_hit_rate_at_k": 0.85,
             "provenance_truth_rate": 1.0,
+        },
+        "goldMetrics": {
+            "familyTop1Accuracy": 0.92,
+            "familyTop2Accuracy": 0.98,
+            "fieldPrecisionByFamily": {"invoice": 0.93},
+            "fieldRecallByFamily": {"invoice": 0.88},
+            "fieldF1ByFamily": {"invoice": 0.9},
+            "lineItemRowPrecisionByFamily": {"invoice": 0.94},
+            "lineItemRowRecallByFamily": {"invoice": 0.86},
+            "lineItemRowF1ByFamily": {"invoice": 0.895},
+            "amountDateNormalizationAccuracy": 0.96,
+            "evidenceLocatorCompleteness": 0.97,
+            "duplicateRate": 0.02,
+            "reviewBurden": 0.24,
+            "falseCanonicalPromotionRate": 0.0,
+            "repeatabilityStability": 0.99,
+            "confidenceCalibrationByFamilyField": {"invoice.total_amount": 0.04},
+            "expectedCalibrationError": 0.04,
+            "precisionAtConfidenceBuckets": {"0.90-1.00": 0.96},
+            "reviewBurdenAtConfidenceThresholds": {"0.80": 0.18},
+        },
+        "goldThresholds": {
+            "familyTop1Accuracy": 0.9,
+            "familyTop2Accuracy": 0.95,
+            "fieldPrecisionByFamily": 0.9,
+            "fieldRecallByFamily": 0.85,
+            "fieldF1ByFamily": 0.88,
+            "lineItemRowPrecisionByFamily": 0.88,
+            "lineItemRowRecallByFamily": 0.85,
+            "lineItemRowF1ByFamily": 0.88,
+            "amountDateNormalizationAccuracy": 0.95,
+            "evidenceLocatorCompleteness": 0.95,
+            "duplicateRate": 0.05,
+            "reviewBurden": 0.3,
+            "falseCanonicalPromotionRate": 0.0,
+            "repeatabilityStability": 0.98,
+            "confidenceCalibrationByFamilyField": 0.08,
+            "expectedCalibrationError": 0.05,
+            "precisionAtConfidenceBuckets": 0.8,
+            "reviewBurdenAtConfidenceThresholds": 0.25,
         },
     }

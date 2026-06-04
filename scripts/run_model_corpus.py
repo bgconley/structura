@@ -45,6 +45,10 @@ def evaluate_model_corpus_manifest(
     *,
     require_model_backed: bool,
 ) -> dict[str, Any]:
+    from lib.model_runtime.reliability_gold_metrics import (
+        assert_gold_corpus_metrics_pass,
+        evaluate_gold_corpus_metrics,
+    )
     from lib.model_runtime.reliability_report import build_phase85_run_manifest
 
     fixture_type = str(payload.get("fixtureType") or "")
@@ -58,6 +62,10 @@ def evaluate_model_corpus_manifest(
     thresholds = _required_mapping(payload, "thresholds")
     for metric in REQUIRED_METRICS:
         _assert_metric(metrics, thresholds, metric)
+    gold_metrics = _required_mapping(payload, "goldMetrics")
+    gold_thresholds = _required_mapping(payload, "goldThresholds")
+    gold_summary = evaluate_gold_corpus_metrics(gold_metrics, gold_thresholds)
+    assert_gold_corpus_metrics_pass(gold_summary)
     run_id = str(payload.get("runId") or payload.get("run_id") or "phase85-manifest")
     manifest_overrides = payload.get("runManifest")
     if manifest_overrides is not None and not isinstance(manifest_overrides, dict):
@@ -69,6 +77,7 @@ def evaluate_model_corpus_manifest(
             overrides=manifest_overrides,
         ),
         "metrics": {metric: float(metrics[metric]) for metric in REQUIRED_METRICS},
+        "goldCorpusMetrics": gold_summary,
     }
 
 
