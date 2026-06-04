@@ -159,6 +159,9 @@ def _debug_surface(document: Mapping[str, Any]) -> dict[str, Any]:
             available.add("prompt_versions")
         normalization = _mapping(_value(extraction, "normalization", "normalization_json"))
         metadata = _mapping(_value(extraction, "metadata", "metadata_json"))
+        raw_output = _mapping(
+            _value(extraction, "rawOutputJson", "raw_output_json", "rawOutput", "raw_output")
+        )
         if _value(normalization, "regionEnvelope", "region_envelope"):
             available.add("region_envelope")
         if _value(normalization, "repairs") or _value(
@@ -166,13 +169,18 @@ def _debug_surface(document: Mapping[str, Any]) -> dict[str, Any]:
             "repairs",
         ):
             available.add("normalization_repairs")
-        if _value(metadata, "visualInputPlan", "visual_input_plan"):
-            available.add("visual_plan_internals")
-        if _value(metadata, "adapterTrace", "adapter_trace"):
-            available.add("adapter_traces")
-        if _value(metadata, "rawModelOutput", "raw_model_output"):
+        debug_sources = (metadata, raw_output)
+        if raw_output:
             available.add("raw_model_output")
-        if _value(extraction, "modelOutputPayload", "model_output_payload"):
+        if any(_value(source, "visualInputPlan", "visual_input_plan") for source in debug_sources):
+            available.add("visual_plan_internals")
+        if any(_value(source, "adapterTrace", "adapter_trace") for source in debug_sources):
+            available.add("adapter_traces")
+        if any(_value(source, "rawModelOutput", "raw_model_output") for source in debug_sources):
+            available.add("raw_model_output")
+        if _value(extraction, "modelOutputPayload", "model_output_payload") or any(
+            _value(source, "modelOutputPayload", "model_output_payload") for source in debug_sources
+        ):
             available.add("model_output_payloads")
         refs.append({key: value for key, value in ref.items() if value not in (None, "")})
     return {

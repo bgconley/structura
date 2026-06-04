@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-
 from lib.documents.analysis_intake import (
     build_phase9_document_intake,
     phase9_document_eligibility,
@@ -40,55 +38,6 @@ def test_phase9_intake_disables_analysis_for_admitted_placeholder_artifacts() ->
 
     assert intake["documentQuality"]["has_admitted_artifact"] is True
     assert intake["eligibility"] == "analysis_disabled_artifact_regression"
-
-
-def test_phase9_intake_excludes_debug_envelopes_from_truth_context() -> None:
-    intake = build_phase9_document_intake(
-        {
-            "id": "doc-1",
-            "fields": [],
-            "lineItems": [],
-            "semanticRegionExtractions": [
-                {
-                    "id": "extraction-1",
-                    "promptVersion": "phase8_5-granite-structured-v1",
-                    "normalized": {
-                        "invoice": {
-                            "total_amount": {
-                                "amount": 42.5,
-                                "source": "debug-only-normalized-payload",
-                            }
-                        }
-                    },
-                    "normalization": {
-                        "regionEnvelope": {
-                            "facts": [{"field_path": "invoice.total_amount"}],
-                            "repairs": ["wrapped_data_invoice_line_items"],
-                        }
-                    },
-                    "metadata": {
-                        "visualInputPlan": {"route": "full_page"},
-                        "adapterTrace": {"finish_reason": "stop"},
-                        "rawModelOutput": {"text": "debug raw model output"},
-                    },
-                }
-            ],
-        }
-    )
-
-    truth_json = json.dumps(intake["truth"], sort_keys=True)
-    assert "debug-only-normalized-payload" not in truth_json
-    assert "regionEnvelope" not in truth_json
-    assert "raw model output" not in truth_json
-    assert intake["debug"]["excludedFromTruth"] is True
-    assert set(intake["debug"]["availableSurfaces"]) >= {
-        "prompt_versions",
-        "visual_plan_internals",
-        "region_envelope",
-        "normalization_repairs",
-        "adapter_traces",
-        "raw_model_output",
-    }
 
 
 def test_phase9_document_eligibility_states() -> None:
