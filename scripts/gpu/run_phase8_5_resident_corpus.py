@@ -13,10 +13,10 @@ from uuid import UUID
 from lib.db.connection import db_connection
 from lib.documents.ingestion import DocumentIngestionRequest, ingest_document_path
 from lib.model_runtime.reliability_acceptance import evaluate_phase85_report_acceptance
+from lib.model_runtime.reliability_job_scope import TARGET_FAILURE_QUEUES
 from lib.model_runtime.reliability_report import build_phase85_reliability_report
 
 ACTIVE_JOB_STATUSES = ("queued", "leased", "running", "failed")
-TARGET_FAILURE_QUEUES = {"docling", "semantic-annotations", "extraction", "visual-embeddings"}
 
 
 def main() -> int:

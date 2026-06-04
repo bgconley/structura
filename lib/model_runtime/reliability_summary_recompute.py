@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any
 
+from lib.model_runtime.reliability_job_scope import is_phase85_target_failure
 from lib.model_runtime.reliability_report_normalization import (
     all_rows,
     bool_value,
@@ -364,8 +365,7 @@ def _candidate_admission_lineage(
 def _unsafe_failure_count(job_rows: list[dict[str, Any]]) -> int:
     unsafe = 0
     for job in job_rows:
-        status = str(get_value(job, "status") or "")
-        if status in {"failed", "dead_letter", "pipeline_failed"}:
+        if is_phase85_target_failure(job):
             unsafe += int_value(get_value(job, "count"), default=1)
     return unsafe
 

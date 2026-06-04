@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any
 
+from lib.model_runtime.reliability_job_scope import is_phase85_target_failure
 from lib.model_runtime.reliability_report_normalization import (
     all_rows,
     bool_value,
@@ -210,8 +211,7 @@ def safe_outcome_summary(
 ) -> dict[str, Any]:
     unsafe_failures = 0
     for job in all_rows(documents, "jobs"):
-        status = str(get_value(job, "status") or "")
-        if status in {"failed", "dead_letter", "pipeline_failed"}:
+        if is_phase85_target_failure(job):
             unsafe_failures += int_value(get_value(job, "count"), default=1)
     return {
         "safeAbstentionCount": int_value(planner.get("abstentionCount")),

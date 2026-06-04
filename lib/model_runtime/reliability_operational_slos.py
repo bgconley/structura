@@ -3,6 +3,12 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any
 
+from lib.model_runtime.reliability_job_scope import (
+    FAILURE_STATUSES,
+    TARGET_FAILURE_QUEUES,
+    job_queue_name,
+    job_status,
+)
 from lib.model_runtime.reliability_report_normalization import (
     all_rows,
     bool_value,
@@ -13,10 +19,6 @@ from lib.model_runtime.reliability_report_normalization import (
     list_value,
 )
 
-TARGET_FAILURE_QUEUES = frozenset(
-    {"docling", "semantic-annotations", "extraction", "visual-embeddings"}
-)
-FAILURE_STATUSES = frozenset({"failed", "dead_letter", "pipeline_failed"})
 SELECTED_TASK_STATUSES = frozenset({"selected", "enqueued", "queued", "running", "completed"})
 DEFAULT_THRESHOLDS = {
     "targetQueueDeadLetters": 0,
@@ -285,11 +287,11 @@ def _task_is_selected(row: dict[str, Any]) -> bool:
 
 
 def _queue(row: dict[str, Any]) -> str:
-    return str(get_value(row, "queue_name", "queueName", "queue") or "")
+    return job_queue_name(row)
 
 
 def _status(row: dict[str, Any]) -> str:
-    return str(get_value(row, "status") or "").lower()
+    return job_status(row)
 
 
 def _job_count(row: dict[str, Any]) -> int:

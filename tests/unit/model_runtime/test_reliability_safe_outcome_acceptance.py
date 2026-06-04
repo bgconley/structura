@@ -40,10 +40,20 @@ def test_report_acceptance_fails_when_safe_outcome_summary_is_stale() -> None:
                 "safeAbstentionCount": 3,
                 "safeSkipCount": 2,
                 "safeRejectionCount": 2,
-                "unsafeFailureCount": 2,
+                "unsafeFailureCount": 1,
             },
         }
     ]
+
+
+def test_safe_outcome_summary_scopes_failures_to_phase85_target_queues() -> None:
+    report = build_phase85_reliability_report(
+        run_id="phase85-safe-outcome",
+        title_prefix="Phase 8.5 Safe Outcome",
+        documents=[_document_report()],
+    )
+
+    assert report["safeOutcomeSummary"]["unsafeFailureCount"] == 1
 
 
 def _document_report() -> dict[str, Any]:
@@ -86,7 +96,7 @@ def _document_report() -> dict[str, Any]:
         ],
         "jobs": [
             {
-                "queue_name": "maintenance",
+                "queue_name": "ingest",
                 "job_type": "housekeeping",
                 "status": "failed",
                 "count": 1,
@@ -94,12 +104,20 @@ def _document_report() -> dict[str, Any]:
                 "error_json": {"taxonomy_code": "maintenance_fixture_failure"},
             },
             {
-                "queue_name": "maintenance",
+                "queue_name": "relationships",
                 "job_type": "housekeeping",
                 "status": "failed",
                 "count": 1,
                 "retryable": True,
                 "error_json": {"taxonomy_code": "maintenance_fixture_failure"},
+            },
+            {
+                "queue_name": "extraction",
+                "job_type": "extract",
+                "status": "failed",
+                "count": 1,
+                "retryable": True,
+                "error_json": {"taxonomy_code": "granite_runtime_failure"},
             },
         ],
     }
