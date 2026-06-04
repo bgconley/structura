@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from lib.model_runtime.reliability_admission_events import evaluate_admission_events
 from lib.model_runtime.reliability_invariant_rules import (
     ViolationMap,
-    evaluate_admission_events,
     evaluate_canonical_fields,
     evaluate_extractions,
     evaluate_planner_tasks,
@@ -35,6 +35,11 @@ _INVARIANTS: tuple[tuple[str, str], ...] = (
     (
         "admittedCandidatesWithoutConcreteEvidence",
         "Admitted candidates must have concrete evidence locators.",
+    ),
+    (
+        "admissionEventsMissingTelemetry",
+        "Admission events must include queryable lineage, gate versions, and candidate "
+        "fingerprints.",
     ),
     (
         "rejectedCandidatesInserted",

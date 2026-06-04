@@ -5,6 +5,8 @@ import sys
 from copy import deepcopy
 from typing import Any
 
+from lib.extraction.candidate_admission_models import CANDIDATE_GATE_VERSION
+from lib.extraction.contract_registry import CONTRACT_REGISTRY_VERSION
 from lib.model_runtime.profiles import (
     GRANITE_VISION_PROFILE,
     QWEN_SEMANTIC_PROFILE,
@@ -457,6 +459,7 @@ def test_report_acceptance_recomputes_hard_invariants_from_document_rows() -> No
                     "decision": "admitted_review_required",
                     "candidate_kind": "field",
                     "candidate_fingerprint": "field-unsafe",
+                    **_admission_event_telemetry(),
                     "evidence_concrete": False,
                     "payload_json": {
                         "candidate": {
@@ -570,6 +573,7 @@ def test_report_acceptance_recomputes_repeatability_fingerprints_from_document_r
                     {
                         "decision": "admitted_review_required",
                         "candidate_fingerprint": "actual-candidate-fingerprint",
+                        **_admission_event_telemetry(),
                     }
                 ],
             }
@@ -663,4 +667,11 @@ def _passed_operational_slo_gates() -> dict[str, dict[str, object]]:
         "runtimeFailureRates": {"status": "passed", "violationCount": 0},
         "runawayFanout": {"status": "passed", "violationCount": 0},
         "retrySafeJobs": {"status": "passed", "violationCount": 0},
+    }
+
+
+def _admission_event_telemetry() -> dict[str, str]:
+    return {
+        "candidate_gate_version": CANDIDATE_GATE_VERSION,
+        "contract_registry_version": CONTRACT_REGISTRY_VERSION,
     }

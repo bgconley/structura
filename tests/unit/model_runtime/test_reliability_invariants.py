@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from lib.extraction.candidate_admission_models import CANDIDATE_GATE_VERSION
+from lib.extraction.contract_registry import CONTRACT_REGISTRY_VERSION
 from lib.model_runtime.reliability_invariants import evaluate_hard_correctness_invariants
 from lib.model_runtime.reliability_report import build_phase85_reliability_report
 
@@ -52,6 +54,7 @@ def test_hard_invariants_flag_rejected_candidate_rows_inserted() -> None:
             "decision": "rejected_missing_evidence",
             "candidate_kind": "field",
             "candidate_fingerprint": "rejected-field-fingerprint",
+            **_admission_event_telemetry(),
             "field_path": "invoice.total_amount",
             "payload_json": {
                 "field_path": "invoice.total_amount",
@@ -137,6 +140,7 @@ def _safe_document_report() -> dict[str, Any]:
                 "decision": "admitted_review_required",
                 "candidate_kind": "line_item",
                 "candidate_fingerprint": "line-1",
+                **_admission_event_telemetry(),
                 "evidence_concrete": True,
                 "payload_json": {
                     "candidate": {
@@ -189,6 +193,7 @@ def _unsafe_document_report() -> dict[str, Any]:
                 "decision": "admitted_review_required",
                 "candidate_kind": "field",
                 "candidate_fingerprint": "field-1",
+                **_admission_event_telemetry(),
                 "evidence_concrete": False,
                 "payload_json": {
                     "candidate": {
@@ -229,6 +234,7 @@ def _artifact_document_report() -> dict[str, Any]:
                 "decision": "admitted_review_required",
                 "candidate_kind": "field",
                 "candidate_fingerprint": "artifact-1",
+                **_admission_event_telemetry(),
                 "evidence_concrete": True,
                 "payload_json": {
                     "candidate": {
@@ -242,6 +248,7 @@ def _artifact_document_report() -> dict[str, Any]:
                 "decision": "admitted_review_required",
                 "candidate_kind": "field",
                 "candidate_fingerprint": "placeholder-1",
+                **_admission_event_telemetry(),
                 "evidence_concrete": True,
                 "payload_json": {
                     "candidate": {
@@ -283,4 +290,11 @@ def _artifact_document_report() -> dict[str, Any]:
         ],
         "lineItems": [],
         "observations": [],
+    }
+
+
+def _admission_event_telemetry() -> dict[str, str]:
+    return {
+        "candidate_gate_version": CANDIDATE_GATE_VERSION,
+        "contract_registry_version": CONTRACT_REGISTRY_VERSION,
     }
