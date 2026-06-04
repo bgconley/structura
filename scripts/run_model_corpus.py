@@ -13,6 +13,7 @@ if str(REPO_ROOT) not in sys.path:
 DEFAULT_MANIFEST = Path("tests/fixtures/model_corpus/phase8_5_model_manifest.example.json")
 
 REQUIRED_EVIDENCE_SECTIONS = ("qwen", "granite", "textEmbedding", "visualEmbedding")
+REQUIRED_MODEL_BACKED_EVIDENCE_KEYS = ("profile", "runId", "measuredAt", "evidencePath")
 REQUIRED_METRICS = (
     "qwen_handwriting_route_success_rate",
     "qwen_review_required_rate",
@@ -58,6 +59,8 @@ def evaluate_model_corpus_manifest(
     for section in REQUIRED_EVIDENCE_SECTIONS:
         if section not in evidence or not isinstance(evidence[section], dict):
             raise SystemExit(f"Model corpus evidence section missing: {section}")
+        if fixture_type == "model_backed":
+            _assert_model_backed_evidence(section, evidence[section])
     metrics = _required_mapping(payload, "metrics")
     thresholds = _required_mapping(payload, "thresholds")
     for metric in REQUIRED_METRICS:
@@ -72,6 +75,9 @@ def evaluate_model_corpus_manifest(
         raise SystemExit("Model corpus runManifest must be an object when provided.")
     return {
         "fixtureType": fixture_type,
+        "evidence": {
+            section: _evidence_summary(evidence[section]) for section in REQUIRED_EVIDENCE_SECTIONS
+        },
         "runManifest": build_phase85_run_manifest(
             run_id=run_id,
             overrides=manifest_overrides,
@@ -106,6 +112,22 @@ def _assert_metric(metrics: dict[str, Any], thresholds: dict[str, Any], metric: 
     expected = float(thresholds[metric])
     if actual < expected:
         raise SystemExit(f"Model corpus {metric} {actual:.4f} is below {expected:.4f}.")
+
+
+def _assert_model_backed_evidence(section: str, evidence: dict[str, Any]) -> None:
+    for key in REQUIRED_MODEL_BACKED_EVIDENCE_KEYS:
+        value = evidence.get(key)
+        if not isinstance(value, str) or not value.strip():
+            raise SystemExit(f"Model corpus evidence {section} missing traceable {key}.")
+
+
+def _evidence_summary(evidence: dict[str, Any]) -> dict[str, str]:
+    summary: dict[str, str] = {}
+    for key in REQUIRED_MODEL_BACKED_EVIDENCE_KEYS:
+        value = evidence.get(key)
+        if isinstance(value, str) and value.strip():
+            summary[key] = value
+    return summary
 
 
 if __name__ == "__main__":

@@ -24,6 +24,7 @@ def test_model_corpus_runner_enforces_required_sections_and_thresholds() -> None
     assert result["fixtureType"] == "model_backed"
     assert result["runManifest"]["pipeline_version"] == PIPELINE_VERSION
     assert result["runManifest"]["run_id"] == "phase85-fixture-run"
+    assert result["evidence"]["qwen"]["evidencePath"].endswith("/qwen-report.json")
     assert result["metrics"]["provenance_truth_rate"] == 1.0
     assert result["goldCorpusMetrics"]["status"] == "passed"
     assert result["goldCorpusMetrics"]["metrics"]["expectedCalibrationError"]["status"] == "passed"
@@ -38,6 +39,20 @@ def test_model_corpus_runner_requires_gold_corpus_baseline_metrics() -> None:
     del payload["goldMetrics"]["expectedCalibrationError"]
 
     with pytest.raises(SystemExit, match="expectedCalibrationError"):
+        evaluate_model_corpus_manifest(payload, require_model_backed=True)
+
+
+def test_model_corpus_runner_requires_traceable_live_evidence_for_model_backed_manifest() -> None:
+    payload = _manifest(fixture_type="model_backed")
+    del payload["evidence"]["qwen"]["evidencePath"]  # type: ignore[index]
+
+    with pytest.raises(SystemExit, match="qwen.*evidencePath"):
+        evaluate_model_corpus_manifest(payload, require_model_backed=True)
+
+    payload = _manifest(fixture_type="model_backed")
+    payload["evidence"]["granite"]["runId"] = ""  # type: ignore[index]
+
+    with pytest.raises(SystemExit, match="granite.*runId"):
         evaluate_model_corpus_manifest(payload, require_model_backed=True)
 
 
@@ -74,10 +89,10 @@ def _manifest(*, fixture_type: str) -> dict[str, object]:
         "fixtureType": fixture_type,
         "runId": "phase85-fixture-run",
         "evidence": {
-            "qwen": {"profile": "qwen3-vl-8b-instruct-nvfp4-local:v1"},
-            "granite": {"profile": "granite-4.0-3b-vision-bf16:v1"},
-            "textEmbedding": {"profile": "qwen3-embedding-4b-1536:v1"},
-            "visualEmbedding": {"profile": "qwen3-vl-embedding-2b-2048:v1"},
+            "qwen": _evidence("qwen3-vl-8b-instruct-nvfp4-local:v1", "qwen"),
+            "granite": _evidence("granite-4.0-3b-vision-bf16:v1", "granite"),
+            "textEmbedding": _evidence("qwen3-embedding-4b-1536:v1", "text"),
+            "visualEmbedding": _evidence("qwen3-vl-embedding-2b-2048:v1", "visual"),
         },
         "metrics": {
             "qwen_handwriting_route_success_rate": 1.0,
@@ -139,4 +154,13 @@ def _manifest(*, fixture_type: str) -> dict[str, object]:
             "precisionAtConfidenceBuckets": 0.8,
             "reviewBurdenAtConfidenceThresholds": 0.25,
         },
+    }
+
+
+def _evidence(profile: str, slug: str) -> dict[str, object]:
+    return {
+        "profile": profile,
+        "runId": f"phase85-fixture-run-{slug}",
+        "measuredAt": "2026-06-04T12:00:00Z",
+        "evidencePath": f"/srv/structura/objects/exports/phase85-runs/{slug}-report.json",
     }
