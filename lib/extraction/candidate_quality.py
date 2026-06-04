@@ -80,7 +80,7 @@ def reject_observation(field_name: str, value: object) -> tuple[bool, str | None
     name = _normalized_key(field_name)
     val = "" if value is None else str(value).strip().lower()
 
-    if not name or name in PLACEHOLDER_FIELD_NAMES:
+    if not name or name in PLACEHOLDER_FIELD_NAMES or name in NORMALIZED_PLACEHOLDER_VALUES:
         return True, "placeholder_field_name"
     if _contains_placeholder_value_any_key(value):
         return True, "placeholder_or_null_value"
