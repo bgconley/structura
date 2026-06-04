@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from lib.model_runtime.reliability_report_normalization import dict_value, get_value
@@ -90,6 +91,10 @@ def assert_gold_corpus_metrics_pass(summary: dict[str, Any]) -> None:
         detail = dict_value(dict_value(summary.get("metrics")).get(metric))
         observed = detail.get("worstValue")
         threshold = detail.get("threshold")
+        if detail.get("invalidThreshold"):
+            raise SystemExit(f"Gold corpus {metric} has a non-finite or non-numeric threshold.")
+        if detail.get("invalidValues"):
+            raise SystemExit(f"Gold corpus {metric} has non-finite or non-numeric values.")
         if not isinstance(observed, int | float) or not isinstance(threshold, int | float):
             raise SystemExit(f"Gold corpus {metric} has no numeric values to evaluate.")
         raise SystemExit(
@@ -103,20 +108,24 @@ def _evaluate_metric(
     thresholds: dict[str, Any],
 ) -> dict[str, Any]:
     direction = _direction(metric)
-    values = _numeric_leaves(metrics[metric])
-    threshold = float(thresholds[metric])
+    values, invalid_values = _numeric_leaves(metrics[metric])
+    threshold = _finite_number(thresholds[metric])
     worst = _worst_value(values, direction)
     failing = [
         {"key": key, "value": value}
         for key, value in values
-        if _violates(value, threshold, direction)
+        if threshold is not None and _violates(value, threshold, direction)
     ]
     return {
-        "status": "failed" if not values or failing else "passed",
+        "status": "failed"
+        if not values or failing or invalid_values or threshold is None
+        else "passed",
         "direction": direction,
         "threshold": threshold,
+        "invalidThreshold": threshold is None,
         "worstValue": worst,
         "values": {key: value for key, value in values},
+        "invalidValues": invalid_values,
         "failingKeys": failing,
     }
 
@@ -127,15 +136,34 @@ def _direction(metric: str) -> str:
     return "min"
 
 
-def _numeric_leaves(value: Any, *, prefix: str = "value") -> list[tuple[str, float]]:
+def _numeric_leaves(
+    value: Any, *, prefix: str = "value"
+) -> tuple[list[tuple[str, float]], list[dict[str, str]]]:
+    if isinstance(value, bool):
+        return [], [{"key": prefix, "reason": "non_numeric"}]
     if isinstance(value, int | float):
-        return [(prefix, float(value))]
+        number = float(value)
+        if not math.isfinite(number):
+            return [], [{"key": prefix, "reason": "non_finite"}]
+        return [(prefix, number)], []
     if isinstance(value, dict):
         leaves: list[tuple[str, float]] = []
+        invalid: list[dict[str, str]] = []
         for key, item in sorted(value.items()):
-            leaves.extend(_numeric_leaves(item, prefix=str(key)))
-        return leaves
-    return []
+            child_leaves, child_invalid = _numeric_leaves(item, prefix=str(key))
+            leaves.extend(child_leaves)
+            invalid.extend(child_invalid)
+        return leaves, invalid
+    return [], [{"key": prefix, "reason": "non_numeric"}]
+
+
+def _finite_number(value: Any) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    number = float(value)
+    if not math.isfinite(number):
+        return None
+    return number
 
 
 def _worst_value(values: list[tuple[str, float]], direction: str) -> float | None:

@@ -257,9 +257,13 @@ def _operational_slo_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
         if get_value(metrics, "targetQueueDeadLetterCount", "target_queue_dead_letter_count") != 0:
             invalid.append("metrics.targetQueueDeadLetterCount")
         for gate_key in OPERATIONAL_SLO_GATE_KEYS:
-            gate_status = get_value(dict_value(get_value(gates, gate_key)), "status")
+            subgate = dict_value(get_value(gates, gate_key))
+            gate_status = get_value(subgate, "status")
             if gate_status != "passed":
                 invalid.append(f"gates.{gate_key}.status")
+            violation_count = get_value(subgate, "violationCount", "violation_count")
+            if not _is_zero_number(violation_count):
+                invalid.append(f"gates.{gate_key}.violationCount")
         if invalid:
             failures.append(
                 {
@@ -274,6 +278,10 @@ def _operational_slo_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
         "status": "passed" if reports and not failures else "failed",
         "failures": failures,
     }
+
+
+def _is_zero_number(value: Any) -> bool:
+    return not isinstance(value, bool) and isinstance(value, int | float) and value == 0
 
 
 def _gold_check(reports: list[dict[str, Any]], *, require_gold: bool) -> dict[str, Any]:

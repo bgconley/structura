@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from lib.model_runtime.reliability_gold_metrics import evaluate_gold_corpus_metrics
+import pytest
+
+from lib.model_runtime.reliability_gold_metrics import (
+    assert_gold_corpus_metrics_pass,
+    evaluate_gold_corpus_metrics,
+)
 from lib.model_runtime.reliability_report import build_phase85_reliability_report
 
 
@@ -26,6 +31,39 @@ def test_gold_corpus_metrics_fail_for_threshold_breaches_and_missing_calibration
     assert summary["missingMetrics"] == ["confidenceCalibrationByFamilyField"]
     assert summary["metrics"]["duplicateRate"]["status"] == "failed"
     assert summary["metrics"]["duplicateRate"]["direction"] == "max"
+
+
+def test_gold_corpus_metrics_fail_for_non_finite_values_and_thresholds() -> None:
+    metrics = _gold_metrics()
+    thresholds = _gold_thresholds()
+    metrics["fieldPrecisionByFamily"] = {"invoice": float("nan"), "receipt": 0.91}
+    thresholds["duplicateRate"] = float("inf")
+
+    summary = evaluate_gold_corpus_metrics(metrics, thresholds)
+
+    assert summary["status"] == "failed"
+    assert "fieldPrecisionByFamily" in summary["failedMetrics"]
+    assert "duplicateRate" in summary["failedMetrics"]
+    assert summary["metrics"]["fieldPrecisionByFamily"]["invalidValues"] == [
+        {"key": "invoice", "reason": "non_finite"}
+    ]
+    assert summary["metrics"]["duplicateRate"]["invalidThreshold"] is True
+
+
+def test_gold_corpus_assertion_reports_invalid_values_and_thresholds() -> None:
+    metrics = _gold_metrics()
+    metrics["fieldPrecisionByFamily"] = {"invoice": float("nan"), "receipt": 0.91}
+    invalid_value_summary = evaluate_gold_corpus_metrics(metrics, _gold_thresholds())
+
+    with pytest.raises(SystemExit, match="fieldPrecisionByFamily has non-finite"):
+        assert_gold_corpus_metrics_pass(invalid_value_summary)
+
+    thresholds = _gold_thresholds()
+    thresholds["duplicateRate"] = float("inf")
+    invalid_threshold_summary = evaluate_gold_corpus_metrics(_gold_metrics(), thresholds)
+
+    with pytest.raises(SystemExit, match="duplicateRate has a non-finite"):
+        assert_gold_corpus_metrics_pass(invalid_threshold_summary)
 
 
 def test_reliability_report_includes_gold_metric_summary_when_documents_provide_gold() -> None:

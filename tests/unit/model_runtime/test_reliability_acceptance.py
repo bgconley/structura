@@ -151,6 +151,28 @@ def test_report_acceptance_fails_when_operational_slo_subgate_fails() -> None:
     ]
 
 
+def test_report_acceptance_fails_when_operational_slo_subgate_has_violations() -> None:
+    report = _resident_report()
+    report["acceptanceGates"]["operationalSLOs"]["gates"]["retrySuccessRate"] = {
+        "status": "passed",
+        "violationCount": 1,
+    }
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["operationalSLOs"]["status"] == "failed"
+    assert summary["checks"]["operationalSLOs"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "status": "passed",
+            "details": report["acceptanceGates"]["operationalSLOs"],
+            "invalid": ["gates.retrySuccessRate.violationCount"],
+        }
+    ]
+
+
 def test_report_acceptance_fails_when_hard_invariant_count_is_nonzero() -> None:
     report = _resident_report()
     report["acceptanceGates"]["hardCorrectnessInvariants"]["totalViolationCount"] = 1
