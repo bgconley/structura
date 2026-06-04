@@ -16,6 +16,7 @@ from lib.model_runtime.profiles import (
     get_model_profile,
 )
 from lib.model_runtime.reliability_acceptance import evaluate_phase85_report_acceptance
+from lib.model_runtime.reliability_gold_metrics import MAX_THRESHOLD_METRICS, REQUIRED_GOLD_METRICS
 from lib.model_runtime.reliability_report import build_phase85_reliability_report
 from lib.model_runtime.reliability_versions import (
     GRANITE_PROMPT_VERSION,
@@ -55,6 +56,35 @@ def test_report_acceptance_passes_for_resident_report_without_gold_metrics() -> 
     assert summary["checks"]["operationalSLOs"]["status"] == "passed"
     assert summary["checks"]["goldCorpusQuality"]["status"] == "not_required"
     assert summary["checks"]["repeatabilityFingerprints"]["status"] == "not_required"
+
+
+def test_report_acceptance_requires_model_backed_lineage_when_gold_is_required() -> None:
+    report = build_phase85_reliability_report(
+        run_id="phase85-gold-fixture",
+        title_prefix="Phase 8.5 Gold Fixture",
+        documents=[
+            {
+                "document": {"id": "doc-gold", "document_family": "invoice"},
+                "goldMetrics": _passing_gold_metric_values(),
+                "goldThresholds": _gold_metric_thresholds(),
+            }
+        ],
+        manifest_overrides={"model_mode": "fixture"},
+    )
+
+    summary = evaluate_phase85_report_acceptance([report], require_gold=True)
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["goldCorpusQuality"]["status"] == "passed"
+    assert summary["checks"]["reportLineage"]["status"] == "failed"
+    assert summary["checks"]["reportLineage"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-gold-fixture",
+            "missing": [],
+            "invalid": ["fixtureType/model_backed"],
+        }
+    ]
 
 
 def test_report_acceptance_fails_for_missing_summaries_and_failed_gates() -> None:
@@ -589,6 +619,18 @@ def _passed_operational_slo_gates() -> dict[str, dict[str, object]]:
         "runtimeFailureRates": {"status": "passed", "violationCount": 0},
         "runawayFanout": {"status": "passed", "violationCount": 0},
         "retrySafeJobs": {"status": "passed", "violationCount": 0},
+    }
+
+
+def _passing_gold_metric_values() -> dict[str, float]:
+    return {
+        metric: 0.0 if metric in MAX_THRESHOLD_METRICS else 0.95 for metric in REQUIRED_GOLD_METRICS
+    }
+
+
+def _gold_metric_thresholds() -> dict[str, float]:
+    return {
+        metric: 0.1 if metric in MAX_THRESHOLD_METRICS else 0.9 for metric in REQUIRED_GOLD_METRICS
     }
 
 

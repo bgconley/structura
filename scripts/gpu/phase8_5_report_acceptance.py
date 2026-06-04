@@ -38,7 +38,8 @@ def _parse_args() -> argparse.Namespace:
         "--require-gold",
         action="store_true",
         help=(
-            "Require gold-corpus quality metrics to pass instead of allowing resident-only reports."
+            "Require model-backed gold-corpus quality metrics to pass instead of allowing "
+            "resident-only reports."
         ),
     )
     return parser.parse_args()

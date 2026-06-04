@@ -116,5 +116,7 @@ Gold corpus acceptance requires
 `acceptanceGates.goldCorpusQuality.status = passed` with empty
 `missingMetrics` and `failedMetrics` lists; gold metric summaries must have
 passing statuses and no invalid values, invalid thresholds, or failing keys.
+When `--require-gold` is used, the report must also be model-backed evidence:
+`fixtureType = model_backed` with live or required `runManifest.model_mode`.
 Use `scripts/gpu/phase8_5_report_acceptance.py` directly when re-checking already
 captured report files.

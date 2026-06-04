@@ -81,7 +81,7 @@ def evaluate_phase85_report_acceptance(
     require_gold: bool = False,
 ) -> dict[str, Any]:
     checks = {
-        "reportLineage": report_lineage_check(reports),
+        "reportLineage": report_lineage_check(reports, require_model_backed=require_gold),
         "requiredSummaries": _required_summaries_check(reports),
         "plannerSummary": planner_summary_acceptance_check(reports),
         "candidateAdmissionSummary": candidate_admission_summary_acceptance_check(reports),

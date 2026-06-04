@@ -50,7 +50,11 @@ EXPECTED_DECODING = {
 __all__ = ["report_lineage_check"]
 
 
-def report_lineage_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
+def report_lineage_check(
+    reports: list[dict[str, Any]],
+    *,
+    require_model_backed: bool = False,
+) -> dict[str, Any]:
     failures: list[dict[str, Any]] = []
     for index, report in enumerate(reports):
         missing: list[str] = []
@@ -72,6 +76,7 @@ def report_lineage_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
             measured_at=measured_at,
             pipeline_version=pipeline_version,
             model_mode=model_mode,
+            require_model_backed=require_model_backed,
         )
         _validate_run_manifest_lineage(
             missing=missing,
@@ -104,6 +109,7 @@ def _validate_report_identity(
     measured_at: Any,
     pipeline_version: Any,
     model_mode: Any,
+    require_model_backed: bool,
 ) -> None:
     if not isinstance(run_id, str) or not run_id.strip():
         missing.append("runId")
@@ -141,6 +147,14 @@ def _validate_report_identity(
         )
         if fixture_type.strip() != expected_fixture_type:
             invalid.append("fixtureType/runManifest.model_mode")
+
+    if (
+        require_model_backed
+        and isinstance(fixture_type, str)
+        and fixture_type.strip() in VALID_FIXTURE_TYPES
+        and fixture_type.strip() != "model_backed"
+    ):
+        invalid.append("fixtureType/model_backed")
 
 
 def _validate_run_manifest_lineage(
