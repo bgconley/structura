@@ -8,6 +8,7 @@ from lib.model_runtime.reliability_invariants import evaluate_hard_correctness_i
 from lib.model_runtime.reliability_operational_slos import evaluate_operational_slos
 from lib.model_runtime.reliability_report_normalization import (
     all_rows,
+    bool_value,
     dict_value,
     get_value,
     list_value,
@@ -16,6 +17,7 @@ from lib.model_runtime.reliability_report_normalization import (
 
 __all__ = [
     "recomputed_candidate_admission_summary",
+    "recomputed_envelope_summary",
     "recomputed_hard_invariants",
     "recomputed_operational_slos",
     "recomputed_planner_summary",
@@ -77,6 +79,42 @@ def recomputed_planner_summary(report: dict[str, Any]) -> dict[str, Any] | None:
             "duplicateSuppressedCount",
         ),
         "contractResolutionModes": dict(sorted(contract_modes.items())),
+    }
+
+
+def recomputed_envelope_summary(report: dict[str, Any]) -> dict[str, Any] | None:
+    documents = _document_rows(report)
+    if documents is None:
+        return None
+    valid, document_rows = documents
+    if not valid:
+        return {}
+    envelopes = [
+        envelope
+        for extraction in all_rows(document_rows, "extractions")
+        if (envelope := _region_envelope(extraction))
+    ]
+    if not envelopes:
+        return None
+    counts = Counter({"facts": 0, "lineItems": 0, "tableRows": 0, "observations": 0})
+    concrete = 0
+    total_evidence = 0
+    for envelope in envelopes:
+        counts["facts"] += len(list_value(get_value(envelope, "facts")))
+        counts["lineItems"] += len(list_value(get_value(envelope, "line_items", "lineItems")))
+        counts["tableRows"] += len(list_value(get_value(envelope, "table_rows", "tableRows")))
+        counts["observations"] += len(list_value(get_value(envelope, "observations")))
+        for evidence in list_value(get_value(envelope, "evidence")):
+            if isinstance(evidence, dict):
+                total_evidence += 1
+                if bool_value(
+                    get_value(evidence, "concrete", "evidence_concrete", "evidenceConcrete")
+                ):
+                    concrete += 1
+    coverage = round(concrete / total_evidence, 4) if total_evidence else 0.0
+    return {
+        **dict(counts),
+        "concreteEvidenceCoverage": coverage,
     }
 
 
@@ -201,6 +239,11 @@ def _candidate_admission_evidence(documents: list[dict[str, Any]]) -> dict[str, 
         "rejectedCount": rejected,
         "rejectionReasons": dict(sorted(rejection_reasons.items())),
     }
+
+
+def _region_envelope(extraction: dict[str, Any]) -> dict[str, Any]:
+    normalization = dict_value(get_value(extraction, "normalization_json", "normalizationJson"))
+    return dict_value(get_value(normalization, "regionEnvelope", "region_envelope"))
 
 
 def _slo_gate_failed(gate: dict[str, Any]) -> bool:

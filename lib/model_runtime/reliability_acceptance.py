@@ -20,6 +20,9 @@ from lib.model_runtime.reliability_acceptance_recompute import (
 from lib.model_runtime.reliability_admission_summary_acceptance import (
     candidate_admission_summary_acceptance_check,
 )
+from lib.model_runtime.reliability_envelope_summary_acceptance import (
+    envelope_summary_acceptance_check,
+)
 from lib.model_runtime.reliability_gold_acceptance import gold_corpus_acceptance_check
 from lib.model_runtime.reliability_planner_summary_acceptance import (
     planner_summary_acceptance_check,
@@ -84,6 +87,7 @@ def evaluate_phase85_report_acceptance(
         "requiredSummaries": _required_summaries_check(reports),
         "plannerSummary": planner_summary_acceptance_check(reports),
         "candidateAdmissionSummary": candidate_admission_summary_acceptance_check(reports),
+        "envelopeSummary": envelope_summary_acceptance_check(reports),
         "hardCorrectnessInvariants": _hard_correctness_check(reports),
         "operationalSLOs": _operational_slo_check(reports),
         "goldCorpusQuality": gold_corpus_acceptance_check(reports, require_gold=require_gold),
