@@ -39,9 +39,10 @@ artifact must not include contradictory failure payloads. Any non-empty report
 such as `missingByReport`, `missingMetrics`, `failedMetrics`, or `drift` also
 invalidate release evidence. Positive report problem counters such as
 `totalViolationCount`, `violationCount`, or `targetQueueDeadLetterCount`
-invalidate release evidence. The artifact must include model profile metadata
-matching the evidence section `profile`, either as a top-level profile field or
-as the section-specific profile field in `runManifest`, such as
+invalidate release evidence. Report problem counters must be finite non-negative
+numbers. The artifact must include model profile metadata matching the evidence
+section `profile`, either as a top-level profile field or as the section-specific
+profile field in `runManifest`, such as
 `semantic_profile`, `granite_profile`, `text_embedding_profile`, or
 `visual_embedding_profile`. The artifact `metrics` object must include the
 section-specific metric values claimed by the manifest, such as Qwen

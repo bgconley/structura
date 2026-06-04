@@ -138,6 +138,13 @@ def test_model_corpus_readme_rejects_artifact_problem_counts() -> None:
     ) in normalized
 
 
+def test_model_corpus_readme_requires_finite_non_negative_problem_counters() -> None:
+    content = MODEL_CORPUS_README.read_text(encoding="utf-8")
+    normalized = re.sub(r"\s+", " ", content)
+
+    assert "Report problem counters must be finite non-negative numbers" in normalized
+
+
 def test_model_corpus_readme_requires_finite_numeric_metrics() -> None:
     content = MODEL_CORPUS_README.read_text(encoding="utf-8")
     normalized = re.sub(r"\s+", " ", content)

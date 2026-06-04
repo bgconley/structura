@@ -54,6 +54,41 @@ def test_model_corpus_report_statuses_reject_positive_problem_counts() -> None:
         assert_model_corpus_report_statuses_pass("qwen", artifact, Path("qwen.json"))
 
 
+def test_model_corpus_report_statuses_reject_invalid_problem_counts() -> None:
+    non_finite_artifact = {
+        "acceptanceGates": {
+            "hardCorrectnessInvariants": {
+                "status": "passed",
+                "totalViolationCount": float("nan"),
+            },
+        },
+    }
+
+    with pytest.raises(
+        SystemExit,
+        match=(
+            "invalid report problem counter "
+            "acceptanceGates.hardCorrectnessInvariants.totalViolationCount"
+        ),
+    ):
+        assert_model_corpus_report_statuses_pass("qwen", non_finite_artifact, Path("qwen.json"))
+
+    negative_artifact = {
+        "checks": {
+            "operationalSLOs": {
+                "status": "passed",
+                "violationCount": -1,
+            },
+        },
+    }
+
+    with pytest.raises(
+        SystemExit,
+        match="invalid report problem counter checks.operationalSLOs.violationCount",
+    ):
+        assert_model_corpus_report_statuses_pass("qwen", negative_artifact, Path("qwen.json"))
+
+
 def test_model_corpus_report_statuses_accept_passed_and_not_required_statuses() -> None:
     artifact = {
         "status": "passed",
