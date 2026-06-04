@@ -4,32 +4,21 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from lib.documents import analysis_mutation_policy
-from lib.extraction.evidence import is_concrete_evidence_ref
+from lib.documents.analysis_quality import (
+    build_document_quality,
+    phase9_document_eligibility,
+)
 
 ACCEPTED_REVIEW_STATUSES = {"auto_accepted", "user_confirmed", "user_corrected"}
 TRUTH_OBSERVATION_STATUSES = {"promoted", "auto_accepted", "user_confirmed", "user_corrected"}
 REVIEW_STATUSES = {"needs_review", "proposed", "unreviewed"}
-ANALYSIS_TARGET_JOB_QUEUES = {
-    "docling",
-    "semantic-annotations",
-    "extraction",
-    "visual-embeddings",
-}
-OPERATIONAL_FAILURE_STATUSES = {"failed", "dead_letter", "pipeline_failed"}
-ADMITTED_ARTIFACT_REASONS = {
-    "fake_schema_line_item",
-    "missing_description",
-    "placeholder_field_name",
-    "placeholder_or_null_value",
-    "prompt_or_schema_echo",
-}
 
 
 def build_phase9_document_intake(document: Mapping[str, Any]) -> dict[str, Any]:
     truth = _truth_surface(document)
     review = _review_surface(document)
     debug = _debug_surface(document)
-    quality = _document_quality(document, truth=truth, review=review)
+    quality = build_document_quality(document, truth=truth, review=review)
     return {
         "documentId": _value(document, "id", "documentId"),
         "eligibility": phase9_document_eligibility(quality),
@@ -42,24 +31,6 @@ def build_phase9_document_intake(document: Mapping[str, Any]) -> dict[str, Any]:
             "blockedTargets": list(analysis_mutation_policy.BLOCKED_PHASE9_MUTATION_KEYS),
         },
     }
-
-
-def phase9_document_eligibility(document_quality: Mapping[str, Any]) -> str:
-    if _value(document_quality, "operational_status", "operationalStatus") != "completed":
-        return "analysis_disabled_operational_failure"
-    if (
-        _int(_value(document_quality, "canonical_fact_count", "canonicalFactCount")) == 0
-        and _int(_value(document_quality, "candidate_count", "candidateCount")) == 0
-    ):
-        return "analysis_limited_no_extracted_facts"
-    evidence_coverage = _float(
-        _value(document_quality, "evidence_locator_coverage", "evidenceLocatorCoverage")
-    )
-    if evidence_coverage < 0.80:
-        return "analysis_review_only_evidence_sparse"
-    if bool(_value(document_quality, "has_admitted_artifact", "hasAdmittedArtifact")):
-        return "analysis_disabled_artifact_regression"
-    return "analysis_enabled_with_uncertainty"
 
 
 def phase9_mutation_violations(output: Mapping[str, Any]) -> list[str]:
@@ -191,78 +162,6 @@ def _debug_surface(document: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def _document_quality(
-    document: Mapping[str, Any],
-    *,
-    truth: Mapping[str, list[Mapping[str, Any]]],
-    review: Mapping[str, Any],
-) -> dict[str, Any]:
-    explicit = _mapping(_value(document, "documentQuality", "document_quality"))
-    canonical_count = sum(
-        len(truth.get(key, []))
-        for key in (
-            "canonicalFields",
-            "canonicalLineItems",
-            "canonicalObservations",
-            "userConfirmedFacts",
-        )
-    )
-    candidate_count = sum(
-        len(review.get(key, []))
-        for key in ("fieldCandidates", "lineItemCandidates", "observationCandidates")
-    )
-    return {
-        "operational_status": _value(explicit, "operational_status", "operationalStatus")
-        or _operational_status(document),
-        "canonical_fact_count": _value(explicit, "canonical_fact_count", "canonicalFactCount")
-        if _value(explicit, "canonical_fact_count", "canonicalFactCount") is not None
-        else canonical_count,
-        "candidate_count": _value(explicit, "candidate_count", "candidateCount")
-        if _value(explicit, "candidate_count", "candidateCount") is not None
-        else candidate_count,
-        "evidence_locator_coverage": _value(
-            explicit,
-            "evidence_locator_coverage",
-            "evidenceLocatorCoverage",
-        )
-        if _value(explicit, "evidence_locator_coverage", "evidenceLocatorCoverage") is not None
-        else _evidence_locator_coverage([truth, review]),
-        "has_admitted_artifact": _value(
-            explicit,
-            "has_admitted_artifact",
-            "hasAdmittedArtifact",
-        )
-        if _value(explicit, "has_admitted_artifact", "hasAdmittedArtifact") is not None
-        else _has_admitted_artifact(document),
-    }
-
-
-def _operational_status(document: Mapping[str, Any]) -> str:
-    extraction_statuses = {
-        str(_value(row, "status") or "").lower()
-        for row in [*_rows(document, "extractions"), *_rows(document, "semanticRegionExtractions")]
-    }
-    if any(status in OPERATIONAL_FAILURE_STATUSES for status in extraction_statuses):
-        return "pipeline_failed"
-    for job in _rows(document, "jobs"):
-        queue_name = str(_value(job, "queueName", "queue_name", "queue") or "").lower()
-        job_status = str(_value(job, "status") or "").lower()
-        if queue_name in ANALYSIS_TARGET_JOB_QUEUES and job_status in OPERATIONAL_FAILURE_STATUSES:
-            return "pipeline_failed"
-    return "completed"
-
-
-def _has_admitted_artifact(document: Mapping[str, Any]) -> bool:
-    for event in _rows(document, "admissionEvents", "candidateAdmissionEvents"):
-        decision = str(_value(event, "decision") or "")
-        reasons = [str(reason) for reason in _list(_value(event, "reasons"))]
-        if decision.startswith("admitted") and any(
-            reason in ADMITTED_ARTIFACT_REASONS for reason in reasons
-        ):
-            return True
-    return False
-
-
 def _surface_item(
     item: Mapping[str, Any],
     *,
@@ -352,35 +251,6 @@ def _uncertain_evidence_ref(ref: Any) -> Any:
     }
 
 
-def _evidence_locator_coverage(containers: list[Any]) -> float:
-    evidence_refs = _collect_evidence(containers)
-    if not evidence_refs:
-        return 1.0
-    concrete = sum(1 for evidence in evidence_refs if _has_concrete_locator(evidence))
-    return round(concrete / len(evidence_refs), 4)
-
-
-def _collect_evidence(value: Any) -> list[Any]:
-    if isinstance(value, Mapping):
-        evidence = _value(value, "evidence", "evidenceRefs")
-        evidence_refs = list(_list(evidence))
-        for item in value.values():
-            evidence_refs.extend(_collect_evidence(item))
-        return evidence_refs
-    if isinstance(value, list):
-        refs: list[Any] = []
-        for item in value:
-            refs.extend(_collect_evidence(item))
-        return refs
-    return []
-
-
-def _has_concrete_locator(evidence: Any) -> bool:
-    if not isinstance(evidence, Mapping):
-        return False
-    return is_concrete_evidence_ref(dict(evidence))
-
-
 def _review_required_rows(mapping: Mapping[str, Any], *keys: str) -> list[Mapping[str, Any]]:
     rows: list[Mapping[str, Any]] = []
     seen_ids: set[str] = set()
@@ -448,15 +318,3 @@ def _mapping(value: Any) -> Mapping[str, Any]:
 
 def _list(value: Any) -> list[Any]:
     return value if isinstance(value, list) else []
-
-
-def _int(value: Any) -> int:
-    if value in (None, ""):
-        return 0
-    return int(value)
-
-
-def _float(value: Any) -> float:
-    if value in (None, ""):
-        return 0.0
-    return float(value)

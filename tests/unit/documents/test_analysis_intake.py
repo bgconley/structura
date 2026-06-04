@@ -129,6 +129,27 @@ def test_phase9_intake_disables_analysis_for_target_queue_dead_letter_jobs() -> 
     assert intake["eligibility"] == "analysis_disabled_operational_failure"
 
 
+def test_phase9_intake_keeps_quality_outcomes_distinct_from_operational_failure() -> None:
+    intake = build_phase9_document_intake(
+        {
+            "id": "doc-quality-review",
+            "documentQuality": {"operationalStatus": "needs_human_review"},
+            "fields": [
+                {
+                    "fieldPath": "invoice.total_amount",
+                    "value": {"amount": 42.5, "currency": "USD"},
+                    "reviewStatus": "auto_accepted",
+                    "evidence": [{"semanticRegionId": "region-1", "pageNumber": 1}],
+                }
+            ],
+        }
+    )
+
+    assert intake["documentQuality"]["quality_outcome"] == "needs_human_review"
+    assert intake["documentQuality"]["operational_status"] == "completed"
+    assert intake["eligibility"] == "analysis_enabled_with_uncertainty"
+
+
 def test_phase9_intake_requires_structura_owned_evidence_locator() -> None:
     source_text_only = build_phase9_document_intake(
         {
