@@ -49,9 +49,21 @@ _PLACEHOLDER_VALUES = {
     "example value",
     "<placeholder>",
 }
+_PLACEHOLDER_FIELD_NAMES = {
+    "visible_field",
+    "field",
+    "key",
+    "value",
+}
 _NORMALIZED_PLACEHOLDER_VALUES = {
     _normalized_placeholder_text(value) for value in _PLACEHOLDER_VALUES
 }
+_NORMALIZED_PLACEHOLDER_TOKENS = _NORMALIZED_PLACEHOLDER_VALUES | {
+    _normalized_placeholder_text(value) for value in _PLACEHOLDER_FIELD_NAMES
+}
+_COMPACT_NORMALIZED_PLACEHOLDER_TOKENS = frozenset(
+    token.replace("_", "") for token in _NORMALIZED_PLACEHOLDER_TOKENS
+)
 _PRIMARY_VALUE_KEYS = {
     "amount",
     "date",
@@ -213,16 +225,12 @@ def _contains_prompt_or_schema_artifact(candidate: dict[str, Any]) -> bool:
 
 def _contains_placeholder_value(candidate: dict[str, Any]) -> bool:
     for key, value in _walk_items(candidate):
-        if _normalized_leaf_key(key) not in _PRIMARY_VALUE_KEYS:
+        if not _matches_normalized_key(_normalized_leaf_key(key), _PRIMARY_VALUE_KEYS):
             continue
         if value is None:
             return True
         if isinstance(value, str):
-            text = value.strip().lower()
-            if (
-                text in _PLACEHOLDER_VALUES
-                or _normalized_placeholder_text(value) in _NORMALIZED_PLACEHOLDER_VALUES
-            ):
+            if _is_placeholder_token(_normalized_placeholder_text(value)):
                 return True
     return False
 
@@ -230,6 +238,20 @@ def _contains_placeholder_value(candidate: dict[str, Any]) -> bool:
 def _normalized_leaf_key(path: str) -> str:
     key = snake(path.split(".")[-1].strip()).replace("-", "_").replace(" ", "_").lower()
     return "_".join(part for part in key.split("_") if part)
+
+
+def _is_placeholder_token(value: str) -> bool:
+    return (
+        value in _NORMALIZED_PLACEHOLDER_TOKENS
+        or value.replace("_", "") in _COMPACT_NORMALIZED_PLACEHOLDER_TOKENS
+    )
+
+
+def _matches_normalized_key(value: str, candidates: set[str]) -> bool:
+    compact = value.replace("_", "")
+    return value in candidates or compact in {
+        candidate.replace("_", "") for candidate in candidates
+    }
 
 
 def _normalized_decision(value: Any) -> str:

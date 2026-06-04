@@ -39,6 +39,14 @@ NORMALIZED_PLACEHOLDER_VALUES = {
     "_".join(part for part in value.replace("-", "_").replace(" ", "_").split("_") if part)
     for value in PLACEHOLDER_VALUES
 }
+NORMALIZED_PLACEHOLDER_FIELD_NAMES = {
+    "_".join(part for part in value.replace("-", "_").replace(" ", "_").split("_") if part)
+    for value in PLACEHOLDER_FIELD_NAMES
+}
+NORMALIZED_PLACEHOLDER_TOKENS = NORMALIZED_PLACEHOLDER_VALUES | NORMALIZED_PLACEHOLDER_FIELD_NAMES
+COMPACT_NORMALIZED_PLACEHOLDER_TOKENS = frozenset(
+    token.replace("_", "") for token in NORMALIZED_PLACEHOLDER_TOKENS
+)
 PRIMARY_VALUE_KEYS = {
     "amount",
     "date",
@@ -80,7 +88,7 @@ def reject_observation(field_name: str, value: object) -> tuple[bool, str | None
     name = _normalized_key(field_name)
     val = "" if value is None else str(value).strip().lower()
 
-    if not name or name in PLACEHOLDER_FIELD_NAMES or name in NORMALIZED_PLACEHOLDER_VALUES:
+    if not name or _is_placeholder_token(name):
         return True, "placeholder_field_name"
     if _contains_placeholder_value_any_key(value):
         return True, "placeholder_or_null_value"
@@ -126,7 +134,7 @@ def reject_line_item(item: dict[str, Any]) -> tuple[bool, str | None]:
     if not description:
         return True, "missing_description"
 
-    if description.lower() in PLACEHOLDER_VALUES:
+    if _is_placeholder_token(_normalized_key(description)):
         return True, "placeholder_or_null_value"
 
     zero_rejected, zero_reason = zero_amount_line_requires_context(item)
@@ -231,13 +239,18 @@ def _contains_placeholder_value_for_keys(
     value_keys: set[str] | None,
     reject_null_leaves: bool,
 ) -> bool:
-    key_is_value = value_keys is None or key is None or _normalized_key(key) in value_keys
+    key_is_value = (
+        value_keys is None
+        or key is None
+        or _matches_normalized_key(
+            key,
+            value_keys,
+        )
+    )
     if value is None:
         return reject_null_leaves and key_is_value
     if isinstance(value, str):
-        return (
-            key_is_value and _normalized_placeholder_value(value) in NORMALIZED_PLACEHOLDER_VALUES
-        )
+        return key_is_value and _is_placeholder_token(_normalized_placeholder_value(value))
     if isinstance(value, dict):
         return any(
             _contains_placeholder_value_for_keys(
@@ -269,3 +282,18 @@ def _normalized_key(value: object) -> str:
 
 def _normalized_placeholder_value(value: str) -> str:
     return _normalized_key(value)
+
+
+def _is_placeholder_token(value: str) -> bool:
+    return (
+        value in NORMALIZED_PLACEHOLDER_TOKENS
+        or value.replace("_", "") in COMPACT_NORMALIZED_PLACEHOLDER_TOKENS
+    )
+
+
+def _matches_normalized_key(key: object, candidates: set[str]) -> bool:
+    normalized = _normalized_key(key)
+    compact = normalized.replace("_", "")
+    return normalized in candidates or compact in {
+        candidate.replace("_", "") for candidate in candidates
+    }

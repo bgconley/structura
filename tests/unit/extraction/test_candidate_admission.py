@@ -368,6 +368,34 @@ def test_normalized_placeholder_observation_field_name_is_rejected_before_insert
     assert admission.events[0].reasons == ("placeholder_field_name",)
 
 
+def test_compact_placeholder_observation_field_name_is_rejected_before_insertion() -> None:
+    context = _context()
+    candidate = ObservationCandidateFact(
+        observation_family="document_observation",
+        field_name="visiblefield",
+        value_type="string",
+        value="printed receipt",
+        evidence=[_evidence(context)],
+    )
+
+    admission = admit_extraction_candidates(
+        context=context,
+        field_candidates=[],
+        line_item_candidates=[],
+        observation_candidates=[candidate],
+    )
+
+    assert admission.observation_candidates == []
+    assert admission.summary == {
+        "produced": 1,
+        "admitted": 0,
+        "rejected": 1,
+        "rejectionReasons": {"rejected_placeholder": 1},
+    }
+    assert admission.events[0].decision == "rejected_placeholder"
+    assert admission.events[0].reasons == ("placeholder_field_name",)
+
+
 def test_report_placeholder_observation_field_name_is_rejected_before_insertion() -> None:
     context = _context()
     candidate = ObservationCandidateFact(
@@ -459,6 +487,34 @@ def test_camel_case_placeholder_token_value_is_rejected_before_insertion() -> No
         field_path="receipt.merchant.display_name",
         value_type="json",
         value={"displayName": "NotProvided"},
+        evidence=[_evidence(context)],
+        status="proposed",
+    )
+
+    admission = admit_extraction_candidates(
+        context=context,
+        field_candidates=[candidate],
+        line_item_candidates=[],
+        observation_candidates=[],
+    )
+
+    assert admission.field_candidates == []
+    assert admission.summary == {
+        "produced": 1,
+        "admitted": 0,
+        "rejected": 1,
+        "rejectionReasons": {"rejected_placeholder": 1},
+    }
+    assert admission.events[0].decision == "rejected_placeholder"
+    assert admission.events[0].reasons == ("placeholder_or_null_value",)
+
+
+def test_compact_placeholder_key_field_value_is_rejected_before_insertion() -> None:
+    context = _context()
+    candidate = CandidateFact(
+        field_path="receipt.merchant.display_name",
+        value_type="json",
+        value={"displayname": "Unknown"},
         evidence=[_evidence(context)],
         status="proposed",
     )
