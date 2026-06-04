@@ -24,6 +24,12 @@ LINE_ITEM_TABLE_BUDGET = GraniteTaskBudget(
     max_attempts=2,
 )
 
+RETAIL_ORDER_LINE_ITEM_BUDGET = GraniteTaskBudget(
+    max_output_tokens=4096,
+    timeout_seconds=120,
+    max_attempts=2,
+)
+
 SUMMARY_KVP_BUDGET = GraniteTaskBudget(
     max_output_tokens=1536,
     timeout_seconds=60,
@@ -84,6 +90,8 @@ def granite_budget_for_task(
 ) -> GraniteTaskBudget:
     if semantic_task is None:
         return DEFAULT_GRANITE_BUDGET
+    if semantic_task.semantic_type == "retail_order_line_item_table":
+        return RETAIL_ORDER_LINE_ITEM_BUDGET
     if semantic_task.semantic_type in LINE_ITEM_SEMANTIC_TYPES:
         return LINE_ITEM_TABLE_BUDGET
     if semantic_task.semantic_type in SCHEMA_BACKED_OBSERVATION_SEMANTIC_TYPES:

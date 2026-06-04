@@ -522,12 +522,20 @@ def _repair_region_grounding(
     if grounding.kind == "element" and grounding.element_id in valid_element_ids:
         return replace(
             region,
-            grounding=SemanticGroundingRef(kind="element", element_id=grounding.element_id),
+            grounding=SemanticGroundingRef(
+                kind="element",
+                page_id=grounding.page_id if grounding.page_id in valid_page_ids else None,
+                element_id=grounding.element_id,
+            ),
         )
     if grounding.kind == "table" and grounding.table_id in valid_table_ids:
         return replace(
             region,
-            grounding=SemanticGroundingRef(kind="table", table_id=grounding.table_id),
+            grounding=SemanticGroundingRef(
+                kind="table",
+                page_id=grounding.page_id if grounding.page_id in valid_page_ids else None,
+                table_id=grounding.table_id,
+            ),
         )
     if grounding.page_id in valid_page_ids:
         return replace(

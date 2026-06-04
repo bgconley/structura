@@ -49,23 +49,30 @@ class GraniteExtractionPlan:
     dropped: tuple[GraniteJobSpec, ...]
     warnings: tuple[str, ...]
     bucket_counts: dict[str, int]
+    max_tasks_per_document: int = 0
+    max_tasks_per_page: int = 0
 
     def to_metadata(self) -> dict[str, object]:
         selected_by_backend: dict[str, int] = defaultdict(int)
         selected_by_bucket: dict[str, int] = defaultdict(int)
+        selected_by_page: dict[str, int] = defaultdict(int)
         for spec in self.selected:
             selected_by_backend[spec.extractor_backend] += 1
             selected_by_bucket[_bucket(spec)] += 1
+            selected_by_page[_page_key(spec)] += 1
         return {
             "selectedCount": len(self.selected),
             "droppedCount": len(self.dropped),
             "plannedTaskCount": len(self.selected) + len(self.dropped),
+            "maxTasksPerDocumentPolicy": self.max_tasks_per_document,
+            "maxTasksPerPagePolicy": self.max_tasks_per_page,
             "safeSkipCount": len(self.dropped),
             "safeAbstentionCount": 0,
             "unsafeFailureCount": 0,
             "bucketCounts": dict(self.bucket_counts),
             "selectedTaskCountByBackend": dict(selected_by_backend),
             "selectedTaskCountByBucket": dict(selected_by_bucket),
+            "selectedTaskCountByPage": dict(selected_by_page),
             "warnings": list(self.warnings),
             "selected": [_spec_summary(spec) for spec in self.selected],
             "dropped": [_spec_summary(spec) for spec in self.dropped[:12]],
@@ -89,6 +96,11 @@ def plan_granite_jobs(
         "high_quality": 8,
         "rescue": 1,
     }.get(quality_mode, 6)
+    per_page_limit = {
+        "smart": 3,
+        "high_quality": 4,
+        "rescue": 1,
+    }.get(quality_mode, 3)
     bucket_limits = {
         "line_item": 4,
         "docling_table": 3,
@@ -98,7 +110,18 @@ def plan_granite_jobs(
     }
 
     selected: list[GraniteJobSpec] = []
+    selected_by_page: dict[str, int] = defaultdict(int)
     warnings: list[str] = []
+
+    def select_if_allowed(spec: GraniteJobSpec) -> bool:
+        page_key = _page_key(spec)
+        if selected_by_page[page_key] >= per_page_limit:
+            warnings.append(f"granite_plan_page_limit_reached:{page_key}")
+            return False
+        selected.append(spec)
+        selected_by_page[page_key] += 1
+        return True
+
     for bucket in (
         "line_item",
         "docling_table",
@@ -110,7 +133,7 @@ def plan_granite_jobs(
             if len(selected) >= hard_limit:
                 warnings.append(f"granite_plan_hard_limit_reached_before_{bucket}")
                 break
-            selected.append(spec)
+            select_if_allowed(spec)
 
     selected_ids = {id(spec) for spec in selected}
     if len(selected) < hard_limit:
@@ -121,8 +144,8 @@ def plan_granite_jobs(
         for spec in remaining:
             if len(selected) >= hard_limit:
                 break
-            selected.append(spec)
-            selected_ids.add(id(spec))
+            if select_if_allowed(spec):
+                selected_ids.add(id(spec))
     dropped = tuple(spec for spec in deduped if id(spec) not in selected_ids)
     for spec in dropped:
         must_extract_reason = spec.region.metadata.get("must_extract_reason")
@@ -136,6 +159,8 @@ def plan_granite_jobs(
         dropped=dropped,
         warnings=tuple(dict.fromkeys(warnings)),
         bucket_counts={bucket: len(bucket_specs) for bucket, bucket_specs in buckets.items()},
+        max_tasks_per_document=hard_limit,
+        max_tasks_per_page=per_page_limit,
     )
     return _attach_plan_metadata(plan)
 
@@ -213,9 +238,21 @@ def _dedupe_key(spec: GraniteJobSpec) -> tuple[Any, ...]:
     )
 
 
+def _page_key(spec: GraniteJobSpec) -> str:
+    grounding = spec.region.grounding
+    if grounding.page_id is not None:
+        return str(grounding.page_id)
+    for metadata_key in ("page_id", "pageId", "page_number", "pageNumber"):
+        value = spec.region.metadata.get(metadata_key)
+        if value is not None:
+            return str(value)
+    return "unknown"
+
+
 def _spec_summary(spec: GraniteJobSpec) -> dict[str, object]:
     return {
         "regionId": str(spec.region_id),
+        "pageKey": _page_key(spec),
         "semanticType": spec.region.semantic_type,
         "targetSchema": spec.target_schema,
         "canonicalTargetSchema": spec.canonical_target_schema,

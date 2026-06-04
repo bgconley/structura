@@ -190,6 +190,7 @@ def test_live_qwen_high_quality_gateway_normalizes_page_annotations_shape() -> N
     assert len(result.manifest.regions) == 1
     region = result.manifest.regions[0]
     assert region.grounding.kind == "element"
+    assert region.grounding.page_id == page.page_id
     assert region.grounding.element_id == element.element_id
     assert region.granite_task == "kvp"
     assert region.target_schema == "medical_eob"
@@ -626,6 +627,7 @@ def test_live_qwen_smart_gateway_rejects_context_length_without_one_page_fallbac
                     "However, you requested 6144 output tokens and your prompt contains "
                     "at least 14500 input tokens."
                 )
+            raise AssertionError("Unexpected one-page fallback request.")
 
     client = ContextLengthFailureClient()
 
@@ -653,6 +655,7 @@ def test_live_qwen_smart_gateway_rejects_truncation_without_one_page_fallback() 
                 raise ModelProtocolError(
                     "Vision model response was truncated before valid JSON completed."
                 )
+            raise AssertionError("Unexpected one-page fallback request.")
 
     client = TruncationFailureClient()
 

@@ -795,7 +795,7 @@ def test_semantic_service_rejects_removed_high_quality_mode() -> None:
     assert jobs.created == []
 
 
-def test_semantic_service_caps_smart_fanout_to_six_regions() -> None:
+def test_semantic_service_caps_smart_fanout_to_three_regions_on_one_page() -> None:
     document_id = uuid4()
     household_id = uuid4()
     page_id = uuid4()
@@ -820,8 +820,8 @@ def test_semantic_service_caps_smart_fanout_to_six_regions() -> None:
         jobs=jobs,
     ).annotate_document(document_id, quality_mode="smart", requested_by="system")
 
-    assert len(jobs.created) == 6
-    assert len(result.queued_granite_job_ids) == 6
+    assert len(jobs.created) == 3
+    assert len(result.queued_granite_job_ids) == 3
 
 
 def test_semantic_service_prioritizes_line_items_over_header_regions() -> None:

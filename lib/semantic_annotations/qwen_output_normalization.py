@@ -698,35 +698,35 @@ def _grounding_from_alternate_region(
     if isinstance(grounding, dict):
         return {
             "kind": str(grounding.get("kind") or "unmatched_region"),
-            "page_id": str(grounding["page_id"]) if grounding.get("page_id") else None,
+            "page_id": str(grounding["page_id"]) if grounding.get("page_id") else page_id,
             "element_id": (str(grounding["element_id"]) if grounding.get("element_id") else None),
             "table_id": str(grounding["table_id"]) if grounding.get("table_id") else None,
         }
     if item.get("table_id"):
         return {
             "kind": "table",
-            "page_id": None,
+            "page_id": page_id,
             "element_id": None,
             "table_id": str(item["table_id"]),
         }
     if item.get("element_id"):
         return {
             "kind": "element",
-            "page_id": None,
+            "page_id": page_id,
             "element_id": str(item["element_id"]),
             "table_id": None,
         }
     if item.get("tableId"):
         return {
             "kind": "table",
-            "page_id": None,
+            "page_id": page_id,
             "element_id": None,
             "table_id": str(item["tableId"]),
         }
     if item.get("elementId"):
         return {
             "kind": "element",
-            "page_id": None,
+            "page_id": page_id,
             "element_id": str(item["elementId"]),
             "table_id": None,
         }
