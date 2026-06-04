@@ -12,6 +12,27 @@ from lib.extraction.docling_table_quality import (
 from lib.extraction.evidence_concretizer import evidence_ref_from_context
 from lib.extraction.evidence_context import EvidenceContext
 from lib.extraction.line_item_provenance import line_item_evidence, line_item_provenance
+from lib.extraction.model_output_line_items import (
+    canonical_line_item_evidence,
+)
+from lib.extraction.model_output_line_items import (
+    is_non_line_item_heading as _is_non_line_item_heading,
+)
+from lib.extraction.model_output_line_items import (
+    join_source_text as _join_source_text,
+)
+from lib.extraction.model_output_line_items import (
+    line_item_amount as _line_item_amount,
+)
+from lib.extraction.model_output_line_items import (
+    line_item_description as _line_item_description,
+)
+from lib.extraction.model_output_line_items import (
+    service_record_line_item as _service_record_line_item,
+)
+from lib.extraction.model_output_line_items import (
+    simple_line_item as _line_item,
+)
 from lib.extraction.model_output_observations import (
     looks_like_schema_echo as _looks_like_schema_echo,
 )
@@ -40,14 +61,6 @@ from lib.extraction.model_output_wrappers import (
     unwrap_model_output_payload as _unwrapped_payload,
 )
 from lib.extraction.region_envelope_projection import finalized_region_output
-
-_NON_LINE_ITEM_HEADINGS = {
-    "customer information",
-    "transaction information",
-    "vehicle information",
-    "service department hours",
-    "payment information",
-}
 
 
 def normalize_granite_region_output(
@@ -602,13 +615,7 @@ def _canonical_invoice_line_items(
                 if (item.get("gl_hint") or item.get("category_hint"))
                 else {}
             ),
-            "evidence": [
-                line_item_evidence(
-                    item,
-                    _line_item_source_text(item, description),
-                    evidence_context,
-                )
-            ],
+            "evidence": [canonical_line_item_evidence(item, description, evidence_context)],
         }
         normalized.append(normalized_item)
     return normalized
@@ -637,13 +644,7 @@ def _canonical_receipt_line_items(
             **({"unit_price": _money(item.get("unit_price"))} if item.get("unit_price") else {}),
             **({"amount": amount} if amount else {}),
             **({"sku": item.get("sku")} if item.get("sku") else {}),
-            "evidence": [
-                line_item_evidence(
-                    item,
-                    _line_item_source_text(item, description),
-                    evidence_context,
-                )
-            ],
+            "evidence": [canonical_line_item_evidence(item, description, evidence_context)],
         }
         normalized.append(normalized_item)
     return normalized
@@ -738,65 +739,6 @@ def _service_record_flat_line_items(
     return [item for item in items if item["description"]]
 
 
-def _service_record_line_item(
-    *,
-    ordinal: int,
-    description: str,
-    category_hint: str,
-    quantity: Any,
-    unit: Any,
-    unit_price: Any,
-    amount: Any,
-    source_text: str,
-    evidence_context: EvidenceContext | None,
-) -> dict[str, Any]:
-    normalized: dict[str, Any] = {
-        "ordinal": ordinal,
-        "description": description,
-        "category_hint": category_hint,
-        "evidence": [_evidence(source_text, evidence_context)],
-    }
-    parsed_quantity = _number(quantity)
-    parsed_unit_price = _money(unit_price)
-    parsed_amount = _money(amount)
-    if parsed_quantity is not None:
-        normalized["quantity"] = parsed_quantity
-    if unit not in (None, ""):
-        normalized["unit"] = str(unit)
-    if parsed_unit_price is not None:
-        normalized["unit_price"] = parsed_unit_price
-    if parsed_amount is not None:
-        normalized["amount"] = parsed_amount
-    return normalized
-
-
-def _join_source_text(description: str, **parts: Any) -> str:
-    values = [description]
-    for key, value in parts.items():
-        if value not in (None, ""):
-            values.append(f"{key}: {value}")
-    return " | ".join(values)
-
-
-def _line_item(
-    ordinal: int,
-    description: str,
-    amount: dict[str, Any] | None,
-    category_hint: str,
-    *,
-    evidence_context: EvidenceContext | None,
-) -> dict[str, Any]:
-    item: dict[str, Any] = {
-        "ordinal": ordinal,
-        "description": description,
-        "category_hint": category_hint,
-        "evidence": [_evidence(description, evidence_context)],
-    }
-    if amount:
-        item["amount"] = amount
-    return item
-
-
 def _invoice_totals(payload: dict[str, Any]) -> dict[str, Any]:
     raw_totals = payload.get("totals")
     totals: dict[str, Any] = raw_totals if isinstance(raw_totals, dict) else {}
@@ -846,50 +788,6 @@ def _receipt_merchant(
             "evidence": [_evidence(merchant_name, evidence_context)],
         }
     return {}
-
-
-def _line_item_description(item: dict[str, Any]) -> str | None:
-    for key in ("description", "service_description", "service_type", "line_description"):
-        value = item.get(key)
-        if isinstance(value, str) and value.strip():
-            return value.strip()
-    return None
-
-
-def _line_item_amount(item: dict[str, Any]) -> dict[str, Any] | None:
-    for key in (
-        "amount",
-        "total_due",
-        "service_cost",
-        "subtotal",
-        "net_amount",
-        "line_total",
-        "labor",
-        "parts_cost",
-    ):
-        amount = _money(item.get(key))
-        if amount is not None:
-            return amount
-    return None
-
-
-def _is_non_line_item_heading(item: dict[str, Any], description: str) -> bool:
-    normalized_description = description.strip().lower()
-    category = item.get("category_hint") or item.get("gl_hint")
-    normalized_category = str(category).strip().lower() if category else ""
-    return (
-        normalized_description in _NON_LINE_ITEM_HEADINGS
-        or normalized_category in _NON_LINE_ITEM_HEADINGS
-    )
-
-
-def _line_item_source_text(item: dict[str, Any], description: str) -> str:
-    parts = [description]
-    for key in ("parts", "service_notes", "service_provider", "service_location"):
-        value = item.get(key)
-        if isinstance(value, str) and value.strip():
-            parts.append(f"{key}: {value.strip()}")
-    return " | ".join(parts)
 
 
 def _first_payment(payload: dict[str, Any]) -> dict[str, Any]:
