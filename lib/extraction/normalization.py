@@ -1,17 +1,34 @@
 from __future__ import annotations
 
-import json
-import re
-from dataclasses import replace
-from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
+from lib.extraction.candidate_deduplication import (
+    dedupe_line_item_candidates as _dedupe_line_item_candidates,
+)
+from lib.extraction.candidate_deduplication import (
+    dedupe_observation_candidates as _dedupe_observation_candidates,
+)
 from lib.extraction.candidate_quality import (
     reject_line_item,
     reject_observation,
     reject_scalar_candidate,
 )
+from lib.extraction.candidate_value_parsing import candidate_status as _candidate_status
+from lib.extraction.candidate_value_parsing import confidence_or_none as _confidence_or_none
+from lib.extraction.candidate_value_parsing import date_value as _date
+from lib.extraction.candidate_value_parsing import (
+    empty_observation_value as _empty_observation_value,
+)
+from lib.extraction.candidate_value_parsing import evidence as _evidence
+from lib.extraction.candidate_value_parsing import first_evidence as _first_evidence
+from lib.extraction.candidate_value_parsing import (
+    grid_only_observation as _grid_only_observation,
+)
+from lib.extraction.candidate_value_parsing import money_amount as _money_amount
+from lib.extraction.candidate_value_parsing import money_currency as _money_currency
+from lib.extraction.candidate_value_parsing import number_value as _number
+from lib.extraction.candidate_value_parsing import overall_confidence as _overall_confidence
 from lib.extraction.evidence import has_concrete_evidence
 from lib.extraction.model_output_normalization import (
     invoice_line_item_dicts_from_payload,
@@ -19,7 +36,6 @@ from lib.extraction.model_output_normalization import (
 )
 from lib.extraction.models import (
     CandidateFact,
-    Evidence,
     LineItemCandidateFact,
     ObservationCandidateFact,
     ValidationReport,
@@ -568,286 +584,3 @@ def _eob_line_items(
             )
         )
     return facts
-
-
-def _dedupe_line_item_candidates(
-    facts: list[LineItemCandidateFact],
-) -> list[LineItemCandidateFact]:
-    exact: dict[tuple[Any, ...], LineItemCandidateFact] = {}
-    for fact in facts:
-        key = _line_item_exact_key(fact)
-        current = exact.get(key)
-        if current is None or _line_item_richness(fact) > _line_item_richness(current):
-            exact[key] = fact
-
-    unique = list(exact.values())
-    rich_sparse_keys = {
-        _line_item_sparse_key(fact) for fact in unique if _line_item_has_meaningful_detail(fact)
-    }
-    filtered = [
-        fact
-        for fact in unique
-        if not (_line_item_is_sparse(fact) and _line_item_sparse_key(fact) in rich_sparse_keys)
-    ]
-    return [replace(fact, ordinal=index + 1) for index, fact in enumerate(filtered)]
-
-
-def _line_item_exact_key(fact: LineItemCandidateFact) -> tuple[Any, ...]:
-    return (
-        _normalized_text_key(fact.line_item_type),
-        _normalized_text_key(fact.description),
-        _normalized_text_key(fact.code),
-        _date_key(fact.service_date),
-        _float_key(fact.quantity),
-        _normalized_text_key(fact.unit),
-        _float_key(fact.unit_price),
-        _float_key(fact.gross_amount),
-        _float_key(fact.discount_amount),
-        _float_key(fact.tax_amount),
-        _float_key(fact.net_amount),
-        _normalized_text_key(fact.currency),
-    )
-
-
-def _line_item_sparse_key(fact: LineItemCandidateFact) -> tuple[Any, ...]:
-    return (
-        _normalized_text_key(fact.line_item_type),
-        _normalized_text_key(fact.description),
-        _normalized_text_key(fact.code),
-    )
-
-
-def _line_item_is_sparse(fact: LineItemCandidateFact) -> bool:
-    return not _line_item_has_meaningful_detail(fact)
-
-
-def _line_item_has_meaningful_detail(fact: LineItemCandidateFact) -> bool:
-    return any(
-        value is not None
-        for value in (
-            fact.code,
-            fact.service_date,
-            fact.quantity,
-            fact.unit_price,
-            fact.gross_amount,
-            fact.discount_amount,
-            fact.tax_amount,
-            fact.net_amount,
-        )
-    )
-
-
-def _line_item_richness(fact: LineItemCandidateFact) -> int:
-    populated = (
-        fact.code,
-        fact.service_date,
-        fact.quantity,
-        fact.unit,
-        fact.unit_price,
-        fact.gross_amount,
-        fact.discount_amount,
-        fact.tax_amount,
-        fact.net_amount,
-        fact.currency,
-        fact.category_hint,
-    )
-    return sum(value not in (None, "") for value in populated) + len(fact.evidence)
-
-
-def _dedupe_observation_candidates(
-    candidates: list[ObservationCandidateFact],
-) -> list[ObservationCandidateFact]:
-    deduped: dict[tuple[Any, ...], ObservationCandidateFact] = {}
-    for candidate in candidates:
-        key = _observation_key(candidate)
-        if key not in deduped:
-            deduped[key] = candidate
-    return list(deduped.values())
-
-
-def _observation_key(candidate: ObservationCandidateFact) -> tuple[Any, ...]:
-    return (
-        _normalized_text_key(candidate.observation_family),
-        _normalized_text_key(candidate.field_name),
-        _normalized_text_key(candidate.value_type),
-        _json_key(candidate.value),
-    )
-
-
-def _empty_observation_value(value: Any) -> bool:
-    if value is None:
-        return True
-    if isinstance(value, str):
-        return not value.strip()
-    if isinstance(value, (list, tuple, set, dict)):
-        return len(value) == 0
-    return False
-
-
-def _grid_only_observation(field_name: Any, value: Any) -> bool:
-    field = _normalized_text_key(field_name)
-    if field == "dimensions":
-        return True
-    if field != "cells":
-        return False
-    return not _contains_textual_content(value)
-
-
-def _contains_textual_content(value: Any) -> bool:
-    if isinstance(value, str):
-        return any(char.isalpha() for char in value)
-    if isinstance(value, dict):
-        return any(_contains_textual_content(item) for item in value.values())
-    if isinstance(value, (list, tuple, set)):
-        return any(_contains_textual_content(item) for item in value)
-    return False
-
-
-def _candidate_status(
-    validation: ValidationReport,
-    evidence: list[dict[str, Any]],
-    *,
-    source_engine: str,
-) -> str:
-    if (
-        validation.needs_review
-        or source_engine.startswith("qwen3_vl")
-        or not has_concrete_evidence(evidence)
-    ):
-        return "needs_review"
-    return "proposed"
-
-
-def _first_evidence(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    evidence = payload.get("evidence")
-    if isinstance(evidence, list):
-        return evidence
-    for value in payload.values():
-        if isinstance(value, dict):
-            evidence = value.get("evidence")
-            if isinstance(evidence, list):
-                return evidence
-    return []
-
-
-def _evidence(owner: dict[str, Any]) -> list[Evidence]:
-    evidence = owner.get("evidence")
-    return evidence if isinstance(evidence, list) else []
-
-
-def _overall_confidence(payload: dict[str, Any]) -> float:
-    confidence = payload.get("confidence")
-    if isinstance(confidence, dict):
-        return float(confidence.get("overall") or 0)
-    return 0.0
-
-
-def _money_amount(value: Any) -> float | None:
-    if not isinstance(value, dict) or value.get("amount") is None:
-        return None
-    return float(value["amount"])
-
-
-def _money_currency(value: Any) -> str | None:
-    if not isinstance(value, dict):
-        return None
-    currency = value.get("currency")
-    return str(currency) if currency else None
-
-
-def _number(value: Any) -> float | None:
-    if value in (None, ""):
-        return None
-    if isinstance(value, int | float):
-        return float(value)
-    if isinstance(value, str):
-        match = re.search(r"-?\d[\d,]*(?:\.\d+)?", value)
-        if match:
-            return float(match.group(0).replace(",", ""))
-    return None
-
-
-def _number_or_none(value: Any) -> float | None:
-    try:
-        return _number(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def _confidence_or_none(value: Any) -> float | None:
-    confidence = _number_or_none(value)
-    if confidence is None or not 0.0 <= confidence <= 1.0:
-        return None
-    return confidence
-
-
-def _normalized_text_key(value: Any) -> str:
-    if value is None:
-        return ""
-    return " ".join(str(value).strip().lower().split())
-
-
-def _float_key(value: float | None) -> float | None:
-    return round(float(value), 6) if value is not None else None
-
-
-def _date_key(value: date | None) -> str:
-    return value.isoformat() if isinstance(value, date) else ""
-
-
-def _json_key(value: Any) -> str:
-    return json.dumps(_json_key_value(value), sort_keys=True, separators=(",", ":"))
-
-
-def _json_key_value(value: Any) -> Any:
-    if isinstance(value, str):
-        return _normalized_text_key(value)
-    if isinstance(value, dict):
-        return {str(key): _json_key_value(item) for key, item in value.items()}
-    if isinstance(value, (list, tuple, set)):
-        return [_json_key_value(item) for item in value]
-    return value
-
-
-def _date(value: Any) -> date | None:
-    if isinstance(value, date):
-        return value
-    if not isinstance(value, str) or not value.strip():
-        return None
-    text = value.strip()
-    candidates = [
-        text,
-        *_date_fragments(text),
-    ]
-    for candidate in dict.fromkeys(candidates):
-        for fmt in (
-            "%Y-%m-%d",
-            "%m/%d/%y",
-            "%m/%d/%Y",
-            "%d-%b-%Y",
-            "%d-%B-%Y",
-            "%d-%b-%y",
-            "%d-%B-%y",
-            "%b %d %Y",
-            "%B %d %Y",
-            "%b %d, %Y",
-            "%B %d, %Y",
-        ):
-            try:
-                return datetime.strptime(candidate, fmt).date()
-            except ValueError:
-                continue
-    return None
-
-
-def _date_fragments(text: str) -> list[str]:
-    patterns = (
-        r"\b\d{4}-\d{1,2}-\d{1,2}\b",
-        r"\b\d{1,2}/\d{1,2}/\d{2,4}\b",
-        r"\b\d{1,2}-[A-Za-z]{3,9}-\d{2,4}\b",
-        r"\b[A-Za-z]{3,9}\s+\d{1,2},?\s+\d{2,4}\b",
-    )
-    fragments: list[str] = []
-    for pattern in patterns:
-        fragments.extend(match.group(0) for match in re.finditer(pattern, text))
-    return fragments
