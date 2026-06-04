@@ -246,6 +246,41 @@ def test_hard_invariants_flag_admitted_camel_case_placeholder_payloads() -> None
     ]
 
 
+def test_hard_invariants_flag_admitted_spaced_key_placeholder_payloads() -> None:
+    document = _safe_document_report()
+    document["admissionEvents"].append(
+        {
+            "decision": "admitted_review_required",
+            "candidate_kind": "observation",
+            "candidate_fingerprint": "spaced-placeholder-observation-1",
+            **_admission_event_telemetry(),
+            "evidence_concrete": True,
+            "payload_json": {
+                "candidate": {
+                    "field name": "field",
+                    "display name": "Unknown",
+                    "evidence": [{"page_id": "page-1", "semantic_region_id": "region-1"}],
+                }
+            },
+        }
+    )
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 1
+    assert (
+        summary["invariants"]["placeholderOrLiteralNullCandidatesAdmitted"]["violationCount"] == 1
+    )
+    assert summary["invariants"]["placeholderOrLiteralNullCandidatesAdmitted"]["examples"] == [
+        {
+            "reason": "admitted_placeholder_or_literal_null",
+            "documentId": None,
+            "entityId": "spaced-placeholder-observation-1",
+        }
+    ]
+
+
 def test_hard_invariants_flag_title_derived_seller_source_engine_alias() -> None:
     document = _safe_document_report()
     document["fields"].append(

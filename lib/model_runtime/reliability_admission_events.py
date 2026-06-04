@@ -160,7 +160,8 @@ def _contains_placeholder_value(candidate: dict[str, Any]) -> bool:
 
 
 def _normalized_leaf_key(path: str) -> str:
-    return snake(path.split(".")[-1].strip()).replace("-", "_").lower()
+    key = snake(path.split(".")[-1].strip()).replace("-", "_").replace(" ", "_").lower()
+    return "_".join(part for part in key.split("_") if part)
 
 
 def _normalized_decision(value: Any) -> str:
