@@ -115,7 +115,8 @@ def snake(key: str) -> str:
 
 
 def normalized_decision(value: Any) -> str:
-    return normalized_text(value)
+    decision = snake(str(value or "").strip()).lower().replace("-", "_").replace(" ", "_")
+    return "_".join(part for part in decision.split("_") if part)
 
 
 def normalized_text(value: Any) -> str:

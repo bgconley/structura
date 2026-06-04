@@ -140,6 +140,29 @@ def test_report_acceptance_normalizes_candidate_admission_summary_decisions() ->
     ]
 
 
+def test_report_acceptance_normalizes_candidate_admission_decision_separators() -> None:
+    report = build_phase85_reliability_report(
+        run_id="phase85-admission-summary",
+        title_prefix="Phase 8.5 Admission Summary",
+        documents=[_document_report_with_separator_decisions()],
+    )
+
+    assert report["candidateAdmissionSummary"] == {
+        "runId": "phase85-admission-summary",
+        "plannerVersion": PLANNER_VERSION,
+        "candidateGateVersion": CANDIDATE_GATE_VERSION,
+        "contractRegistryVersion": CONTRACT_REGISTRY_VERSION,
+        "regionEnvelopeVersion": report["runManifest"]["region_envelope_version"],
+        "admittedCount": 1,
+        "rejectedCount": 2,
+        "rejectionReasons": {
+            "duplicate_candidate_fingerprint": 1,
+            "rejected_missing_evidence": 1,
+        },
+        "duplicateSuppressionCount": 1,
+    }
+
+
 def test_report_acceptance_normalizes_candidate_admission_rejection_reasons() -> None:
     report = build_phase85_reliability_report(
         run_id="phase85-admission-summary",
@@ -228,6 +251,30 @@ def _document_report_with_cased_decisions() -> dict[str, Any]:
     document["admissionEvents"].append(
         {
             "decision": " Rejected_Duplicate ",
+            "candidate_kind": "field",
+            "candidate_fingerprint": "duplicate-field-1",
+            **_admission_event_telemetry(),
+            "reasons": ["duplicate_candidate_fingerprint"],
+            "payload_json": {
+                "candidate": {
+                    "field_path": "invoice.total_amount",
+                    "value": "42.00",
+                    "evidence": [{"page_id": "page-1"}],
+                }
+            },
+        }
+    )
+    return document
+
+
+def _document_report_with_separator_decisions() -> dict[str, Any]:
+    document = _document_report()
+    document["admissionEvents"][0]["decision"] = " Admitted Review-Required "
+    document["admissionEvents"][1]["decision"] = " Rejected Missing-Evidence "
+    document["admissionEvents"][1]["reasons"] = []
+    document["admissionEvents"].append(
+        {
+            "decision": " Rejected Duplicate ",
             "candidate_kind": "field",
             "candidate_fingerprint": "duplicate-field-1",
             **_admission_event_telemetry(),
