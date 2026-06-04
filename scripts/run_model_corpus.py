@@ -253,15 +253,27 @@ def _assert_evidence_artifact_measured_at(
     measured_at: datetime,
     path: Path,
 ) -> None:
-    artifact_measured_at = artifact.get("measuredAt") or artifact.get("measured_at")
+    artifact_measured_at = _evidence_artifact_measured_at(artifact)
     if artifact_measured_at is None:
-        return
+        raise SystemExit(
+            f"Model corpus evidence {section} evidencePath must include measuredAt metadata: {path}"
+        )
     parsed = _parse_measured_at(section, str(artifact_measured_at), path=path)
     if parsed != measured_at:
         raise SystemExit(
             f"Model corpus evidence {section} measuredAt mismatch: "
             f"{parsed.isoformat()} != {measured_at.isoformat()}"
         )
+
+
+def _evidence_artifact_measured_at(artifact: dict[str, Any]) -> Any:
+    measured_at = artifact.get("measuredAt") or artifact.get("measured_at")
+    if measured_at is not None:
+        return measured_at
+    run_manifest = artifact.get("runManifest") or artifact.get("run_manifest")
+    if isinstance(run_manifest, dict):
+        return run_manifest.get("measuredAt") or run_manifest.get("measured_at")
+    return None
 
 
 def _assert_evidence_artifact_lineage(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 
 from lib.model_runtime.reliability_fingerprints import repeatability_fingerprints
@@ -36,6 +37,7 @@ def build_phase85_reliability_report(
     safe_documents = json_safe(documents)
     report: dict[str, Any] = {
         "runId": run_id,
+        "measuredAt": datetime.now(UTC).isoformat(),
         "titlePrefix": title_prefix,
         "runManifest": build_phase85_run_manifest(
             run_id=run_id,

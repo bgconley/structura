@@ -17,10 +17,10 @@ metric evidence. Relative `evidencePath` values resolve from the private
 manifest's directory, and the runner requires the target artifact file to exist
 when evaluating a model-backed manifest from disk. The target artifact must be a
 JSON object with `runId`, `run_id`, or an equivalent `runManifest.run_id`
-matching the evidence section `runId`; if it includes `measuredAt` or
-`measured_at`, that value must match the evidence section `measuredAt`. It must
-also include a Phase
-8.5 `runManifest` with the active `pipeline_version`, `model_mode` set to
+matching the evidence section `runId`, plus `measuredAt`, `measured_at`, or an
+equivalent run-manifest timestamp matching the evidence section `measuredAt`. It
+must also include a Phase 8.5 `runManifest` with the active `pipeline_version`,
+`model_mode` set to
 `live` or `required`, and report evidence such as `acceptanceGates`, `metrics`,
 `checks`, or `documents`; deterministic fixture artifacts are not valid release
 evidence. The artifact must include model profile metadata matching the evidence

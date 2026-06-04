@@ -301,6 +301,47 @@ def test_model_corpus_script_rejects_conflicting_artifact_measured_at(tmp_path) 
     assert "measuredAt mismatch" in result.stderr
 
 
+def test_model_corpus_script_requires_artifact_measured_at_metadata(tmp_path) -> None:
+    payload = _manifest(fixture_type="model_backed")
+    _write_evidence_artifacts(tmp_path, payload, fixture_type="model_backed")
+    granite_evidence = payload["evidence"]["granite"]  # type: ignore[index]
+    assert isinstance(granite_evidence, dict)
+    (tmp_path / granite_evidence["evidencePath"]).write_text(  # type: ignore[index]
+        json.dumps(
+            _evidence_artifact(
+                str(granite_evidence["runId"]),
+                fixture_type="model_backed",
+                metrics={
+                    **_section_metrics(payload, "granite"),
+                    **_aggregate_metrics(payload),
+                },
+                profile=str(granite_evidence["profile"]),
+                include_measured_at=False,
+            )
+        ),
+        encoding="utf-8",
+    )
+    manifest = tmp_path / "phase8_5_model_manifest.json"
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_model_corpus.py",
+            "--require-model-backed",
+            "--manifest",
+            str(manifest),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "granite" in result.stderr
+    assert "measuredAt metadata" in result.stderr
+
+
 def test_model_corpus_script_requires_artifact_profile_metadata(tmp_path) -> None:
     payload = _manifest(fixture_type="model_backed")
     _write_evidence_artifacts(tmp_path, payload, fixture_type="model_backed")
@@ -819,7 +860,10 @@ def _write_evidence_artifacts(
                 profile=str(evidence["profile"]),
             )
         else:
-            artifact = {"runId": evidence["runId"]}
+            artifact = {
+                "runId": evidence["runId"],
+                "measuredAt": evidence["measuredAt"],
+            }
         (evidence_dir / f"{section}.json").write_text(
             json.dumps(artifact),
             encoding="utf-8",
@@ -831,10 +875,11 @@ def _evidence_artifact(
     *,
     fixture_type: str,
     metrics: dict[str, object] | None = None,
-    measured_at: str | None = None,
+    measured_at: str = "2026-06-04T12:00:00Z",
     profile: str = QWEN_SEMANTIC_PROFILE,
     include_profile: bool = True,
     model_mode: str | None = "live",
+    include_measured_at: bool = True,
 ) -> dict[str, object]:
     run_manifest: dict[str, object] = {
         "run_id": run_id,
@@ -850,7 +895,7 @@ def _evidence_artifact(
     }
     if include_profile:
         artifact["profile"] = profile
-    if measured_at is not None:
+    if include_measured_at:
         artifact["measuredAt"] = measured_at
     return artifact
 

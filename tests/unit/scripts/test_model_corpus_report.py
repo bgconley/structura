@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from datetime import datetime
 
 from lib.extraction.candidate_admission_models import CANDIDATE_GATE_VERSION
 from lib.extraction.contract_registry import CONTRACT_REGISTRY_VERSION
@@ -27,6 +28,7 @@ def test_reliability_report_includes_run_manifest_and_lineage_summaries() -> Non
     )
 
     assert report["runId"] == "phase85-20260604-smoke-001"
+    assert datetime.fromisoformat(str(report["measuredAt"])).tzinfo is not None
     assert report["runManifest"]["run_id"] == "phase85-20260604-smoke-001"
     assert report["runManifest"]["pipeline_version"] == PIPELINE_VERSION
     assert report["runManifest"]["model_mode"] == "fixture"
