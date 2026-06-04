@@ -100,3 +100,12 @@ def test_gpu_validation_docs_require_report_lineage() -> None:
     assert (
         "Report acceptance also requires `fixtureType`, `measuredAt`, and `runManifest.model_mode`"
     ) in normalized
+
+
+def test_gpu_validation_docs_describe_manifest_builder_inputs() -> None:
+    content = Path("docs/model-runtime/phase8_5_gpu_validation.md").read_text(encoding="utf-8")
+    normalized = re.sub(r"\s+", " ", content)
+
+    assert "make build-model-corpus-manifest" in normalized
+    assert "MODEL_CORPUS_*_EVIDENCE" in normalized
+    assert "MODEL_CORPUS_GOLD_METRICS_JSON" in normalized

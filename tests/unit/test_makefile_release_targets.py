@@ -27,3 +27,10 @@ def test_shape_model_corpus_uses_deterministic_example_manifest() -> None:
         content,
         re.M,
     )
+
+
+def test_makefile_exposes_model_corpus_manifest_builder() -> None:
+    content = MAKEFILE.read_text(encoding="utf-8")
+
+    assert "build-model-corpus-manifest:" in content
+    assert "scripts/build_model_corpus_manifest.py" in content

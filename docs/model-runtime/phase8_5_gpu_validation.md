@@ -70,6 +70,12 @@ Use `make model-corpus` only as a deterministic manifest shape check. Use
 `make model-corpus-release MODEL_CORPUS_RELEASE_MANIFEST=/path/to/private/phase8_5_model_manifest.json`
 or `make release-readiness` for the release gate; both require model-backed
 evidence and fail fast when the private manifest is missing or fixture-backed.
+To assemble the private release manifest from measured artifacts, run
+`make build-model-corpus-manifest` with explicit `MODEL_CORPUS_*_EVIDENCE`,
+`MODEL_CORPUS_THRESHOLDS_JSON`, `MODEL_CORPUS_GOLD_METRICS_JSON`, and
+`MODEL_CORPUS_GOLD_THRESHOLDS_JSON` paths. The builder validates the generated
+manifest with `scripts/run_model_corpus.py --require-model-backed` before
+writing it.
 
 For the Phase 8.5 reliability acceptance gate, run the resident corpus twice and
 compare the committed report gates/fingerprints with the current wrapper:
