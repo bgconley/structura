@@ -351,6 +351,30 @@ def test_missing_evidence_rejections_are_recorded_when_no_candidates_are_admitte
     assert admission.events[0].payload_json["value"] == {"amount": 4.65, "currency": "USD"}
 
 
+def test_rejected_payload_evidence_concrete_string_false_stays_false() -> None:
+    context = _context()
+
+    admission = admit_extraction_candidates(
+        context=context,
+        field_candidates=[],
+        line_item_candidates=[],
+        observation_candidates=[],
+        rejected_candidate_payloads=[
+            {
+                "candidate_kind": "field",
+                "field_path": "receipt.transaction.total",
+                "payload": {"value": {"amount": 4.65, "currency": "USD"}},
+                "decision": "rejected_missing_evidence",
+                "reasons": ["missing_concrete_evidence"],
+                "evidence_concrete": "False",
+            }
+        ],
+    )
+
+    assert admission.events[0].evidence_concrete is False
+    assert admission.rejected_candidates[0]["evidenceConcrete"] is False
+
+
 def test_payload_rejection_scan_records_candidates_dropped_before_admission() -> None:
     context = _context()
 

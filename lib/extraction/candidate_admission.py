@@ -341,7 +341,7 @@ def _rejected_payload_event(
     payload_json = _dict(payload.get("payload"))
     decision = str(payload.get("decision") or "rejected_value_sanity")
     reasons = tuple(str(reason) for reason in payload.get("reasons") or ())
-    evidence_concrete = bool(payload.get("evidence_concrete", False))
+    evidence_concrete = _bool_value(payload.get("evidence_concrete", False))
     fingerprint = raw_payload_fingerprint(
         candidate_kind=candidate_kind,
         field_path=field_path,
@@ -498,3 +498,11 @@ def _optional_string(value: object) -> str | None:
     if value in (None, ""):
         return None
     return str(value)
+
+
+def _bool_value(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"true", "1", "yes"}
+    return bool(value)
