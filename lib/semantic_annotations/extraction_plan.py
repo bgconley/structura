@@ -52,7 +52,30 @@ class GraniteExtractionPlan:
     max_tasks_per_document: int = 0
     max_tasks_per_page: int = 0
 
+    def summary_counts(self) -> dict[str, int]:
+        missing_contract_count = 0
+        missing_grounding_count = 0
+        incompatible_schema_count = 0
+        for spec in self.dropped:
+            reason = _selected_spec_violation(spec)
+            if reason == "missing_contract":
+                missing_contract_count += 1
+            elif reason == "missing_grounding":
+                missing_grounding_count += 1
+            elif reason == "incompatible_schema":
+                incompatible_schema_count += 1
+        return {
+            "selected_task_count": len(self.selected),
+            "skipped_task_count": len(self.dropped),
+            "abstention_count": 0,
+            "missing_contract_count": missing_contract_count,
+            "missing_grounding_count": missing_grounding_count,
+            "incompatible_schema_count": incompatible_schema_count,
+            "duplicate_suppressed_count": 0,
+        }
+
     def to_metadata(self) -> dict[str, object]:
+        summary_counts = self.summary_counts()
         selected_by_backend: dict[str, int] = defaultdict(int)
         selected_by_bucket: dict[str, int] = defaultdict(int)
         selected_by_page: dict[str, int] = defaultdict(int)
@@ -69,6 +92,10 @@ class GraniteExtractionPlan:
             "safeSkipCount": len(self.dropped),
             "safeAbstentionCount": 0,
             "unsafeFailureCount": 0,
+            "missingContractCount": summary_counts["missing_contract_count"],
+            "missingGroundingCount": summary_counts["missing_grounding_count"],
+            "incompatibleSchemaCount": summary_counts["incompatible_schema_count"],
+            "duplicateSuppressedCount": summary_counts["duplicate_suppressed_count"],
             "bucketCounts": dict(self.bucket_counts),
             "selectedTaskCountByBackend": dict(selected_by_backend),
             "selectedTaskCountByBucket": dict(selected_by_bucket),
@@ -164,6 +191,13 @@ def plan_granite_jobs(
         max_tasks_per_page=per_page_limit,
     )
     return _attach_plan_metadata(plan)
+
+
+def dropped_task_status_and_reason(spec: GraniteJobSpec) -> tuple[str, str]:
+    reason = _selected_spec_violation(spec)
+    if reason is not None:
+        return f"skipped_{reason}", reason
+    return "skipped_budget_exceeded", "planner_budget_or_fanout_policy"
 
 
 def _partition_selectable_specs(

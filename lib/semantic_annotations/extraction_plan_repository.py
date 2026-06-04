@@ -7,7 +7,11 @@ from uuid import UUID
 from psycopg.types.json import Jsonb
 
 from lib.model_runtime.reliability_versions import PLANNER_VERSION
-from lib.semantic_annotations.extraction_plan import GraniteExtractionPlan, GraniteJobSpec
+from lib.semantic_annotations.extraction_plan import (
+    GraniteExtractionPlan,
+    GraniteJobSpec,
+    dropped_task_status_and_reason,
+)
 from lib.semantic_annotations.models import SemanticAnnotationResult
 
 
@@ -27,6 +31,7 @@ def persist_extraction_plan_with_cursor(
     run_id: str | None = None,
 ) -> PersistedExtractionPlan:
     report = plan.to_metadata()
+    summary_counts = plan.summary_counts()
     cur.execute(
         """
         INSERT INTO semantic_extraction_plans (
@@ -37,7 +42,7 @@ def persist_extraction_plan_with_cursor(
           duplicate_suppressed_count, report_json
         )
         VALUES (
-          %s, %s, %s, %s, %s, %s, 'planned', %s, %s, 0, 0, 0, 0, 0, %s::jsonb
+          %s, %s, %s, %s, %s, %s, 'planned', %s, %s, %s, %s, %s, %s, %s, %s::jsonb
         )
         RETURNING id
         """,
@@ -48,8 +53,13 @@ def persist_extraction_plan_with_cursor(
             manifest_result.manifest.prompt_version,
             manifest_result.manifest.profile_name,
             run_id,
-            len(plan.selected),
-            len(plan.dropped),
+            summary_counts["selected_task_count"],
+            summary_counts["skipped_task_count"],
+            summary_counts["abstention_count"],
+            summary_counts["missing_contract_count"],
+            summary_counts["missing_grounding_count"],
+            summary_counts["incompatible_schema_count"],
+            summary_counts["duplicate_suppressed_count"],
             Jsonb(report),
         ),
     )
@@ -62,12 +72,13 @@ def persist_extraction_plan_with_cursor(
         task_id = _insert_plan_task(cur, plan_id=plan_id, spec=spec, status="selected")
         selected_task_ids[spec.region_id] = task_id
     for spec in plan.dropped:
+        status, skip_reason = dropped_task_status_and_reason(spec)
         _insert_plan_task(
             cur,
             plan_id=plan_id,
             spec=spec,
-            status="skipped_budget_exceeded",
-            skip_reason="planner_budget_or_fanout_policy",
+            status=status,
+            skip_reason=skip_reason,
         )
     return PersistedExtractionPlan(plan_id=plan_id, selected_task_ids=selected_task_ids)
 
