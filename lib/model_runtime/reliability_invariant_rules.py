@@ -183,15 +183,30 @@ def _has_concrete_grounding(
     bbox_value = get_value(grounding, "bbox") or get_value(region_grounding, "bbox")
 
     if kind in {"table", "docling_table"}:
-        return table_value not in (None, "") and page_value not in (None, "")
+        return _has_grounding_value(table_value) and _has_grounding_value(page_value)
     if kind in {"element", "text_element"}:
-        return element_value not in (None, "") and page_value not in (None, "")
+        return _has_grounding_value(element_value) and _has_grounding_value(page_value)
     if kind in {"page", "full_page", "region", "visual_region"}:
-        return page_value not in (None, "") or bbox_value not in (None, "")
+        return _has_grounding_value(page_value) or _has_grounding_value(bbox_value)
     return any(
-        value not in (None, "", [])
-        for value in (page_value, table_value, element_value, bbox_value)
+        _has_grounding_value(value)
+        for value in (
+            page_value,
+            table_value,
+            element_value,
+            bbox_value,
+        )
     )
+
+
+def _has_grounding_value(value: Any) -> bool:
+    if value in (None, ""):
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, dict | list | tuple | set):
+        return bool(value)
+    return True
 
 
 def _has_incompatible_schema(task: dict[str, Any]) -> bool:
