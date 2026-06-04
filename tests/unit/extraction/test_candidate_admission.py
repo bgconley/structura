@@ -624,6 +624,30 @@ def test_rejected_payload_string_reason_stays_whole() -> None:
     assert admission.rejected_candidates[0]["reasons"] == ["missing_concrete_evidence"]
 
 
+def test_rejected_payload_reason_tokens_are_normalized() -> None:
+    context = _context()
+
+    admission = admit_extraction_candidates(
+        context=context,
+        field_candidates=[],
+        line_item_candidates=[],
+        observation_candidates=[],
+        rejected_candidate_payloads=[
+            {
+                "candidate_kind": "field",
+                "field_path": "receipt.transaction.total",
+                "payload": {"value": {"amount": 4.65, "currency": "USD"}},
+                "decision": "rejected_missing_evidence",
+                "reasons": [" Missing Concrete-Evidence ", "", None],
+                "evidence_concrete": False,
+            }
+        ],
+    )
+
+    assert admission.events[0].reasons == ("missing_concrete_evidence",)
+    assert admission.rejected_candidates[0]["reasons"] == ["missing_concrete_evidence"]
+
+
 def test_payload_rejection_scan_records_candidates_dropped_before_admission() -> None:
     context = _context()
 
