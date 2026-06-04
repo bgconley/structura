@@ -132,6 +132,16 @@ def test_hard_invariants_normalize_placeholder_values_before_admission_check() -
     }
 
 
+def test_hard_invariants_accept_whitespace_padded_true_evidence_concrete() -> None:
+    document = _document_with_whitespace_padded_true_evidence_concrete()
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "passed"
+    assert summary["totalViolationCount"] == 0
+    assert summary["invariants"]["admittedCandidatesWithoutConcreteEvidence"]["violationCount"] == 0
+
+
 def test_report_acceptance_fails_when_admission_event_telemetry_is_missing() -> None:
     report = _passing_report_with_documents([_document_with_missing_telemetry()])
 
@@ -287,6 +297,34 @@ def _document_with_spaced_placeholder_value() -> dict[str, Any]:
                         "field_path": "invoice.notes",
                         "value": "Visible Field",
                         "evidence": [{"page_id": "page-1"}],
+                    }
+                },
+            }
+        ],
+    }
+
+
+def _document_with_whitespace_padded_true_evidence_concrete() -> dict[str, Any]:
+    return {
+        "document": {"id": "doc-spaced-evidence-true", "document_family": "invoice"},
+        "admissionEvents": [
+            {
+                "decision": "admitted_review_required",
+                "candidate_kind": "field",
+                "candidate_fingerprint": "evidence-true-spaced",
+                "run_id": "phase85-smoke-evidence",
+                "planner_version": "planner-v1",
+                "candidate_gate_version": CANDIDATE_GATE_VERSION,
+                "contract_registry_version": CONTRACT_REGISTRY_VERSION,
+                "region_envelope_version": REGION_ENVELOPE_VERSION,
+                **_semantic_plan_lineage(),
+                "source_engine": "granite_vision_3b",
+                "evidenceConcrete": " True ",
+                "payload_json": {
+                    "candidate": {
+                        "field_path": "invoice.total_amount",
+                        "value": "42.00",
+                        "evidence": [{"page_id": "page-1", "semantic_region_id": "region-1"}],
                     }
                 },
             }

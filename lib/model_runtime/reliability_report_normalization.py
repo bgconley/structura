@@ -42,7 +42,7 @@ def bool_value(value: Any) -> bool:
     if isinstance(value, bool):
         return value
     if isinstance(value, str):
-        return value.lower() in {"true", "1", "yes"}
+        return value.strip().lower() in {"true", "1", "yes"}
     return bool(value)
 
 
