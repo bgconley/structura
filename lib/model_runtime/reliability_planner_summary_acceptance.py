@@ -6,6 +6,8 @@ from lib.model_runtime.reliability_acceptance_recompute import recomputed_planne
 from lib.model_runtime.reliability_report_normalization import dict_value, get_value, snake
 
 _PLANNER_SUMMARY_KEYS = (
+    "runId",
+    "plannerVersion",
     "selectedTaskCount",
     "skippedTaskCount",
     "abstentionCount",

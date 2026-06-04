@@ -6,6 +6,44 @@ from lib.model_runtime.reliability_acceptance import evaluate_phase85_report_acc
 from lib.model_runtime.reliability_report import build_phase85_reliability_report
 
 
+def test_report_acceptance_fails_when_planner_summary_lineage_is_stale() -> None:
+    report = build_phase85_reliability_report(
+        run_id="phase85-planner-summary",
+        title_prefix="Phase 8.5 Planner Summary",
+        documents=[_document_report()],
+    )
+    report["plannerSummary"] = {
+        **report["plannerSummary"],
+        "runId": "phase85-other-run",
+        "plannerVersion": "phase8_5-old-planner",
+    }
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["plannerSummary"]["status"] == "failed"
+    assert summary["checks"]["plannerSummary"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-planner-summary",
+            "invalid": ["runId", "plannerVersion"],
+            "details": report["plannerSummary"],
+            "recomputed": {
+                "runId": "phase85-planner-summary",
+                "plannerVersion": report["runManifest"]["planner_version"],
+                "selectedTaskCount": 1,
+                "skippedTaskCount": 1,
+                "abstentionCount": 0,
+                "missingContractCount": 1,
+                "missingGroundingCount": 0,
+                "incompatibleSchemaCount": 0,
+                "duplicateSuppressedCount": 0,
+                "contractResolutionModes": {"exact": 1, "missing": 1},
+            },
+        }
+    ]
+
+
 def test_report_acceptance_fails_when_planner_summary_is_stale() -> None:
     report = build_phase85_reliability_report(
         run_id="phase85-planner-summary",
@@ -36,6 +74,8 @@ def test_report_acceptance_fails_when_planner_summary_is_stale() -> None:
             ],
             "details": report["plannerSummary"],
             "recomputed": {
+                "runId": "phase85-planner-summary",
+                "plannerVersion": report["runManifest"]["planner_version"],
                 "selectedTaskCount": 1,
                 "skippedTaskCount": 1,
                 "abstentionCount": 0,

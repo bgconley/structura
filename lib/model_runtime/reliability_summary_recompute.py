@@ -8,6 +8,7 @@ from lib.model_runtime.reliability_report_normalization import (
     bool_value,
     dict_value,
     first_report_value,
+    first_value,
     get_value,
     int_value,
     list_value,
@@ -35,7 +36,10 @@ def recomputed_candidate_admission_summary(report: dict[str, Any]) -> dict[str, 
     valid, document_rows = documents
     if not valid:
         return {}
-    return _candidate_admission_evidence(document_rows)
+    return {
+        **_candidate_admission_lineage(report, document_rows),
+        **_candidate_admission_evidence(document_rows),
+    }
 
 
 def recomputed_planner_summary(report: dict[str, Any]) -> dict[str, Any] | None:
@@ -52,6 +56,9 @@ def recomputed_planner_summary(report: dict[str, Any]) -> dict[str, Any] | None:
         for row in task_rows
     )
     return {
+        "runId": _report_run_id(report),
+        "plannerVersion": first_value(planner_rows, "planner_version", "plannerVersion")
+        or _run_manifest_value(report, "planner_version", "plannerVersion"),
         "selectedTaskCount": sum_values(
             planner_rows,
             "selected_task_count",
@@ -316,6 +323,41 @@ def _candidate_admission_evidence(documents: list[dict[str, Any]]) -> dict[str, 
         "admittedCount": admitted,
         "rejectedCount": rejected,
         "rejectionReasons": dict(sorted(rejection_reasons.items())),
+        "duplicateSuppressionCount": sum(
+            1
+            for event in all_rows(documents, "admissionEvents")
+            if str(get_value(event, "decision")) == "rejected_duplicate"
+        ),
+    }
+
+
+def _candidate_admission_lineage(
+    report: dict[str, Any],
+    documents: list[dict[str, Any]],
+) -> dict[str, Any]:
+    events = all_rows(documents, "admissionEvents")
+    return {
+        "runId": _report_run_id(report),
+        "plannerVersion": first_value(events, "planner_version", "plannerVersion")
+        or _run_manifest_value(report, "planner_version", "plannerVersion"),
+        "candidateGateVersion": first_value(
+            events,
+            "candidate_gate_version",
+            "candidateGateVersion",
+        )
+        or _run_manifest_value(report, "candidate_gate_version", "candidateGateVersion"),
+        "contractRegistryVersion": first_value(
+            events,
+            "contract_registry_version",
+            "contractRegistryVersion",
+        )
+        or _run_manifest_value(report, "contract_registry_version", "contractRegistryVersion"),
+        "regionEnvelopeVersion": first_value(
+            events,
+            "region_envelope_version",
+            "regionEnvelopeVersion",
+        )
+        or _run_manifest_value(report, "region_envelope_version", "regionEnvelopeVersion"),
     }
 
 
@@ -331,3 +373,12 @@ def _unsafe_failure_count(job_rows: list[dict[str, Any]]) -> int:
 def _region_envelope(extraction: dict[str, Any]) -> dict[str, Any]:
     normalization = dict_value(get_value(extraction, "normalization_json", "normalizationJson"))
     return dict_value(get_value(normalization, "regionEnvelope", "region_envelope"))
+
+
+def _report_run_id(report: dict[str, Any]) -> Any:
+    return get_value(report, "runId", "run_id")
+
+
+def _run_manifest_value(report: dict[str, Any], snake_key: str, camel_key: str) -> Any:
+    manifest = dict_value(get_value(report, "runManifest", "run_manifest"))
+    return get_value(manifest, snake_key, camel_key)

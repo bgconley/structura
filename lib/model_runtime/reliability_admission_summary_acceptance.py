@@ -7,6 +7,18 @@ from lib.model_runtime.reliability_acceptance_recompute import (
 )
 from lib.model_runtime.reliability_report_normalization import dict_value, get_value, snake
 
+_CANDIDATE_ADMISSION_SUMMARY_KEYS = (
+    "runId",
+    "plannerVersion",
+    "candidateGateVersion",
+    "contractRegistryVersion",
+    "regionEnvelopeVersion",
+    "admittedCount",
+    "rejectedCount",
+    "rejectionReasons",
+    "duplicateSuppressionCount",
+)
+
 
 def candidate_admission_summary_acceptance_check(
     reports: list[dict[str, Any]],
@@ -19,7 +31,7 @@ def candidate_admission_summary_acceptance_check(
             continue
         invalid = [
             key
-            for key in ("admittedCount", "rejectedCount", "rejectionReasons")
+            for key in _CANDIDATE_ADMISSION_SUMMARY_KEYS
             if get_value(summary, key, snake(key)) != get_value(recomputed, key, snake(key))
         ]
         if invalid:
