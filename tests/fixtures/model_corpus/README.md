@@ -4,6 +4,9 @@ The committed example manifest is deterministic and sanitized. It documents the
 required evidence/metric shape without containing private documents or live model
 outputs.
 
+Every model corpus manifest must set `fixtureType` to
+`deterministic_fixture` or `model_backed`.
+
 Release candidates must provide a separate private `phase8_5_model_manifest.json`
 with `fixtureType = "model_backed"` and measured Qwen, Granite, text embedding,
 visual embedding, hybrid retrieval, and provenance metrics.

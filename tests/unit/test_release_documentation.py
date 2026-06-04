@@ -83,6 +83,16 @@ def test_model_corpus_readme_requires_manifest_run_mode() -> None:
     ) in normalized
 
 
+def test_model_corpus_readme_requires_known_fixture_type() -> None:
+    content = MODEL_CORPUS_README.read_text(encoding="utf-8")
+    normalized = re.sub(r"\s+", " ", content)
+
+    assert (
+        "Every model corpus manifest must set `fixtureType` to "
+        "`deterministic_fixture` or `model_backed`"
+    ) in normalized
+
+
 def test_model_corpus_readme_requires_manifest_profile_lineage() -> None:
     content = MODEL_CORPUS_README.read_text(encoding="utf-8")
     normalized = re.sub(r"\s+", " ", content)

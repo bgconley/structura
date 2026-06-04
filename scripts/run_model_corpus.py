@@ -18,6 +18,7 @@ from lib.model_runtime.model_corpus_report_statuses import (  # noqa: E402
 
 DEFAULT_MANIFEST = Path("tests/fixtures/model_corpus/phase8_5_model_manifest.example.json")
 
+VALID_FIXTURE_TYPES = frozenset({"deterministic_fixture", "model_backed"})
 REQUIRED_EVIDENCE_SECTIONS = ("qwen", "granite", "textEmbedding", "visualEmbedding")
 REQUIRED_MODEL_BACKED_EVIDENCE_KEYS = ("profile", "runId", "measuredAt", "evidencePath")
 EVIDENCE_ARTIFACT_PROFILE_KEYS = (
@@ -109,7 +110,7 @@ def evaluate_model_corpus_manifest(
     )
     from lib.model_runtime.reliability_report import build_phase85_run_manifest
 
-    fixture_type = str(payload.get("fixtureType") or "")
+    fixture_type = _fixture_type(payload)
     if require_model_backed and fixture_type != "model_backed":
         raise SystemExit("Model corpus manifest is not model-backed.")
     manifest_overrides = payload.get("runManifest")
@@ -185,6 +186,20 @@ def _required_mapping(payload: dict[str, Any], key: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise SystemExit(f"Model corpus manifest must include object: {key}")
     return value
+
+
+def _fixture_type(payload: dict[str, Any]) -> str:
+    value = payload.get("fixtureType")
+    if not isinstance(value, str) or not value.strip():
+        raise SystemExit(
+            "Model corpus manifest fixtureType must be deterministic_fixture or model_backed."
+        )
+    fixture_type = value.strip()
+    if fixture_type not in VALID_FIXTURE_TYPES:
+        raise SystemExit(
+            "Model corpus manifest fixtureType must be deterministic_fixture or model_backed."
+        )
+    return fixture_type
 
 
 def _assert_model_backed_manifest_run_mode(run_manifest: Any) -> None:

@@ -20,6 +20,19 @@ def test_model_corpus_runner_requires_model_backed_evidence_when_requested() -> 
         evaluate_model_corpus_manifest(payload, require_model_backed=True)
 
 
+def test_model_corpus_runner_rejects_missing_or_unknown_fixture_type() -> None:
+    payload = _manifest(fixture_type="deterministic_fixture")
+    payload.pop("fixtureType", None)
+
+    with pytest.raises(SystemExit, match="fixtureType.*deterministic_fixture.*model_backed"):
+        evaluate_model_corpus_manifest(payload, require_model_backed=False)
+
+    payload = _manifest(fixture_type="legacy_fixture")
+
+    with pytest.raises(SystemExit, match="fixtureType.*deterministic_fixture.*model_backed"):
+        evaluate_model_corpus_manifest(payload, require_model_backed=False)
+
+
 def test_model_corpus_runner_requires_model_backed_manifest_run_mode() -> None:
     payload = _manifest(fixture_type="model_backed")
     payload.pop("runManifest", None)
