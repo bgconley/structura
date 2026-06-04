@@ -204,6 +204,47 @@ def test_report_acceptance_normalizes_candidate_admission_rejection_reasons() ->
     ]
 
 
+def test_report_acceptance_normalizes_candidate_admission_rejection_reason_separators() -> None:
+    report = build_phase85_reliability_report(
+        run_id="phase85-admission-summary",
+        title_prefix="Phase 8.5 Admission Summary",
+        documents=[_document_report_with_separator_rejection_reasons()],
+    )
+
+    assert report["candidateAdmissionSummary"]["rejectionReasons"] == {
+        "missing_concrete_evidence": 1,
+    }
+
+    report["candidateAdmissionSummary"] = {
+        **report["candidateAdmissionSummary"],
+        "rejectionReasons": {" Missing Concrete-Evidence ": 1},
+    }
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["candidateAdmissionSummary"]["status"] == "failed"
+    assert summary["checks"]["candidateAdmissionSummary"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-admission-summary",
+            "invalid": ["rejectionReasons"],
+            "details": report["candidateAdmissionSummary"],
+            "recomputed": {
+                "runId": "phase85-admission-summary",
+                "plannerVersion": report["runManifest"]["planner_version"],
+                "candidateGateVersion": CANDIDATE_GATE_VERSION,
+                "contractRegistryVersion": CONTRACT_REGISTRY_VERSION,
+                "regionEnvelopeVersion": report["runManifest"]["region_envelope_version"],
+                "admittedCount": 1,
+                "rejectedCount": 1,
+                "rejectionReasons": {"missing_concrete_evidence": 1},
+                "duplicateSuppressionCount": 0,
+            },
+        }
+    ]
+
+
 def _document_report() -> dict[str, Any]:
     return {
         "document": {
@@ -294,6 +335,12 @@ def _document_report_with_separator_decisions() -> dict[str, Any]:
 def _document_report_with_cased_rejection_reasons() -> dict[str, Any]:
     document = _document_report()
     document["admissionEvents"][1]["reasons"] = [" Missing_Concrete_Evidence "]
+    return document
+
+
+def _document_report_with_separator_rejection_reasons() -> dict[str, Any]:
+    document = _document_report()
+    document["admissionEvents"][1]["reasons"] = [" Missing Concrete-Evidence "]
     return document
 
 

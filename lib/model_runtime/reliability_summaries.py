@@ -15,6 +15,7 @@ from lib.model_runtime.reliability_report_normalization import (
     list_value,
     normalized_decision,
     normalized_text,
+    normalized_token,
     sum_values,
 )
 from lib.model_runtime.reliability_versions import (
@@ -317,7 +318,7 @@ def _region_envelope(extraction: dict[str, Any]) -> dict[str, Any]:
 
 
 def _normalized_reasons(reasons: list[Any]) -> list[str]:
-    return [reason for value in reasons if (reason := normalized_text(value))]
+    return [reason for value in reasons if (reason := normalized_token(value))]
 
 
 def _envelope_evidence_counts(documents: list[dict[str, Any]]) -> dict[str, Any]:
