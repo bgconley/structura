@@ -16,19 +16,29 @@ OPERATIONAL_FAILURE_STATUSES = {"failed", "dead_letter", "pipeline_failed"}
 
 BLOCKED_PHASE9_MUTATION_KEYS = (
     "canonicalFacts",
+    "canonical_facts",
     "canonicalFields",
+    "canonical_fields",
     "canonicalLineItems",
+    "canonical_line_items",
     "canonicalObservations",
+    "canonical_observations",
     "relationships",
     "documentRelationships",
+    "document_relationships",
     "folders",
     "folderIds",
+    "folder_ids",
     "primaryFolderId",
+    "primary_folder_id",
     "tags",
     "deadlines",
     "documentDeadlines",
+    "document_deadlines",
     "reviewStatus",
+    "review_status",
     "reviewTasks",
+    "review_tasks",
 )
 
 

@@ -262,6 +262,31 @@ def test_phase9_output_mutation_guard_blocks_state_changes() -> None:
     ]
 
 
+def test_phase9_output_mutation_guard_blocks_snake_case_state_changes() -> None:
+    violations = phase9_mutation_violations(
+        {
+            "answer": "Draft only.",
+            "canonical_fields": [{"field_path": "invoice.total_amount"}],
+            "document_relationships": [{"relationship_type": "invoice_for"}],
+            "folder_ids": ["folder-1"],
+            "primary_folder_id": "folder-1",
+            "document_deadlines": [{"due_on": "2026-06-01"}],
+            "review_tasks": [{"id": "task-1"}],
+            "review_status": "auto_accepted",
+        }
+    )
+
+    assert violations == [
+        "canonical_fields",
+        "document_relationships",
+        "folder_ids",
+        "primary_folder_id",
+        "document_deadlines",
+        "review_tasks",
+        "review_status",
+    ]
+
+
 def _evidence() -> dict[str, object]:
     return {
         "pageNumber": 1,
