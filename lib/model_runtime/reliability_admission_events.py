@@ -118,7 +118,7 @@ def _evaluate_event_telemetry(event: dict[str, Any], violations: ViolationMap) -
 
 
 def _is_admitted(event: dict[str, Any]) -> bool:
-    return str(get_value(event, "decision") or "").startswith("admitted")
+    return _normalized_decision(get_value(event, "decision")).startswith("admitted")
 
 
 def _is_model_backed_event(event: dict[str, Any]) -> bool:
@@ -161,6 +161,10 @@ def _contains_placeholder_value(candidate: dict[str, Any]) -> bool:
 
 def _normalized_leaf_key(path: str) -> str:
     return snake(path.split(".")[-1].strip()).replace("-", "_").lower()
+
+
+def _normalized_decision(value: Any) -> str:
+    return str(value or "").strip().lower()
 
 
 def _add_violation(
