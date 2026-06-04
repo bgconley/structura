@@ -65,7 +65,11 @@ _COMPACT_NORMALIZED_PLACEHOLDER_TOKENS = frozenset(
     token.replace("_", "") for token in _NORMALIZED_PLACEHOLDER_TOKENS
 )
 _PRIMARY_VALUE_KEYS = {
+    "account_holder",
     "amount",
+    "buyer_name",
+    "counterparty_name",
+    "customer_name",
     "date",
     "description",
     "display_name",
@@ -73,11 +77,17 @@ _PRIMARY_VALUE_KEYS = {
     "field_value",
     "key",
     "merchant",
+    "merchant_name",
     "name",
+    "patient_name",
+    "payer_name",
+    "provider_name",
     "seller",
+    "seller_name",
     "text",
     "total",
     "value",
+    "vendor_name",
 }
 
 
