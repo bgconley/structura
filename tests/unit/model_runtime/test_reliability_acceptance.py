@@ -1,8 +1,29 @@
 from __future__ import annotations
 
+import subprocess
+import sys
 from copy import deepcopy
 
 from lib.model_runtime.reliability_acceptance import evaluate_phase85_report_acceptance
+
+
+def test_report_acceptance_import_does_not_load_runtime_settings() -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import sys; "
+                "import lib.model_runtime.reliability_acceptance; "
+                "raise SystemExit('lib.config.settings' in sys.modules)"
+            ),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
 
 
 def test_report_acceptance_passes_for_resident_report_without_gold_metrics() -> None:

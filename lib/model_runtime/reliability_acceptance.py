@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from lib.model_runtime.reliability_manifest import PIPELINE_VERSION
 from lib.model_runtime.reliability_report_normalization import dict_value, get_value
+from lib.model_runtime.reliability_versions import PIPELINE_VERSION
 
 VALID_FIXTURE_TYPES = frozenset({"deterministic_fixture", "model_backed"})
 VALID_MODEL_MODES = frozenset({"fixture", "live", "required"})

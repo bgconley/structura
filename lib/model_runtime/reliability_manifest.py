@@ -15,13 +15,14 @@ from lib.model_runtime.profiles import (
     get_model_profile,
 )
 from lib.model_runtime.reliability_report_normalization import json_safe
+from lib.model_runtime.reliability_versions import (
+    GRANITE_PROMPT_VERSION,
+    PIPELINE_VERSION,
+    RECONCILER_VERSION,
+    VISUAL_INPUT_PLAN_VERSION,
+)
 from lib.semantic_annotations.extraction_plan_repository import PLANNER_VERSION
 from lib.semantic_annotations.prompting import SMART_PROMPT_VERSION
-
-PIPELINE_VERSION = "phase8_5_reliability_v1"
-GRANITE_PROMPT_VERSION = "phase8_5-granite-structured-v1"
-RECONCILER_VERSION = "phase8_5-reconciler-v1"
-VISUAL_INPUT_PLAN_VERSION = "phase8_5-visual-plan-v1"
 
 
 def build_phase85_run_manifest(
