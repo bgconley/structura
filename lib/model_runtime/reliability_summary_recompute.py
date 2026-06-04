@@ -233,7 +233,8 @@ def recomputed_extraction_pressure(report: dict[str, Any]) -> dict[str, Any] | N
         for task in selected_tasks
     )
     selected_by_page = Counter(
-        str(get_value(task, "page_number", "pageNumber") or "unknown") for task in selected_tasks
+        normalized_text(get_value(task, "page_number", "pageNumber")) or "unknown"
+        for task in selected_tasks
     )
     estimated_visual_tokens = sum(
         int_value(

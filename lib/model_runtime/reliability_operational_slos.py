@@ -196,7 +196,8 @@ def _evaluate_fanout(
                 }
             )
         page_counts = Counter(
-            str(get_value(row, "page_number", "pageNumber") or "unknown") for row in task_rows
+            normalized_text(get_value(row, "page_number", "pageNumber")) or "unknown"
+            for row in task_rows
         )
         for page, count in sorted(page_counts.items()):
             if max_page and count > max_page:

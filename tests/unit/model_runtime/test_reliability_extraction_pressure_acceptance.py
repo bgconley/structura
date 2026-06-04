@@ -134,6 +134,48 @@ def test_report_acceptance_normalizes_backend_buckets_for_extraction_pressure() 
     ]
 
 
+def test_report_acceptance_normalizes_page_buckets_for_extraction_pressure() -> None:
+    report = build_phase85_reliability_report(
+        run_id="phase85-extraction-pressure",
+        title_prefix="Phase 8.5 Extraction Pressure",
+        documents=[_document_report_with_cased_page_labels()],
+    )
+
+    assert report["extractionPressure"]["selectedTaskCountByPage"] == {
+        "1": 1,
+        "2": 1,
+    }
+
+    report["extractionPressure"] = {
+        **report["extractionPressure"],
+        "selectedTaskCountByPage": {" 1 ": 1, " 2 ": 1},
+    }
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["extractionPressure"]["status"] == "failed"
+    assert summary["checks"]["extractionPressure"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-extraction-pressure",
+            "invalid": ["selectedTaskCountByPage"],
+            "details": report["extractionPressure"],
+            "recomputed": {
+                "plannedTaskCount": 3,
+                "selectedTaskCount": 2,
+                "selectedTaskCountByBackend": {"granite_region": 1, "qwen_semantic": 1},
+                "selectedTaskCountByPage": {"1": 1, "2": 1},
+                "maxTasksPerDocumentPolicy": 6,
+                "maxTasksPerPagePolicy": 3,
+                "budgetExceededCount": 1,
+                "estimatedVisualTokens": 3072,
+                "estimatedDoclingContextTokens": 768,
+            },
+        }
+    ]
+
+
 def _document_report() -> dict[str, Any]:
     return {
         "document": {
@@ -213,4 +255,12 @@ def _document_report_with_cased_backend_labels() -> dict[str, Any]:
     document["plannerTasks"][0]["extractor_backend"] = " Granite_Region "
     document["plannerTasks"][1]["extractorBackend"] = " Qwen_Semantic "
     document["plannerTasks"][1].pop("extractor_backend")
+    return document
+
+
+def _document_report_with_cased_page_labels() -> dict[str, Any]:
+    document = _document_report()
+    document["plannerTasks"][0]["page_number"] = " 1 "
+    document["plannerTasks"][1]["pageNumber"] = " 2 "
+    document["plannerTasks"][1].pop("page_number")
     return document

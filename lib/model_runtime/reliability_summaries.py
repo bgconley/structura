@@ -233,7 +233,8 @@ def extraction_pressure(documents: list[dict[str, Any]]) -> dict[str, Any]:
         for task in selected_tasks
     )
     selected_by_page = Counter(
-        str(get_value(task, "page_number", "pageNumber") or "unknown") for task in selected_tasks
+        normalized_text(get_value(task, "page_number", "pageNumber")) or "unknown"
+        for task in selected_tasks
     )
     max_doc = first_report_value(planner_rows, "maxTasksPerDocumentPolicy")
     max_page = first_report_value(planner_rows, "maxTasksPerPagePolicy")

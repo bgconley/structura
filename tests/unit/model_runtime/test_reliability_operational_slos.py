@@ -71,6 +71,22 @@ def test_operational_slos_normalize_selected_planner_task_statuses() -> None:
     ]
 
 
+def test_operational_slos_normalize_selected_planner_task_page_labels() -> None:
+    summary = evaluate_operational_slos([_cased_fanout_page_label_document_report()])
+
+    assert summary["status"] == "failed"
+    assert summary["gates"]["runawayFanout"]["violationCount"] == 1
+    assert summary["gates"]["runawayFanout"]["examples"] == [
+        {
+            "reason": "selected_tasks_exceed_page_policy",
+            "documentId": "doc-cased-fanout-page-label",
+            "pageNumber": "1",
+            "selectedTaskCount": 4,
+            "maxTasksPerPagePolicy": 3,
+        }
+    ]
+
+
 def test_reliability_report_includes_operational_slo_summary() -> None:
     report = build_phase85_reliability_report(
         run_id="phase85-20260604-smoke-001",
@@ -142,6 +158,26 @@ def _cased_fanout_document_report() -> dict[str, object]:
             {"status": " Selected ", "page_number": 1},
             {"status": " Selected ", "page_number": 1},
             {"status": " Selected ", "page_number": 1},
+        ],
+    }
+
+
+def _cased_fanout_page_label_document_report() -> dict[str, object]:
+    return {
+        "document": {"id": "doc-cased-fanout-page-label"},
+        "planner": [
+            {
+                "report_json": {
+                    "maxTasksPerDocumentPolicy": 6,
+                    "maxTasksPerPagePolicy": 3,
+                },
+            }
+        ],
+        "plannerTasks": [
+            {"status": "selected", "page_number": " 1 "},
+            {"status": "selected", "page_number": 1},
+            {"status": "selected", "pageNumber": "1"},
+            {"status": "selected", "pageNumber": " 1 "},
         ],
     }
 
