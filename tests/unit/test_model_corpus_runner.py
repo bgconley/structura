@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from lib.model_runtime.profiles import QWEN_SEMANTIC_PROFILE
 from lib.model_runtime.reliability_report import PIPELINE_VERSION
 from scripts.run_model_corpus import evaluate_model_corpus_manifest
 
@@ -65,6 +66,14 @@ def test_model_corpus_example_manifest_is_valid() -> None:
     result = evaluate_model_corpus_manifest(payload, require_model_backed=False)
 
     assert result["fixtureType"] == "deterministic_fixture"
+
+
+def test_model_corpus_example_manifest_uses_current_qwen_semantic_profile() -> None:
+    payload = json.loads(
+        open("tests/fixtures/model_corpus/phase8_5_model_manifest.example.json").read()
+    )
+
+    assert payload["evidence"]["qwen"]["profile"] == QWEN_SEMANTIC_PROFILE
 
 
 def test_model_corpus_script_runs_as_direct_entrypoint() -> None:
@@ -147,8 +156,16 @@ def test_model_corpus_script_requires_parseable_evidence_artifacts(tmp_path) -> 
 def test_model_corpus_script_requires_matching_evidence_artifact_run_id(tmp_path) -> None:
     payload = _manifest(fixture_type="model_backed")
     _write_evidence_artifacts(tmp_path, payload, fixture_type="model_backed")
+    granite_evidence = payload["evidence"]["granite"]  # type: ignore[index]
+    assert isinstance(granite_evidence, dict)
     (tmp_path / "evidence" / "granite.json").write_text(
-        json.dumps(_evidence_artifact("different-run", fixture_type="model_backed")),
+        json.dumps(
+            _evidence_artifact(
+                "different-run",
+                fixture_type="model_backed",
+                profile=str(granite_evidence["profile"]),
+            )
+        ),
         encoding="utf-8",
     )
     manifest = tmp_path / "phase8_5_model_manifest.json"
@@ -215,6 +232,7 @@ def test_model_corpus_script_rejects_conflicting_artifact_measured_at(tmp_path) 
                     **_aggregate_metrics(payload),
                 },
                 measured_at="2026-06-04T13:00:00Z",
+                profile=str(granite_evidence["profile"]),
             )
         ),
         encoding="utf-8",
@@ -238,6 +256,128 @@ def test_model_corpus_script_rejects_conflicting_artifact_measured_at(tmp_path) 
     assert result.returncode != 0
     assert "granite" in result.stderr
     assert "measuredAt mismatch" in result.stderr
+
+
+def test_model_corpus_script_requires_artifact_profile_metadata(tmp_path) -> None:
+    payload = _manifest(fixture_type="model_backed")
+    _write_evidence_artifacts(tmp_path, payload, fixture_type="model_backed")
+    text_evidence = payload["evidence"]["textEmbedding"]  # type: ignore[index]
+    assert isinstance(text_evidence, dict)
+    metrics = {
+        **_section_metrics(payload, "textEmbedding"),
+        **_aggregate_metrics(payload),
+    }
+    (tmp_path / text_evidence["evidencePath"]).write_text(  # type: ignore[index]
+        json.dumps(
+            _evidence_artifact(
+                str(text_evidence["runId"]),
+                fixture_type="model_backed",
+                metrics=metrics,
+                include_profile=False,
+            )
+        ),
+        encoding="utf-8",
+    )
+    manifest = tmp_path / "phase8_5_model_manifest.json"
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_model_corpus.py",
+            "--require-model-backed",
+            "--manifest",
+            str(manifest),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "textEmbedding" in result.stderr
+    assert "profile metadata" in result.stderr
+
+
+def test_model_corpus_script_accepts_run_manifest_profile_metadata(tmp_path) -> None:
+    payload = _manifest(fixture_type="model_backed")
+    _write_evidence_artifacts(tmp_path, payload, fixture_type="model_backed")
+    text_evidence = payload["evidence"]["textEmbedding"]  # type: ignore[index]
+    assert isinstance(text_evidence, dict)
+    metrics = {
+        **_section_metrics(payload, "textEmbedding"),
+        **_aggregate_metrics(payload),
+    }
+    artifact = _evidence_artifact(
+        str(text_evidence["runId"]),
+        fixture_type="model_backed",
+        metrics=metrics,
+        include_profile=False,
+    )
+    run_manifest = artifact["runManifest"]
+    assert isinstance(run_manifest, dict)
+    run_manifest["text_embedding_profile"] = str(text_evidence["profile"])
+    (tmp_path / text_evidence["evidencePath"]).write_text(  # type: ignore[index]
+        json.dumps(artifact),
+        encoding="utf-8",
+    )
+    manifest = tmp_path / "phase8_5_model_manifest.json"
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_model_corpus.py",
+            "--require-model-backed",
+            "--manifest",
+            str(manifest),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+
+
+def test_model_corpus_script_rejects_conflicting_artifact_profile(tmp_path) -> None:
+    payload = _manifest(fixture_type="model_backed")
+    _write_evidence_artifacts(tmp_path, payload, fixture_type="model_backed")
+    qwen_evidence = payload["evidence"]["qwen"]  # type: ignore[index]
+    assert isinstance(qwen_evidence, dict)
+    (tmp_path / qwen_evidence["evidencePath"]).write_text(  # type: ignore[index]
+        json.dumps(
+            _evidence_artifact(
+                str(qwen_evidence["runId"]),
+                fixture_type="model_backed",
+                metrics={
+                    **_section_metrics(payload, "qwen"),
+                    **_aggregate_metrics(payload),
+                },
+                profile="qwen3-vl-4b-semantic:v1",
+            )
+        ),
+        encoding="utf-8",
+    )
+    manifest = tmp_path / "phase8_5_model_manifest.json"
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_model_corpus.py",
+            "--require-model-backed",
+            "--manifest",
+            str(manifest),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "qwen" in result.stderr
+    assert "profile mismatch" in result.stderr
 
 
 def test_model_corpus_script_requires_report_lineage_in_evidence_artifacts(tmp_path) -> None:
@@ -343,6 +483,7 @@ def test_model_corpus_script_requires_evidence_metric_values_to_match_manifest(
                 str(visual_evidence["runId"]),
                 fixture_type="model_backed",
                 metrics=metrics,
+                profile=str(visual_evidence["profile"]),
             )
         ),
         encoding="utf-8",
@@ -445,7 +586,7 @@ def _manifest(*, fixture_type: str) -> dict[str, object]:
         "fixtureType": fixture_type,
         "runId": "phase85-fixture-run",
         "evidence": {
-            "qwen": _evidence("qwen3-vl-8b-instruct-nvfp4-local:v1", "qwen"),
+            "qwen": _evidence(QWEN_SEMANTIC_PROFILE, "qwen"),
             "granite": _evidence("granite-4.0-3b-vision-bf16:v1", "granite"),
             "textEmbedding": _evidence("qwen3-embedding-4b-1536:v1", "text"),
             "visualEmbedding": _evidence("qwen3-vl-embedding-2b-2048:v1", "visual"),
@@ -545,6 +686,7 @@ def _write_evidence_artifacts(
                 str(evidence["runId"]),
                 fixture_type=fixture_type,
                 metrics=metrics,
+                profile=str(evidence["profile"]),
             )
         else:
             artifact = {"runId": evidence["runId"]}
@@ -560,6 +702,8 @@ def _evidence_artifact(
     fixture_type: str,
     metrics: dict[str, object] | None = None,
     measured_at: str | None = None,
+    profile: str = QWEN_SEMANTIC_PROFILE,
+    include_profile: bool = True,
 ) -> dict[str, object]:
     artifact: dict[str, object] = {
         "fixtureType": fixture_type,
@@ -570,6 +714,8 @@ def _evidence_artifact(
         },
         "metrics": metrics or {"source": "unit-test"},
     }
+    if include_profile:
+        artifact["profile"] = profile
     if measured_at is not None:
         artifact["measuredAt"] = measured_at
     return artifact

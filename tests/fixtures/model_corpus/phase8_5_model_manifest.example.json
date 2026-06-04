@@ -2,7 +2,7 @@
   "fixtureType": "deterministic_fixture",
   "evidence": {
     "qwen": {
-      "profile": "qwen3-vl-8b-instruct-nvfp4-local:v1",
+      "profile": "qwen3-vl-8b-fp8-semantic:v1",
       "notes": "Example only. Replace with live GPU evidence for release."
     },
     "granite": {

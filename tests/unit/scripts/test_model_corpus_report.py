@@ -5,6 +5,12 @@ from copy import deepcopy
 from lib.extraction.candidate_admission_models import CANDIDATE_GATE_VERSION
 from lib.extraction.contract_registry import CONTRACT_REGISTRY_VERSION
 from lib.extraction.region_envelope import REGION_ENVELOPE_VERSION
+from lib.model_runtime.profiles import (
+    GRANITE_VISION_PROFILE,
+    QWEN_SEMANTIC_PROFILE,
+    TEXT_EMBED_PROFILE,
+    VISUAL_EMBED_PROFILE,
+)
 from lib.model_runtime.reliability_report import (
     PIPELINE_VERSION,
     build_phase85_reliability_report,
@@ -23,7 +29,11 @@ def test_reliability_report_includes_run_manifest_and_lineage_summaries() -> Non
     assert report["runId"] == "phase85-20260604-smoke-001"
     assert report["runManifest"]["run_id"] == "phase85-20260604-smoke-001"
     assert report["runManifest"]["pipeline_version"] == PIPELINE_VERSION
+    assert report["runManifest"]["semantic_profile"] == QWEN_SEMANTIC_PROFILE
     assert report["runManifest"]["semantic_prompt_version"] == SMART_PROMPT_VERSION
+    assert report["runManifest"]["granite_profile"] == GRANITE_VISION_PROFILE
+    assert report["runManifest"]["text_embedding_profile"] == TEXT_EMBED_PROFILE
+    assert report["runManifest"]["visual_embedding_profile"] == VISUAL_EMBED_PROFILE
     assert report["runManifest"]["planner_version"] == PLANNER_VERSION
     assert report["runManifest"]["candidate_gate_version"] == CANDIDATE_GATE_VERSION
     assert report["runManifest"]["contract_registry_version"] == CONTRACT_REGISTRY_VERSION

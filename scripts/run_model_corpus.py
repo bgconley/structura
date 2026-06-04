@@ -15,6 +15,19 @@ DEFAULT_MANIFEST = Path("tests/fixtures/model_corpus/phase8_5_model_manifest.exa
 
 REQUIRED_EVIDENCE_SECTIONS = ("qwen", "granite", "textEmbedding", "visualEmbedding")
 REQUIRED_MODEL_BACKED_EVIDENCE_KEYS = ("profile", "runId", "measuredAt", "evidencePath")
+EVIDENCE_ARTIFACT_PROFILE_KEYS = (
+    "profile",
+    "profileName",
+    "profile_name",
+    "modelProfile",
+    "model_profile",
+)
+EVIDENCE_ARTIFACT_RUN_MANIFEST_PROFILE_KEYS = {
+    "qwen": ("semantic_profile", "qwen_semantic_profile"),
+    "granite": ("granite_profile",),
+    "textEmbedding": ("text_embedding_profile", "text_embed_profile"),
+    "visualEmbedding": ("visual_embedding_profile", "visual_embed_profile"),
+}
 REQUIRED_EVIDENCE_ARTIFACT_PAYLOAD_KEYS = (
     "acceptanceGates",
     "checks",
@@ -180,6 +193,7 @@ def _assert_model_backed_evidence(
         path=evidence_path,
     )
     _assert_evidence_artifact_lineage(section, evidence_artifact, evidence_path)
+    _assert_evidence_artifact_profile(section, evidence, evidence_artifact, evidence_path)
     _assert_evidence_artifact_metrics(section, evidence_artifact, metrics, evidence_path)
     return evidence_artifact
 
@@ -268,6 +282,42 @@ def _assert_evidence_artifact_lineage(
         raise SystemExit(
             f"Model corpus evidence {section} evidencePath must include report evidence: {path}"
         )
+
+
+def _assert_evidence_artifact_profile(
+    section: str,
+    evidence: dict[str, Any],
+    artifact: dict[str, Any],
+    path: Path,
+) -> None:
+    expected_profile = str(evidence["profile"])
+    artifact_profiles = _evidence_artifact_profiles(section, artifact)
+    if not artifact_profiles:
+        raise SystemExit(
+            f"Model corpus evidence {section} evidencePath must include profile metadata: {path}"
+        )
+    for artifact_profile in artifact_profiles:
+        if artifact_profile != expected_profile:
+            raise SystemExit(
+                f"Model corpus evidence {section} profile mismatch: "
+                f"{artifact_profile} != {expected_profile}"
+            )
+
+
+def _evidence_artifact_profiles(section: str, artifact: dict[str, Any]) -> list[str]:
+    profiles: list[str] = []
+    for key in EVIDENCE_ARTIFACT_PROFILE_KEYS:
+        _append_profile(profiles, artifact.get(key))
+    run_manifest = artifact.get("runManifest") or artifact.get("run_manifest")
+    if isinstance(run_manifest, dict):
+        for key in EVIDENCE_ARTIFACT_RUN_MANIFEST_PROFILE_KEYS[section]:
+            _append_profile(profiles, run_manifest.get(key))
+    return profiles
+
+
+def _append_profile(profiles: list[str], value: Any) -> None:
+    if isinstance(value, str) and value.strip():
+        profiles.append(value.strip())
 
 
 def _assert_evidence_artifact_metrics(
