@@ -104,6 +104,13 @@ def test_model_corpus_readme_requires_passing_evidence_artifact_statuses() -> No
     ) in normalized
 
 
+def test_model_corpus_readme_rejects_not_evaluated_release_evidence() -> None:
+    content = MODEL_CORPUS_README.read_text(encoding="utf-8")
+    normalized = re.sub(r"\s+", " ", content)
+
+    assert "`not_evaluated` is not valid release evidence" in normalized
+
+
 def test_gpu_validation_docs_require_report_lineage() -> None:
     content = Path("docs/model-runtime/phase8_5_gpu_validation.md").read_text(encoding="utf-8")
     normalized = re.sub(r"\s+", " ", content)

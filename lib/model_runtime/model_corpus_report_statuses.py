@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-ALLOWED_EVIDENCE_REPORT_STATUSES = frozenset({"passed", "not_required", "not_evaluated"})
+ALLOWED_EVIDENCE_REPORT_STATUSES = frozenset({"passed", "not_required"})
 EVIDENCE_REPORT_STATUS_CONTAINERS = ("checks", "acceptanceGates")
 
 __all__ = ["assert_model_corpus_report_statuses_pass"]

@@ -33,7 +33,8 @@ with the active `pipeline_version`, `model_mode` set to
 `checks`, or `documents`; deterministic fixture artifacts are not valid release
 evidence. Any explicit top-level `status`, report `checks`, or report
 `acceptanceGates` status in a model-backed evidence artifact must be passing or
-explicitly non-required. The artifact must include model profile metadata
+explicitly non-required. `not_evaluated` is not valid release evidence. The
+artifact must include model profile metadata
 matching the evidence section `profile`, either as a top-level profile field or
 as the section-specific profile field in `runManifest`, such as
 `semantic_profile`, `granite_profile`, `text_embedding_profile`, or
