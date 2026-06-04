@@ -51,7 +51,7 @@ def contains_prompt_echo(value: object) -> bool:
 def contains_prompt_or_schema_artifact(value: Any) -> bool:
     if isinstance(value, dict):
         for key, item in value.items():
-            if _is_schema_artifact_key(key):
+            if _is_schema_artifact_key(key) or contains_prompt_echo(key):
                 return True
             if contains_prompt_or_schema_artifact(item):
                 return True

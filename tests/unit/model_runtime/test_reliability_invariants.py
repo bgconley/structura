@@ -210,6 +210,39 @@ def test_hard_invariants_normalize_camel_case_prompt_echo_phrases() -> None:
     ]
 
 
+def test_hard_invariants_normalize_prompt_echo_keys() -> None:
+    document = _safe_document_report()
+    document["admissionEvents"].append(
+        {
+            "decision": "admitted_review_required",
+            "candidate_kind": "field",
+            "candidate_fingerprint": "prompt-echo-key-camel",
+            **_admission_event_telemetry(),
+            "evidence_concrete": True,
+            "payload_json": {
+                "candidate": {
+                    "field_path": "invoice.total_amount",
+                    "value": {"ReturnOnlyJsonMatchingTheSchema": "42.00"},
+                    "evidence": [{"page_id": "page-1", "semantic_region_id": "region-1"}],
+                }
+            },
+        }
+    )
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 1
+    assert summary["invariants"]["promptSchemaArtifactsAdmitted"]["violationCount"] == 1
+    assert summary["invariants"]["promptSchemaArtifactsAdmitted"]["examples"] == [
+        {
+            "reason": "admitted_prompt_or_schema_artifact",
+            "documentId": None,
+            "entityId": "prompt-echo-key-camel",
+        }
+    ]
+
+
 def test_hard_invariants_flag_admitted_schema_artifact_keys() -> None:
     document = _safe_document_report()
     document["admissionEvents"].append(
