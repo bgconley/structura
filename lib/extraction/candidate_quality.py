@@ -4,131 +4,24 @@ import re
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from lib.candidate_quality_policy import contains_prompt_or_schema_artifact
-
-PLACEHOLDER_FIELD_NAMES = {
-    "visible_field",
-    "field",
-    "key",
-    "value",
-}
-
-PLACEHOLDER_VALUES = {
-    "",
-    "--",
-    "null",
-    "none",
-    "n/a",
-    "na",
-    "field",
-    "key",
-    "missing",
-    "not applicable",
-    "not available",
-    "not found",
-    "not provided",
-    "placeholder",
-    "tbd",
-    "unknown",
-    "visible_field",
-    "visible value",
-    "example value",
-    "<placeholder>",
-}
-NORMALIZED_PLACEHOLDER_VALUES = {
-    "_".join(part for part in value.replace("-", "_").replace(" ", "_").split("_") if part)
-    for value in PLACEHOLDER_VALUES
-}
-NORMALIZED_PLACEHOLDER_FIELD_NAMES = {
-    "_".join(part for part in value.replace("-", "_").replace(" ", "_").split("_") if part)
-    for value in PLACEHOLDER_FIELD_NAMES
-}
-NORMALIZED_PLACEHOLDER_TOKENS = NORMALIZED_PLACEHOLDER_VALUES | NORMALIZED_PLACEHOLDER_FIELD_NAMES
-COMPACT_NORMALIZED_PLACEHOLDER_TOKENS = frozenset(
-    token.replace("_", "") for token in NORMALIZED_PLACEHOLDER_TOKENS
+from lib.candidate_quality_policy import (
+    LINE_ITEM_VALUE_KEYS,
+    contains_placeholder_value,
+    contains_placeholder_value_any_key,
+    contains_placeholder_value_for_keys,
+    contains_prompt_or_schema_artifact,
+    is_placeholder_token,
+    normalized_quality_key,
 )
-PRIMARY_VALUE_KEYS = {
-    "account_holder",
-    "account_number",
-    "address",
-    "allowed_amount",
-    "amount",
-    "amount_due",
-    "amount_paid",
-    "balance_due",
-    "billed_amount",
-    "buyer_name",
-    "claim_number",
-    "counterparty_name",
-    "customer_name",
-    "date",
-    "description",
-    "display_name",
-    "field_name",
-    "field_value",
-    "invoice_number",
-    "issue_date",
-    "issued_date",
-    "key",
-    "mailing_address",
-    "merchant",
-    "merchant_name",
-    "name",
-    "order_date",
-    "order_number",
-    "paid_amount",
-    "paid_date",
-    "patient_name",
-    "patient_responsibility",
-    "payer_name",
-    "policy_number",
-    "property_address",
-    "provider_name",
-    "seller",
-    "seller_name",
-    "service_address",
-    "service_date",
-    "statement_date",
-    "subtotal",
-    "tax_amount",
-    "tax_total",
-    "text",
-    "total",
-    "total_amount",
-    "total_patient_responsibility",
-    "transaction_date",
-    "value",
-    "vendor_name",
-}
-LINE_ITEM_VALUE_KEYS = PRIMARY_VALUE_KEYS | {
-    "allowed_amount",
-    "billed_amount",
-    "category_hint",
-    "code",
-    "code_system",
-    "currency",
-    "discount_amount",
-    "gross_amount",
-    "line_item_type",
-    "net_amount",
-    "paid_amount",
-    "patient_responsibility",
-    "procedure_code",
-    "quantity",
-    "service_date",
-    "tax_amount",
-    "unit",
-    "unit_price",
-}
 
 
 def reject_observation(field_name: str, value: object) -> tuple[bool, str | None]:
-    name = _normalized_key(field_name)
+    name = normalized_quality_key(field_name)
     val = "" if value is None else str(value).strip().lower()
 
-    if not name or _is_placeholder_token(name):
+    if not name or is_placeholder_token(name):
         return True, "placeholder_field_name"
-    if _contains_placeholder_value_any_key(value):
+    if contains_placeholder_value_any_key(value):
         return True, "placeholder_or_null_value"
     if contains_prompt_or_schema_artifact(name) or contains_prompt_or_schema_artifact(val):
         return True, "prompt_or_schema_echo"
@@ -138,7 +31,7 @@ def reject_observation(field_name: str, value: object) -> tuple[bool, str | None
 def reject_scalar_candidate(value: object) -> tuple[bool, str | None]:
     if contains_prompt_or_schema_artifact(value):
         return True, "prompt_or_schema_echo"
-    if _contains_placeholder_value(value):
+    if contains_placeholder_value(value):
         return True, "placeholder_or_null_value"
     return False, None
 
@@ -146,7 +39,7 @@ def reject_scalar_candidate(value: object) -> tuple[bool, str | None]:
 def reject_line_item(item: dict[str, Any]) -> tuple[bool, str | None]:
     if contains_prompt_or_schema_artifact(item):
         return True, "prompt_or_schema_echo"
-    if _contains_placeholder_value_for_keys(
+    if contains_placeholder_value_for_keys(
         item,
         value_keys=LINE_ITEM_VALUE_KEYS,
         reject_null_leaves=False,
@@ -172,7 +65,7 @@ def reject_line_item(item: dict[str, Any]) -> tuple[bool, str | None]:
     if not description:
         return True, "missing_description"
 
-    if _is_placeholder_token(_normalized_key(description)):
+    if is_placeholder_token(description):
         return True, "placeholder_or_null_value"
 
     zero_rejected, zero_reason = zero_amount_line_requires_context(item)
@@ -251,87 +144,3 @@ def _decimal_value_is_zero(value: str) -> bool:
         return Decimal(value) == Decimal("0")
     except (InvalidOperation, ValueError):
         return False
-
-
-def _contains_placeholder_value(value: object, *, key: object | None = None) -> bool:
-    return _contains_placeholder_value_for_keys(
-        value,
-        key=key,
-        value_keys=PRIMARY_VALUE_KEYS,
-        reject_null_leaves=True,
-    )
-
-
-def _contains_placeholder_value_any_key(value: object) -> bool:
-    return _contains_placeholder_value_for_keys(
-        value,
-        value_keys=None,
-        reject_null_leaves=True,
-    )
-
-
-def _contains_placeholder_value_for_keys(
-    value: object,
-    *,
-    key: object | None = None,
-    value_keys: set[str] | None,
-    reject_null_leaves: bool,
-) -> bool:
-    key_is_value = (
-        value_keys is None
-        or key is None
-        or _matches_normalized_key(
-            key,
-            value_keys,
-        )
-    )
-    if value is None:
-        return reject_null_leaves and key_is_value
-    if isinstance(value, str):
-        return key_is_value and _is_placeholder_token(_normalized_placeholder_value(value))
-    if isinstance(value, dict):
-        return any(
-            _contains_placeholder_value_for_keys(
-                item,
-                key=item_key,
-                value_keys=value_keys,
-                reject_null_leaves=reject_null_leaves,
-            )
-            for item_key, item in value.items()
-        )
-    if isinstance(value, list | tuple | set):
-        return any(
-            _contains_placeholder_value_for_keys(
-                item,
-                key=key,
-                value_keys=value_keys,
-                reject_null_leaves=reject_null_leaves,
-            )
-            for item in value
-        )
-    return False
-
-
-def _normalized_key(value: object) -> str:
-    text = str(value or "").strip().replace("-", "_").replace(" ", "_")
-    text = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", text)
-    return "_".join(part for part in text.lower().split("_") if part)
-
-
-def _normalized_placeholder_value(value: str) -> str:
-    return _normalized_key(value)
-
-
-def _is_placeholder_token(value: str) -> bool:
-    return (
-        value in NORMALIZED_PLACEHOLDER_TOKENS
-        or value.replace("_", "") in COMPACT_NORMALIZED_PLACEHOLDER_TOKENS
-    )
-
-
-def _matches_normalized_key(key: object, candidates: set[str]) -> bool:
-    normalized = _normalized_key(key)
-    compact = normalized.replace("_", "")
-    return normalized in candidates or compact in {
-        candidate.replace("_", "") for candidate in candidates
-    }

@@ -1,15 +1,16 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
 from typing import Any
 
-from lib.candidate_quality_policy import contains_prompt_or_schema_artifact
+from lib.candidate_quality_policy import (
+    contains_placeholder_value,
+    contains_prompt_or_schema_artifact,
+)
 from lib.model_runtime.reliability_report_normalization import (
     all_rows,
     bool_value,
     dict_value,
     get_value,
-    snake,
 )
 from lib.model_runtime.reliability_versions import (
     CANDIDATE_GATE_VERSION,
@@ -20,103 +21,6 @@ from lib.model_runtime.reliability_versions import (
 from lib.model_runtime.source_engines import is_model_source_engine
 
 ViolationMap = dict[str, list[dict[str, Any]]]
-
-
-def _normalized_placeholder_text(value: str) -> str:
-    text = snake(value.strip()).lower().replace("-", "_").replace(" ", "_")
-    return "_".join(part for part in text.split("_") if part)
-
-
-_PLACEHOLDER_VALUES = {
-    "",
-    "--",
-    "null",
-    "none",
-    "n/a",
-    "na",
-    "field",
-    "key",
-    "missing",
-    "not applicable",
-    "not available",
-    "not found",
-    "not provided",
-    "placeholder",
-    "tbd",
-    "unknown",
-    "visible_field",
-    "visible value",
-    "example value",
-    "<placeholder>",
-}
-_PLACEHOLDER_FIELD_NAMES = {
-    "visible_field",
-    "field",
-    "key",
-    "value",
-}
-_NORMALIZED_PLACEHOLDER_VALUES = {
-    _normalized_placeholder_text(value) for value in _PLACEHOLDER_VALUES
-}
-_NORMALIZED_PLACEHOLDER_TOKENS = _NORMALIZED_PLACEHOLDER_VALUES | {
-    _normalized_placeholder_text(value) for value in _PLACEHOLDER_FIELD_NAMES
-}
-_COMPACT_NORMALIZED_PLACEHOLDER_TOKENS = frozenset(
-    token.replace("_", "") for token in _NORMALIZED_PLACEHOLDER_TOKENS
-)
-_PRIMARY_VALUE_KEYS = {
-    "account_holder",
-    "account_number",
-    "address",
-    "allowed_amount",
-    "amount",
-    "amount_due",
-    "amount_paid",
-    "balance_due",
-    "billed_amount",
-    "buyer_name",
-    "claim_number",
-    "counterparty_name",
-    "customer_name",
-    "date",
-    "description",
-    "display_name",
-    "field_name",
-    "field_value",
-    "invoice_number",
-    "issue_date",
-    "issued_date",
-    "key",
-    "mailing_address",
-    "merchant",
-    "merchant_name",
-    "name",
-    "order_date",
-    "order_number",
-    "paid_amount",
-    "paid_date",
-    "patient_name",
-    "patient_responsibility",
-    "payer_name",
-    "policy_number",
-    "property_address",
-    "provider_name",
-    "seller",
-    "seller_name",
-    "service_address",
-    "service_date",
-    "statement_date",
-    "subtotal",
-    "tax_amount",
-    "tax_total",
-    "text",
-    "total",
-    "total_amount",
-    "total_patient_responsibility",
-    "transaction_date",
-    "value",
-    "vendor_name",
-}
 
 
 def evaluate_admission_events(documents: list[dict[str, Any]], violations: ViolationMap) -> None:
@@ -132,7 +36,7 @@ def evaluate_admission_events(documents: list[dict[str, Any]], violations: Viola
                 event,
                 "admitted_prompt_or_schema_artifact",
             )
-        if _contains_placeholder_value(candidate):
+        if contains_placeholder_value(candidate):
             _add_violation(
                 violations,
                 "placeholderOrLiteralNullCandidatesAdmitted",
@@ -261,37 +165,6 @@ def _contains_prompt_or_schema_artifact(candidate: dict[str, Any]) -> bool:
     return contains_prompt_or_schema_artifact(candidate)
 
 
-def _contains_placeholder_value(candidate: dict[str, Any]) -> bool:
-    for key, value in _walk_items(candidate):
-        if not _matches_normalized_key(_normalized_leaf_key(key), _PRIMARY_VALUE_KEYS):
-            continue
-        if value is None:
-            return True
-        if isinstance(value, str):
-            if _is_placeholder_token(_normalized_placeholder_text(value)):
-                return True
-    return False
-
-
-def _normalized_leaf_key(path: str) -> str:
-    key = snake(path.split(".")[-1].strip()).replace("-", "_").replace(" ", "_").lower()
-    return "_".join(part for part in key.split("_") if part)
-
-
-def _is_placeholder_token(value: str) -> bool:
-    return (
-        value in _NORMALIZED_PLACEHOLDER_TOKENS
-        or value.replace("_", "") in _COMPACT_NORMALIZED_PLACEHOLDER_TOKENS
-    )
-
-
-def _matches_normalized_key(value: str, candidates: set[str]) -> bool:
-    compact = value.replace("_", "")
-    return value in candidates or compact in {
-        candidate.replace("_", "") for candidate in candidates
-    }
-
-
 def _normalized_decision(value: Any) -> str:
     return str(value or "").strip().lower()
 
@@ -321,16 +194,3 @@ def _first_non_empty(*values: Any) -> Any:
         if value not in (None, ""):
             return value
     return None
-
-
-def _walk_items(value: Any, *, prefix: str = "") -> Iterable[tuple[str, Any]]:
-    if isinstance(value, dict):
-        for key, item in value.items():
-            path = f"{prefix}.{key}" if prefix else str(key)
-            yield from _walk_items(item, prefix=path)
-    elif isinstance(value, list):
-        for index, item in enumerate(value):
-            path = f"{prefix}.{index}" if prefix else str(index)
-            yield from _walk_items(item, prefix=path)
-    else:
-        yield prefix, value
