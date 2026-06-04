@@ -237,6 +237,34 @@ def test_hard_invariants_flag_title_derived_seller_row_source_engine() -> None:
     ]
 
 
+def test_hard_invariants_normalize_title_source_labels() -> None:
+    document = _safe_document_report()
+    document["canonicalFields"] = [
+        {
+            "id": "field-title-seller-camel-source",
+            "fieldPath": " Invoice.Seller.DisplayName ",
+            "reviewStatus": "accepted",
+            "value": "Acme Services",
+            "evidence": [{"sourceEngine": "DocumentTitle"}],
+        }
+    ]
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 1
+    assert (
+        summary["invariants"]["titleDerivedMerchantSellerWithoutAllowlist"]["violationCount"] == 1
+    )
+    assert summary["invariants"]["titleDerivedMerchantSellerWithoutAllowlist"]["examples"] == [
+        {
+            "reason": "title_derived_merchant_seller_without_allowlist",
+            "documentId": "doc-safe",
+            "entityId": "field-title-seller-camel-source",
+        }
+    ]
+
+
 def test_hard_invariants_flag_versioned_model_source_engine_auto_acceptance() -> None:
     for source_engine in ("granite_vision_3b", "qwen3_vl_8b"):
         document = _safe_document_report()

@@ -354,10 +354,10 @@ def _evidence_is_document_title(evidence: dict[str, Any]) -> bool:
 
 
 def _source_is_document_title(mapping: dict[str, Any]) -> bool:
-    source = str(
+    source = _normalized_path_segment(
         get_value(mapping, "source", "sourceKind", "source_kind", "sourceEngine", "source_engine")
         or ""
-    ).lower()
+    )
     return source in {"document_title", "title"} or "document_title" in source
 
 
