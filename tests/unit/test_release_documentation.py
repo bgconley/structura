@@ -9,6 +9,7 @@ EVENT_CONTRACT_NOTES = Path("contracts/events/README.md")
 PHASE85_PLAN = Path("STRUCTURA_PHASE_8_5_IMPLEMENTATION_PLAN.md")
 PHASE9_PLAN = Path("STRUCTURA_PHASE_9_IMPLEMENTATION_PLAN.md")
 ROOT_PLAN = Path("STRUCTURA_IMPLEMENTATION_PLAN.md")
+MODEL_CORPUS_README = Path("tests/fixtures/model_corpus/README.md")
 
 
 def test_readme_uses_model_corpus_runner_for_model_backed_release_gate() -> None:
@@ -70,3 +71,13 @@ def test_root_plan_model_placeholder_section_matches_current_compose() -> None:
     assert not re.search(r"\bmodel-qwen\b(?!-semantic)", content)
     assert "model-granite-placeholder" in content
     assert "model-qwen-semantic" in content
+
+
+def test_model_corpus_readme_requires_manifest_run_mode() -> None:
+    content = MODEL_CORPUS_README.read_text(encoding="utf-8")
+    normalized = re.sub(r"\s+", " ", content)
+
+    assert (
+        "private `phase8_5_model_manifest.json` must include "
+        "`runManifest.model_mode` set to `live` or `required`"
+    ) in normalized

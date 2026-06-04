@@ -19,6 +19,14 @@ def test_model_corpus_runner_requires_model_backed_evidence_when_requested() -> 
         evaluate_model_corpus_manifest(payload, require_model_backed=True)
 
 
+def test_model_corpus_runner_requires_model_backed_manifest_run_mode() -> None:
+    payload = _manifest(fixture_type="model_backed")
+    payload.pop("runManifest", None)
+
+    with pytest.raises(SystemExit, match="runManifest.model_mode"):
+        evaluate_model_corpus_manifest(payload, require_model_backed=True)
+
+
 def test_model_corpus_runner_enforces_required_sections_and_thresholds() -> None:
     payload = _manifest(fixture_type="model_backed")
     result = evaluate_model_corpus_manifest(payload, require_model_backed=True)
@@ -839,7 +847,7 @@ def test_model_corpus_script_rejects_conflicting_aggregate_metric_evidence(
 
 
 def _manifest(*, fixture_type: str) -> dict[str, object]:
-    return {
+    payload: dict[str, object] = {
         "fixtureType": fixture_type,
         "runId": "phase85-fixture-run",
         "evidence": {
@@ -909,6 +917,9 @@ def _manifest(*, fixture_type: str) -> dict[str, object]:
             "reviewBurdenAtConfidenceThresholds": 0.25,
         },
     }
+    if fixture_type == "model_backed":
+        payload["runManifest"] = {"model_mode": "live"}
+    return payload
 
 
 def _evidence(profile: str, slug: str) -> dict[str, object]:

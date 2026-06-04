@@ -28,7 +28,7 @@ EVIDENCE_ARTIFACT_RUN_MANIFEST_PROFILE_KEYS = {
     "textEmbedding": ("text_embedding_profile", "text_embed_profile"),
     "visualEmbedding": ("visual_embedding_profile", "visual_embed_profile"),
 }
-MODEL_BACKED_ARTIFACT_MODES = frozenset({"live", "required"})
+MODEL_BACKED_RUN_MODES = frozenset({"live", "required"})
 REQUIRED_EVIDENCE_ARTIFACT_PAYLOAD_KEYS = (
     "acceptanceGates",
     "checks",
@@ -95,6 +95,11 @@ def evaluate_model_corpus_manifest(
     fixture_type = str(payload.get("fixtureType") or "")
     if require_model_backed and fixture_type != "model_backed":
         raise SystemExit("Model corpus manifest is not model-backed.")
+    manifest_overrides = payload.get("runManifest")
+    if manifest_overrides is not None and not isinstance(manifest_overrides, dict):
+        raise SystemExit("Model corpus runManifest must be an object when provided.")
+    if fixture_type == "model_backed":
+        _assert_model_backed_manifest_run_mode(manifest_overrides)
     evidence = _required_mapping(payload, "evidence")
     metrics = _required_mapping(payload, "metrics")
     model_backed_artifacts: dict[str, dict[str, Any]] = {}
@@ -120,9 +125,6 @@ def evaluate_model_corpus_manifest(
     gold_summary = evaluate_gold_corpus_metrics(gold_metrics, gold_thresholds)
     assert_gold_corpus_metrics_pass(gold_summary)
     run_id = str(payload.get("runId") or payload.get("run_id") or "phase85-manifest")
-    manifest_overrides = payload.get("runManifest")
-    if manifest_overrides is not None and not isinstance(manifest_overrides, dict):
-        raise SystemExit("Model corpus runManifest must be an object when provided.")
     return {
         "fixtureType": fixture_type,
         "evidence": {
@@ -151,6 +153,20 @@ def _required_mapping(payload: dict[str, Any], key: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise SystemExit(f"Model corpus manifest must include object: {key}")
     return value
+
+
+def _assert_model_backed_manifest_run_mode(run_manifest: Any) -> None:
+    if not isinstance(run_manifest, dict):
+        raise SystemExit("Model corpus model-backed manifest must include runManifest.model_mode.")
+    mode = run_manifest.get("model_mode") or run_manifest.get("modelMode")
+    if not isinstance(mode, str) or not mode.strip():
+        raise SystemExit("Model corpus model-backed manifest must include runManifest.model_mode.")
+    normalized_mode = mode.strip()
+    if normalized_mode not in MODEL_BACKED_RUN_MODES:
+        raise SystemExit(
+            "Model corpus model-backed manifest runManifest.model_mode must be "
+            f"live or required; got {normalized_mode!r}."
+        )
 
 
 def _assert_metric(metrics: dict[str, Any], thresholds: dict[str, Any], metric: str) -> None:
@@ -358,7 +374,7 @@ def _assert_evidence_artifact_model_mode(
             f"runManifest.model_mode metadata: {path}"
         )
     normalized_mode = mode.strip()
-    if normalized_mode not in MODEL_BACKED_ARTIFACT_MODES:
+    if normalized_mode not in MODEL_BACKED_RUN_MODES:
         raise SystemExit(
             f"Model corpus evidence {section} runManifest.model_mode must be live or required; "
             f"got {normalized_mode!r}: {path}"
