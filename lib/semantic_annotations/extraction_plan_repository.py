@@ -6,10 +6,9 @@ from uuid import UUID
 
 from psycopg.types.json import Jsonb
 
+from lib.model_runtime.reliability_versions import PLANNER_VERSION
 from lib.semantic_annotations.extraction_plan import GraniteExtractionPlan, GraniteJobSpec
 from lib.semantic_annotations.models import SemanticAnnotationResult
-
-PLANNER_VERSION = "phase8_5-closed-world-planner-v1"
 
 
 @dataclass(frozen=True)

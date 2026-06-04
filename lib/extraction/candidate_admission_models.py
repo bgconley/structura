@@ -11,9 +11,7 @@ from lib.extraction.models import (
     LineItemCandidateFact,
     ObservationCandidateFact,
 )
-
-CANDIDATE_GATE_VERSION = "phase8_5-candidate-gates-v1"
-PLANNER_VERSION = "phase8_5-closed-world-planner-v1"
+from lib.model_runtime.reliability_versions import CANDIDATE_GATE_VERSION, PLANNER_VERSION
 
 CandidateKind = Literal["field", "line_item", "observation"]
 
@@ -56,8 +54,7 @@ class CandidateAdmissionContext:
     @property
     def model_backed_semantic_region(self) -> bool:
         return (
-            self.run_scope.extraction_scope == "semantic_region"
-            and self.source_engine != "system"
+            self.run_scope.extraction_scope == "semantic_region" and self.source_engine != "system"
         )
 
 

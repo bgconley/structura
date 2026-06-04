@@ -1,15 +1,8 @@
 from __future__ import annotations
 
 from collections import Counter
-from datetime import datetime
 from typing import Any
 
-from lib.model_runtime.profiles import (
-    GRANITE_VISION_PROFILE,
-    QWEN_SEMANTIC_PROFILE,
-    TEXT_EMBED_PROFILE,
-    VISUAL_EMBED_PROFILE,
-)
 from lib.model_runtime.reliability_acceptance_recompute import (
     recomputed_hard_invariants,
     recomputed_operational_slos,
@@ -33,6 +26,7 @@ from lib.model_runtime.reliability_planner_summary_acceptance import (
 from lib.model_runtime.reliability_quality_summary_acceptance import (
     quality_summary_acceptance_check,
 )
+from lib.model_runtime.reliability_report_lineage_acceptance import report_lineage_check
 from lib.model_runtime.reliability_report_normalization import dict_value, get_value
 from lib.model_runtime.reliability_retry_summary_acceptance import (
     retry_summary_acceptance_check,
@@ -45,19 +39,10 @@ from lib.model_runtime.reliability_summary_acceptance_coverage import (
     REQUIRED_REPORT_SUMMARIES,
     summary_acceptance_coverage_check,
 )
-from lib.model_runtime.reliability_versions import PIPELINE_VERSION
 from lib.model_runtime.reliability_visual_plan_summary_acceptance import (
     visual_input_plan_summary_acceptance_check,
 )
 
-VALID_FIXTURE_TYPES = frozenset({"deterministic_fixture", "model_backed"})
-VALID_MODEL_MODES = frozenset({"fixture", "live", "required"})
-EXPECTED_LIVE_MODEL_PROFILES = {
-    "semantic_profile": QWEN_SEMANTIC_PROFILE,
-    "granite_profile": GRANITE_VISION_PROFILE,
-    "text_embedding_profile": TEXT_EMBED_PROFILE,
-    "visual_embedding_profile": VISUAL_EMBED_PROFILE,
-}
 REPEATABILITY_KEYS = (
     "documentFamily",
     "semanticRegions",
@@ -91,7 +76,7 @@ def evaluate_phase85_report_acceptance(
     require_gold: bool = False,
 ) -> dict[str, Any]:
     checks = {
-        "reportLineage": _report_lineage_check(reports),
+        "reportLineage": report_lineage_check(reports),
         "requiredSummaries": _required_summaries_check(reports),
         "plannerSummary": planner_summary_acceptance_check(reports),
         "candidateAdmissionSummary": candidate_admission_summary_acceptance_check(reports),
@@ -126,100 +111,6 @@ def assert_phase85_report_acceptance(summary: dict[str, Any]) -> None:
     ]
     reason = ", ".join(failed) if failed else "unknown"
     raise SystemExit(f"Phase 8.5 report acceptance failed: {reason}")
-
-
-def _report_lineage_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
-    failures: list[dict[str, Any]] = []
-    for index, report in enumerate(reports):
-        missing: list[str] = []
-        invalid: list[str] = []
-        fixture_type = get_value(report, "fixtureType", "fixture_type")
-        measured_at = get_value(report, "measuredAt", "measured_at")
-        run_id = get_value(report, "runId", "run_id")
-        run_manifest = dict_value(get_value(report, "runManifest", "run_manifest"))
-        manifest_run_id = get_value(run_manifest, "run_id", "runId")
-        pipeline_version = get_value(run_manifest, "pipeline_version", "pipelineVersion")
-        model_mode = get_value(run_manifest, "model_mode", "modelMode")
-
-        if not isinstance(run_id, str) or not run_id.strip():
-            missing.append("runId")
-
-        if not isinstance(manifest_run_id, str) or not manifest_run_id.strip():
-            missing.append("runManifest.run_id")
-        elif (
-            isinstance(run_id, str) and run_id.strip() and run_id.strip() != manifest_run_id.strip()
-        ):
-            invalid.append("runId/runManifest.run_id")
-
-        if not isinstance(fixture_type, str) or not fixture_type.strip():
-            missing.append("fixtureType")
-        elif fixture_type.strip() not in VALID_FIXTURE_TYPES:
-            invalid.append("fixtureType")
-
-        if not isinstance(measured_at, str) or not measured_at.strip():
-            missing.append("measuredAt")
-        elif _parse_report_timestamp(measured_at) is None:
-            invalid.append("measuredAt")
-
-        if pipeline_version in (None, ""):
-            missing.append("runManifest.pipeline_version")
-        elif pipeline_version != PIPELINE_VERSION:
-            invalid.append("runManifest.pipeline_version")
-
-        if not isinstance(model_mode, str) or not model_mode.strip():
-            missing.append("runManifest.model_mode")
-        elif model_mode.strip() not in VALID_MODEL_MODES:
-            invalid.append("runManifest.model_mode")
-
-        if isinstance(fixture_type, str) and isinstance(model_mode, str):
-            expected_fixture_type = (
-                "model_backed"
-                if model_mode.strip() in {"live", "required"}
-                else "deterministic_fixture"
-            )
-            if fixture_type.strip() != expected_fixture_type:
-                invalid.append("fixtureType/runManifest.model_mode")
-
-        if isinstance(model_mode, str) and model_mode.strip() in {"live", "required"}:
-            for profile_key, expected_profile in EXPECTED_LIVE_MODEL_PROFILES.items():
-                actual_profile = get_value(run_manifest, profile_key, _camelize(profile_key))
-                lineage_name = f"runManifest.{profile_key}"
-                if not isinstance(actual_profile, str) or not actual_profile.strip():
-                    missing.append(lineage_name)
-                elif actual_profile.strip() != expected_profile:
-                    invalid.append(lineage_name)
-
-        if missing or invalid:
-            failures.append(
-                {
-                    "reportIndex": index,
-                    "runId": get_value(report, "runId", "run_id"),
-                    "missing": missing,
-                    "invalid": invalid,
-                }
-            )
-    return {
-        "status": "passed" if reports and not failures else "failed",
-        "failures": failures,
-    }
-
-
-def _camelize(value: str) -> str:
-    head, *tail = value.split("_")
-    return head + "".join(part.capitalize() for part in tail)
-
-
-def _parse_report_timestamp(value: str) -> datetime | None:
-    normalized = value.strip()
-    if normalized.endswith("Z"):
-        normalized = normalized[:-1] + "+00:00"
-    try:
-        parsed = datetime.fromisoformat(normalized)
-    except ValueError:
-        return None
-    if parsed.tzinfo is None:
-        return None
-    return parsed
 
 
 def _required_summaries_check(reports: list[dict[str, Any]]) -> dict[str, Any]:

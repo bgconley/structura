@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 
 from lib.extraction.models import ExtractionSourceDocument
+from lib.model_runtime.reliability_versions import SMART_PROMPT_VERSION as SMART_PROMPT_VERSION
 from lib.semantic_annotations.docling_context import build_docling_context
 
-SMART_PROMPT_VERSION = "phase8_5-semantic-smart-v3"
 HIGH_QUALITY_PROMPT_VERSION = "phase8_5-semantic-high-quality-v1"
 RESCUE_PROMPT_VERSION = "phase8_5-semantic-rescue-v1"
 

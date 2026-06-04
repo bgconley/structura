@@ -4,12 +4,23 @@ import importlib.util
 from pathlib import Path
 from uuid import uuid4
 
+from lib.extraction.candidate_admission_models import CANDIDATE_GATE_VERSION
+from lib.extraction.contract_registry import CONTRACT_REGISTRY_VERSION
+from lib.extraction.region_envelope import REGION_ENVELOPE_VERSION
 from lib.model_runtime.profiles import (
     GRANITE_VISION_PROFILE,
     QWEN_SEMANTIC_PROFILE,
     TEXT_EMBED_PROFILE,
     VISUAL_EMBED_PROFILE,
+    get_model_profile,
 )
+from lib.model_runtime.reliability_versions import (
+    GRANITE_PROMPT_VERSION,
+    RECONCILER_VERSION,
+    VISUAL_INPUT_PLAN_VERSION,
+)
+from lib.semantic_annotations.extraction_plan_repository import PLANNER_VERSION
+from lib.semantic_annotations.prompting import SMART_PROMPT_VERSION
 
 
 def _load_resident_runner():
@@ -114,6 +125,7 @@ def _report(*, hard_status: str) -> dict[str, object]:
             "granite_profile": GRANITE_VISION_PROFILE,
             "text_embedding_profile": TEXT_EMBED_PROFILE,
             "visual_embedding_profile": VISUAL_EMBED_PROFILE,
+            **_task12_manifest_lineage(),
         },
         "plannerSummary": {"selectedTaskCount": 1},
         "candidateAdmissionSummary": {"admittedCount": 1, "rejectedCount": 0},
@@ -155,4 +167,20 @@ def _passed_operational_slo_gates() -> dict[str, dict[str, object]]:
         "runtimeFailureRates": {"status": "passed", "violationCount": 0},
         "runawayFanout": {"status": "passed", "violationCount": 0},
         "retrySafeJobs": {"status": "passed", "violationCount": 0},
+    }
+
+
+def _task12_manifest_lineage() -> dict[str, object]:
+    return {
+        "docling_version": "worker-docling-isolated",
+        "semantic_prompt_version": SMART_PROMPT_VERSION,
+        "granite_model": get_model_profile(GRANITE_VISION_PROFILE).base_model,
+        "granite_prompt_version": GRANITE_PROMPT_VERSION,
+        "planner_version": PLANNER_VERSION,
+        "contract_registry_version": CONTRACT_REGISTRY_VERSION,
+        "region_envelope_version": REGION_ENVELOPE_VERSION,
+        "candidate_gate_version": CANDIDATE_GATE_VERSION,
+        "reconciler_version": RECONCILER_VERSION,
+        "visual_input_plan_version": VISUAL_INPUT_PLAN_VERSION,
+        "decoding": {"temperature": 0, "top_p": None},
     }

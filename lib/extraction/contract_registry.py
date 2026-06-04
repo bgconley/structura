@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-CONTRACT_REGISTRY_VERSION = "phase8_5-contract-registry-v1"
+from lib.model_runtime.reliability_versions import (
+    CONTRACT_REGISTRY_VERSION as CONTRACT_REGISTRY_VERSION,
+)
 
 
 @dataclass(frozen=True)

@@ -1,0 +1,202 @@
+from __future__ import annotations
+
+from typing import Any
+
+from lib.extraction.candidate_admission_models import CANDIDATE_GATE_VERSION
+from lib.extraction.contract_registry import CONTRACT_REGISTRY_VERSION
+from lib.extraction.region_envelope import REGION_ENVELOPE_VERSION
+from lib.model_runtime.profiles import (
+    GRANITE_VISION_PROFILE,
+    QWEN_SEMANTIC_PROFILE,
+    TEXT_EMBED_PROFILE,
+    VISUAL_EMBED_PROFILE,
+    get_model_profile,
+)
+from lib.model_runtime.reliability_report_lineage_acceptance import report_lineage_check
+from lib.model_runtime.reliability_versions import (
+    GRANITE_PROMPT_VERSION,
+    RECONCILER_VERSION,
+    VISUAL_INPUT_PLAN_VERSION,
+)
+from lib.semantic_annotations.extraction_plan_repository import PLANNER_VERSION
+from lib.semantic_annotations.prompting import SMART_PROMPT_VERSION
+
+
+def test_report_lineage_fails_for_missing_report_identity() -> None:
+    report = _lineage_report()
+    report.pop("fixtureType")
+    report["runManifest"].pop("model_mode")
+
+    summary = report_lineage_check([report])
+
+    assert summary["status"] == "failed"
+    assert summary["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "missing": ["fixtureType", "runManifest.model_mode"],
+            "invalid": [],
+        }
+    ]
+
+
+def test_report_lineage_fails_for_missing_live_model_profile_lineage() -> None:
+    report = _lineage_report()
+    report["runManifest"].pop("text_embedding_profile")
+
+    summary = report_lineage_check([report])
+
+    assert summary["status"] == "failed"
+    assert summary["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "missing": ["runManifest.text_embedding_profile"],
+            "invalid": [],
+        }
+    ]
+
+
+def test_report_lineage_fails_for_stale_live_model_profile_lineage() -> None:
+    report = _lineage_report()
+    report["runManifest"]["visual_embedding_profile"] = "qwen3-vl-embedding-2b-1024:v1"
+
+    summary = report_lineage_check([report])
+
+    assert summary["status"] == "failed"
+    assert summary["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "missing": [],
+            "invalid": ["runManifest.visual_embedding_profile"],
+        }
+    ]
+
+
+def test_report_lineage_fails_for_missing_task12_manifest_lineage() -> None:
+    report = _lineage_report()
+    for key in _task12_manifest_lineage():
+        report["runManifest"].pop(key)
+
+    summary = report_lineage_check([report])
+
+    assert summary["status"] == "failed"
+    assert summary["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "missing": [f"runManifest.{key}" for key in _task12_manifest_lineage()],
+            "invalid": [],
+        }
+    ]
+
+
+def test_report_lineage_fails_for_stale_task12_manifest_lineage() -> None:
+    report = _lineage_report()
+    report["runManifest"].update(
+        {
+            "semantic_prompt_version": "phase8_5-old-semantic-prompt",
+            "granite_model": "ibm-granite/old-vision",
+            "granite_prompt_version": "phase8_5-old-granite",
+            "planner_version": "phase8_5-old-planner",
+            "contract_registry_version": "phase8_5-old-contracts",
+            "region_envelope_version": "phase8_5-old-envelope",
+            "candidate_gate_version": "phase8_5-old-gates",
+            "reconciler_version": "phase8_5-old-reconciler",
+            "visual_input_plan_version": "phase8_5-old-visual-plan",
+            "decoding": {"temperature": 0.4, "top_p": 0.9},
+        }
+    )
+
+    summary = report_lineage_check([report])
+
+    assert summary["status"] == "failed"
+    assert summary["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "missing": [],
+            "invalid": [
+                "runManifest.semantic_prompt_version",
+                "runManifest.granite_model",
+                "runManifest.granite_prompt_version",
+                "runManifest.planner_version",
+                "runManifest.contract_registry_version",
+                "runManifest.region_envelope_version",
+                "runManifest.candidate_gate_version",
+                "runManifest.reconciler_version",
+                "runManifest.visual_input_plan_version",
+                "runManifest.decoding.temperature",
+                "runManifest.decoding.top_p",
+            ],
+        }
+    ]
+
+
+def test_report_lineage_fails_for_missing_manifest_run_id() -> None:
+    report = _lineage_report()
+    report["runManifest"].pop("run_id")
+
+    summary = report_lineage_check([report])
+
+    assert summary["status"] == "failed"
+    assert summary["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "missing": ["runManifest.run_id"],
+            "invalid": [],
+        }
+    ]
+
+
+def test_report_lineage_fails_for_mismatched_manifest_run_id() -> None:
+    report = _lineage_report()
+    report["runManifest"]["run_id"] = "phase85-other-run"
+
+    summary = report_lineage_check([report])
+
+    assert summary["status"] == "failed"
+    assert summary["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "missing": [],
+            "invalid": ["runId/runManifest.run_id"],
+        }
+    ]
+
+
+def _lineage_report() -> dict[str, Any]:
+    return {
+        "runId": "phase85-pass-1",
+        "fixtureType": "model_backed",
+        "measuredAt": "2026-06-04T12:00:00+00:00",
+        "runManifest": {
+            "run_id": "phase85-pass-1",
+            "pipeline_version": "phase8_5_reliability_v1",
+            "model_mode": "live",
+            "semantic_profile": QWEN_SEMANTIC_PROFILE,
+            "granite_profile": GRANITE_VISION_PROFILE,
+            "text_embedding_profile": TEXT_EMBED_PROFILE,
+            "visual_embedding_profile": VISUAL_EMBED_PROFILE,
+            **_task12_manifest_lineage(),
+        },
+    }
+
+
+def _task12_manifest_lineage() -> dict[str, object]:
+    return {
+        "docling_version": "worker-docling-isolated",
+        "semantic_prompt_version": SMART_PROMPT_VERSION,
+        "granite_model": get_model_profile(GRANITE_VISION_PROFILE).base_model,
+        "granite_prompt_version": GRANITE_PROMPT_VERSION,
+        "planner_version": PLANNER_VERSION,
+        "contract_registry_version": CONTRACT_REGISTRY_VERSION,
+        "region_envelope_version": REGION_ENVELOPE_VERSION,
+        "candidate_gate_version": CANDIDATE_GATE_VERSION,
+        "reconciler_version": RECONCILER_VERSION,
+        "visual_input_plan_version": VISUAL_INPUT_PLAN_VERSION,
+        "decoding": {"temperature": 0, "top_p": None},
+    }

@@ -5,7 +5,10 @@ from typing import Any, Literal, cast
 
 from pydantic import BaseModel, ConfigDict, Field
 
-REGION_ENVELOPE_VERSION = "phase8_5-region-envelope-v1"
+from lib.model_runtime.reliability_versions import (
+    REGION_ENVELOPE_VERSION as REGION_ENVELOPE_VERSION,
+)
+
 ValueType = Literal[
     "string",
     "number",

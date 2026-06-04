@@ -3,9 +3,6 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any
 
-from lib.extraction.candidate_admission_models import CANDIDATE_GATE_VERSION
-from lib.extraction.contract_registry import CONTRACT_REGISTRY_VERSION
-from lib.extraction.region_envelope import REGION_ENVELOPE_VERSION
 from lib.model_runtime.reliability_report_normalization import (
     all_rows,
     bool_value,
@@ -17,7 +14,12 @@ from lib.model_runtime.reliability_report_normalization import (
     list_value,
     sum_values,
 )
-from lib.semantic_annotations.extraction_plan_repository import PLANNER_VERSION
+from lib.model_runtime.reliability_versions import (
+    CANDIDATE_GATE_VERSION,
+    CONTRACT_REGISTRY_VERSION,
+    PLANNER_VERSION,
+    REGION_ENVELOPE_VERSION,
+)
 
 
 def planner_summary(run_id: str, documents: list[dict[str, Any]]) -> dict[str, Any]:

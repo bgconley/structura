@@ -7,15 +7,23 @@ from typing import Any
 
 from lib.extraction.candidate_admission_models import CANDIDATE_GATE_VERSION
 from lib.extraction.contract_registry import CONTRACT_REGISTRY_VERSION
+from lib.extraction.region_envelope import REGION_ENVELOPE_VERSION
 from lib.model_runtime.profiles import (
     GRANITE_VISION_PROFILE,
     QWEN_SEMANTIC_PROFILE,
     TEXT_EMBED_PROFILE,
     VISUAL_EMBED_PROFILE,
+    get_model_profile,
 )
 from lib.model_runtime.reliability_acceptance import evaluate_phase85_report_acceptance
 from lib.model_runtime.reliability_report import build_phase85_reliability_report
+from lib.model_runtime.reliability_versions import (
+    GRANITE_PROMPT_VERSION,
+    RECONCILER_VERSION,
+    VISUAL_INPUT_PLAN_VERSION,
+)
 from lib.semantic_annotations.extraction_plan_repository import PLANNER_VERSION
+from lib.semantic_annotations.prompting import SMART_PROMPT_VERSION
 
 
 def test_report_acceptance_import_does_not_load_runtime_settings() -> None:
@@ -47,97 +55,6 @@ def test_report_acceptance_passes_for_resident_report_without_gold_metrics() -> 
     assert summary["checks"]["operationalSLOs"]["status"] == "passed"
     assert summary["checks"]["goldCorpusQuality"]["status"] == "not_required"
     assert summary["checks"]["repeatabilityFingerprints"]["status"] == "not_required"
-
-
-def test_report_acceptance_fails_for_missing_report_lineage() -> None:
-    report = _resident_report()
-    report.pop("fixtureType")
-    report["runManifest"].pop("model_mode")
-
-    summary = evaluate_phase85_report_acceptance([report])
-
-    assert summary["status"] == "failed"
-    assert summary["checks"]["reportLineage"]["status"] == "failed"
-    assert summary["checks"]["reportLineage"]["failures"] == [
-        {
-            "reportIndex": 0,
-            "runId": "phase85-pass-1",
-            "missing": ["fixtureType", "runManifest.model_mode"],
-            "invalid": [],
-        }
-    ]
-
-
-def test_report_acceptance_fails_for_missing_live_model_profile_lineage() -> None:
-    report = _resident_report()
-    report["runManifest"].pop("text_embedding_profile")
-
-    summary = evaluate_phase85_report_acceptance([report])
-
-    assert summary["status"] == "failed"
-    assert summary["checks"]["reportLineage"]["status"] == "failed"
-    assert summary["checks"]["reportLineage"]["failures"] == [
-        {
-            "reportIndex": 0,
-            "runId": "phase85-pass-1",
-            "missing": ["runManifest.text_embedding_profile"],
-            "invalid": [],
-        }
-    ]
-
-
-def test_report_acceptance_fails_for_stale_live_model_profile_lineage() -> None:
-    report = _resident_report()
-    report["runManifest"]["visual_embedding_profile"] = "qwen3-vl-embedding-2b-1024:v1"
-
-    summary = evaluate_phase85_report_acceptance([report])
-
-    assert summary["status"] == "failed"
-    assert summary["checks"]["reportLineage"]["status"] == "failed"
-    assert summary["checks"]["reportLineage"]["failures"] == [
-        {
-            "reportIndex": 0,
-            "runId": "phase85-pass-1",
-            "missing": [],
-            "invalid": ["runManifest.visual_embedding_profile"],
-        }
-    ]
-
-
-def test_report_acceptance_fails_for_missing_manifest_run_id() -> None:
-    report = _resident_report()
-    report["runManifest"].pop("run_id")
-
-    summary = evaluate_phase85_report_acceptance([report])
-
-    assert summary["status"] == "failed"
-    assert summary["checks"]["reportLineage"]["status"] == "failed"
-    assert summary["checks"]["reportLineage"]["failures"] == [
-        {
-            "reportIndex": 0,
-            "runId": "phase85-pass-1",
-            "missing": ["runManifest.run_id"],
-            "invalid": [],
-        }
-    ]
-
-
-def test_report_acceptance_fails_for_mismatched_manifest_run_id() -> None:
-    report = _resident_report()
-    report["runManifest"]["run_id"] = "phase85-other-run"
-
-    summary = evaluate_phase85_report_acceptance([report])
-
-    assert summary["status"] == "failed"
-    assert summary["checks"]["reportLineage"]["status"] == "failed"
-    assert summary["checks"]["reportLineage"]["failures"] == [
-        {
-            "reportIndex": 0,
-            "runId": "phase85-pass-1",
-            "missing": [],
-            "invalid": ["runId/runManifest.run_id"],
-        }
-    ]
 
 
 def test_report_acceptance_fails_for_missing_summaries_and_failed_gates() -> None:
@@ -622,6 +539,7 @@ def _resident_report() -> dict[str, Any]:
             "granite_profile": GRANITE_VISION_PROFILE,
             "text_embedding_profile": TEXT_EMBED_PROFILE,
             "visual_embedding_profile": VISUAL_EMBED_PROFILE,
+            **_task12_manifest_lineage(),
         },
         "plannerSummary": {"selectedTaskCount": 2},
         "candidateAdmissionSummary": {"admittedCount": 2, "rejectedCount": 0},
@@ -677,4 +595,20 @@ def _admission_event_telemetry() -> dict[str, str]:
         "planner_version": PLANNER_VERSION,
         "candidate_gate_version": CANDIDATE_GATE_VERSION,
         "contract_registry_version": CONTRACT_REGISTRY_VERSION,
+    }
+
+
+def _task12_manifest_lineage() -> dict[str, object]:
+    return {
+        "docling_version": "worker-docling-isolated",
+        "semantic_prompt_version": SMART_PROMPT_VERSION,
+        "granite_model": get_model_profile(GRANITE_VISION_PROFILE).base_model,
+        "granite_prompt_version": GRANITE_PROMPT_VERSION,
+        "planner_version": PLANNER_VERSION,
+        "contract_registry_version": CONTRACT_REGISTRY_VERSION,
+        "region_envelope_version": REGION_ENVELOPE_VERSION,
+        "candidate_gate_version": CANDIDATE_GATE_VERSION,
+        "reconciler_version": RECONCILER_VERSION,
+        "visual_input_plan_version": VISUAL_INPUT_PLAN_VERSION,
+        "decoding": {"temperature": 0, "top_p": None},
     }

@@ -4,9 +4,6 @@ from importlib import metadata
 from typing import Any
 
 from lib.config.settings import get_settings
-from lib.extraction.candidate_admission_models import CANDIDATE_GATE_VERSION
-from lib.extraction.contract_registry import CONTRACT_REGISTRY_VERSION
-from lib.extraction.region_envelope import REGION_ENVELOPE_VERSION
 from lib.model_runtime.profiles import (
     GRANITE_VISION_PROFILE,
     QWEN_SEMANTIC_PROFILE,
@@ -16,13 +13,16 @@ from lib.model_runtime.profiles import (
 )
 from lib.model_runtime.reliability_report_normalization import json_safe
 from lib.model_runtime.reliability_versions import (
+    CANDIDATE_GATE_VERSION,
+    CONTRACT_REGISTRY_VERSION,
     GRANITE_PROMPT_VERSION,
     PIPELINE_VERSION,
+    PLANNER_VERSION,
     RECONCILER_VERSION,
+    REGION_ENVELOPE_VERSION,
+    SMART_PROMPT_VERSION,
     VISUAL_INPUT_PLAN_VERSION,
 )
-from lib.semantic_annotations.extraction_plan_repository import PLANNER_VERSION
-from lib.semantic_annotations.prompting import SMART_PROMPT_VERSION
 
 
 def build_phase85_run_manifest(
