@@ -40,6 +40,11 @@ from lib.model_runtime.reliability_retry_summary_acceptance import (
 from lib.model_runtime.reliability_safe_outcome_acceptance import (
     safe_outcome_summary_acceptance_check,
 )
+from lib.model_runtime.reliability_summary_acceptance_coverage import (
+    REPORT_SUMMARY_ACCEPTANCE_COVERAGE,
+    REQUIRED_REPORT_SUMMARIES,
+    summary_acceptance_coverage_check,
+)
 from lib.model_runtime.reliability_versions import PIPELINE_VERSION
 from lib.model_runtime.reliability_visual_plan_summary_acceptance import (
     visual_input_plan_summary_acceptance_check,
@@ -53,19 +58,6 @@ EXPECTED_LIVE_MODEL_PROFILES = {
     "text_embedding_profile": TEXT_EMBED_PROFILE,
     "visual_embedding_profile": VISUAL_EMBED_PROFILE,
 }
-REQUIRED_REPORT_SUMMARIES = (
-    "runManifest",
-    "plannerSummary",
-    "candidateAdmissionSummary",
-    "envelopeSummary",
-    "visualInputPlanSummary",
-    "retrySummary",
-    "extractionPressure",
-    "safeOutcomeSummary",
-    "qualitySummary",
-    "repeatabilityFingerprints",
-    "acceptanceGates",
-)
 REPEATABILITY_KEYS = (
     "documentFamily",
     "semanticRegions",
@@ -85,6 +77,7 @@ OPERATIONAL_SLO_GATE_KEYS = (
 )
 
 __all__ = [
+    "REPORT_SUMMARY_ACCEPTANCE_COVERAGE",
     "REQUIRED_REPORT_SUMMARIES",
     "REPEATABILITY_KEYS",
     "assert_phase85_report_acceptance",
@@ -113,6 +106,7 @@ def evaluate_phase85_report_acceptance(
         "goldCorpusQuality": gold_corpus_acceptance_check(reports, require_gold=require_gold),
         "repeatabilityFingerprints": _repeatability_check(reports),
     }
+    checks["summaryAcceptanceCoverage"] = summary_acceptance_coverage_check(checks)
     return {
         "status": "passed"
         if all(check["status"] in {"passed", "not_required"} for check in checks.values())
