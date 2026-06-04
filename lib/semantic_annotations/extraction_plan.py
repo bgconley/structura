@@ -84,7 +84,8 @@ def plan_granite_jobs(
     *,
     quality_mode: str,
 ) -> GraniteExtractionPlan:
-    deduped = _dedupe_specs(specs)
+    selectable_specs, invalid_specs, invalid_warnings = _partition_selectable_specs(specs)
+    deduped = _dedupe_specs(selectable_specs)
     buckets: dict[str, list[GraniteJobSpec]] = defaultdict(list)
     for spec in deduped:
         buckets[_bucket(spec)].append(spec)
@@ -111,7 +112,7 @@ def plan_granite_jobs(
 
     selected: list[GraniteJobSpec] = []
     selected_by_page: dict[str, int] = defaultdict(int)
-    warnings: list[str] = []
+    warnings: list[str] = list(invalid_warnings)
 
     def select_if_allowed(spec: GraniteJobSpec) -> bool:
         page_key = _page_key(spec)
@@ -146,7 +147,7 @@ def plan_granite_jobs(
                 break
             if select_if_allowed(spec):
                 selected_ids.add(id(spec))
-    dropped = tuple(spec for spec in deduped if id(spec) not in selected_ids)
+    dropped = (*invalid_specs, *(spec for spec in deduped if id(spec) not in selected_ids))
     for spec in dropped:
         must_extract_reason = spec.region.metadata.get("must_extract_reason")
         if must_extract_reason:
@@ -163,6 +164,62 @@ def plan_granite_jobs(
         max_tasks_per_page=per_page_limit,
     )
     return _attach_plan_metadata(plan)
+
+
+def _partition_selectable_specs(
+    specs: list[GraniteJobSpec],
+) -> tuple[list[GraniteJobSpec], tuple[GraniteJobSpec, ...], tuple[str, ...]]:
+    selectable: list[GraniteJobSpec] = []
+    dropped: list[GraniteJobSpec] = []
+    warnings: list[str] = []
+    for spec in specs:
+        reason = _selected_spec_violation(spec)
+        if reason is None:
+            selectable.append(spec)
+            continue
+        dropped.append(spec)
+        warnings.append(f"granite_plan_{reason}:{spec.region_id}")
+    return selectable, tuple(dropped), tuple(dict.fromkeys(warnings))
+
+
+def _selected_spec_violation(spec: GraniteJobSpec) -> str | None:
+    if not str(spec.model_output_schema_name or "").strip():
+        return "missing_contract"
+    if not _has_concrete_grounding(spec):
+        return "missing_grounding"
+    if _has_incompatible_contract(spec):
+        return "incompatible_schema"
+    return None
+
+
+def _has_concrete_grounding(spec: GraniteJobSpec) -> bool:
+    grounding = spec.region.grounding
+    if grounding.kind == "page":
+        return grounding.page_id is not None
+    if grounding.kind == "element":
+        return grounding.element_id is not None
+    if grounding.kind == "table":
+        return grounding.table_id is not None
+    return False
+
+
+def _has_incompatible_contract(spec: GraniteJobSpec) -> bool:
+    compatibility_mode = _normalized_taxonomy(spec.compatibility_mode)
+    contract_reason = _normalized_taxonomy(spec.contract_resolution_reason)
+    if compatibility_mode in {
+        "missing",
+        "incompatible",
+        "incompatible_family",
+        "incompatible_schema",
+        "incompatible_family_schema",
+    }:
+        return True
+    return "incompatible" in contract_reason or "missing_contract" in contract_reason
+
+
+def _normalized_taxonomy(value: object) -> str:
+    text = str(value or "").strip().replace("-", "_").replace(" ", "_")
+    return "_".join(part for part in text.lower().split("_") if part)
 
 
 def _attach_plan_metadata(plan: GraniteExtractionPlan) -> GraniteExtractionPlan:
