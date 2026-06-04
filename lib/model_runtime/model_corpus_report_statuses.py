@@ -14,6 +14,14 @@ def assert_model_corpus_report_statuses_pass(
     artifact: dict[str, Any],
     path: Path,
 ) -> None:
+    failure_lists = [
+        failure_path for failure_path, failures in _iter_report_failure_lists(artifact) if failures
+    ]
+    if failure_lists:
+        raise SystemExit(
+            f"Model corpus evidence {section} evidencePath has report failures "
+            f"{failure_lists[0]}: {path}"
+        )
     invalid = [
         (status_path, status)
         for status_path, status in _iter_report_statuses(artifact)
@@ -37,6 +45,33 @@ def _iter_report_statuses(artifact: dict[str, Any]) -> list[tuple[str, str]]:
         if isinstance(container, dict):
             statuses.extend(_iter_nested_statuses(container, prefix=container_key))
     return statuses
+
+
+def _iter_report_failure_lists(artifact: dict[str, Any]) -> list[tuple[str, list[Any]]]:
+    failures: list[tuple[str, list[Any]]] = []
+    if isinstance(artifact.get("failures"), list):
+        failures.append(("failures", list(artifact["failures"])))
+    for container_key in EVIDENCE_REPORT_STATUS_CONTAINERS:
+        container = artifact.get(container_key)
+        if isinstance(container, dict):
+            failures.extend(_iter_nested_failure_lists(container, prefix=container_key))
+    return failures
+
+
+def _iter_nested_failure_lists(value: Any, *, prefix: str) -> list[tuple[str, list[Any]]]:
+    failures: list[tuple[str, list[Any]]] = []
+    if isinstance(value, dict):
+        for key, item in value.items():
+            path = f"{prefix}.{key}"
+            if key == "failures" and isinstance(item, list):
+                failures.append((path, list(item)))
+            elif isinstance(item, dict | list):
+                failures.extend(_iter_nested_failure_lists(item, prefix=path))
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            if isinstance(item, dict | list):
+                failures.extend(_iter_nested_failure_lists(item, prefix=f"{prefix}[{index}]"))
+    return failures
 
 
 def _iter_nested_statuses(value: Any, *, prefix: str) -> list[tuple[str, str]]:

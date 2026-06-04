@@ -16,6 +16,13 @@ def test_model_corpus_report_statuses_reject_not_evaluated_statuses() -> None:
         assert_model_corpus_report_statuses_pass("qwen", artifact, Path("qwen.json"))
 
 
+def test_model_corpus_report_statuses_reject_non_empty_failure_lists() -> None:
+    artifact = {"checks": {"status": "passed", "failures": [{"name": "goldCorpusQuality"}]}}
+
+    with pytest.raises(SystemExit, match="checks.failures"):
+        assert_model_corpus_report_statuses_pass("qwen", artifact, Path("qwen.json"))
+
+
 def test_model_corpus_report_statuses_accept_passed_and_not_required_statuses() -> None:
     artifact = {
         "status": "passed",
