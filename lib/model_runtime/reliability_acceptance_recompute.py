@@ -24,6 +24,7 @@ __all__ = [
     "recomputed_hard_invariants",
     "recomputed_operational_slos",
     "recomputed_planner_summary",
+    "recomputed_quality_summary",
     "recomputed_repeatability_fingerprints",
     "recomputed_retry_summary",
     "recomputed_safe_outcome_summary",
@@ -241,6 +242,38 @@ def recomputed_safe_outcome_summary(report: dict[str, Any]) -> dict[str, Any] | 
         "safeSkipCount": sum_values(planner_rows, "skipped_task_count", "skippedTaskCount"),
         "safeRejectionCount": _candidate_admission_evidence(document_rows)["rejectedCount"],
         "unsafeFailureCount": _unsafe_failure_count(job_rows),
+    }
+
+
+def recomputed_quality_summary(report: dict[str, Any]) -> dict[str, Any] | None:
+    documents = _document_rows(report)
+    if documents is None:
+        return None
+    valid, document_rows = documents
+    if not valid:
+        return {}
+    statuses: Counter[str] = Counter()
+    review_required = 0
+    for row in document_rows:
+        document = dict_value(get_value(row, "document"))
+        status = str(get_value(document, "review_status", "reviewStatus") or "unknown")
+        statuses[status] += 1
+        semantic_review = any(
+            bool_value(get_value(semantic, "review_required", "reviewRequired"))
+            for semantic in list_value(get_value(row, "semantic"))
+            if isinstance(semantic, dict)
+        )
+        extraction_review = any(
+            str(get_value(extraction, "review_status", "reviewStatus") or "") == "needs_review"
+            for extraction in list_value(get_value(row, "extractions"))
+            if isinstance(extraction, dict)
+        )
+        if status == "needs_review" or semantic_review or extraction_review:
+            review_required += 1
+    return {
+        "documents": len(document_rows),
+        "reviewRequiredDocuments": review_required,
+        "reviewStatusCounts": dict(sorted(statuses.items())),
     }
 
 

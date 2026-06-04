@@ -30,6 +30,9 @@ from lib.model_runtime.reliability_gold_acceptance import gold_corpus_acceptance
 from lib.model_runtime.reliability_planner_summary_acceptance import (
     planner_summary_acceptance_check,
 )
+from lib.model_runtime.reliability_quality_summary_acceptance import (
+    quality_summary_acceptance_check,
+)
 from lib.model_runtime.reliability_report_normalization import dict_value, get_value
 from lib.model_runtime.reliability_retry_summary_acceptance import (
     retry_summary_acceptance_check,
@@ -104,6 +107,7 @@ def evaluate_phase85_report_acceptance(
         "retrySummary": retry_summary_acceptance_check(reports),
         "extractionPressure": extraction_pressure_acceptance_check(reports),
         "safeOutcomeSummary": safe_outcome_summary_acceptance_check(reports),
+        "qualitySummary": quality_summary_acceptance_check(reports),
         "hardCorrectnessInvariants": _hard_correctness_check(reports),
         "operationalSLOs": _operational_slo_check(reports),
         "goldCorpusQuality": gold_corpus_acceptance_check(reports, require_gold=require_gold),
