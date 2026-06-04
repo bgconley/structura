@@ -17,6 +17,7 @@ from lib.extraction.models import (
     CandidateFact,
     ExtractionRunScope,
     LineItemCandidateFact,
+    ObservationCandidateFact,
 )
 
 
@@ -76,6 +77,54 @@ def test_model_backed_candidates_are_admitted_as_review_required() -> None:
     assert admission.events[0].decision == "admitted_review_required"
     assert admission.events[0].candidate_gate_version == CANDIDATE_GATE_VERSION
     assert admission.events[0].contract_registry_version == CONTRACT_REGISTRY_VERSION
+
+
+def test_admitted_candidates_carry_admission_fingerprints_for_report_evidence() -> None:
+    context = _context()
+
+    admission = admit_extraction_candidates(
+        context=context,
+        field_candidates=[
+            CandidateFact(
+                field_path="receipt.transaction.total",
+                value_type="money",
+                value={"amount": 4.65, "currency": "USD"},
+                currency="USD",
+                evidence=[_evidence(context)],
+                status="proposed",
+            )
+        ],
+        line_item_candidates=[
+            LineItemCandidateFact(
+                line_item_type="receipt_item",
+                ordinal=1,
+                description="Coffee",
+                net_amount=4.65,
+                currency="USD",
+                evidence=[_evidence(context)],
+                status="proposed",
+            )
+        ],
+        observation_candidates=[
+            ObservationCandidateFact(
+                observation_family="receipt",
+                field_name="register_note",
+                value_type="string",
+                value="printed receipt",
+                evidence=[_evidence(context)],
+            )
+        ],
+    )
+
+    assert admission.field_candidates[0].validation["candidateAdmissionFingerprint"] == (
+        admission.events[0].candidate_fingerprint
+    )
+    assert admission.line_item_candidates[0].validation["candidateAdmissionFingerprint"] == (
+        admission.events[1].candidate_fingerprint
+    )
+    assert admission.observation_candidates[0].metadata["candidateAdmissionFingerprint"] == (
+        admission.events[2].candidate_fingerprint
+    )
 
 
 def test_missing_evidence_rejections_are_recorded_when_no_candidates_are_admitted() -> None:
@@ -258,9 +307,7 @@ def test_admission_event_payloads_are_json_serializable_with_candidate_dates() -
         events=admission.events,
     )
 
-    assert [payload["value"] for payload in cursor.payloads if "value" in payload] == [
-        "2026-05-02"
-    ]
+    assert [payload["value"] for payload in cursor.payloads if "value" in payload] == ["2026-05-02"]
     service_dates = [
         payload["service_date"] for payload in cursor.payloads if "service_date" in payload
     ]

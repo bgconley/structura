@@ -562,7 +562,8 @@ ORDER BY created_at
 _LINE_ITEMS_SQL = """
 SELECT ordinal, line_item_type::text AS line_item_type, code, service_date, description,
        quantity, unit, unit_price, gross_amount, discount_amount, tax_amount, net_amount,
-       currency_code, category_hint, confidence, status, source_engine::text AS source_engine
+       currency_code, category_hint, confidence, status, source_engine::text AS source_engine,
+       validation_json ->> 'candidateAdmissionFingerprint' AS candidate_fingerprint
 FROM line_item_candidates
 WHERE document_id = %s
 ORDER BY ordinal, created_at
@@ -570,7 +571,8 @@ ORDER BY ordinal, created_at
 
 _OBSERVATIONS_SQL = """
 SELECT observation_family, field_name, value_type, value_json, confidence, status,
-       semantic_type, source_engine::text AS source_engine, model_output_schema_name
+       semantic_type, source_engine::text AS source_engine, model_output_schema_name,
+       metadata_json ->> 'candidateAdmissionFingerprint' AS candidate_fingerprint
 FROM extraction_observations
 WHERE document_id = %s
 ORDER BY observation_family, field_name, created_at
@@ -594,7 +596,8 @@ ORDER BY created_at
 _FIELDS_SQL = """
 SELECT field_path, ordinal, source_engine::text AS source_engine, value_type::text AS value_type,
        text_value, integer_value, numeric_value, boolean_value, date_value, timestamp_value,
-       json_value, currency_code, confidence, status
+       json_value, currency_code, confidence, status,
+       validation_json ->> 'candidateAdmissionFingerprint' AS candidate_fingerprint
 FROM field_candidates
 WHERE document_id = %s
 ORDER BY field_path, ordinal, created_at
@@ -617,6 +620,7 @@ def _fields_for_document(cur: Any, document_id: UUID) -> list[dict[str, Any]]:
             "confidence": row["confidence"],
             "status": row["status"],
             "source_engine": row["source_engine"],
+            "candidate_fingerprint": row["candidate_fingerprint"],
         }
         for row in rows
     ]

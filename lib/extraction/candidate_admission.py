@@ -4,21 +4,32 @@ from collections import Counter
 from dataclasses import replace
 from typing import Any
 
-from lib.extraction.candidate_admission_events import persist_candidate_admission_events
+from lib.extraction.candidate_admission_events import (
+    persist_candidate_admission_events as persist_candidate_admission_events,
+)
 from lib.extraction.candidate_admission_fingerprints import (
     field_fingerprint,
     line_item_fingerprint,
     observation_fingerprint,
     raw_payload_fingerprint,
 )
+from lib.extraction.candidate_admission_metadata import (
+    with_candidate_admission_fingerprint,
+    with_line_item_admission_fingerprint,
+    with_observation_admission_fingerprint,
+)
 from lib.extraction.candidate_admission_models import (
-    CANDIDATE_GATE_VERSION,
+    CANDIDATE_GATE_VERSION as CANDIDATE_GATE_VERSION,
+)
+from lib.extraction.candidate_admission_models import (
     CandidateAdmissionContext,
     CandidateAdmissionEvent,
     CandidateAdmissionResult,
     CandidateKind,
 )
-from lib.extraction.candidate_admission_payloads import rejected_candidates_from_payload
+from lib.extraction.candidate_admission_payloads import (
+    rejected_candidates_from_payload as rejected_candidates_from_payload,
+)
 from lib.extraction.candidate_admission_policy import decision_for_quality_reason
 from lib.extraction.candidate_quality import (
     reject_line_item,
@@ -31,17 +42,6 @@ from lib.extraction.models import (
     LineItemCandidateFact,
     ObservationCandidateFact,
 )
-
-__all__ = [
-    "CANDIDATE_GATE_VERSION",
-    "CandidateAdmissionContext",
-    "CandidateAdmissionEvent",
-    "CandidateAdmissionResult",
-    "admit_extraction_candidates",
-    "normalization_json_with_candidate_admission",
-    "persist_candidate_admission_events",
-    "rejected_candidates_from_payload",
-]
 
 
 def admit_extraction_candidates(
@@ -150,7 +150,9 @@ def _admit_field_candidate(
             None,
         )
 
-    admitted = _review_required_candidate(context, candidate)
+    admitted = with_candidate_admission_fingerprint(
+        _review_required_candidate(context, candidate), fingerprint
+    )
     return (
         _event(
             context,
@@ -193,7 +195,10 @@ def _admit_line_item_candidate(
             None,
         )
 
-    admitted = _review_required_line_item(context, candidate)
+    admitted = with_line_item_admission_fingerprint(
+        _review_required_line_item(context, candidate),
+        fingerprint,
+    )
     return (
         _event(
             context,
@@ -236,7 +241,9 @@ def _admit_observation_candidate(
             None,
         )
 
-    admitted = replace(candidate, status="needs_review")
+    admitted = with_observation_admission_fingerprint(
+        replace(candidate, status="needs_review"), fingerprint
+    )
     return (
         _event(
             context,

@@ -90,6 +90,17 @@ def test_planner_task_report_query_derives_missing_page_number() -> None:
     assert "LEFT JOIN document_tables dt" in runner._PLANNER_TASKS_SQL
 
 
+def test_candidate_report_queries_project_admission_fingerprints() -> None:
+    runner = _load_resident_runner()
+
+    assert "candidate_fingerprint" in runner._FIELDS_SQL
+    assert "validation_json ->> 'candidateAdmissionFingerprint'" in runner._FIELDS_SQL
+    assert "candidate_fingerprint" in runner._LINE_ITEMS_SQL
+    assert "validation_json ->> 'candidateAdmissionFingerprint'" in runner._LINE_ITEMS_SQL
+    assert "candidate_fingerprint" in runner._OBSERVATIONS_SQL
+    assert "metadata_json ->> 'candidateAdmissionFingerprint'" in runner._OBSERVATIONS_SQL
+
+
 def _report(*, hard_status: str) -> dict[str, object]:
     return {
         "runId": "phase85-resident",
