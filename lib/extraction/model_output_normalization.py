@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -13,6 +12,21 @@ from lib.extraction.docling_table_quality import (
 from lib.extraction.evidence_concretizer import evidence_ref_from_context
 from lib.extraction.evidence_context import EvidenceContext
 from lib.extraction.line_item_provenance import line_item_evidence, line_item_provenance
+from lib.extraction.model_output_value_parsing import (
+    bounded_text as _bounded_text,
+)
+from lib.extraction.model_output_value_parsing import (
+    money_value as _money,
+)
+from lib.extraction.model_output_value_parsing import (
+    number_value as _number,
+)
+from lib.extraction.model_output_value_parsing import (
+    string_values as _string_list,
+)
+from lib.extraction.model_output_value_parsing import (
+    value_type as _value_type,
+)
 from lib.extraction.region_envelope_projection import finalized_region_output
 
 _NON_LINE_ITEM_HEADINGS = {
@@ -339,12 +353,12 @@ def _medical_service_lines_output(
     consistency = gate_docling_authoritative_rows(service_lines, docling_table_quality)
     service_lines = consistency.accepted_rows
     normalized = {
-            "schema_name": "medical_eob",
-            "schema_version": "v1",
-            "document_id": str(document_id),
-            "service_lines": service_lines,
-            "confidence": confidence,
-            "created_at": datetime.now(UTC).isoformat(),
+        "schema_name": "medical_eob",
+        "schema_version": "v1",
+        "document_id": str(document_id),
+        "service_lines": service_lines,
+        "confidence": confidence,
+        "created_at": datetime.now(UTC).isoformat(),
     }
     metadata = {
         "mapper": "granite_medical_service_lines.v1",
@@ -1108,18 +1122,6 @@ def _contains_instruction_echo(value: object) -> bool:
     return False
 
 
-def _value_type(value: Any) -> str:
-    if value is None:
-        return "null"
-    if isinstance(value, bool):
-        return "boolean"
-    if isinstance(value, int | float):
-        return "number"
-    if isinstance(value, dict | list):
-        return "json"
-    return "string"
-
-
 def _unwrapped_payload(payload: Any) -> tuple[dict[str, Any], list[str]]:
     repairs: list[str] = []
     if not isinstance(payload, dict):
@@ -1152,44 +1154,6 @@ def _merged_wrapper_payload(
     merged = {key: value for key, value in payload.items() if key != wrapper_key}
     merged.update(wrapped)
     return merged
-
-
-def _bounded_text(value: object, *, max_length: int) -> str | None:
-    if value in (None, ""):
-        return None
-    text = str(value).strip()
-    if not text:
-        return None
-    if len(text) <= max_length:
-        return text
-    return text[:max_length]
-
-
-def _money(value: Any) -> dict[str, Any] | None:
-    if isinstance(value, dict) and value.get("amount") is not None:
-        return {"amount": float(value["amount"]), "currency": value.get("currency") or "USD"}
-    amount = _number(value)
-    if amount is None:
-        return None
-    return {"amount": amount, "currency": "USD"}
-
-
-def _number(value: Any) -> float | None:
-    if isinstance(value, (int, float)):
-        return float(value)
-    if isinstance(value, str):
-        match = re.search(r"-?\d[\d,]*(?:\.\d+)?", value)
-        if match:
-            return float(match.group(0).replace(",", ""))
-    return None
-
-
-def _string_list(value: Any) -> list[str]:
-    if isinstance(value, list):
-        return [str(item).strip() for item in value if str(item).strip()]
-    if isinstance(value, str) and value.strip():
-        return [value.strip()]
-    return []
 
 
 def _evidence(
