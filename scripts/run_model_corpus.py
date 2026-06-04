@@ -183,7 +183,12 @@ def _assert_model_backed_evidence(
         raise SystemExit(f"Model corpus evidence {section} evidencePath not found: {evidence_path}")
     evidence_artifact = _load_evidence_artifact(section, evidence_path)
     artifact_run_id = _evidence_artifact_run_id(evidence_artifact)
-    if artifact_run_id is not None and str(artifact_run_id) != str(evidence["runId"]):
+    if artifact_run_id is None:
+        raise SystemExit(
+            f"Model corpus evidence {section} evidencePath must include runId metadata: "
+            f"{evidence_path}"
+        )
+    if str(artifact_run_id) != str(evidence["runId"]):
         raise SystemExit(
             f"Model corpus evidence {section} runId mismatch: "
             f"{artifact_run_id} != {evidence['runId']}"

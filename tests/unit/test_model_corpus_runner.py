@@ -189,6 +189,49 @@ def test_model_corpus_script_requires_matching_evidence_artifact_run_id(tmp_path
     assert "runId mismatch" in result.stderr
 
 
+def test_model_corpus_script_requires_artifact_run_id_metadata(tmp_path) -> None:
+    payload = _manifest(fixture_type="model_backed")
+    _write_evidence_artifacts(tmp_path, payload, fixture_type="model_backed")
+    granite_evidence = payload["evidence"]["granite"]  # type: ignore[index]
+    assert isinstance(granite_evidence, dict)
+    artifact = _evidence_artifact(
+        str(granite_evidence["runId"]),
+        fixture_type="model_backed",
+        metrics={
+            **_section_metrics(payload, "granite"),
+            **_aggregate_metrics(payload),
+        },
+        profile=str(granite_evidence["profile"]),
+    )
+    artifact.pop("runId", None)
+    run_manifest = artifact["runManifest"]
+    assert isinstance(run_manifest, dict)
+    run_manifest.pop("run_id", None)
+    (tmp_path / granite_evidence["evidencePath"]).write_text(  # type: ignore[index]
+        json.dumps(artifact),
+        encoding="utf-8",
+    )
+    manifest = tmp_path / "phase8_5_model_manifest.json"
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_model_corpus.py",
+            "--require-model-backed",
+            "--manifest",
+            str(manifest),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "granite" in result.stderr
+    assert "runId metadata" in result.stderr
+
+
 def test_model_corpus_script_requires_parseable_evidence_measured_at(tmp_path) -> None:
     payload = _manifest(fixture_type="model_backed")
     _write_evidence_artifacts(tmp_path, payload, fixture_type="model_backed")
