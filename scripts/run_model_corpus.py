@@ -36,6 +36,7 @@ REQUIRED_EVIDENCE_ARTIFACT_PAYLOAD_KEYS = (
     "documents",
     "metrics",
 )
+MODEL_BACKED_ARTIFACT_FIXTURE_TYPE = "model_backed"
 EVIDENCE_SECTION_METRICS = {
     "qwen": (
         "qwen_handwriting_route_success_rate",
@@ -281,16 +282,16 @@ def _assert_evidence_artifact_lineage(
     artifact: dict[str, Any],
     path: Path,
 ) -> None:
-    if artifact.get("fixtureType") == "deterministic_fixture":
-        raise SystemExit(
-            f"Model corpus evidence {section} evidencePath must not be fixture-backed: {path}"
-        )
-
     run_manifest = artifact.get("runManifest") or artifact.get("run_manifest")
     if not isinstance(run_manifest, dict):
         raise SystemExit(
             f"Model corpus evidence {section} evidencePath must include "
             f"report evidence runManifest: {path}"
+        )
+    if artifact.get("fixtureType") != MODEL_BACKED_ARTIFACT_FIXTURE_TYPE:
+        raise SystemExit(
+            f"Model corpus evidence {section} evidencePath fixtureType must be "
+            f"{MODEL_BACKED_ARTIFACT_FIXTURE_TYPE}: {path}"
         )
     pipeline_version = run_manifest.get("pipeline_version") or run_manifest.get("pipelineVersion")
     if pipeline_version != _expected_pipeline_version():

@@ -28,6 +28,7 @@ def test_reliability_report_includes_run_manifest_and_lineage_summaries() -> Non
     )
 
     assert report["runId"] == "phase85-20260604-smoke-001"
+    assert report["fixtureType"] == "deterministic_fixture"
     assert datetime.fromisoformat(str(report["measuredAt"])).tzinfo is not None
     assert report["runManifest"]["run_id"] == "phase85-20260604-smoke-001"
     assert report["runManifest"]["pipeline_version"] == PIPELINE_VERSION

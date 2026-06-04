@@ -35,14 +35,16 @@ def build_phase85_reliability_report(
     manifest_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     safe_documents = json_safe(documents)
+    run_manifest = build_phase85_run_manifest(
+        run_id=run_id,
+        overrides=manifest_overrides,
+    )
     report: dict[str, Any] = {
         "runId": run_id,
+        "fixtureType": _fixture_type_for_run_manifest(run_manifest),
         "measuredAt": datetime.now(UTC).isoformat(),
         "titlePrefix": title_prefix,
-        "runManifest": build_phase85_run_manifest(
-            run_id=run_id,
-            overrides=manifest_overrides,
-        ),
+        "runManifest": run_manifest,
         "documents": safe_documents,
     }
     report["plannerSummary"] = planner_summary(run_id, safe_documents)
@@ -67,3 +69,9 @@ def build_phase85_reliability_report(
         report["candidateAdmissionSummary"],
     )
     return report
+
+
+def _fixture_type_for_run_manifest(run_manifest: dict[str, Any]) -> str:
+    if run_manifest.get("model_mode") in {"live", "required"}:
+        return "model_backed"
+    return "deterministic_fixture"

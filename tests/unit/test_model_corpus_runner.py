@@ -605,7 +605,49 @@ def test_model_corpus_script_rejects_fixture_evidence_artifacts(tmp_path) -> Non
 
     assert result.returncode != 0
     assert "visualEmbedding" in result.stderr
-    assert "fixture-backed" in result.stderr
+    assert "fixtureType" in result.stderr
+    assert "model_backed" in result.stderr
+
+
+def test_model_corpus_script_requires_model_backed_artifact_fixture_type(tmp_path) -> None:
+    payload = _manifest(fixture_type="model_backed")
+    _write_evidence_artifacts(tmp_path, payload, fixture_type="model_backed")
+    visual_evidence = payload["evidence"]["visualEmbedding"]  # type: ignore[index]
+    assert isinstance(visual_evidence, dict)
+    artifact = _evidence_artifact(
+        str(visual_evidence["runId"]),
+        fixture_type="model_backed",
+        metrics={
+            **_section_metrics(payload, "visualEmbedding"),
+            **_aggregate_metrics(payload),
+        },
+        profile=str(visual_evidence["profile"]),
+    )
+    artifact.pop("fixtureType", None)
+    (tmp_path / visual_evidence["evidencePath"]).write_text(  # type: ignore[index]
+        json.dumps(artifact),
+        encoding="utf-8",
+    )
+    manifest = tmp_path / "phase8_5_model_manifest.json"
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_model_corpus.py",
+            "--require-model-backed",
+            "--manifest",
+            str(manifest),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "visualEmbedding" in result.stderr
+    assert "fixtureType" in result.stderr
+    assert "model_backed" in result.stderr
 
 
 def test_model_corpus_script_requires_section_metric_evidence(tmp_path) -> None:
