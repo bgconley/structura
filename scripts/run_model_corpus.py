@@ -36,6 +36,7 @@ def main() -> int:
     result = evaluate_model_corpus_manifest(
         payload,
         require_model_backed=args.require_model_backed,
+        manifest_path=args.manifest,
     )
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0
@@ -45,6 +46,7 @@ def evaluate_model_corpus_manifest(
     payload: dict[str, Any],
     *,
     require_model_backed: bool,
+    manifest_path: Path | None = None,
 ) -> dict[str, Any]:
     from lib.model_runtime.reliability_gold_metrics import (
         assert_gold_corpus_metrics_pass,
@@ -60,7 +62,11 @@ def evaluate_model_corpus_manifest(
         if section not in evidence or not isinstance(evidence[section], dict):
             raise SystemExit(f"Model corpus evidence section missing: {section}")
         if fixture_type == "model_backed":
-            _assert_model_backed_evidence(section, evidence[section])
+            _assert_model_backed_evidence(
+                section,
+                evidence[section],
+                manifest_path=manifest_path,
+            )
     metrics = _required_mapping(payload, "metrics")
     thresholds = _required_mapping(payload, "thresholds")
     for metric in REQUIRED_METRICS:
@@ -114,11 +120,21 @@ def _assert_metric(metrics: dict[str, Any], thresholds: dict[str, Any], metric: 
         raise SystemExit(f"Model corpus {metric} {actual:.4f} is below {expected:.4f}.")
 
 
-def _assert_model_backed_evidence(section: str, evidence: dict[str, Any]) -> None:
+def _assert_model_backed_evidence(
+    section: str,
+    evidence: dict[str, Any],
+    *,
+    manifest_path: Path | None,
+) -> None:
     for key in REQUIRED_MODEL_BACKED_EVIDENCE_KEYS:
         value = evidence.get(key)
         if not isinstance(value, str) or not value.strip():
             raise SystemExit(f"Model corpus evidence {section} missing traceable {key}.")
+    if manifest_path is None:
+        return
+    evidence_path = _resolve_evidence_path(str(evidence["evidencePath"]), manifest_path)
+    if not evidence_path.is_file():
+        raise SystemExit(f"Model corpus evidence {section} evidencePath not found: {evidence_path}")
 
 
 def _evidence_summary(evidence: dict[str, Any]) -> dict[str, str]:
@@ -128,6 +144,13 @@ def _evidence_summary(evidence: dict[str, Any]) -> dict[str, str]:
         if isinstance(value, str) and value.strip():
             summary[key] = value
     return summary
+
+
+def _resolve_evidence_path(evidence_path: str, manifest_path: Path) -> Path:
+    path = Path(evidence_path).expanduser()
+    if path.is_absolute():
+        return path
+    return manifest_path.parent / path
 
 
 if __name__ == "__main__":

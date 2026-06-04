@@ -12,4 +12,6 @@ Each model-backed evidence section (`qwen`, `granite`, `textEmbedding`, and
 `visualEmbedding`) must include non-empty `profile`, `runId`, `measuredAt`, and
 `evidencePath` fields. `evidencePath` should point to the private GPU smoke,
 resident, retrieval, or corpus report artifact that produced the corresponding
-metric evidence.
+metric evidence. Relative `evidencePath` values resolve from the private
+manifest's directory, and the runner requires the target artifact file to exist
+when evaluating a model-backed manifest from disk.

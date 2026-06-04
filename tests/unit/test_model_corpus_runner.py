@@ -84,6 +84,40 @@ def test_model_corpus_script_runs_as_direct_entrypoint() -> None:
     assert payload["runManifest"]["pipeline_version"] == PIPELINE_VERSION
 
 
+def test_model_corpus_script_requires_existing_model_backed_evidence_paths(
+    tmp_path,
+) -> None:
+    payload = _manifest(fixture_type="model_backed")
+    evidence_dir = tmp_path / "evidence"
+    evidence_dir.mkdir()
+    evidence_sections = payload["evidence"]
+    assert isinstance(evidence_sections, dict)
+    for section, evidence in evidence_sections.items():
+        assert isinstance(evidence, dict)
+        evidence["evidencePath"] = f"evidence/{section}.json"
+        if section != "qwen":
+            (evidence_dir / f"{section}.json").write_text("{}", encoding="utf-8")
+    manifest = tmp_path / "phase8_5_model_manifest.json"
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_model_corpus.py",
+            "--require-model-backed",
+            "--manifest",
+            str(manifest),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "qwen" in result.stderr
+    assert "evidencePath not found" in result.stderr
+
+
 def _manifest(*, fixture_type: str) -> dict[str, object]:
     return {
         "fixtureType": fixture_type,
