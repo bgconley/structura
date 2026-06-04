@@ -211,7 +211,7 @@ def _required_summaries_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
         invalid = [
             key
             for key in REQUIRED_REPORT_SUMMARIES
-            if key in report and not isinstance(report[key], dict)
+            if key in report and (not isinstance(report[key], dict) or not report[key])
         ]
         if invalid:
             invalid_by_report.append(

@@ -168,6 +168,24 @@ def test_report_acceptance_fails_for_malformed_required_summaries() -> None:
     ]
 
 
+def test_report_acceptance_fails_for_empty_required_summaries() -> None:
+    report = _resident_report()
+    report["plannerSummary"] = {}
+    report["envelopeSummary"] = {}
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["requiredSummaries"]["status"] == "failed"
+    assert summary["checks"]["requiredSummaries"]["invalidByReport"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "invalid": ["plannerSummary", "envelopeSummary"],
+        }
+    ]
+
+
 def test_report_acceptance_fails_when_target_dead_letter_count_is_nonzero() -> None:
     report = _resident_report()
     report["acceptanceGates"]["operationalSLOs"]["metrics"]["targetQueueDeadLetterCount"] = 1
