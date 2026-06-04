@@ -8,6 +8,7 @@ VISUAL_EMBED_URL="${STRUCTURA_MODEL_VISUAL_EMBED_URL:-http://127.0.0.1:8103}"
 HEALTH_TIMEOUT_SECONDS="${STRUCTURA_MODEL_SMOKE_HEALTH_TIMEOUT_SECONDS:-1200}"
 HEALTH_POLL_SECONDS="${STRUCTURA_MODEL_SMOKE_HEALTH_POLL_SECONDS:-5}"
 MANAGE_COMPOSE="${STRUCTURA_MODEL_SMOKE_MANAGE_COMPOSE:-0}"
+MODEL_CORPUS_MANIFEST="${STRUCTURA_MODEL_CORPUS_MANIFEST:-tests/fixtures/model_corpus/phase8_5_model_manifest.json}"
 COMPOSE_PROFILES=(
   --profile models-live
   --profile text-embed-live
@@ -33,6 +34,12 @@ BLACKWELL_COMPANION_SERVICES=(
 )
 
 echo "Phase 8.5 GPU model smoke"
+
+if [[ ! -f "$MODEL_CORPUS_MANIFEST" ]]; then
+  echo "Phase 8.5 model corpus manifest not found: ${MODEL_CORPUS_MANIFEST}" >&2
+  echo "Set STRUCTURA_MODEL_CORPUS_MANIFEST to a private model-backed phase8_5_model_manifest.json." >&2
+  exit 1
+fi
 
 if command -v nvidia-smi >/dev/null 2>&1; then
   nvidia-smi --query-gpu=index,name,memory.total,driver_version --format=csv,noheader
@@ -126,6 +133,6 @@ fi
 
 "${PYTHON:-python3}" scripts/run_model_corpus.py \
   --require-model-backed \
-  --manifest "${STRUCTURA_MODEL_CORPUS_MANIFEST:-tests/fixtures/model_corpus/phase8_5_model_manifest.json}"
+  --manifest "$MODEL_CORPUS_MANIFEST"
 
 echo "Phase 8.5 GPU model smoke completed"
