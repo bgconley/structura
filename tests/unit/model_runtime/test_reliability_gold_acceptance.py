@@ -3,7 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 from lib.model_runtime.reliability_acceptance import evaluate_phase85_report_acceptance
-from lib.model_runtime.reliability_gold_metrics import REQUIRED_GOLD_METRICS
+from lib.model_runtime.reliability_gold_metrics import MAX_THRESHOLD_METRICS, REQUIRED_GOLD_METRICS
+from lib.model_runtime.reliability_report import build_phase85_reliability_report
 from lib.model_runtime.reliability_versions import PIPELINE_VERSION
 
 
@@ -164,6 +165,44 @@ def test_report_acceptance_fails_when_gold_gate_hides_failed_metric_detail() -> 
     ]
 
 
+def test_report_acceptance_recomputes_gold_metrics_from_document_rows() -> None:
+    report = build_phase85_reliability_report(
+        run_id="phase85-gold-recompute",
+        title_prefix="Phase 8.5 Gold Recompute",
+        documents=[
+            {
+                "document": {"id": "doc-gold", "document_family": "invoice"},
+                "goldMetrics": _passing_gold_metric_values(),
+                "goldThresholds": _gold_metric_thresholds(),
+            }
+        ],
+    )
+    report["documents"][0]["goldMetrics"]["expectedCalibrationError"] = 0.5
+
+    summary = evaluate_phase85_report_acceptance([report], require_gold=True)
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["goldCorpusQuality"]["status"] == "failed"
+    assert summary["checks"]["goldCorpusQuality"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-gold-recompute",
+            "status": "passed",
+            "details": report["acceptanceGates"]["goldCorpusQuality"],
+            "invalid": [
+                "recomputed.failedMetrics",
+                "recomputed.metrics.expectedCalibrationError.status",
+                "recomputed.metrics.expectedCalibrationError.failingKeys",
+            ],
+            "recomputed": {
+                "status": "failed",
+                "missingMetrics": [],
+                "failedMetrics": ["expectedCalibrationError"],
+            },
+        }
+    ]
+
+
 def _report() -> dict[str, Any]:
     return {
         "runId": "phase85-gold-1",
@@ -234,4 +273,16 @@ def _passed_gold_metric_details() -> dict[str, dict[str, object]]:
             "failingKeys": [],
         }
         for metric in REQUIRED_GOLD_METRICS
+    }
+
+
+def _passing_gold_metric_values() -> dict[str, float]:
+    return {
+        metric: 0.0 if metric in MAX_THRESHOLD_METRICS else 0.95 for metric in REQUIRED_GOLD_METRICS
+    }
+
+
+def _gold_metric_thresholds() -> dict[str, float]:
+    return {
+        metric: 0.1 if metric in MAX_THRESHOLD_METRICS else 0.9 for metric in REQUIRED_GOLD_METRICS
     }

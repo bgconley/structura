@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from lib.model_runtime.reliability_fingerprints import repeatability_fingerprints
+from lib.model_runtime.reliability_gold_metrics import evaluate_gold_corpus_metrics_from_documents
 from lib.model_runtime.reliability_invariants import evaluate_hard_correctness_invariants
 from lib.model_runtime.reliability_operational_slos import evaluate_operational_slos
 from lib.model_runtime.reliability_report_normalization import dict_value, get_value
@@ -28,6 +29,7 @@ __all__ = [
     "recomputed_dedupe_summary",
     "recomputed_envelope_summary",
     "recomputed_evidence_summary",
+    "recomputed_gold_corpus_quality",
     "recomputed_extraction_pressure",
     "recomputed_hard_invariants",
     "recomputed_operational_slos",
@@ -68,6 +70,21 @@ def recomputed_operational_slos(report: dict[str, Any]) -> dict[str, Any] | None
             "gates": {},
         }
     return evaluate_operational_slos(document_rows)
+
+
+def recomputed_gold_corpus_quality(report: dict[str, Any]) -> dict[str, Any] | None:
+    documents = report_document_rows(report)
+    if documents is None:
+        return None
+    valid, document_rows = documents
+    if not valid:
+        return {
+            "status": "failed",
+            "missingMetrics": [],
+            "failedMetrics": ["documents"],
+            "metrics": {},
+        }
+    return evaluate_gold_corpus_metrics_from_documents(document_rows)
 
 
 def recomputed_repeatability_fingerprints(report: dict[str, Any]) -> dict[str, str] | None:

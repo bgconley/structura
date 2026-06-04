@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from lib.model_runtime.reliability_acceptance_recompute import recomputed_gold_corpus_quality
 from lib.model_runtime.reliability_gold_metrics import REQUIRED_GOLD_METRICS
 from lib.model_runtime.reliability_report_normalization import dict_value, get_value
 
@@ -17,19 +18,23 @@ def gold_corpus_acceptance_check(
     for index, report in enumerate(reports):
         gate = _gate(report, "goldCorpusQuality")
         status = str(get_value(gate, "status") or "missing")
+        recomputed = recomputed_gold_corpus_quality(report)
         if status == "passed":
             invalid = _gold_metric_failure_keys(gate)
+            recomputed_invalid = _recomputed_gold_metric_failure_keys(recomputed)
+            invalid.extend(f"recomputed.{key}" for key in recomputed_invalid)
             if not invalid:
                 continue
-            failures.append(
-                {
-                    "reportIndex": index,
-                    "runId": get_value(report, "runId", "run_id"),
-                    "status": status,
-                    "details": gate,
-                    "invalid": invalid,
-                }
-            )
+            failure = {
+                "reportIndex": index,
+                "runId": get_value(report, "runId", "run_id"),
+                "status": status,
+                "details": gate,
+                "invalid": invalid,
+            }
+            if recomputed_invalid and recomputed is not None:
+                failure["recomputed"] = _recomputed_gold_summary(recomputed)
+            failures.append(failure)
             continue
         if not require_gold and status == "not_evaluated":
             continue
@@ -83,3 +88,17 @@ def _gold_metric_failure_keys(gate: dict[str, Any]) -> list[str]:
         if isinstance(failing_keys, list) and failing_keys:
             invalid.append(f"metrics.{metric}.failingKeys")
     return invalid
+
+
+def _recomputed_gold_metric_failure_keys(summary: dict[str, Any] | None) -> list[str]:
+    if summary is None or get_value(summary, "status") == "not_evaluated":
+        return []
+    return _gold_metric_failure_keys(summary)
+
+
+def _recomputed_gold_summary(summary: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "status": get_value(summary, "status"),
+        "missingMetrics": get_value(summary, "missingMetrics", "missing_metrics") or [],
+        "failedMetrics": get_value(summary, "failedMetrics", "failed_metrics") or [],
+    }
