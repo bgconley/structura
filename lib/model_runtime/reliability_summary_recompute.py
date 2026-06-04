@@ -341,8 +341,9 @@ def candidate_rejection_summary(run_id: str, documents: list[dict[str, Any]]) ->
         if not decision.startswith("rejected"):
             continue
         reasons = list_value(get_value(event, "reasons"))
-        if reasons:
-            rejection_reasons.update(str(reason) for reason in reasons)
+        normalized_reasons = _normalized_reasons(reasons)
+        if normalized_reasons:
+            rejection_reasons.update(normalized_reasons)
         else:
             rejection_reasons[decision] += 1
     return {
@@ -362,8 +363,9 @@ def _candidate_admission_evidence(documents: list[dict[str, Any]]) -> dict[str, 
         elif decision.startswith("rejected"):
             rejected += 1
             reasons = list_value(get_value(event, "reasons"))
-            if reasons:
-                rejection_reasons.update(str(reason) for reason in reasons)
+            normalized_reasons = _normalized_reasons(reasons)
+            if normalized_reasons:
+                rejection_reasons.update(normalized_reasons)
             else:
                 rejection_reasons[decision] += 1
     return {
@@ -406,6 +408,10 @@ def _candidate_admission_lineage(
         )
         or _run_manifest_value(report, "region_envelope_version", "regionEnvelopeVersion"),
     }
+
+
+def _normalized_reasons(reasons: list[Any]) -> list[str]:
+    return [reason for value in reasons if (reason := normalized_text(value))]
 
 
 def _unsafe_failure_count(job_rows: list[dict[str, Any]]) -> int:

@@ -79,8 +79,9 @@ def candidate_admission_summary(run_id: str, documents: list[dict[str, Any]]) ->
         elif decision.startswith("rejected"):
             rejected += 1
             reasons = list_value(get_value(event, "reasons"))
-            if reasons:
-                rejection_reasons.update(str(reason) for reason in reasons)
+            normalized_reasons = _normalized_reasons(reasons)
+            if normalized_reasons:
+                rejection_reasons.update(normalized_reasons)
             else:
                 rejection_reasons[decision] += 1
     return {
@@ -311,6 +312,10 @@ def quality_summary(documents: list[dict[str, Any]]) -> dict[str, Any]:
 def _region_envelope(extraction: dict[str, Any]) -> dict[str, Any]:
     normalization = dict_value(get_value(extraction, "normalization_json", "normalizationJson"))
     return dict_value(get_value(normalization, "regionEnvelope", "region_envelope"))
+
+
+def _normalized_reasons(reasons: list[Any]) -> list[str]:
+    return [reason for value in reasons if (reason := normalized_text(value))]
 
 
 def _envelope_evidence_counts(documents: list[dict[str, Any]]) -> dict[str, Any]:
