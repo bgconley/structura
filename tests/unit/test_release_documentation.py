@@ -150,8 +150,8 @@ def test_model_corpus_readme_requires_finite_numeric_metrics() -> None:
     normalized = re.sub(r"\s+", " ", content)
 
     assert (
-        "Manifest metrics, thresholds, and evidence metric values must be finite numbers"
-        in normalized
+        "Manifest metrics, thresholds, and evidence metric values must be finite numbers, "
+        "not booleans" in normalized
     )
 
 

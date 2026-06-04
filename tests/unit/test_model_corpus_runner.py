@@ -84,6 +84,22 @@ def test_model_corpus_runner_rejects_non_numeric_manifest_metrics_and_thresholds
         evaluate_model_corpus_manifest(payload, require_model_backed=True)
 
 
+def test_model_corpus_runner_rejects_boolean_manifest_metrics_and_thresholds() -> None:
+    payload = _manifest(fixture_type="model_backed")
+    payload["metrics"]["provenance_truth_rate"] = True
+
+    with pytest.raises(SystemExit, match="metric provenance_truth_rate must be numeric"):
+        evaluate_model_corpus_manifest(payload, require_model_backed=True)
+
+    payload = _manifest(fixture_type="model_backed")
+    payload["thresholds"]["visual_embedding_hit_rate_at_k"] = False
+
+    with pytest.raises(
+        SystemExit, match="threshold visual_embedding_hit_rate_at_k must be numeric"
+    ):
+        evaluate_model_corpus_manifest(payload, require_model_backed=True)
+
+
 def test_model_corpus_runner_rejects_non_finite_manifest_and_evidence_metrics(
     tmp_path: Path,
 ) -> None:
@@ -130,6 +146,36 @@ def test_model_corpus_runner_rejects_non_finite_manifest_and_evidence_metrics(
     assert "qwen" in result.stderr
     assert "provenance_truth_rate" in result.stderr
     assert "must be finite" in result.stderr
+
+
+def test_model_corpus_runner_rejects_boolean_evidence_metrics(tmp_path: Path) -> None:
+    payload = _manifest(fixture_type="model_backed")
+    _write_evidence_artifacts(tmp_path, payload, fixture_type="model_backed")
+    qwen_evidence = payload["evidence"]["qwen"]  # type: ignore[index]
+    assert isinstance(qwen_evidence, dict)
+    metrics = _section_metrics(payload, "qwen")
+    metrics.update(_aggregate_metrics(payload))
+    metrics["qwen_handwriting_route_success_rate"] = True
+    (tmp_path / qwen_evidence["evidencePath"]).write_text(  # type: ignore[index]
+        json.dumps(
+            _evidence_artifact(
+                str(qwen_evidence["runId"]),
+                fixture_type="model_backed",
+                metrics=metrics,
+            )
+        ),
+        encoding="utf-8",
+    )
+    manifest = tmp_path / "phase8_5_model_manifest.json"
+
+    with pytest.raises(
+        SystemExit, match="qwen.*qwen_handwriting_route_success_rate must be numeric"
+    ):
+        evaluate_model_corpus_manifest(
+            payload,
+            require_model_backed=True,
+            manifest_path=manifest,
+        )
 
 
 def test_model_corpus_runner_requires_gold_corpus_baseline_metrics() -> None:

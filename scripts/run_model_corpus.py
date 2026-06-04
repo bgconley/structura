@@ -247,6 +247,8 @@ def _assert_metric(metrics: dict[str, Any], thresholds: dict[str, Any], metric: 
 
 
 def _manifest_number(value: Any, *, kind: str, metric: str) -> float:
+    if isinstance(value, bool):
+        raise SystemExit(f"Model corpus {kind} {metric} must be numeric.")
     try:
         number = float(value)
     except (TypeError, ValueError) as exc:
@@ -513,15 +515,16 @@ def _metric_float(
     metric: str,
     path: Path | None = None,
 ) -> float:
+    suffix = f": {path}" if path is not None else "."
+    if isinstance(value, bool):
+        raise SystemExit(f"Model corpus evidence {section} metric {metric} must be numeric{suffix}")
     try:
         number = float(value)
     except (TypeError, ValueError) as exc:
-        suffix = f": {path}" if path is not None else "."
         raise SystemExit(
             f"Model corpus evidence {section} metric {metric} must be numeric{suffix}"
         ) from exc
     if not math.isfinite(number):
-        suffix = f": {path}" if path is not None else "."
         raise SystemExit(f"Model corpus evidence {section} metric {metric} must be finite{suffix}")
     return number
 
