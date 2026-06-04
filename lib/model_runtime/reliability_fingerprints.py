@@ -7,6 +7,7 @@ from lib.model_runtime.reliability_report_normalization import (
     dict_value,
     fingerprint,
     get_value,
+    json_safe,
     select_values,
 )
 
@@ -22,7 +23,7 @@ def repeatability_fingerprints(
     )
     return {
         "documentFamily": fingerprint(
-            [
+            _stable_rows(
                 {
                     "family": get_value(
                         dict_value(get_value(doc, "document")),
@@ -36,10 +37,10 @@ def repeatability_fingerprints(
                     ),
                 }
                 for doc in documents
-            ]
+            )
         ),
         "semanticRegions": fingerprint(
-            [
+            _stable_rows(
                 select_values(
                     row,
                     (
@@ -52,10 +53,10 @@ def repeatability_fingerprints(
                     ),
                 )
                 for row in all_rows(documents, "semanticRegions")
-            ]
+            )
         ),
         "plannerTasks": fingerprint(
-            [
+            _stable_rows(
                 select_values(
                     row,
                     (
@@ -70,21 +71,25 @@ def repeatability_fingerprints(
                     ),
                 )
                 for row in all_rows(documents, "plannerTasks")
-            ]
+            )
         ),
         "candidateFingerprints": fingerprint(candidate_fingerprints),
         "canonicalOutput": fingerprint(
             {
-                "fields": all_rows(documents, "fields"),
-                "lineItems": all_rows(documents, "lineItems"),
-                "observations": all_rows(documents, "observations"),
+                "fields": _stable_rows(all_rows(documents, "fields")),
+                "lineItems": _stable_rows(all_rows(documents, "lineItems")),
+                "observations": _stable_rows(all_rows(documents, "observations")),
             }
         ),
         "reviewTasks": fingerprint(
-            [
+            _stable_rows(
                 select_values(row, ("task_type", "status", "reason", "priority"))
                 for row in all_rows(documents, "reviewTasks")
-            ]
+            )
         ),
         "rejectionDistribution": fingerprint(admission_summary.get("rejectionReasons", {})),
     }
+
+
+def _stable_rows(rows: Any) -> list[Any]:
+    return sorted((json_safe(row) for row in rows), key=fingerprint)
