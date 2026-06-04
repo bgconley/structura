@@ -67,7 +67,7 @@ def reject_observation(field_name: str, value: object) -> tuple[bool, str | None
 
     if not name or name in PLACEHOLDER_FIELD_NAMES:
         return True, "placeholder_field_name"
-    if val in PLACEHOLDER_VALUES:
+    if _contains_placeholder_value_any_key(value):
         return True, "placeholder_or_null_value"
     if contains_prompt_or_schema_artifact(name) or contains_prompt_or_schema_artifact(val):
         return True, "prompt_or_schema_echo"
@@ -201,19 +201,26 @@ def _contains_placeholder_value(value: object, *, key: object | None = None) -> 
     )
 
 
+def _contains_placeholder_value_any_key(value: object) -> bool:
+    return _contains_placeholder_value_for_keys(
+        value,
+        value_keys=None,
+        reject_null_leaves=True,
+    )
+
+
 def _contains_placeholder_value_for_keys(
     value: object,
     *,
     key: object | None = None,
-    value_keys: set[str],
+    value_keys: set[str] | None,
     reject_null_leaves: bool,
 ) -> bool:
+    key_is_value = value_keys is None or key is None or _normalized_key(key) in value_keys
     if value is None:
-        return reject_null_leaves and (key is None or _normalized_key(key) in value_keys)
+        return reject_null_leaves and key_is_value
     if isinstance(value, str):
-        return (key is None or _normalized_key(key) in value_keys) and (
-            value.strip().lower() in PLACEHOLDER_VALUES
-        )
+        return key_is_value and value.strip().lower() in PLACEHOLDER_VALUES
     if isinstance(value, dict):
         return any(
             _contains_placeholder_value_for_keys(

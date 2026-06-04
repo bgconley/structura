@@ -158,6 +158,34 @@ def test_nested_placeholder_field_value_is_rejected_before_insertion() -> None:
     assert admission.events[0].reasons == ("placeholder_or_null_value",)
 
 
+def test_nested_placeholder_observation_value_is_rejected_before_insertion() -> None:
+    context = _context()
+    candidate = ObservationCandidateFact(
+        observation_family="document_observation",
+        field_name="payment_summary",
+        value_type="json",
+        value={"amount": "null", "currency": "USD"},
+        evidence=[_evidence(context)],
+    )
+
+    admission = admit_extraction_candidates(
+        context=context,
+        field_candidates=[],
+        line_item_candidates=[],
+        observation_candidates=[candidate],
+    )
+
+    assert admission.observation_candidates == []
+    assert admission.summary == {
+        "produced": 1,
+        "admitted": 0,
+        "rejected": 1,
+        "rejectionReasons": {"rejected_placeholder": 1},
+    }
+    assert admission.events[0].decision == "rejected_placeholder"
+    assert admission.events[0].reasons == ("placeholder_or_null_value",)
+
+
 def test_placeholder_line_item_amount_is_rejected_before_insertion() -> None:
     context = _context()
     candidate = LineItemCandidateFact(
