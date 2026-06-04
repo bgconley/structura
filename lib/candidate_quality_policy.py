@@ -38,6 +38,10 @@ SCHEMA_ARTIFACT_VALUE_TOKENS = frozenset(
         "tool_schema",
     }
 )
+SCHEMA_ARTIFACT_TOKENS = SCHEMA_ARTIFACT_KEYS | SCHEMA_ARTIFACT_VALUE_TOKENS
+COMPACT_SCHEMA_ARTIFACT_TOKENS = frozenset(
+    token.replace("_", "") for token in SCHEMA_ARTIFACT_TOKENS
+)
 
 
 def contains_prompt_echo(value: object) -> bool:
@@ -64,18 +68,27 @@ def contains_prompt_or_schema_artifact(value: Any) -> bool:
     normalized_token = _normalized_key(value)
     if normalized in {"<json_schema>", "json_schema", "response_format"}:
         return True
-    if normalized_token in SCHEMA_ARTIFACT_VALUE_TOKENS:
+    if _is_schema_artifact_token(normalized_token):
         return True
     if contains_prompt_echo(value):
         return True
-    return any(token in normalized for token in SCHEMA_ARTIFACT_VALUES) or any(
-        token in normalized_token for token in SCHEMA_ARTIFACT_VALUE_TOKENS
+    compact_token = normalized_token.replace("_", "")
+    return (
+        any(token in normalized for token in SCHEMA_ARTIFACT_VALUES)
+        or any(token in normalized_token for token in SCHEMA_ARTIFACT_TOKENS)
+        or any(token in compact_token for token in COMPACT_SCHEMA_ARTIFACT_TOKENS)
     )
 
 
 def _is_schema_artifact_key(value: object) -> bool:
     normalized = _normalized_key(value)
-    return normalized in SCHEMA_ARTIFACT_KEYS
+    return _is_schema_artifact_token(normalized)
+
+
+def _is_schema_artifact_token(value: str) -> bool:
+    return (
+        value in SCHEMA_ARTIFACT_TOKENS or value.replace("_", "") in COMPACT_SCHEMA_ARTIFACT_TOKENS
+    )
 
 
 def _normalized_key(value: object) -> str:
