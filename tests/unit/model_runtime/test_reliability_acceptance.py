@@ -3,7 +3,14 @@ from __future__ import annotations
 import subprocess
 import sys
 from copy import deepcopy
+from typing import Any
 
+from lib.model_runtime.profiles import (
+    GRANITE_VISION_PROFILE,
+    QWEN_SEMANTIC_PROFILE,
+    TEXT_EMBED_PROFILE,
+    VISUAL_EMBED_PROFILE,
+)
 from lib.model_runtime.reliability_acceptance import evaluate_phase85_report_acceptance
 
 
@@ -41,7 +48,7 @@ def test_report_acceptance_passes_for_resident_report_without_gold_metrics() -> 
 def test_report_acceptance_fails_for_missing_report_lineage() -> None:
     report = _resident_report()
     report.pop("fixtureType")
-    report["runManifest"].pop("model_mode")  # type: ignore[union-attr]
+    report["runManifest"].pop("model_mode")
 
     summary = evaluate_phase85_report_acceptance([report])
 
@@ -53,6 +60,42 @@ def test_report_acceptance_fails_for_missing_report_lineage() -> None:
             "runId": "phase85-pass-1",
             "missing": ["fixtureType", "runManifest.model_mode"],
             "invalid": [],
+        }
+    ]
+
+
+def test_report_acceptance_fails_for_missing_live_model_profile_lineage() -> None:
+    report = _resident_report()
+    report["runManifest"].pop("text_embedding_profile")
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["reportLineage"]["status"] == "failed"
+    assert summary["checks"]["reportLineage"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "missing": ["runManifest.text_embedding_profile"],
+            "invalid": [],
+        }
+    ]
+
+
+def test_report_acceptance_fails_for_stale_live_model_profile_lineage() -> None:
+    report = _resident_report()
+    report["runManifest"]["visual_embedding_profile"] = "qwen3-vl-embedding-2b-1024:v1"
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["reportLineage"]["status"] == "failed"
+    assert summary["checks"]["reportLineage"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "missing": [],
+            "invalid": ["runManifest.visual_embedding_profile"],
         }
     ]
 
@@ -90,7 +133,7 @@ def test_report_acceptance_compares_repeatability_fingerprints_across_two_passes
     assert summary["checks"]["repeatabilityFingerprints"]["drift"] == ["candidateFingerprints"]
 
 
-def _resident_report() -> dict[str, object]:
+def _resident_report() -> dict[str, Any]:
     return {
         "runId": "phase85-pass-1",
         "fixtureType": "model_backed",
@@ -98,6 +141,10 @@ def _resident_report() -> dict[str, object]:
         "runManifest": {
             "pipeline_version": "phase8_5_reliability_v1",
             "model_mode": "live",
+            "semantic_profile": QWEN_SEMANTIC_PROFILE,
+            "granite_profile": GRANITE_VISION_PROFILE,
+            "text_embedding_profile": TEXT_EMBED_PROFILE,
+            "visual_embedding_profile": VISUAL_EMBED_PROFILE,
         },
         "plannerSummary": {"selectedTaskCount": 2},
         "candidateAdmissionSummary": {"admittedCount": 2, "rejectedCount": 0},

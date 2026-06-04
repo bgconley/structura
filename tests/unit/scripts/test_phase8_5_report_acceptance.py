@@ -5,6 +5,13 @@ import subprocess
 import sys
 from pathlib import Path
 
+from lib.model_runtime.profiles import (
+    GRANITE_VISION_PROFILE,
+    QWEN_SEMANTIC_PROFILE,
+    TEXT_EMBED_PROFILE,
+    VISUAL_EMBED_PROFILE,
+)
+
 
 def test_phase8_5_report_acceptance_cli_fails_on_repeatability_drift(tmp_path: Path) -> None:
     first = _report("pass-1", candidate_fingerprint="stable")
@@ -38,6 +45,10 @@ def _report(run_id: str, *, candidate_fingerprint: str) -> dict[str, object]:
         "runManifest": {
             "pipeline_version": "phase8_5_reliability_v1",
             "model_mode": "live",
+            "semantic_profile": QWEN_SEMANTIC_PROFILE,
+            "granite_profile": GRANITE_VISION_PROFILE,
+            "text_embedding_profile": TEXT_EMBED_PROFILE,
+            "visual_embedding_profile": VISUAL_EMBED_PROFILE,
         },
         "plannerSummary": {},
         "candidateAdmissionSummary": {},

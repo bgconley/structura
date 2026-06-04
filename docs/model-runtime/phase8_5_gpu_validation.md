@@ -92,6 +92,8 @@ The wrapper runs `run_phase8_5_resident_corpus.py` twice, writes one report per
 pass, and fails if hard correctness, operational SLO, or repeatability gates fail.
 Report acceptance also requires `fixtureType`, `measuredAt`, and
 `runManifest.model_mode` so stale fixture or pre-lineage reports cannot pass as
-release evidence.
+release evidence; live or required reports must include current
+`semantic_profile`, `granite_profile`, `text_embedding_profile`, and
+`visual_embedding_profile` lineage.
 Use `scripts/gpu/phase8_5_report_acceptance.py` directly when re-checking already
 captured report files.

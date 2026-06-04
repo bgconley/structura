@@ -100,6 +100,10 @@ def test_gpu_validation_docs_require_report_lineage() -> None:
     assert (
         "Report acceptance also requires `fixtureType`, `measuredAt`, and `runManifest.model_mode`"
     ) in normalized
+    assert (
+        "live or required reports must include current `semantic_profile`, "
+        "`granite_profile`, `text_embedding_profile`, and `visual_embedding_profile`"
+    ) in normalized
 
 
 def test_gpu_validation_docs_describe_manifest_builder_inputs() -> None:

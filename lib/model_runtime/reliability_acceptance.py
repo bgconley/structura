@@ -3,11 +3,23 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from lib.model_runtime.profiles import (
+    GRANITE_VISION_PROFILE,
+    QWEN_SEMANTIC_PROFILE,
+    TEXT_EMBED_PROFILE,
+    VISUAL_EMBED_PROFILE,
+)
 from lib.model_runtime.reliability_report_normalization import dict_value, get_value
 from lib.model_runtime.reliability_versions import PIPELINE_VERSION
 
 VALID_FIXTURE_TYPES = frozenset({"deterministic_fixture", "model_backed"})
 VALID_MODEL_MODES = frozenset({"fixture", "live", "required"})
+EXPECTED_LIVE_MODEL_PROFILES = {
+    "semantic_profile": QWEN_SEMANTIC_PROFILE,
+    "granite_profile": GRANITE_VISION_PROFILE,
+    "text_embedding_profile": TEXT_EMBED_PROFILE,
+    "visual_embedding_profile": VISUAL_EMBED_PROFILE,
+}
 REQUIRED_REPORT_SUMMARIES = (
     "runManifest",
     "plannerSummary",
@@ -113,6 +125,15 @@ def _report_lineage_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
             if fixture_type.strip() != expected_fixture_type:
                 invalid.append("fixtureType/runManifest.model_mode")
 
+        if isinstance(model_mode, str) and model_mode.strip() in {"live", "required"}:
+            for profile_key, expected_profile in EXPECTED_LIVE_MODEL_PROFILES.items():
+                actual_profile = get_value(run_manifest, profile_key, _camelize(profile_key))
+                lineage_name = f"runManifest.{profile_key}"
+                if not isinstance(actual_profile, str) or not actual_profile.strip():
+                    missing.append(lineage_name)
+                elif actual_profile.strip() != expected_profile:
+                    invalid.append(lineage_name)
+
         if missing or invalid:
             failures.append(
                 {
@@ -126,6 +147,11 @@ def _report_lineage_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
         "status": "passed" if reports and not failures else "failed",
         "failures": failures,
     }
+
+
+def _camelize(value: str) -> str:
+    head, *tail = value.split("_")
+    return head + "".join(part.capitalize() for part in tail)
 
 
 def _parse_report_timestamp(value: str) -> datetime | None:
