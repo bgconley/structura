@@ -4,7 +4,7 @@ import re
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from lib.candidate_quality_policy import contains_prompt_echo
+from lib.candidate_quality_policy import contains_prompt_or_schema_artifact
 
 PLACEHOLDER_FIELD_NAMES = {
     "visible_field",
@@ -34,13 +34,13 @@ def reject_observation(field_name: str, value: object) -> tuple[bool, str | None
         return True, "placeholder_field_name"
     if val in PLACEHOLDER_VALUES:
         return True, "placeholder_or_null_value"
-    if contains_prompt_echo(name) or contains_prompt_echo(val):
+    if contains_prompt_or_schema_artifact(name) or contains_prompt_or_schema_artifact(val):
         return True, "prompt_or_schema_echo"
     return False, None
 
 
 def reject_scalar_candidate(value: object) -> tuple[bool, str | None]:
-    if contains_prompt_echo(value):
+    if contains_prompt_or_schema_artifact(value):
         return True, "prompt_or_schema_echo"
     if isinstance(value, str) and value.strip().lower() in PLACEHOLDER_VALUES:
         return True, "placeholder_or_null_value"
@@ -48,12 +48,15 @@ def reject_scalar_candidate(value: object) -> tuple[bool, str | None]:
 
 
 def reject_line_item(item: dict[str, Any]) -> tuple[bool, str | None]:
+    if contains_prompt_or_schema_artifact(item):
+        return True, "prompt_or_schema_echo"
+
     text = " ".join(
         str(item.get(key) or "")
         for key in ("description", "service_description", "category_hint", "unit", "code")
     ).lower()
 
-    if contains_prompt_echo(text):
+    if contains_prompt_or_schema_artifact(text):
         return True, "prompt_or_schema_echo"
 
     numeric_one_count = sum(

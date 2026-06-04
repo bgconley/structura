@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 PROMPT_ECHO_PATTERNS = (
     "identify and extract",
     "extract the schema",
@@ -11,8 +13,48 @@ PROMPT_ECHO_PATTERNS = (
     "return only json",
     "matching the schema",
 )
+SCHEMA_ARTIFACT_KEYS = frozenset(
+    {
+        "$schema",
+        "json_schema",
+        "response_format",
+        "system_prompt",
+        "tool_schema",
+    }
+)
+SCHEMA_ARTIFACT_VALUES = (
+    "$schema",
+    "json schema",
+    "response_format",
+    "tool schema",
+)
 
 
 def contains_prompt_echo(value: object) -> bool:
     text = str(value or "").lower()
     return any(pattern in text for pattern in PROMPT_ECHO_PATTERNS)
+
+
+def contains_prompt_or_schema_artifact(value: Any) -> bool:
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if _is_schema_artifact_key(key):
+                return True
+            if contains_prompt_or_schema_artifact(item):
+                return True
+        return False
+    if isinstance(value, list | tuple | set):
+        return any(contains_prompt_or_schema_artifact(item) for item in value)
+    if not isinstance(value, str):
+        return False
+    normalized = value.strip().lower()
+    if normalized in {"<json_schema>", "json_schema", "response_format"}:
+        return True
+    if contains_prompt_echo(normalized):
+        return True
+    return any(token in normalized for token in SCHEMA_ARTIFACT_VALUES)
+
+
+def _is_schema_artifact_key(value: object) -> bool:
+    normalized = str(value or "").strip().lower()
+    return normalized in SCHEMA_ARTIFACT_KEYS

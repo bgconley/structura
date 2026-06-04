@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any
 
-from lib.candidate_quality_policy import contains_prompt_echo
+from lib.candidate_quality_policy import contains_prompt_or_schema_artifact
 from lib.model_runtime.reliability_report_normalization import (
     all_rows,
     bool_value,
@@ -135,26 +135,7 @@ def _candidate_payload(event: dict[str, Any]) -> dict[str, Any]:
 
 
 def _contains_prompt_or_schema_artifact(candidate: dict[str, Any]) -> bool:
-    for value in _walk_values(candidate):
-        if not isinstance(value, str):
-            continue
-        normalized = value.strip().lower()
-        if normalized in {"<json_schema>", "json_schema", "response_format"}:
-            return True
-        if contains_prompt_echo(normalized):
-            return True
-        if any(
-            token in normalized
-            for token in (
-                "$schema",
-                "json schema",
-                "system prompt",
-                "response_format",
-                "tool schema",
-            )
-        ):
-            return True
-    return False
+    return contains_prompt_or_schema_artifact(candidate)
 
 
 def _contains_placeholder_value(candidate: dict[str, Any]) -> bool:
@@ -193,17 +174,6 @@ def _first_non_empty(*values: Any) -> Any:
         if value not in (None, ""):
             return value
     return None
-
-
-def _walk_values(value: Any) -> Iterable[Any]:
-    if isinstance(value, dict):
-        for item in value.values():
-            yield from _walk_values(item)
-    elif isinstance(value, list):
-        for item in value:
-            yield from _walk_values(item)
-    else:
-        yield value
 
 
 def _walk_items(value: Any, *, prefix: str = "") -> Iterable[tuple[str, Any]]:

@@ -54,6 +54,28 @@ def test_prompt_echo_line_item_is_rejected_and_not_admitted() -> None:
     assert admission.events[0].reasons == ("prompt_or_schema_echo",)
 
 
+def test_schema_artifact_key_field_is_rejected_and_not_admitted() -> None:
+    context = _context()
+    candidate = CandidateFact(
+        field_path="receipt.transaction.total",
+        value_type="json",
+        value={"$schema": "receipt.v1", "amount": 4.65},
+        evidence=[_evidence(context)],
+        status="proposed",
+    )
+
+    admission = admit_extraction_candidates(
+        context=context,
+        field_candidates=[candidate],
+        line_item_candidates=[],
+        observation_candidates=[],
+    )
+
+    assert admission.field_candidates == []
+    assert admission.events[0].decision == "rejected_artifact"
+    assert admission.events[0].reasons == ("prompt_or_schema_echo",)
+
+
 def test_model_backed_candidates_are_admitted_as_review_required() -> None:
     context = _context()
     candidate = CandidateFact(
