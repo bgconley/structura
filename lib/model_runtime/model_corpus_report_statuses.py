@@ -5,6 +5,17 @@ from typing import Any
 
 ALLOWED_EVIDENCE_REPORT_STATUSES = frozenset({"passed", "not_required"})
 EVIDENCE_REPORT_STATUS_CONTAINERS = ("checks", "acceptanceGates")
+REPORT_PROBLEM_LIST_KEYS = frozenset(
+    {
+        "failedMetrics",
+        "failures",
+        "invalid",
+        "missing",
+        "missingByReport",
+        "missingMetrics",
+        "drift",
+    }
+)
 
 __all__ = ["assert_model_corpus_report_statuses_pass"]
 
@@ -49,8 +60,9 @@ def _iter_report_statuses(artifact: dict[str, Any]) -> list[tuple[str, str]]:
 
 def _iter_report_failure_lists(artifact: dict[str, Any]) -> list[tuple[str, list[Any]]]:
     failures: list[tuple[str, list[Any]]] = []
-    if isinstance(artifact.get("failures"), list):
-        failures.append(("failures", list(artifact["failures"])))
+    for key in REPORT_PROBLEM_LIST_KEYS:
+        if isinstance(artifact.get(key), list):
+            failures.append((key, list(artifact[key])))
     for container_key in EVIDENCE_REPORT_STATUS_CONTAINERS:
         container = artifact.get(container_key)
         if isinstance(container, dict):
@@ -63,7 +75,7 @@ def _iter_nested_failure_lists(value: Any, *, prefix: str) -> list[tuple[str, li
     if isinstance(value, dict):
         for key, item in value.items():
             path = f"{prefix}.{key}"
-            if key == "failures" and isinstance(item, list):
+            if key in REPORT_PROBLEM_LIST_KEYS and isinstance(item, list):
                 failures.append((path, list(item)))
             elif isinstance(item, dict | list):
                 failures.extend(_iter_nested_failure_lists(item, prefix=path))

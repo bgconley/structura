@@ -23,6 +23,21 @@ def test_model_corpus_report_statuses_reject_non_empty_failure_lists() -> None:
         assert_model_corpus_report_statuses_pass("qwen", artifact, Path("qwen.json"))
 
 
+def test_model_corpus_report_statuses_reject_non_empty_problem_lists() -> None:
+    artifact = {
+        "checks": {
+            "status": "passed",
+            "repeatabilityFingerprints": {
+                "status": "passed",
+                "missingByReport": [{"runId": "phase85-pass-2"}],
+            },
+        },
+    }
+
+    with pytest.raises(SystemExit, match="checks.repeatabilityFingerprints.missingByReport"):
+        assert_model_corpus_report_statuses_pass("qwen", artifact, Path("qwen.json"))
+
+
 def test_model_corpus_report_statuses_accept_passed_and_not_required_statuses() -> None:
     artifact = {
         "status": "passed",
