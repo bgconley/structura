@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 PROMPT_ECHO_PATTERNS = (
@@ -56,5 +57,11 @@ def contains_prompt_or_schema_artifact(value: Any) -> bool:
 
 
 def _is_schema_artifact_key(value: object) -> bool:
-    normalized = str(value or "").strip().lower()
+    normalized = _normalized_key(value)
     return normalized in SCHEMA_ARTIFACT_KEYS
+
+
+def _normalized_key(value: object) -> str:
+    text = str(value or "").strip().replace("-", "_").replace(" ", "_")
+    text = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", text)
+    return "_".join(part for part in text.lower().split("_") if part)
