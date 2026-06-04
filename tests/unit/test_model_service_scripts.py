@@ -45,3 +45,5 @@ def test_phase8_5_live_runtime_preflight_checks_container_modes() -> None:
     assert "Qwen/Qwen3-VL-8B-Instruct-FP8" in script
     assert "model-qwen-semantic" in script
     assert "model-granite" in script
+    assert 'shutil.which("docker")' in script
+    assert "_docker_compose_command(" in script

@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 from uuid import UUID, uuid4
 
+from psycopg import sql
 from psycopg.types.json import Jsonb
 
 from lib.config import get_settings
@@ -706,33 +707,35 @@ def _candidate_cancel_job_ids(
     title_prefix: str | None,
     max_jobs: int,
 ) -> list[UUID]:
-    clauses = ["j.status::text = any(%s)"]
+    clauses = [sql.SQL("j.status::text = any(%s)")]
     params: list[Any] = [list(statuses)]
     if household_id is not None:
-        clauses.append("j.household_id = %s")
+        clauses.append(sql.SQL("j.household_id = %s"))
         params.append(household_id)
     if job_ids:
-        clauses.append("j.id = any(%s)")
+        clauses.append(sql.SQL("j.id = any(%s)"))
         params.append(list(job_ids))
     if document_ids:
-        clauses.append("j.document_id = any(%s)")
+        clauses.append(sql.SQL("j.document_id = any(%s)"))
         params.append(list(document_ids))
     if queue_names:
-        clauses.append("j.queue_name = any(%s)")
+        clauses.append(sql.SQL("j.queue_name = any(%s)"))
         params.append([str(queue_name) for queue_name in queue_names])
     if title_prefix:
-        clauses.append("d.title ILIKE %s")
+        clauses.append(sql.SQL("d.title ILIKE %s"))
         params.append(f"{title_prefix}%")
     params.append(max_jobs)
     cur.execute(
-        f"""
+        sql.SQL(
+            """
         SELECT j.id
         FROM pipeline_jobs j
         LEFT JOIN documents d ON d.id = j.document_id
-        WHERE {" AND ".join(clauses)}
+        WHERE {}
         ORDER BY j.priority DESC, j.created_at ASC
         LIMIT %s
-        """,
+        """
+        ).format(sql.SQL(" AND ").join(clauses)),
         params,
     )
     return [row["id"] for row in cur.fetchall()]

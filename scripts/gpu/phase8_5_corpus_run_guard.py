@@ -5,18 +5,20 @@ import datetime as dt
 import fcntl
 import json
 import os
+import shutil
 import signal
 import socket
 
 # GPU validation invokes fixed docker commands.
 import subprocess  # nosec B404
 import sys
+import tempfile
 import uuid
 from pathlib import Path
 from types import TracebackType
 from typing import Any, Literal, Self
 
-DEFAULT_CORPUS_LOCK_PATH = Path("/tmp/structura_phase8_5_private_corpus.lock")
+DEFAULT_CORPUS_LOCK_PATH = Path(tempfile.gettempdir()) / "structura_phase8_5_private_corpus.lock"
 CORPUS_CONTAINER_LABEL = "structura.phase8_5_private_corpus"
 CORPUS_CONTAINER_RUN_LABEL = f"{CORPUS_CONTAINER_LABEL}.run_id"
 
@@ -170,7 +172,7 @@ class CorpusRunGuard:
 
     def _docker_container_ids_for_label(self, label_filter: str) -> list[str]:
         result = subprocess.run(  # nosec B603
-            ["docker", "ps", "-aq", "--filter", f"label={label_filter}"],
+            _docker_command("ps", "-aq", "--filter", f"label={label_filter}"),
             cwd=self.root,
             check=False,
             text=True,
@@ -184,16 +186,21 @@ class CorpusRunGuard:
         if not container_ids:
             return
         subprocess.run(  # nosec B603
-            ["docker", "stop", *container_ids],
+            _docker_command("stop", *container_ids),
             cwd=self.root,
             check=False,
             text=True,
             capture_output=True,
         )
         subprocess.run(  # nosec B603
-            ["docker", "rm", "-f", *container_ids],
+            _docker_command("rm", "-f", *container_ids),
             cwd=self.root,
             check=False,
             text=True,
             capture_output=True,
         )
+
+
+def _docker_command(*args: str) -> list[str]:
+    docker = shutil.which("docker") or "docker"
+    return [docker, *args]

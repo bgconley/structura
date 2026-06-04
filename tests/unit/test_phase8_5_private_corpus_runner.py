@@ -87,6 +87,13 @@ def test_private_corpus_manifest_argument_is_supported_without_committing_privat
     assert args.lock_path == runner.CORPUS_LOCK_PATH
 
 
+def test_private_corpus_guard_uses_runtime_tempdir_not_hardcoded_tmp() -> None:
+    script = Path("scripts/gpu/phase8_5_corpus_run_guard.py").read_text(encoding="utf-8")
+
+    assert "tempfile.gettempdir()" in script
+    assert 'Path("/tmp' not in script
+
+
 def test_private_corpus_one_off_containers_are_labeled_and_named(monkeypatch, tmp_path) -> None:
     runner = _load_private_corpus_runner()
     captured: dict[str, object] = {}
@@ -111,6 +118,13 @@ def test_private_corpus_one_off_containers_are_labeled_and_named(monkeypatch, tm
     assert "--label" in command
     assert f"{CORPUS_CONTAINER_LABEL}=true" in command
     assert f"{CORPUS_CONTAINER_RUN_LABEL}=20260501T000000Z-1234-abcdef12" in command
+
+
+def test_private_corpus_guard_resolves_docker_executable() -> None:
+    script = Path("scripts/gpu/phase8_5_corpus_run_guard.py").read_text(encoding="utf-8")
+
+    assert 'shutil.which("docker")' in script
+    assert "_docker_command(" in script
 
 
 def test_private_corpus_timeout_cleans_current_run_containers(monkeypatch) -> None:

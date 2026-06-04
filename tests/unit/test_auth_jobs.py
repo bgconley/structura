@@ -14,16 +14,20 @@ from lib.jobs import (
     sanitize_job_payload,
 )
 from lib.jobs.failure_taxonomy import failure_taxonomy_code
-from lib.jobs.service import _recover_expired_running_jobs
+from lib.jobs.service import _candidate_cancel_job_ids, _recover_expired_running_jobs
 
 
 class RecordingCursor:
     def __init__(self) -> None:
         self.rowcount = 0
         self.calls: list[tuple[str, tuple[Any, ...]]] = []
+        self.rows: list[dict[str, Any]] = []
 
-    def execute(self, sql: str, params: tuple[Any, ...]) -> None:
+    def execute(self, sql: Any, params: tuple[Any, ...] | list[Any]) -> None:
         self.calls.append((sql, params))
+
+    def fetchall(self) -> list[dict[str, Any]]:
+        return self.rows
 
 
 def test_argon2id_password_hash_verifies_and_rejects_wrong_password() -> None:
@@ -142,3 +146,25 @@ def test_expired_worker_lease_recovery_records_taxonomy_code() -> None:
     sql, params = cursor.calls[0]
     assert "'taxonomy_code'" in sql
     assert params[0] == "visual_embeddings_worker_lease_expired"
+
+
+def test_candidate_cancel_query_keeps_title_prefix_parameterized() -> None:
+    cursor = RecordingCursor()
+    cursor.rows = [{"id": "job-1"}]
+    title_prefix = "unsafe%' OR true --"
+
+    candidates = _candidate_cancel_job_ids(
+        cursor,
+        household_id=None,
+        job_ids=(),
+        document_ids=(),
+        queue_names=(),
+        statuses=("queued",),
+        title_prefix=title_prefix,
+        max_jobs=10,
+    )
+
+    assert candidates == ["job-1"]
+    sql, params = cursor.calls[0]
+    assert title_prefix not in str(sql)
+    assert params == [["queued"], f"{title_prefix}%", 10]

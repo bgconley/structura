@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import shutil
 import subprocess  # nosec B404
 import sys
 import time
@@ -125,7 +126,7 @@ def _check_model_service_env(service: str, expected: dict[str, str]) -> CheckRes
 def _compose_exec_env(service: str) -> dict[str, str]:
     # Fixed docker compose argv; service names are internal constants.
     completed = subprocess.run(  # nosec B603
-        ["docker", "compose", "exec", "-T", service, "env"],
+        _docker_compose_command("exec", "-T", service, "env"),
         check=True,
         text=True,
         capture_output=True,
@@ -137,6 +138,11 @@ def _compose_exec_env(service: str) -> dict[str, str]:
         key, value = line.split("=", 1)
         env[key] = value
     return env
+
+
+def _docker_compose_command(*args: str) -> list[str]:
+    docker = shutil.which("docker") or "docker"
+    return [docker, "compose", *args]
 
 
 def _check_model_health(
