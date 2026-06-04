@@ -177,6 +177,29 @@ def test_report_acceptance_requires_gold_when_requested() -> None:
     assert summary["checks"]["goldCorpusQuality"]["status"] == "failed"
 
 
+def test_report_acceptance_fails_when_gold_gate_hides_metric_gaps() -> None:
+    report = _resident_report()
+    report["acceptanceGates"]["goldCorpusQuality"] = {
+        "status": "passed",
+        "missingMetrics": ["fieldF1ByFamily"],
+        "failedMetrics": ["duplicateRate"],
+    }
+
+    summary = evaluate_phase85_report_acceptance([report], require_gold=True)
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["goldCorpusQuality"]["status"] == "failed"
+    assert summary["checks"]["goldCorpusQuality"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "status": "passed",
+            "details": report["acceptanceGates"]["goldCorpusQuality"],
+            "invalid": ["missingMetrics", "failedMetrics"],
+        }
+    ]
+
+
 def test_report_acceptance_compares_repeatability_fingerprints_across_two_passes() -> None:
     first = _resident_report()
     second = deepcopy(first)

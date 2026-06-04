@@ -152,6 +152,17 @@ def test_gpu_validation_docs_require_operational_slo_subgates() -> None:
     ) in normalized
 
 
+def test_gpu_validation_docs_require_clean_gold_metric_lists() -> None:
+    content = Path("docs/model-runtime/phase8_5_gpu_validation.md").read_text(encoding="utf-8")
+    normalized = re.sub(r"\s+", " ", content)
+
+    assert (
+        "Gold corpus acceptance requires "
+        "`acceptanceGates.goldCorpusQuality.status = passed` with empty "
+        "`missingMetrics` and `failedMetrics` lists"
+    ) in normalized
+
+
 def test_gpu_validation_docs_describe_manifest_builder_inputs() -> None:
     content = Path("docs/model-runtime/phase8_5_gpu_validation.md").read_text(encoding="utf-8")
     normalized = re.sub(r"\s+", " ", content)

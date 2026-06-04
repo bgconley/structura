@@ -107,5 +107,8 @@ Operational SLO acceptance requires
 Operational SLO reports must include passing subgates for
 `targetQueueDeadLetters`, `classifiedOperationalFailures`, `retrySuccessRate`,
 `runtimeFailureRates`, `runawayFanout`, and `retrySafeJobs`.
+Gold corpus acceptance requires
+`acceptanceGates.goldCorpusQuality.status = passed` with empty
+`missingMetrics` and `failedMetrics` lists.
 Use `scripts/gpu/phase8_5_report_acceptance.py` directly when re-checking already
 captured report files.

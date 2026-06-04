@@ -282,6 +282,18 @@ def _gold_check(reports: list[dict[str, Any]], *, require_gold: bool) -> dict[st
         gate = _gate(report, "goldCorpusQuality")
         status = str(get_value(gate, "status") or "missing")
         if status == "passed":
+            invalid = _gold_metric_failure_keys(gate)
+            if not invalid:
+                continue
+            failures.append(
+                {
+                    "reportIndex": index,
+                    "runId": get_value(report, "runId", "run_id"),
+                    "status": status,
+                    "details": gate,
+                    "invalid": invalid,
+                }
+            )
             continue
         if not require_gold and status == "not_evaluated":
             continue
@@ -299,6 +311,17 @@ def _gold_check(reports: list[dict[str, Any]], *, require_gold: bool) -> dict[st
         "status": "passed" if reports and not failures else "failed",
         "failures": failures,
     }
+
+
+def _gold_metric_failure_keys(gate: dict[str, Any]) -> list[str]:
+    invalid: list[str] = []
+    missing_metrics = get_value(gate, "missingMetrics", "missing_metrics")
+    failed_metrics = get_value(gate, "failedMetrics", "failed_metrics")
+    if not isinstance(missing_metrics, list) or missing_metrics:
+        invalid.append("missingMetrics")
+    if not isinstance(failed_metrics, list) or failed_metrics:
+        invalid.append("failedMetrics")
+    return invalid
 
 
 def _repeatability_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
