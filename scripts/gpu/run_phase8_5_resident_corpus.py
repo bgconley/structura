@@ -437,7 +437,13 @@ def _fetch_report(document_ids: list[UUID], *, run_id: str, title_prefix: str) -
 
 
 _JOBS_SQL = """
-SELECT queue_name, job_type::text AS job_type, status::text AS status, count(*) AS count
+SELECT queue_name,
+       job_type::text AS job_type,
+       status::text AS status,
+       count(*) AS count,
+       sum(attempt_count) AS attempt_count,
+       max(max_attempts) AS max_attempts,
+       jsonb_agg(error_json) FILTER (WHERE error_json <> '{}'::jsonb) AS error_jsons
 FROM pipeline_jobs
 WHERE document_id = %s
 GROUP BY queue_name, job_type, status

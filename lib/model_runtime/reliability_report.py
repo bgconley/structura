@@ -5,6 +5,7 @@ from typing import Any
 from lib.model_runtime.reliability_fingerprints import repeatability_fingerprints
 from lib.model_runtime.reliability_invariants import evaluate_hard_correctness_invariants
 from lib.model_runtime.reliability_manifest import PIPELINE_VERSION, build_phase85_run_manifest
+from lib.model_runtime.reliability_operational_slos import evaluate_operational_slos
 from lib.model_runtime.reliability_report_normalization import json_safe
 from lib.model_runtime.reliability_summaries import (
     candidate_admission_summary,
@@ -54,7 +55,8 @@ def build_phase85_reliability_report(
     )
     report["qualitySummary"] = quality_summary(safe_documents)
     report["acceptanceGates"] = {
-        "hardCorrectnessInvariants": evaluate_hard_correctness_invariants(safe_documents)
+        "hardCorrectnessInvariants": evaluate_hard_correctness_invariants(safe_documents),
+        "operationalSLOs": evaluate_operational_slos(safe_documents),
     }
     report["repeatabilityFingerprints"] = repeatability_fingerprints(
         safe_documents,
