@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from lib.documents import analysis_mutation_policy
+
 ACCEPTED_REVIEW_STATUSES = {"auto_accepted", "user_confirmed", "user_corrected"}
 TRUTH_OBSERVATION_STATUSES = {"promoted", "auto_accepted", "user_confirmed", "user_corrected"}
 REVIEW_STATUSES = {"needs_review", "proposed", "unreviewed"}
@@ -21,35 +23,6 @@ ADMITTED_ARTIFACT_REASONS = {
     "prompt_or_schema_echo",
 }
 
-BLOCKED_PHASE9_MUTATION_KEYS = (
-    "canonicalFacts",
-    "canonical_facts",
-    "canonicalFields",
-    "canonical_fields",
-    "canonicalLineItems",
-    "canonical_line_items",
-    "canonicalObservations",
-    "canonical_observations",
-    "relationships",
-    "documentRelationships",
-    "document_relationships",
-    "folders",
-    "folderIds",
-    "folder_ids",
-    "primaryFolderId",
-    "primary_folder_id",
-    "tags",
-    "tagIds",
-    "tag_ids",
-    "deadlines",
-    "documentDeadlines",
-    "document_deadlines",
-    "reviewStatus",
-    "review_status",
-    "reviewTasks",
-    "review_tasks",
-)
-
 
 def build_phase9_document_intake(document: Mapping[str, Any]) -> dict[str, Any]:
     truth = _truth_surface(document)
@@ -65,7 +38,7 @@ def build_phase9_document_intake(document: Mapping[str, Any]) -> dict[str, Any]:
         "debug": debug,
         "mutationPolicy": {
             "readOnly": True,
-            "blockedTargets": list(BLOCKED_PHASE9_MUTATION_KEYS),
+            "blockedTargets": list(analysis_mutation_policy.BLOCKED_PHASE9_MUTATION_KEYS),
         },
     }
 
@@ -89,9 +62,7 @@ def phase9_document_eligibility(document_quality: Mapping[str, Any]) -> str:
 
 
 def phase9_mutation_violations(output: Mapping[str, Any]) -> list[str]:
-    found: list[str] = []
-    _collect_mutation_keys(output, found)
-    return found
+    return analysis_mutation_policy.phase9_mutation_violations(output)
 
 
 def _truth_surface(document: Mapping[str, Any]) -> dict[str, Any]:
@@ -400,18 +371,6 @@ def _has_concrete_locator(evidence: Any) -> bool:
         "",
         [],
     )
-
-
-def _collect_mutation_keys(value: Any, found: list[str]) -> None:
-    if isinstance(value, Mapping):
-        for key, item in value.items():
-            key_text = str(key)
-            if key_text in BLOCKED_PHASE9_MUTATION_KEYS and key_text not in found:
-                found.append(key_text)
-            _collect_mutation_keys(item, found)
-    elif isinstance(value, list):
-        for item in value:
-            _collect_mutation_keys(item, found)
 
 
 def _review_required_rows(mapping: Mapping[str, Any], *keys: str) -> list[Mapping[str, Any]]:
