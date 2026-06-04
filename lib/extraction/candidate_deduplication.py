@@ -21,7 +21,10 @@ def dedupe_line_item_candidates(
 
     unique = list(exact.values())
     rich_sparse_keys = {
-        line_item_sparse_key(fact) for fact in unique if line_item_has_meaningful_detail(fact)
+        key
+        for fact in unique
+        if line_item_has_meaningful_detail(fact)
+        for key in line_item_sparse_keys_for_rich_fact(fact)
     }
     filtered = [
         fact
@@ -50,10 +53,26 @@ def line_item_exact_key(fact: LineItemCandidateFact) -> tuple[Any, ...]:
 
 
 def line_item_sparse_key(fact: LineItemCandidateFact) -> tuple[Any, ...]:
+    return _line_item_sparse_key(fact, evidence_locator_key(fact.evidence))
+
+
+def line_item_sparse_keys_for_rich_fact(fact: LineItemCandidateFact) -> tuple[tuple[Any, ...], ...]:
+    located_key = line_item_sparse_key(fact)
+    evidence_less_key = _line_item_sparse_key(fact, ())
+    if located_key == evidence_less_key:
+        return (located_key,)
+    return (located_key, evidence_less_key)
+
+
+def _line_item_sparse_key(
+    fact: LineItemCandidateFact,
+    locator_key: tuple[Any, ...],
+) -> tuple[Any, ...]:
     return (
         normalized_text_key(fact.line_item_type),
         normalized_text_key(fact.description),
         normalized_text_key(fact.code),
+        locator_key,
     )
 
 

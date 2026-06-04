@@ -84,6 +84,47 @@ def test_candidate_deduplication_preserves_same_line_item_from_distinct_rows() -
     ]
 
 
+def test_candidate_deduplication_preserves_sparse_line_item_with_distinct_locator() -> None:
+    sparse = LineItemCandidateFact(
+        line_item_type="invoice_item",
+        ordinal=1,
+        description="Monthly service fee",
+        evidence=[
+            {
+                "page_number": 1,
+                "semantic_region_id": "region-1",
+                "table_id": "table-1",
+                "row_index": 1,
+            }
+        ],
+    )
+    rich = LineItemCandidateFact(
+        line_item_type="invoice_item",
+        ordinal=2,
+        description="Monthly service fee",
+        net_amount=99.00,
+        currency="USD",
+        evidence=[
+            {
+                "page_number": 1,
+                "semantic_region_id": "region-1",
+                "table_id": "table-1",
+                "row_index": 2,
+            }
+        ],
+    )
+
+    candidates = dedupe_line_item_candidates([sparse, rich])
+
+    assert [
+        (item.ordinal, item.description, item.net_amount, item.evidence[0]["row_index"])
+        for item in candidates
+    ] == [
+        (1, "Monthly service fee", None, 1),
+        (2, "Monthly service fee", 99.00, 2),
+    ]
+
+
 def test_candidate_deduplication_collapses_equivalent_observations() -> None:
     first = ObservationCandidateFact(
         observation_family="vehicle",
