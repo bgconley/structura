@@ -203,6 +203,31 @@ def test_report_acceptance_recomputes_gold_metrics_from_document_rows() -> None:
     ]
 
 
+def test_report_acceptance_requires_recomputable_gold_metric_evidence() -> None:
+    report = _report()
+    report["acceptanceGates"]["goldCorpusQuality"] = {
+        "status": "passed",
+        "requiredMetrics": list(REQUIRED_GOLD_METRICS),
+        "missingMetrics": [],
+        "failedMetrics": [],
+        "metrics": _passed_gold_metric_details(),
+    }
+
+    summary = evaluate_phase85_report_acceptance([report], require_gold=True)
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["goldCorpusQuality"]["status"] == "failed"
+    assert summary["checks"]["goldCorpusQuality"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-gold-1",
+            "status": "passed",
+            "details": report["acceptanceGates"]["goldCorpusQuality"],
+            "invalid": ["recomputed.documents"],
+        }
+    ]
+
+
 def _report() -> dict[str, Any]:
     return {
         "runId": "phase85-gold-1",

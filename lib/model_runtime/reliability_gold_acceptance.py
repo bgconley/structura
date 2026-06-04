@@ -21,7 +21,9 @@ def gold_corpus_acceptance_check(
         recomputed = recomputed_gold_corpus_quality(report)
         if status == "passed":
             invalid = _gold_metric_failure_keys(gate)
-            recomputed_invalid = _recomputed_gold_metric_failure_keys(recomputed)
+            recomputed_invalid = (
+                _recomputed_gold_metric_failure_keys(recomputed) if not invalid else []
+            )
             invalid.extend(f"recomputed.{key}" for key in recomputed_invalid)
             if not invalid:
                 continue
@@ -91,8 +93,10 @@ def _gold_metric_failure_keys(gate: dict[str, Any]) -> list[str]:
 
 
 def _recomputed_gold_metric_failure_keys(summary: dict[str, Any] | None) -> list[str]:
-    if summary is None or get_value(summary, "status") == "not_evaluated":
-        return []
+    if summary is None:
+        return ["documents"]
+    if get_value(summary, "status") == "not_evaluated":
+        return ["status"]
     return _gold_metric_failure_keys(summary)
 
 
