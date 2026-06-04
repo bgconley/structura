@@ -198,15 +198,15 @@ def recomputed_retry_summary(report: dict[str, Any]) -> dict[str, Any] | None:
         for attempt in attempts:
             if not isinstance(attempt, dict):
                 continue
-            outcome = get_value(attempt, "outcome", "status")
+            outcome = normalized_text(get_value(attempt, "outcome", "status"))
             if outcome:
-                outcomes[str(outcome)] += 1
+                outcomes[outcome] += 1
     if not outcomes:
         for job in all_rows(document_rows, "jobs"):
-            status = get_value(job, "status")
+            status = normalized_text(get_value(job, "status"))
             count = int_value(get_value(job, "count"), default=1)
             if status:
-                outcomes[str(status)] += count
+                outcomes[status] += count
     if not outcomes:
         return None
     return {"outcomes": dict(sorted(outcomes.items()))}

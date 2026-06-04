@@ -209,15 +209,15 @@ def retry_summary(documents: list[dict[str, Any]]) -> dict[str, Any]:
         attempts = list_value(get_value(extraction, "visual_input_attempts", "visualInputAttempts"))
         for attempt in attempts:
             if isinstance(attempt, dict):
-                outcome = get_value(attempt, "outcome", "status")
+                outcome = normalized_text(get_value(attempt, "outcome", "status"))
                 if outcome:
-                    outcomes[str(outcome)] += 1
+                    outcomes[outcome] += 1
     if not outcomes:
         for job in all_rows(documents, "jobs"):
-            status = get_value(job, "status")
+            status = normalized_text(get_value(job, "status"))
             count = int_value(get_value(job, "count"), default=1)
             if status:
-                outcomes[str(status)] += count
+                outcomes[status] += count
     return {"outcomes": dict(sorted(outcomes.items()))}
 
 
