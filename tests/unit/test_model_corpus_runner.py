@@ -507,6 +507,50 @@ def test_model_corpus_script_requires_artifact_model_mode_metadata(tmp_path) -> 
     assert "model_mode" in result.stderr
 
 
+def test_model_corpus_script_requires_run_manifest_model_mode_metadata(tmp_path) -> None:
+    payload = _manifest(fixture_type="model_backed")
+    _write_evidence_artifacts(tmp_path, payload, fixture_type="model_backed")
+    text_evidence = payload["evidence"]["textEmbedding"]  # type: ignore[index]
+    assert isinstance(text_evidence, dict)
+    metrics = {
+        **_section_metrics(payload, "textEmbedding"),
+        **_aggregate_metrics(payload),
+    }
+    artifact = _evidence_artifact(
+        str(text_evidence["runId"]),
+        fixture_type="model_backed",
+        metrics=metrics,
+        profile=str(text_evidence["profile"]),
+    )
+    artifact["model_mode"] = "live"
+    run_manifest = artifact["runManifest"]
+    assert isinstance(run_manifest, dict)
+    run_manifest.pop("model_mode", None)
+    (tmp_path / text_evidence["evidencePath"]).write_text(  # type: ignore[index]
+        json.dumps(artifact),
+        encoding="utf-8",
+    )
+    manifest = tmp_path / "phase8_5_model_manifest.json"
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_model_corpus.py",
+            "--require-model-backed",
+            "--manifest",
+            str(manifest),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "textEmbedding" in result.stderr
+    assert "runManifest.model_mode" in result.stderr
+
+
 def test_model_corpus_script_rejects_fixture_artifact_model_mode(tmp_path) -> None:
     payload = _manifest(fixture_type="model_backed")
     _write_evidence_artifacts(tmp_path, payload, fixture_type="model_backed")

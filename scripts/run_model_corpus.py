@@ -28,7 +28,6 @@ EVIDENCE_ARTIFACT_RUN_MANIFEST_PROFILE_KEYS = {
     "textEmbedding": ("text_embedding_profile", "text_embed_profile"),
     "visualEmbedding": ("visual_embedding_profile", "visual_embed_profile"),
 }
-EVIDENCE_ARTIFACT_MODEL_MODE_KEYS = ("model_mode", "modelMode")
 MODEL_BACKED_ARTIFACT_MODES = frozenset({"live", "required"})
 REQUIRED_EVIDENCE_ARTIFACT_PAYLOAD_KEYS = (
     "acceptanceGates",
@@ -346,33 +345,24 @@ def _assert_evidence_artifact_model_mode(
     artifact: dict[str, Any],
     path: Path,
 ) -> None:
-    modes = _evidence_artifact_model_modes(artifact)
-    if not modes:
-        raise SystemExit(
-            f"Model corpus evidence {section} evidencePath must include model_mode metadata: {path}"
-        )
-    for mode in modes:
-        if mode not in MODEL_BACKED_ARTIFACT_MODES:
-            raise SystemExit(
-                f"Model corpus evidence {section} model_mode must be live or required; "
-                f"got {mode!r}: {path}"
-            )
-
-
-def _evidence_artifact_model_modes(artifact: dict[str, Any]) -> list[str]:
-    modes: list[str] = []
-    for key in EVIDENCE_ARTIFACT_MODEL_MODE_KEYS:
-        _append_model_mode(modes, artifact.get(key))
     run_manifest = artifact.get("runManifest") or artifact.get("run_manifest")
-    if isinstance(run_manifest, dict):
-        for key in EVIDENCE_ARTIFACT_MODEL_MODE_KEYS:
-            _append_model_mode(modes, run_manifest.get(key))
-    return modes
-
-
-def _append_model_mode(modes: list[str], value: Any) -> None:
-    if isinstance(value, str) and value.strip():
-        modes.append(value.strip())
+    if not isinstance(run_manifest, dict):
+        raise SystemExit(
+            f"Model corpus evidence {section} evidencePath must include "
+            f"report evidence runManifest: {path}"
+        )
+    mode = run_manifest.get("model_mode") or run_manifest.get("modelMode")
+    if not isinstance(mode, str) or not mode.strip():
+        raise SystemExit(
+            f"Model corpus evidence {section} evidencePath must include "
+            f"runManifest.model_mode metadata: {path}"
+        )
+    normalized_mode = mode.strip()
+    if normalized_mode not in MODEL_BACKED_ARTIFACT_MODES:
+        raise SystemExit(
+            f"Model corpus evidence {section} runManifest.model_mode must be live or required; "
+            f"got {normalized_mode!r}: {path}"
+        )
 
 
 def _assert_evidence_artifact_metrics(
