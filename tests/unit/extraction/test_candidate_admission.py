@@ -124,6 +124,29 @@ def test_non_model_source_engine_alias_does_not_require_model_evidence() -> None
     assert admission.events[0].reasons == ()
 
 
+def test_model_source_engine_alias_requires_concrete_evidence() -> None:
+    context = _context(source_engine="Granite Vision 3B")
+    candidate = CandidateFact(
+        field_path="receipt.transaction.total",
+        value_type="money",
+        value={"amount": 4.65, "currency": "USD"},
+        currency="USD",
+        evidence=[],
+        status="proposed",
+    )
+
+    admission = admit_extraction_candidates(
+        context=context,
+        field_candidates=[candidate],
+        line_item_candidates=[],
+        observation_candidates=[],
+    )
+
+    assert admission.field_candidates == []
+    assert admission.events[0].decision == "rejected_missing_evidence"
+    assert admission.events[0].reasons == ("missing_concrete_evidence",)
+
+
 def test_blank_observation_field_name_is_rejected_before_insertion() -> None:
     context = _context()
     candidate = ObservationCandidateFact(

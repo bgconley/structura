@@ -34,7 +34,8 @@ NON_MODEL_SOURCE_ENGINES = frozenset(
 
 
 def normalize_source_engine(source_engine: Any) -> str:
-    return str(source_engine or "").strip().lower()
+    normalized = str(source_engine or "").strip().lower().replace("-", "_").replace(" ", "_")
+    return "_".join(part for part in normalized.split("_") if part)
 
 
 def is_model_source_engine(source_engine: Any) -> bool:
