@@ -1,110 +1,81 @@
 from __future__ import annotations
 
-import re
-import unicodedata
-from collections.abc import Mapping
-from dataclasses import dataclass
-
 from jsonschema import Draft202012Validator, ValidationError
 
-from lib.extraction.models import ExtractionSourceDocument, ParsedPageText
+from lib.extraction.models import ExtractionSourceDocument
 from lib.model_runtime.contracts import VisionGenerateResponse
 from lib.model_runtime.http_client import ModelProtocolError
+from lib.semantic_annotations.qwen_output_scope import (
+    canonical_payload_filtered_to_source as _canonical_payload_filtered_to_source,
+)
+from lib.semantic_annotations.qwen_output_types import ValidatedModelOutputPayload
+from lib.semantic_annotations.qwen_output_values import (
+    EXTRACTION_USEFULNESS as _EXTRACTION_USEFULNESS,
+)
+from lib.semantic_annotations.qwen_output_values import (
+    PAGE_ROLES as _PAGE_ROLES,
+)
+from lib.semantic_annotations.qwen_output_values import (
+    PRIORITIES as _PRIORITIES,
+)
+from lib.semantic_annotations.qwen_output_values import (
+    SEMANTIC_TYPES as _SEMANTIC_TYPES,
+)
+from lib.semantic_annotations.qwen_output_values import (
+    append_unique as _append_unique,
+)
+from lib.semantic_annotations.qwen_output_values import (
+    average_confidence as _average_confidence,
+)
+from lib.semantic_annotations.qwen_output_values import (
+    bounded_string_list as _bounded_string_list,
+)
+from lib.semantic_annotations.qwen_output_values import (
+    confidence_or_none as _confidence_or_none,
+)
+from lib.semantic_annotations.qwen_output_values import (
+    document_type_candidates as _document_type_candidates,
+)
+from lib.semantic_annotations.qwen_output_values import (
+    document_type_or_none as _document_type_or_none,
+)
+from lib.semantic_annotations.qwen_output_values import (
+    expected_fields_from_json,
+)
+from lib.semantic_annotations.qwen_output_values import (
+    first_present as _first_present,
+)
+from lib.semantic_annotations.qwen_output_values import (
+    granite_task_or_none as _granite_task_or_none,
+)
+from lib.semantic_annotations.qwen_output_values import (
+    inferred_semantic_type as _inferred_semantic_type,
+)
+from lib.semantic_annotations.qwen_output_values import (
+    merge_reasons as _merge_reasons,
+)
+from lib.semantic_annotations.qwen_output_values import (
+    normalized_choice as _normalized_choice,
+)
+from lib.semantic_annotations.qwen_output_values import (
+    normalized_escalation_reasons as _normalized_escalation_reasons,
+)
+from lib.semantic_annotations.qwen_output_values import (
+    normalized_page_planner_fields as _normalized_page_planner_fields,
+)
+from lib.semantic_annotations.qwen_output_values import (
+    normalized_region_planner_fields as _normalized_region_planner_fields,
+)
+from lib.semantic_annotations.qwen_output_values import (
+    optional_string as _optional_string,
+)
+from lib.semantic_annotations.qwen_output_values import (
+    select_regions_for_contract as _select_regions_for_contract,
+)
+from lib.semantic_annotations.qwen_output_values import (
+    target_schema_or_none as _target_schema_or_none,
+)
 from lib.semantic_annotations.schema import semantic_annotation_model_output_schema
-
-_EXPECTED_FIELD_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
-_DOCUMENT_TYPES = {
-    "medical_eob",
-    "insurance_denial",
-    "medical_bill",
-    "invoice",
-    "receipt",
-    "retail_order",
-    "service_record",
-    "real_estate_title",
-    "mortgage_escrow_statement",
-    "financial_dispute_form",
-    "travel_receipt",
-    "restaurant_receipt",
-    "generic_form",
-    "unsupported_document",
-    "no_extraction_target",
-    "legal",
-    "tax",
-    "financial",
-    "other",
-    "unknown",
-}
-_PAGE_ROLES = {
-    "document_header",
-    "claim_summary",
-    "payment_summary",
-    "line_items",
-    "denial_or_decision",
-    "instructions",
-    "contact_or_identity",
-    "terms_or_boilerplate",
-    "signature_or_authorization",
-    "image_or_figure",
-    "mixed",
-    "unknown",
-}
-_EXTRACTION_USEFULNESS = {"none", "low", "medium", "high", "unknown"}
-_ESCALATION_REASONS = {
-    "poor_ocr",
-    "ambiguous_document_type",
-    "missing_docling_grounding",
-    "high_risk_domain",
-    "low_confidence",
-    "validation_sensitive",
-    "unsupported_schema",
-    "visual_degradation",
-}
-_SEMANTIC_TYPES = {
-    "document_header",
-    "billing_summary",
-    "payment_summary",
-    "patient_responsibility_summary",
-    "covered_services_line_item_table",
-    "invoice_line_item_table",
-    "receipt_line_item_table",
-    "retail_order_line_item_table",
-    "service_record_line_item_table",
-    "receipt_payment_summary",
-    "denial_or_coverage_decision",
-    "appeal_or_next_steps",
-    "seller_information_block",
-    "escrow_summary",
-    "mortgage_payment_summary",
-    "dispute_transaction_table",
-    "dispute_reason_block",
-    "generic_form_kvp",
-    "no_extraction_target",
-    "unsupported_document_region",
-    "tax_summary",
-    "legal_clause",
-    "contact_block",
-    "vehicle_or_asset_block",
-    "signature_block",
-    "boilerplate",
-    "unmatched_region",
-    "unknown",
-}
-_PRIORITIES = {"low", "medium", "high", "critical"}
-_GRANITE_TASKS = {"kvp", "tables_json", "tables_html", "tables_otsl", "ignore"}
-_TARGET_SCHEMAS = {"receipt", "invoice", "medical_eob", "document_observation"}
-_MAX_MODEL_OUTPUT_REGIONS = 12
-_PRIORITY_RANK = {"critical": 3, "high": 2, "medium": 1, "low": 0}
-_DOCLING_TABLE_SIGNALS = {"none", "weak", "strong", "unknown"}
-_SOURCE_SIGNALS = {"text", "table", "visual", "mixed"}
-_COVERAGE_ROLES = {"primary", "continuation", "summary", "supporting", "boilerplate", "unknown"}
-_EXTRACTION_SCOPES = {"table", "element", "page", "multi_page_group"}
-
-
-@dataclass(frozen=True)
-class ValidatedModelOutputPayload:
-    payload: dict[str, object]
-    normalization: dict[str, object]
 
 
 def validated_model_output_payload(
@@ -120,24 +91,6 @@ def validated_model_output_payload(
             f"semantic annotation model output failed schema validation: {exc.message}"
         ) from exc
     return normalized
-
-
-def expected_fields_from_json(value: object) -> tuple[str, ...]:
-    if not isinstance(value, list):
-        return ()
-    fields: list[str] = []
-    seen: set[str] = set()
-    for item in value:
-        if not isinstance(item, str):
-            continue
-        field_name = unicodedata.normalize("NFKC", item).strip().lower()
-        field_name = field_name.replace(" ", "_").replace("-", "_")
-        if not field_name.isascii() or not _EXPECTED_FIELD_NAME_RE.fullmatch(field_name):
-            continue
-        if field_name not in seen:
-            fields.append(field_name)
-            seen.add(field_name)
-    return tuple(fields)
 
 
 def _normalized_model_output_payload(
@@ -194,166 +147,6 @@ def _merged_normalization(*parts: dict[str, object]) -> dict[str, object]:
         if part:
             merged.update(part)
     return merged
-
-
-def _canonical_payload_filtered_to_source(
-    payload: dict[str, object],
-    *,
-    source: ExtractionSourceDocument,
-) -> ValidatedModelOutputPayload:
-    pages = payload.get("pages")
-    regions = payload.get("regions")
-    if not isinstance(pages, list) or not isinstance(regions, list):
-        return ValidatedModelOutputPayload(payload=payload, normalization={})
-
-    valid_page_ids = {str(page.page_id) for page in source.pages}
-    source_page_by_id = {str(page.page_id): page for page in source.pages}
-
-    kept_pages: list[object] = []
-    dropped_page_ids: list[str] = []
-    for page in pages:
-        if not isinstance(page, dict):
-            kept_pages.append(page)
-            continue
-        page_id = str(page.get("page_id") or "")
-        if page_id in valid_page_ids:
-            kept_pages.append(page)
-        elif page_id:
-            dropped_page_ids.append(page_id)
-    missing_blank_pages = _missing_blank_pages(kept_pages, kept_regions=regions, source=source)
-    kept_pages.extend(_blank_page_annotation(page) for page in missing_blank_pages)
-
-    kept_regions: list[object] = []
-    dropped_region_count = 0
-    for region in regions:
-        if not isinstance(region, dict):
-            kept_regions.append(region)
-            continue
-        if _region_grounding_is_within_source_window(
-            region,
-            valid_page_ids=valid_page_ids,
-        ):
-            kept_regions.append(region)
-        else:
-            dropped_region_count += 1
-
-    if not dropped_page_ids and not dropped_region_count and not missing_blank_pages:
-        return ValidatedModelOutputPayload(payload=payload, normalization={})
-
-    normalized_payload = dict(payload)
-    normalized_payload["pages"] = _pages_in_source_order(kept_pages, source_page_by_id)
-    normalized_payload["regions"] = kept_regions
-    normalization: dict[str, object] = {
-        "output_scope_filter_policy": "filter_to_requested_docling_pages",
-    }
-    if dropped_page_ids:
-        normalization["out_of_window_pages_dropped"] = len(dropped_page_ids)
-        normalization["out_of_window_page_ids"] = dropped_page_ids[:12]
-    if dropped_region_count:
-        normalization["out_of_window_regions_dropped"] = dropped_region_count
-    if missing_blank_pages:
-        normalization["missing_blank_focus_pages_filled"] = len(missing_blank_pages)
-        normalization["missing_blank_focus_page_ids"] = [
-            str(page.page_id) for page in missing_blank_pages[:12]
-        ]
-        normalization["missing_blank_focus_page_policy"] = "fill_no_extraction_target_page_only"
-    return ValidatedModelOutputPayload(payload=normalized_payload, normalization=normalization)
-
-
-def _missing_blank_pages(
-    pages: list[object],
-    *,
-    kept_regions: list[object],
-    source: ExtractionSourceDocument,
-) -> list[ParsedPageText]:
-    present_page_ids = {
-        str(page.get("page_id") or "")
-        for page in pages
-        if isinstance(page, dict) and page.get("page_id")
-    }
-    pages_with_regions = _page_ids_with_regions(kept_regions)
-    return [
-        page
-        for page in source.pages
-        if str(page.page_id) not in present_page_ids
-        and str(page.page_id) not in pages_with_regions
-        and _is_blank_docling_page(page, source=source)
-    ]
-
-
-def _page_ids_with_regions(regions: list[object]) -> set[str]:
-    page_ids: set[str] = set()
-    for region in regions:
-        if not isinstance(region, dict):
-            continue
-        grounding = region.get("grounding")
-        if not isinstance(grounding, dict):
-            continue
-        page_id = str(grounding.get("page_id") or "")
-        if page_id:
-            page_ids.add(page_id)
-    return page_ids
-
-
-def _is_blank_docling_page(
-    page: ParsedPageText,
-    *,
-    source: ExtractionSourceDocument,
-) -> bool:
-    page_number = page.page_number
-    if page.text.strip():
-        return False
-    has_elements = any(element.page_number == page_number for element in source.elements)
-    has_tables = any(table.page_number == page_number for table in source.tables)
-    return not has_elements and not has_tables
-
-
-def _blank_page_annotation(page: ParsedPageText) -> dict[str, object]:
-    return {
-        "page_id": str(page.page_id),
-        "page_number": page.page_number,
-        "page_role": "unknown",
-        "document_type_hint": "no_extraction_target",
-        "extraction_usefulness": "none",
-        "is_boilerplate": True,
-        "has_structured_targets": False,
-        "ambiguous": False,
-        "escalation_required": False,
-        "escalation_reasons": [],
-        "reason": "Docling reported a blank/no-signal focus page omitted by the model.",
-        "confidence": 1.0,
-        "docling_table_signal": "none",
-        "requires_cross_page_context": False,
-        "material_region_count_hint": 0,
-    }
-
-
-def _pages_in_source_order(
-    pages: list[object],
-    source_page_by_id: Mapping[str, ParsedPageText],
-) -> list[object]:
-    source_order = {page_id: index for index, page_id in enumerate(source_page_by_id.keys())}
-    return sorted(
-        pages,
-        key=lambda page: source_order.get(str(page.get("page_id") or ""), len(source_order))
-        if isinstance(page, dict)
-        else len(source_order),
-    )
-
-
-def _region_grounding_is_within_source_window(
-    region: dict[str, object],
-    *,
-    valid_page_ids: set[str],
-) -> bool:
-    grounding = region.get("grounding")
-    if not isinstance(grounding, dict):
-        return True
-
-    page_id = str(grounding.get("page_id") or "")
-    if page_id and page_id not in valid_page_ids:
-        return False
-    return True
 
 
 def _page_annotation_from_page_wrapper(page: dict[str, object]) -> dict[str, object]:
@@ -551,37 +344,6 @@ def _merge_page(
     return merged
 
 
-def _merge_reasons(first: object, second: object) -> list[str]:
-    reasons: list[str] = []
-    for collection in (first, second):
-        if not isinstance(collection, list):
-            continue
-        for item in collection:
-            reason = _normalized_choice(item, _ESCALATION_REASONS)
-            if reason and reason not in reasons:
-                reasons.append(reason)
-    return reasons[:4]
-
-
-def _select_regions_for_contract(regions: list[dict[str, object]]) -> list[dict[str, object]]:
-    ranked = sorted(
-        enumerate(regions),
-        key=lambda item: _region_rank(item[1], item[0]),
-    )
-    return [region for _, region in ranked[:_MAX_MODEL_OUTPUT_REGIONS]]
-
-
-def _region_rank(region: dict[str, object], original_index: int) -> tuple[object, ...]:
-    priority = str(region.get("priority") or "medium")
-    confidence = region.get("confidence")
-    return (
-        -_PRIORITY_RANK.get(priority, 1),
-        1 if region.get("granite_task") == "ignore" else 0,
-        -float(confidence) if isinstance(confidence, int | float) else 0.0,
-        original_index,
-    )
-
-
 def _normalized_alternate_page(
     item: dict[str, object],
     *,
@@ -744,287 +506,3 @@ def _document_type_from_payload_or_source(
 ) -> str:
     del source
     return _document_type_or_none(payload.get("document_type")) or "unknown"
-
-
-def _document_type_or_none(value: object) -> str | None:
-    normalized = _normalized_choice(value, _DOCUMENT_TYPES)
-    if normalized:
-        return normalized
-    if not isinstance(value, str):
-        return None
-    mapped = {
-        "eob": "medical_eob",
-        "denial": "insurance_denial",
-        "insurance": "insurance_denial",
-        "medical": "medical_bill",
-        "bill": "invoice",
-        "service": "service_record",
-    }.get(value.strip().lower())
-    return mapped
-
-
-def _document_type_candidates(value: object) -> list[dict[str, object]]:
-    if not isinstance(value, list):
-        return []
-    candidates: list[dict[str, object]] = []
-    for item in value:
-        if not isinstance(item, dict):
-            continue
-        document_type = _document_type_or_none(
-            _first_present(item, "document_type", "documentType")
-        )
-        if document_type is None:
-            continue
-        candidates.append(
-            {
-                "document_type": document_type,
-                "confidence": _confidence_or_none(item.get("confidence")),
-                "evidence_terms": _bounded_string_list(
-                    _first_present(item, "evidence_terms", "evidenceTerms"),
-                    limit=8,
-                    max_length=64,
-                ),
-                "reason": _optional_string(item.get("reason")),
-            }
-        )
-        if len(candidates) >= 4:
-            break
-    return candidates
-
-
-def _normalized_page_planner_fields(item: dict[str, object]) -> dict[str, object]:
-    fields: dict[str, object] = {}
-    hints = [
-        hint
-        for hint in (
-            _document_type_or_none(value)
-            for value in _list_value(_first_present(item, "page_family_hints", "pageFamilyHints"))
-        )
-        if hint is not None
-    ][:3]
-    if hints:
-        fields["page_family_hints"] = hints
-    continuation_group = _optional_string(
-        _first_present(item, "continuation_group", "continuationGroup")
-    )
-    if continuation_group is not None:
-        fields["continuation_group"] = continuation_group[:80]
-    table_signal = _normalized_choice(
-        _first_present(item, "docling_table_signal", "doclingTableSignal"),
-        _DOCLING_TABLE_SIGNALS,
-    )
-    if table_signal is not None:
-        fields["docling_table_signal"] = table_signal
-    cross_page = _optional_bool(
-        _first_present(item, "requires_cross_page_context", "requiresCrossPageContext")
-    )
-    if cross_page is not None:
-        fields["requires_cross_page_context"] = cross_page
-    count_hint = _bounded_int(
-        _first_present(item, "material_region_count_hint", "materialRegionCountHint"),
-        minimum=0,
-        maximum=12,
-    )
-    if count_hint is not None:
-        fields["material_region_count_hint"] = count_hint
-    return fields
-
-
-def _normalized_region_planner_fields(item: dict[str, object]) -> dict[str, object]:
-    fields: dict[str, object] = {}
-    for key, allowed in (
-        ("importance", _PRIORITIES),
-        ("source_signal", _SOURCE_SIGNALS),
-        ("coverage_role", _COVERAGE_ROLES),
-        ("extraction_scope", _EXTRACTION_SCOPES),
-    ):
-        value = _normalized_choice(_first_present(item, key, _camel_case(key)), allowed)
-        if value is not None:
-            fields[key] = value
-    requires_full_page_image = _optional_bool(
-        _first_present(item, "requires_full_page_image", "requiresFullPageImage")
-    )
-    if requires_full_page_image is not None:
-        fields["requires_full_page_image"] = requires_full_page_image
-    continuation_group = _optional_string(
-        _first_present(item, "continuation_group", "continuationGroup")
-    )
-    if continuation_group is not None:
-        fields["continuation_group"] = continuation_group[:80]
-    for key in ("must_extract_reason", "negative_routing_reason"):
-        value = _optional_string(_first_present(item, key, _camel_case(key)))
-        if value is not None:
-            fields[key] = value[:180]
-    min_expected_items = _bounded_int(
-        _first_present(item, "min_expected_items", "minExpectedItems"),
-        minimum=0,
-        maximum=500,
-    )
-    if min_expected_items is not None:
-        fields["min_expected_items"] = min_expected_items
-    visual_bbox_hint = _visual_bbox_hint(_first_present(item, "visual_bbox_hint", "visualBboxHint"))
-    if visual_bbox_hint is not None:
-        fields["visual_bbox_hint"] = visual_bbox_hint
-    return fields
-
-
-def _granite_task_or_none(value: object) -> str | None:
-    return _normalized_choice(value, _GRANITE_TASKS)
-
-
-def _target_schema_or_none(value: object) -> str | None:
-    normalized = _normalized_choice(value, _TARGET_SCHEMAS)
-    if normalized:
-        return normalized
-    if not isinstance(value, str):
-        return None
-    mapped = {
-        "insurance_denial": "medical_eob",
-        "medical_bill": "medical_eob",
-        "service_record": "receipt",
-        "retail_order": "receipt",
-        "travel_receipt": "receipt",
-        "restaurant_receipt": "receipt",
-        "real_estate_title": "document_observation",
-        "mortgage_escrow_statement": "document_observation",
-        "financial_dispute_form": "document_observation",
-        "generic_form": "document_observation",
-        "unsupported_document": "document_observation",
-    }.get(value.strip().lower())
-    return mapped
-
-
-def _inferred_semantic_type(
-    *,
-    granite_task: str | None,
-    target_schema: str | None,
-    expected_fields: tuple[str, ...],
-) -> str:
-    if granite_task == "ignore":
-        return "boilerplate"
-    if granite_task in {"tables_json", "tables_html", "tables_otsl"}:
-        if target_schema == "invoice":
-            return "invoice_line_item_table"
-        if target_schema == "receipt":
-            return "receipt_line_item_table"
-        if target_schema == "medical_eob":
-            return "covered_services_line_item_table"
-        if target_schema == "document_observation":
-            return "generic_form_kvp"
-    fields = set(expected_fields)
-    if fields & {"request_status", "denial_reason", "appeal_deadline", "care_requested"}:
-        return "denial_or_coverage_decision"
-    if fields & {"patient_responsibility", "plan_paid", "allowed_amount", "amount_billed"}:
-        return "patient_responsibility_summary"
-    if target_schema == "invoice":
-        return "billing_summary"
-    if target_schema == "receipt":
-        return "payment_summary"
-    if target_schema == "document_observation":
-        return "generic_form_kvp"
-    return "unknown"
-
-
-def _normalized_escalation_reasons(value: object) -> list[str]:
-    if not isinstance(value, list):
-        return []
-    reasons: list[str] = []
-    for item in value:
-        reason = _normalized_choice(item, _ESCALATION_REASONS)
-        if reason and reason not in reasons:
-            reasons.append(reason)
-    return reasons[:4]
-
-
-def _bounded_string_list(value: object, *, limit: int, max_length: int) -> list[str]:
-    values: list[str] = []
-    for item in _list_value(value):
-        if not isinstance(item, str):
-            continue
-        stripped = item.strip()
-        if not stripped:
-            continue
-        values.append(stripped[:max_length])
-        if len(values) >= limit:
-            break
-    return values
-
-
-def _list_value(value: object) -> list[object]:
-    return value if isinstance(value, list) else []
-
-
-def _first_present(item: dict[str, object], *keys: str) -> object:
-    for key in keys:
-        if key in item:
-            return item[key]
-    return None
-
-
-def _optional_bool(value: object) -> bool | None:
-    if isinstance(value, bool):
-        return value
-    return None
-
-
-def _bounded_int(value: object, *, minimum: int, maximum: int) -> int | None:
-    if not isinstance(value, int):
-        return None
-    return max(minimum, min(value, maximum))
-
-
-def _visual_bbox_hint(value: object) -> dict[str, int] | None:
-    if not isinstance(value, dict):
-        return None
-    try:
-        bbox = {key: max(0, min(int(value[key]), 1000)) for key in ("x1", "y1", "x2", "y2")}
-    except (KeyError, TypeError, ValueError):
-        return None
-    if bbox["x2"] < bbox["x1"] or bbox["y2"] < bbox["y1"]:
-        return None
-    return bbox
-
-
-def _camel_case(value: str) -> str:
-    parts = value.split("_")
-    return parts[0] + "".join(part.title() for part in parts[1:])
-
-
-def _append_unique(values: list[str], value: str) -> list[str]:
-    if value not in values and len(values) < 4:
-        return [*values, value]
-    return values
-
-
-def _average_confidence(regions: list[dict[str, object]]) -> float | None:
-    values: list[float] = []
-    for region in regions:
-        confidence = region.get("confidence")
-        if isinstance(confidence, int | float):
-            values.append(float(confidence))
-    if not values:
-        return None
-    return sum(values) / len(values)
-
-
-def _confidence_or_none(value: object) -> float | None:
-    if isinstance(value, int | float):
-        return max(0.0, min(float(value), 1.0))
-    return None
-
-
-def _optional_string(value: object) -> str | None:
-    if not isinstance(value, str):
-        return None
-    stripped = value.strip()
-    return stripped or None
-
-
-def _normalized_choice(value: object, allowed: set[str]) -> str | None:
-    if not isinstance(value, str):
-        return None
-    normalized = unicodedata.normalize("NFKC", value).strip().lower()
-    normalized = normalized.replace("-", "_").replace(" ", "_")
-    if normalized in allowed:
-        return normalized
-    return None
