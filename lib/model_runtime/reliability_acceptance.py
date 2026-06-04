@@ -13,6 +13,7 @@ from lib.model_runtime.profiles import (
 from lib.model_runtime.reliability_acceptance_recompute import (
     recomputed_hard_invariants,
     recomputed_operational_slos,
+    recomputed_repeatability_fingerprints,
     violating_hard_invariants_summary,
     violating_operational_slo_summary,
 )
@@ -403,6 +404,7 @@ def _gold_metric_failure_keys(gate: dict[str, Any]) -> list[str]:
 
 def _repeatability_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
     missing_by_report: list[dict[str, Any]] = []
+    mismatched_by_report: list[dict[str, Any]] = []
     missing_run_ids: list[dict[str, int]] = []
     run_ids: list[str] = []
     for index, report in enumerate(reports):
@@ -421,13 +423,30 @@ def _repeatability_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
                     "missing": missing,
                 }
             )
+        recomputed = recomputed_repeatability_fingerprints(report)
+        if recomputed is not None:
+            mismatched = [
+                key
+                for key in REPEATABILITY_KEYS
+                if get_value(fingerprints, key) is not None
+                and get_value(fingerprints, key) != get_value(recomputed, key)
+            ]
+            if mismatched:
+                mismatched_by_report.append(
+                    {
+                        "reportIndex": index,
+                        "runId": get_value(report, "runId", "run_id"),
+                        "mismatched": mismatched,
+                    }
+                )
     duplicate_run_ids = sorted(run_id for run_id, count in Counter(run_ids).items() if count > 1)
-    if missing_by_report or missing_run_ids or duplicate_run_ids:
+    if missing_by_report or mismatched_by_report or missing_run_ids or duplicate_run_ids:
         return {
             "status": "failed",
             "drift": [],
             "baseline": {},
             "missingByReport": missing_by_report,
+            "mismatchedByReport": mismatched_by_report,
             "missingRunIds": missing_run_ids,
             "duplicateRunIds": duplicate_run_ids,
             "comparisons": [],
@@ -438,6 +457,7 @@ def _repeatability_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
             "drift": [],
             "baseline": {},
             "missingByReport": [],
+            "mismatchedByReport": [],
             "missingRunIds": [],
             "duplicateRunIds": [],
             "comparisons": [],
@@ -458,6 +478,7 @@ def _repeatability_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
         "status": "passed" if not drift else "failed",
         "drift": drift,
         "missingByReport": [],
+        "mismatchedByReport": [],
         "missingRunIds": [],
         "duplicateRunIds": [],
         "comparisons": comparisons,

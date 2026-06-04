@@ -12,6 +12,7 @@ from lib.model_runtime.profiles import (
     VISUAL_EMBED_PROFILE,
 )
 from lib.model_runtime.reliability_acceptance import evaluate_phase85_report_acceptance
+from lib.model_runtime.reliability_report import build_phase85_reliability_report
 
 
 def test_report_acceptance_import_does_not_load_runtime_settings() -> None:
@@ -564,6 +565,42 @@ def test_report_acceptance_requires_full_repeatability_fingerprint_set() -> None
             "reportIndex": 0,
             "runId": "phase85-pass-1",
             "missing": ["canonicalOutput"],
+        }
+    ]
+
+
+def test_report_acceptance_recomputes_repeatability_fingerprints_from_document_rows() -> None:
+    report = build_phase85_reliability_report(
+        run_id="phase85-repeatability",
+        title_prefix="Phase 8.5 Repeatability",
+        documents=[
+            {
+                "document": {
+                    "id": "doc-1",
+                    "document_family": "invoice",
+                    "review_status": "needs_review",
+                },
+                "admissionEvents": [
+                    {
+                        "decision": "admitted_review_required",
+                        "candidate_fingerprint": "actual-candidate-fingerprint",
+                    }
+                ],
+            }
+        ],
+    )
+    report["repeatabilityFingerprints"]["candidateFingerprints"] = "stale-candidates"
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    repeatability = summary["checks"]["repeatabilityFingerprints"]
+    assert repeatability["status"] == "failed"
+    assert repeatability["mismatchedByReport"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-repeatability",
+            "mismatched": ["candidateFingerprints"],
         }
     ]
 
