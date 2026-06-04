@@ -544,6 +544,35 @@ def test_rejected_payload_decision_is_normalized_for_summary() -> None:
     }
 
 
+def test_rejected_payload_decision_separators_are_normalized_for_summary() -> None:
+    context = _context()
+
+    admission = admit_extraction_candidates(
+        context=context,
+        field_candidates=[],
+        line_item_candidates=[],
+        observation_candidates=[],
+        rejected_candidate_payloads=[
+            {
+                "candidate_kind": "field",
+                "field_path": "receipt.transaction.total",
+                "payload": {"value": {"amount": 4.65, "currency": "USD"}},
+                "decision": " Rejected Missing-Evidence ",
+                "reasons": ["missing_concrete_evidence"],
+                "evidence_concrete": False,
+            }
+        ],
+    )
+
+    assert admission.events[0].decision == "rejected_missing_evidence"
+    assert admission.summary == {
+        "produced": 1,
+        "admitted": 0,
+        "rejected": 1,
+        "rejectionReasons": {"rejected_missing_evidence": 1},
+    }
+
+
 def test_rejected_payload_string_reason_stays_whole() -> None:
     context = _context()
 

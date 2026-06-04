@@ -519,5 +519,6 @@ def _string_tuple(value: object) -> tuple[str, ...]:
 
 
 def _normalized_decision(value: object) -> str:
-    decision = str(value or "").strip().lower()
+    decision = str(value or "").strip().lower().replace("-", "_").replace(" ", "_")
+    decision = "_".join(part for part in decision.split("_") if part)
     return decision or "rejected_value_sanity"
