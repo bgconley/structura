@@ -39,6 +39,26 @@ PRIMARY_VALUE_KEYS = {
     "total",
     "value",
 }
+LINE_ITEM_VALUE_KEYS = PRIMARY_VALUE_KEYS | {
+    "allowed_amount",
+    "billed_amount",
+    "category_hint",
+    "code",
+    "code_system",
+    "currency",
+    "discount_amount",
+    "gross_amount",
+    "line_item_type",
+    "net_amount",
+    "paid_amount",
+    "patient_responsibility",
+    "procedure_code",
+    "quantity",
+    "service_date",
+    "tax_amount",
+    "unit",
+    "unit_price",
+}
 
 
 def reject_observation(field_name: str, value: object) -> tuple[bool, str | None]:
@@ -65,7 +85,11 @@ def reject_scalar_candidate(value: object) -> tuple[bool, str | None]:
 def reject_line_item(item: dict[str, Any]) -> tuple[bool, str | None]:
     if contains_prompt_or_schema_artifact(item):
         return True, "prompt_or_schema_echo"
-    if _contains_placeholder_value(item):
+    if _contains_placeholder_value_for_keys(
+        item,
+        value_keys=LINE_ITEM_VALUE_KEYS,
+        reject_null_leaves=False,
+    ):
         return True, "placeholder_or_null_value"
 
     text = " ".join(
@@ -169,18 +193,47 @@ def _decimal_value_is_zero(value: str) -> bool:
 
 
 def _contains_placeholder_value(value: object, *, key: object | None = None) -> bool:
+    return _contains_placeholder_value_for_keys(
+        value,
+        key=key,
+        value_keys=PRIMARY_VALUE_KEYS,
+        reject_null_leaves=True,
+    )
+
+
+def _contains_placeholder_value_for_keys(
+    value: object,
+    *,
+    key: object | None = None,
+    value_keys: set[str],
+    reject_null_leaves: bool,
+) -> bool:
     if value is None:
-        return key is None or _normalized_key(key) in PRIMARY_VALUE_KEYS
+        return reject_null_leaves and (key is None or _normalized_key(key) in value_keys)
     if isinstance(value, str):
-        return (
-            key is None or _normalized_key(key) in PRIMARY_VALUE_KEYS
-        ) and value.strip().lower() in PLACEHOLDER_VALUES
+        return (key is None or _normalized_key(key) in value_keys) and (
+            value.strip().lower() in PLACEHOLDER_VALUES
+        )
     if isinstance(value, dict):
         return any(
-            _contains_placeholder_value(item, key=item_key) for item_key, item in value.items()
+            _contains_placeholder_value_for_keys(
+                item,
+                key=item_key,
+                value_keys=value_keys,
+                reject_null_leaves=reject_null_leaves,
+            )
+            for item_key, item in value.items()
         )
     if isinstance(value, list | tuple | set):
-        return any(_contains_placeholder_value(item, key=key) for item in value)
+        return any(
+            _contains_placeholder_value_for_keys(
+                item,
+                key=key,
+                value_keys=value_keys,
+                reject_null_leaves=reject_null_leaves,
+            )
+            for item in value
+        )
     return False
 
 
