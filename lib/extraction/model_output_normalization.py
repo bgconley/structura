@@ -12,8 +12,20 @@ from lib.extraction.docling_table_quality import (
 from lib.extraction.evidence_concretizer import evidence_ref_from_context
 from lib.extraction.evidence_context import EvidenceContext
 from lib.extraction.line_item_provenance import line_item_evidence, line_item_provenance
-from lib.extraction.model_output_value_parsing import (
-    bounded_text as _bounded_text,
+from lib.extraction.model_output_observations import (
+    looks_like_schema_echo as _looks_like_schema_echo,
+)
+from lib.extraction.model_output_observations import (
+    observation as _observation,
+)
+from lib.extraction.model_output_observations import (
+    observation_dicts_from_payload as _observation_dicts_from_payload,
+)
+from lib.extraction.model_output_observations import (
+    observations_from_model_payload as _observations_from_model_payload,
+)
+from lib.extraction.model_output_observations import (
+    should_drop_observation as _should_drop_observation,
 )
 from lib.extraction.model_output_value_parsing import (
     money_value as _money,
@@ -23,9 +35,6 @@ from lib.extraction.model_output_value_parsing import (
 )
 from lib.extraction.model_output_value_parsing import (
     string_values as _string_list,
-)
-from lib.extraction.model_output_value_parsing import (
-    value_type as _value_type,
 )
 from lib.extraction.model_output_wrappers import (
     unwrap_model_output_payload as _unwrapped_payload,
@@ -39,35 +48,6 @@ _NON_LINE_ITEM_HEADINGS = {
     "service department hours",
     "payment information",
 }
-_DROP_FLAT_OBSERVATION_KEYS = {
-    "$schema",
-    "$defs",
-    "type",
-    "properties",
-    "required",
-    "additionalproperties",
-    "items",
-    "title",
-    "description",
-    "schema_name",
-    "schema_version",
-    "document_id",
-    "created_at",
-    "metadata",
-    "validation",
-    "confidence",
-    "prompt",
-    "instructions",
-}
-_ECHO_PHRASES = (
-    "return only",
-    "json schema",
-    "matching this schema",
-    "do not copy these instructions",
-    "semantic task from qwen",
-    "<tables_json>",
-    "additionalproperties",
-)
 
 
 def normalize_granite_region_output(
@@ -589,10 +569,7 @@ def _document_observation_output(
 
 
 def observation_dicts_from_payload(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    observations = payload.get("observations")
-    if not isinstance(observations, list):
-        return []
-    return [dict(item) for item in observations if isinstance(item, dict)]
+    return _observation_dicts_from_payload(payload)
 
 
 def _canonical_invoice_line_items(
@@ -1010,119 +987,6 @@ def _healthcare_coverage_decision_output(
             ),
         },
     )
-
-
-def _looks_like_schema_echo(payload: dict[str, Any]) -> bool:
-    if "$schema" in payload or "$defs" in payload:
-        return True
-    if "properties" in payload and ("type" in payload or "required" in payload):
-        schema_keys = {
-            "$schema",
-            "$defs",
-            "type",
-            "properties",
-            "required",
-            "additionalProperties",
-            "title",
-            "description",
-            "items",
-        }
-        return set(payload).issubset(schema_keys)
-    return False
-
-
-def _observations_from_model_payload(
-    payload: dict[str, Any],
-    model_output_schema_name: str | None,
-    *,
-    evidence_context: EvidenceContext | None,
-) -> list[dict[str, Any]]:
-    observations: list[dict[str, Any]] = []
-    fields = payload.get("fields")
-    if isinstance(fields, list):
-        for item in fields:
-            if not isinstance(item, dict):
-                continue
-            name = item.get("name")
-            value = item.get("value")
-            if not name or _should_drop_observation(name, value):
-                continue
-            observations.append(
-                _observation(
-                    field_name=str(name),
-                    value=value,
-                    family=model_output_schema_name,
-                    confidence=_number(item.get("confidence")),
-                    source_text=item.get("source_text"),
-                    evidence_context=evidence_context,
-                )
-            )
-        return observations
-    for key, value in payload.items():
-        if _should_drop_observation(key, value):
-            continue
-        observations.append(
-            _observation(
-                field_name=str(key),
-                value=value,
-                family=model_output_schema_name,
-                confidence=None,
-                source_text=value,
-                evidence_context=evidence_context,
-            )
-        )
-    return observations
-
-
-def _observation(
-    *,
-    field_name: str,
-    value: Any,
-    family: str | None,
-    confidence: float | None,
-    source_text: object,
-    evidence_context: EvidenceContext | None,
-) -> dict[str, Any]:
-    bounded_source_text = _bounded_text(source_text, max_length=500)
-    return {
-        "family": family,
-        "field_name": field_name,
-        "value": value,
-        "value_type": _value_type(value),
-        "source_text": bounded_source_text,
-        "confidence": confidence,
-        "evidence": [
-            _evidence(
-                bounded_source_text if bounded_source_text else field_name,
-                evidence_context,
-            )
-        ],
-    }
-
-
-def _should_drop_observation(key: object, value: object) -> bool:
-    normalized_key = str(key or "").strip().lower()
-    if normalized_key in _DROP_FLAT_OBSERVATION_KEYS:
-        return True
-    if value in (None, ""):
-        return True
-    if isinstance(value, (list, dict)) and not value:
-        return True
-    return _contains_instruction_echo(key) or _contains_instruction_echo(value)
-
-
-def _contains_instruction_echo(value: object) -> bool:
-    if isinstance(value, str):
-        text = value.lower()
-        return any(phrase in text for phrase in _ECHO_PHRASES)
-    if isinstance(value, dict):
-        return any(
-            _contains_instruction_echo(key) or _contains_instruction_echo(item)
-            for key, item in value.items()
-        )
-    if isinstance(value, list):
-        return any(_contains_instruction_echo(item) for item in value)
-    return False
 
 
 def _evidence(
