@@ -118,6 +118,17 @@ def test_gpu_validation_docs_require_full_repeatability_fingerprint_set() -> Non
     ) in normalized
 
 
+def test_gpu_validation_docs_require_zero_hard_correctness_count() -> None:
+    content = Path("docs/model-runtime/phase8_5_gpu_validation.md").read_text(encoding="utf-8")
+    normalized = re.sub(r"\s+", " ", content)
+
+    assert (
+        "Hard correctness acceptance requires "
+        "`acceptanceGates.hardCorrectnessInvariants.status = passed` and "
+        "`totalViolationCount = 0`"
+    ) in normalized
+
+
 def test_gpu_validation_docs_describe_manifest_builder_inputs() -> None:
     content = Path("docs/model-runtime/phase8_5_gpu_validation.md").read_text(encoding="utf-8")
     normalized = re.sub(r"\s+", " ", content)

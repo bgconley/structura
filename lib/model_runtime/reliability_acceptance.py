@@ -59,11 +59,7 @@ def evaluate_phase85_report_acceptance(
     checks = {
         "reportLineage": _report_lineage_check(reports),
         "requiredSummaries": _required_summaries_check(reports),
-        "hardCorrectnessInvariants": _gate_check(
-            reports,
-            "hardCorrectnessInvariants",
-            required_status="passed",
-        ),
+        "hardCorrectnessInvariants": _hard_correctness_check(reports),
         "operationalSLOs": _gate_check(
             reports,
             "operationalSLOs",
@@ -210,6 +206,32 @@ def _gate_check(
                     "runId": get_value(report, "runId", "run_id"),
                     "status": status,
                     "details": gate,
+                }
+            )
+    return {
+        "status": "passed" if reports and not failures else "failed",
+        "failures": failures,
+    }
+
+
+def _hard_correctness_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
+    failures: list[dict[str, Any]] = []
+    for index, report in enumerate(reports):
+        gate = _gate(report, "hardCorrectnessInvariants")
+        status = str(get_value(gate, "status") or "missing")
+        invalid: list[str] = []
+        if status != "passed":
+            invalid.append("status")
+        if get_value(gate, "totalViolationCount", "total_violation_count") != 0:
+            invalid.append("totalViolationCount")
+        if invalid:
+            failures.append(
+                {
+                    "reportIndex": index,
+                    "runId": get_value(report, "runId", "run_id"),
+                    "status": status,
+                    "details": gate,
+                    "invalid": invalid,
                 }
             )
     return {

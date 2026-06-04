@@ -113,6 +113,25 @@ def test_report_acceptance_fails_for_missing_summaries_and_failed_gates() -> Non
     assert summary["checks"]["hardCorrectnessInvariants"]["status"] == "failed"
 
 
+def test_report_acceptance_fails_when_hard_invariant_count_is_nonzero() -> None:
+    report = _resident_report()
+    report["acceptanceGates"]["hardCorrectnessInvariants"]["totalViolationCount"] = 1
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["hardCorrectnessInvariants"]["status"] == "failed"
+    assert summary["checks"]["hardCorrectnessInvariants"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "status": "passed",
+            "details": report["acceptanceGates"]["hardCorrectnessInvariants"],
+            "invalid": ["totalViolationCount"],
+        }
+    ]
+
+
 def test_report_acceptance_requires_gold_when_requested() -> None:
     summary = evaluate_phase85_report_acceptance([_resident_report()], require_gold=True)
 

@@ -98,5 +98,8 @@ release evidence; live or required reports must include current
 Report acceptance requires the full repeatability fingerprint set:
 `documentFamily`, `semanticRegions`, `plannerTasks`, `candidateFingerprints`,
 `canonicalOutput`, `reviewTasks`, and `rejectionDistribution`.
+Hard correctness acceptance requires
+`acceptanceGates.hardCorrectnessInvariants.status = passed` and
+`totalViolationCount = 0`.
 Use `scripts/gpu/phase8_5_report_acceptance.py` directly when re-checking already
 captured report files.
