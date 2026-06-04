@@ -9,6 +9,7 @@ from lib.model_runtime.reliability_report_normalization import (
     bool_value,
     dict_value,
     get_value,
+    snake,
 )
 from lib.model_runtime.source_engines import is_model_source_engine
 
@@ -21,12 +22,19 @@ _PLACEHOLDER_VALUES = {
     "none",
     "n/a",
     "na",
+    "field",
+    "key",
+    "missing",
     "not applicable",
     "not available",
+    "not found",
     "not provided",
     "placeholder",
     "tbd",
     "unknown",
+    "visible_field",
+    "visible value",
+    "example value",
     "<placeholder>",
 }
 _PRIMARY_VALUE_KEYS = {
@@ -34,7 +42,9 @@ _PRIMARY_VALUE_KEYS = {
     "date",
     "description",
     "display_name",
+    "field_name",
     "field_value",
+    "key",
     "merchant",
     "name",
     "seller",
@@ -140,13 +150,17 @@ def _contains_prompt_or_schema_artifact(candidate: dict[str, Any]) -> bool:
 
 def _contains_placeholder_value(candidate: dict[str, Any]) -> bool:
     for key, value in _walk_items(candidate):
-        if key.split(".")[-1] not in _PRIMARY_VALUE_KEYS:
+        if _normalized_leaf_key(key) not in _PRIMARY_VALUE_KEYS:
             continue
         if value is None:
             return True
         if isinstance(value, str) and value.strip().lower() in _PLACEHOLDER_VALUES:
             return True
     return False
+
+
+def _normalized_leaf_key(path: str) -> str:
+    return snake(path.split(".")[-1].strip()).replace("-", "_").lower()
 
 
 def _add_violation(
