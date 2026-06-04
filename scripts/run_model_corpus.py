@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -159,6 +160,7 @@ def _assert_model_backed_evidence(
         value = evidence.get(key)
         if not isinstance(value, str) or not value.strip():
             raise SystemExit(f"Model corpus evidence {section} missing traceable {key}.")
+    measured_at = _parse_measured_at(section, str(evidence["measuredAt"]))
     if manifest_path is None:
         return None
     evidence_path = _resolve_evidence_path(str(evidence["evidencePath"]), manifest_path)
@@ -171,6 +173,12 @@ def _assert_model_backed_evidence(
             f"Model corpus evidence {section} runId mismatch: "
             f"{artifact_run_id} != {evidence['runId']}"
         )
+    _assert_evidence_artifact_measured_at(
+        section,
+        evidence_artifact,
+        measured_at=measured_at,
+        path=evidence_path,
+    )
     _assert_evidence_artifact_lineage(section, evidence_artifact, evidence_path)
     _assert_evidence_artifact_metrics(section, evidence_artifact, metrics, evidence_path)
     return evidence_artifact
@@ -214,6 +222,24 @@ def _evidence_artifact_run_id(artifact: dict[str, Any]) -> Any:
     if isinstance(run_manifest, dict):
         return run_manifest.get("run_id") or run_manifest.get("runId")
     return None
+
+
+def _assert_evidence_artifact_measured_at(
+    section: str,
+    artifact: dict[str, Any],
+    *,
+    measured_at: datetime,
+    path: Path,
+) -> None:
+    artifact_measured_at = artifact.get("measuredAt") or artifact.get("measured_at")
+    if artifact_measured_at is None:
+        return
+    parsed = _parse_measured_at(section, str(artifact_measured_at), path=path)
+    if parsed != measured_at:
+        raise SystemExit(
+            f"Model corpus evidence {section} measuredAt mismatch: "
+            f"{parsed.isoformat()} != {measured_at.isoformat()}"
+        )
 
 
 def _assert_evidence_artifact_lineage(
@@ -306,6 +332,30 @@ def _metric_float(
         raise SystemExit(
             f"Model corpus evidence {section} metric {metric} must be numeric{suffix}"
         ) from exc
+
+
+def _parse_measured_at(
+    section: str,
+    value: str,
+    *,
+    path: Path | None = None,
+) -> datetime:
+    normalized = value.strip()
+    if normalized.endswith("Z"):
+        normalized = normalized[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError as exc:
+        suffix = f": {path}" if path is not None else "."
+        raise SystemExit(
+            f"Model corpus evidence {section} measuredAt must be ISO-8601{suffix}"
+        ) from exc
+    if parsed.tzinfo is None:
+        suffix = f": {path}" if path is not None else "."
+        raise SystemExit(
+            f"Model corpus evidence {section} measuredAt must include timezone{suffix}"
+        )
+    return parsed
 
 
 def _expected_pipeline_version() -> str:

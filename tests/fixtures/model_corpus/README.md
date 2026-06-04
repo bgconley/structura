@@ -10,16 +10,18 @@ visual embedding, hybrid retrieval, and provenance metrics.
 
 Each model-backed evidence section (`qwen`, `granite`, `textEmbedding`, and
 `visualEmbedding`) must include non-empty `profile`, `runId`, `measuredAt`, and
-`evidencePath` fields. `evidencePath` should point to the private GPU smoke,
+`evidencePath` fields. `measuredAt` must be an ISO-8601 timestamp with timezone.
+`evidencePath` should point to the private GPU smoke,
 resident, retrieval, or corpus report artifact that produced the corresponding
 metric evidence. Relative `evidencePath` values resolve from the private
 manifest's directory, and the runner requires the target artifact file to exist
 when evaluating a model-backed manifest from disk. The target artifact must be a
 JSON object; if it includes `runId` or `run_id`, that value must match the
-evidence section `runId`. It must also include a Phase 8.5 `runManifest` with
-the active `pipeline_version` and report evidence such as `acceptanceGates`,
-`metrics`, `checks`, or `documents`; deterministic fixture artifacts are not
-valid release evidence. The artifact `metrics` object must include the
+evidence section `runId`; if it includes `measuredAt` or `measured_at`, that
+value must match the evidence section `measuredAt`. It must also include a Phase
+8.5 `runManifest` with the active `pipeline_version` and report evidence such as
+`acceptanceGates`, `metrics`, `checks`, or `documents`; deterministic fixture
+artifacts are not valid release evidence. The artifact `metrics` object must include the
 section-specific metric values claimed by the manifest, such as Qwen route/review
 rates, Granite table/KVP scores, or text/visual retrieval hit rates. Aggregate
 claims such as `hybrid_hit_rate_at_k` and `provenance_truth_rate` must appear in

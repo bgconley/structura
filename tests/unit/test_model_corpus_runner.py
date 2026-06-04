@@ -172,6 +172,74 @@ def test_model_corpus_script_requires_matching_evidence_artifact_run_id(tmp_path
     assert "runId mismatch" in result.stderr
 
 
+def test_model_corpus_script_requires_parseable_evidence_measured_at(tmp_path) -> None:
+    payload = _manifest(fixture_type="model_backed")
+    _write_evidence_artifacts(tmp_path, payload, fixture_type="model_backed")
+    qwen_evidence = payload["evidence"]["qwen"]  # type: ignore[index]
+    assert isinstance(qwen_evidence, dict)
+    qwen_evidence["measuredAt"] = "not-a-timestamp"
+    manifest = tmp_path / "phase8_5_model_manifest.json"
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_model_corpus.py",
+            "--require-model-backed",
+            "--manifest",
+            str(manifest),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "qwen" in result.stderr
+    assert "measuredAt" in result.stderr
+    assert "ISO-8601" in result.stderr
+
+
+def test_model_corpus_script_rejects_conflicting_artifact_measured_at(tmp_path) -> None:
+    payload = _manifest(fixture_type="model_backed")
+    _write_evidence_artifacts(tmp_path, payload, fixture_type="model_backed")
+    granite_evidence = payload["evidence"]["granite"]  # type: ignore[index]
+    assert isinstance(granite_evidence, dict)
+    (tmp_path / granite_evidence["evidencePath"]).write_text(  # type: ignore[index]
+        json.dumps(
+            _evidence_artifact(
+                str(granite_evidence["runId"]),
+                fixture_type="model_backed",
+                metrics={
+                    **_section_metrics(payload, "granite"),
+                    **_aggregate_metrics(payload),
+                },
+                measured_at="2026-06-04T13:00:00Z",
+            )
+        ),
+        encoding="utf-8",
+    )
+    manifest = tmp_path / "phase8_5_model_manifest.json"
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_model_corpus.py",
+            "--require-model-backed",
+            "--manifest",
+            str(manifest),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "granite" in result.stderr
+    assert "measuredAt mismatch" in result.stderr
+
+
 def test_model_corpus_script_requires_report_lineage_in_evidence_artifacts(tmp_path) -> None:
     payload = _manifest(fixture_type="model_backed")
     _write_evidence_artifacts(tmp_path, payload)
@@ -491,8 +559,9 @@ def _evidence_artifact(
     *,
     fixture_type: str,
     metrics: dict[str, object] | None = None,
+    measured_at: str | None = None,
 ) -> dict[str, object]:
-    return {
+    artifact: dict[str, object] = {
         "fixtureType": fixture_type,
         "runId": run_id,
         "runManifest": {
@@ -501,6 +570,9 @@ def _evidence_artifact(
         },
         "metrics": metrics or {"source": "unit-test"},
     }
+    if measured_at is not None:
+        artifact["measuredAt"] = measured_at
+    return artifact
 
 
 def _section_metrics(payload: dict[str, object], section: str) -> dict[str, object]:
