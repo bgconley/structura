@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import os
 import stat
 from io import BytesIO
+from pathlib import Path
 from types import ModuleType
 
 import pytest
@@ -16,6 +18,7 @@ from lib.storage import (
     object_uri,
     parse_object_uri,
 )
+from lib.storage import service as storage_service
 from workers.previews import service as preview_service
 
 
@@ -67,6 +70,32 @@ def test_stored_objects_are_group_readable_and_storage_dirs_are_setgid(tmp_path)
         parents.append(root / ".tmp")
         for parent in parents:
             assert stat.S_IMODE(parent.stat().st_mode) == 0o2770
+
+
+def test_group_writable_storage_root_does_not_require_chmod_ownership(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    canonical_root = tmp_path / "canonical"
+    canonical_root.mkdir()
+    os.chmod(canonical_root, 0o2770)
+    real_chmod = os.chmod
+
+    def chmod_without_root_ownership(path: os.PathLike[str] | str, mode: int) -> None:
+        if Path(path) == canonical_root:
+            raise PermissionError("operation not permitted")
+        real_chmod(path, mode)
+
+    monkeypatch.setattr(storage_service.os, "chmod", chmod_without_root_ownership)
+    storage = ObjectStorage(
+        canonical_root=canonical_root,
+        derived_root=tmp_path / "derived",
+        export_root=tmp_path / "exports",
+    )
+
+    staged = storage.stage_stream(BytesIO(b"original bytes"), kind="canonical")
+
+    assert staged.temp_path.exists()
 
 
 def test_object_uri_rejects_path_traversal() -> None:

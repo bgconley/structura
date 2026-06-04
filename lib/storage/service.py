@@ -302,13 +302,21 @@ def file_sha256(path: Path) -> str:
 
 
 def _chmod_directory(path: Path) -> None:
-    # nosemgrep: python.lang.security.audit.insecure-file-permissions.insecure-file-permissions
-    os.chmod(path, OBJECT_DIRECTORY_MODE)
+    _chmod_if_needed(path, OBJECT_DIRECTORY_MODE)
 
 
 def _chmod_object_file(path: Path) -> None:
-    # nosemgrep: python.lang.security.audit.insecure-file-permissions.insecure-file-permissions
-    os.chmod(path, OBJECT_FILE_MODE)
+    _chmod_if_needed(path, OBJECT_FILE_MODE)
+
+
+def _chmod_if_needed(path: Path, mode: int) -> None:
+    try:
+        # nosemgrep: python.lang.security.audit.insecure-file-permissions.insecure-file-permissions
+        os.chmod(path, mode)
+    except PermissionError:
+        if (path.stat().st_mode & 0o7777) == mode:
+            return
+        raise
 
 
 def remove_empty_hash_dir(path: Path) -> None:
