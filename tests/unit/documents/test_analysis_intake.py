@@ -171,6 +171,32 @@ def test_phase9_document_eligibility_states() -> None:
     )
 
 
+def test_phase9_intake_disables_analysis_for_target_queue_dead_letter_jobs() -> None:
+    intake = build_phase9_document_intake(
+        {
+            "id": "doc-dead-letter",
+            "fields": [
+                {
+                    "fieldPath": "invoice.total_amount",
+                    "value": {"amount": 42.5, "currency": "USD"},
+                    "reviewStatus": "auto_accepted",
+                    "evidence": [{"semanticRegionId": "region-1", "pageNumber": 1}],
+                }
+            ],
+            "jobs": [
+                {
+                    "queueName": "extraction",
+                    "jobType": "extract",
+                    "status": "dead_letter",
+                }
+            ],
+        }
+    )
+
+    assert intake["documentQuality"]["operational_status"] == "pipeline_failed"
+    assert intake["eligibility"] == "analysis_disabled_operational_failure"
+
+
 def test_phase9_intake_requires_structura_owned_evidence_locator() -> None:
     source_text_only = build_phase9_document_intake(
         {

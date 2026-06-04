@@ -6,6 +6,13 @@ from typing import Any
 ACCEPTED_REVIEW_STATUSES = {"auto_accepted", "user_confirmed", "user_corrected"}
 TRUTH_OBSERVATION_STATUSES = {"promoted", "auto_accepted", "user_confirmed", "user_corrected"}
 REVIEW_STATUSES = {"needs_review", "proposed", "unreviewed"}
+ANALYSIS_TARGET_JOB_QUEUES = {
+    "docling",
+    "semantic-annotations",
+    "extraction",
+    "visual-embeddings",
+}
+OPERATIONAL_FAILURE_STATUSES = {"failed", "dead_letter", "pipeline_failed"}
 
 BLOCKED_PHASE9_MUTATION_KEYS = (
     "canonicalFacts",
@@ -211,12 +218,16 @@ def _document_quality(
 
 def _operational_status(document: Mapping[str, Any]) -> str:
     extraction_statuses = {
-        str(_value(row, "status") or "")
+        str(_value(row, "status") or "").lower()
         for row in [*_rows(document, "extractions"), *_rows(document, "semanticRegionExtractions")]
     }
-    failed_statuses = {"failed", "dead_letter", "pipeline_failed"}
-    if any(status in failed_statuses for status in extraction_statuses):
+    if any(status in OPERATIONAL_FAILURE_STATUSES for status in extraction_statuses):
         return "pipeline_failed"
+    for job in _rows(document, "jobs"):
+        queue_name = str(_value(job, "queueName", "queue_name", "queue") or "").lower()
+        job_status = str(_value(job, "status") or "").lower()
+        if queue_name in ANALYSIS_TARGET_JOB_QUEUES and job_status in OPERATIONAL_FAILURE_STATUSES:
+            return "pipeline_failed"
     return "completed"
 
 
