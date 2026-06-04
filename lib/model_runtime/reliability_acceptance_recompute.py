@@ -11,6 +11,7 @@ from lib.model_runtime.reliability_report_normalization import (
     bool_value,
     dict_value,
     get_value,
+    int_value,
     list_value,
     sum_values,
 )
@@ -22,6 +23,7 @@ __all__ = [
     "recomputed_operational_slos",
     "recomputed_planner_summary",
     "recomputed_repeatability_fingerprints",
+    "recomputed_retry_summary",
     "recomputed_visual_input_plan_summary",
     "violating_hard_invariants_summary",
     "violating_operational_slo_summary",
@@ -135,6 +137,33 @@ def recomputed_visual_input_plan_summary(report: dict[str, Any]) -> dict[str, An
     if not routes:
         return None
     return {"routeDistribution": dict(sorted(routes.items()))}
+
+
+def recomputed_retry_summary(report: dict[str, Any]) -> dict[str, Any] | None:
+    documents = _document_rows(report)
+    if documents is None:
+        return None
+    valid, document_rows = documents
+    if not valid:
+        return {}
+    outcomes: Counter[str] = Counter()
+    for extraction in all_rows(document_rows, "extractions"):
+        attempts = list_value(get_value(extraction, "visual_input_attempts", "visualInputAttempts"))
+        for attempt in attempts:
+            if not isinstance(attempt, dict):
+                continue
+            outcome = get_value(attempt, "outcome", "status")
+            if outcome:
+                outcomes[str(outcome)] += 1
+    if not outcomes:
+        for job in all_rows(document_rows, "jobs"):
+            status = get_value(job, "status")
+            count = int_value(get_value(job, "count"), default=1)
+            if status:
+                outcomes[str(status)] += count
+    if not outcomes:
+        return None
+    return {"outcomes": dict(sorted(outcomes.items()))}
 
 
 def recomputed_hard_invariants(report: dict[str, Any]) -> dict[str, Any] | None:
