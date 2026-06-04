@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from lib.extraction.candidate_quality import reject_line_item, reject_observation
+from lib.extraction.candidate_quality import (
+    reject_line_item,
+    reject_observation,
+    reject_scalar_candidate,
+)
 
 
 def test_rejects_zero_amount_line_without_service_context() -> None:
@@ -52,3 +56,10 @@ def test_allows_zero_value_observation() -> None:
 
     assert rejected is False
     assert reason is None
+
+
+def test_rejects_null_scalar_candidate_value() -> None:
+    rejected, reason = reject_scalar_candidate(None)
+
+    assert rejected is True
+    assert reason == "placeholder_or_null_value"

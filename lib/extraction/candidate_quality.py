@@ -42,6 +42,8 @@ def reject_observation(field_name: str, value: object) -> tuple[bool, str | None
 def reject_scalar_candidate(value: object) -> tuple[bool, str | None]:
     if contains_prompt_or_schema_artifact(value):
         return True, "prompt_or_schema_echo"
+    if value is None:
+        return True, "placeholder_or_null_value"
     if isinstance(value, str) and value.strip().lower() in PLACEHOLDER_VALUES:
         return True, "placeholder_or_null_value"
     return False, None
