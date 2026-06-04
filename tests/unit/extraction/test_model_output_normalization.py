@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from uuid import uuid4
 
+from lib.extraction.docling_table_quality import DoclingTableQuality
 from lib.extraction.evidence import has_concrete_evidence
 from lib.extraction.evidence_context import EvidenceContext
 from lib.extraction.model_output_normalization import (
@@ -105,6 +106,58 @@ def test_granite_line_item_evidence_uses_region_grounding_context() -> None:
     assert evidence["semantic_region_id"] == str(region_id)
     assert evidence["semantic_annotation_id"] == str(annotation_id)
     assert has_concrete_evidence([evidence]) is True
+
+
+def test_authoritative_docling_table_rejects_line_items_without_row_identity() -> None:
+    document_id = uuid4()
+    table_id = uuid4()
+
+    normalized, metadata = normalize_granite_region_output(
+        document_id=document_id,
+        schema_name="invoice",
+        model_output_schema_name="granite_invoice_line_items.v1",
+        payload={
+            "line_items": [
+                {
+                    "description": "Grounded row",
+                    "row_index": 1,
+                    "table_id": str(table_id),
+                    "page_number": 2,
+                    "amount": "$99.00",
+                },
+                {"description": "Invented row", "amount": "$12.00"},
+            ],
+            "confidence": {"overall": 0.81},
+        },
+        docling_table_quality=DoclingTableQuality(
+            table_id=str(table_id),
+            page_number=2,
+            row_count=3,
+            column_count=3,
+            non_empty_cell_ratio=0.95,
+            header_confidence=0.85,
+            numeric_column_count=1,
+            bbox_available=True,
+            markdown_available=True,
+            continuation_risk=False,
+            score=0.88,
+            route="docling_table_plus_granite_labeler",
+        ),
+        evidence_context=EvidenceContext(
+            source_engine="granite_vision_3b",
+            document_id=document_id,
+            table_id=table_id,
+            page_number=2,
+        ),
+    )
+
+    assert [item["description"] for item in normalized["line_items"]] == ["Grounded row"]
+    evidence = normalized["line_items"][0]["evidence"][0]
+    assert evidence["table_id"] == str(table_id)
+    assert evidence["row_index"] == 1
+    assert evidence["page_number"] == 2
+    assert metadata["tableConsistency"]["rejectedRowCount"] == 1
+    assert "candidate.missing_docling_row_index" in metadata["tableConsistency"]["warnings"]
 
 
 def test_receipt_payment_summary_concretizes_region_evidence_for_candidates() -> None:

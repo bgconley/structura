@@ -19,7 +19,10 @@
           "unit": {"type": ["string", "null"]},
           "unit_price": {"type": ["number", "string", "null"]},
           "amount": {"type": ["number", "string", "null"]},
-          "category_hint": {"type": ["string", "null"]}
+          "category_hint": {"type": ["string", "null"]},
+          "row_index": {"type": ["integer", "string", "null"]},
+          "table_id": {"type": ["string", "null"]},
+          "page_number": {"type": ["integer", "string", "null"]}
         }
       }
     },

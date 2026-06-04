@@ -377,6 +377,54 @@ def test_granite_gateway_renders_docling_table_json_as_readable_rows() -> None:
     assert '"bbox"' not in client.request.prompt
 
 
+def test_granite_gateway_table_schema_allows_docling_row_identity() -> None:
+    client = FakeVisionClient(
+        source_engine="granite_vision_3b",
+        profile_name=GRANITE_VISION_PROFILE,
+    )
+    source = _source_with_page_image()
+    table_id = uuid4()
+    source.tables.append(
+        ParsedTableText(
+            table_id=table_id,
+            page_number=1,
+            table_index=1,
+            table_json={
+                "data": {
+                    "grid": [
+                        [{"text": "Description"}, {"text": "Amount"}],
+                        [{"text": "Consultation"}, {"text": "$120.00"}],
+                    ]
+                }
+            },
+        )
+    )
+    task = SemanticExtractionTask(
+        region_id=uuid4(),
+        annotation_id=uuid4(),
+        document_id=source.document_id,
+        semantic_type="invoice_line_item_table",
+        granite_task="tables_json",
+        target_schema="invoice",
+        expected_fields=("description", "amount"),
+        grounding=SemanticGroundingRef(kind="table", table_id=table_id),
+    )
+
+    GraniteVisionExtractionGateway(client=client).extract(
+        source,
+        schema_name="invoice",
+        route_profile="docling_plus_granite_structured",
+        semantic_task=task,
+    )
+
+    assert client.request is not None
+    assert "row_index=1: Consultation | $120.00" in client.request.prompt
+    line_item_properties = client.request.response_json_schema["properties"]["line_items"][
+        "items"
+    ]["properties"]
+    assert {"row_index", "table_id", "page_number"}.issubset(line_item_properties)
+
+
 def test_granite_gateway_routes_title_seller_info_to_observation_schema() -> None:
     client = FakeVisionClient(
         source_engine="granite_vision_3b",

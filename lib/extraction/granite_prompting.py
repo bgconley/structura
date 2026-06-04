@@ -51,6 +51,8 @@ def granite_prompt(
             f"{task_context}"
             "Extract line items as compact row candidates from the grounded region. "
             "Use Docling table rows when provided. "
+            "When Docling rows are labeled with row_index, include that row_index for "
+            "each extracted row and omit rows that cannot be matched to a Docling row. "
             "Return at most 20 row objects for this grounded region. "
             "Do not output table dimensions, table cells, or table schema. "
             "Do not copy these instructions into any field. "
@@ -122,9 +124,10 @@ def _table_context(source: ExtractionSourceDocument, task: SemanticExtractionTas
     rendered: list[str] = []
     for table in tables[:2]:
         if table.table_markdown:
+            table_text = _render_table_markdown(table.table_markdown)
             rendered.append(
                 f"Table page={table.page_number} index={table.table_index}:\n"
-                f"{table.table_markdown[:1600]}"
+                f"{table_text[:1600]}"
             )
         elif table.table_json:
             table_text = _render_table_json(table.table_json)
@@ -139,14 +142,25 @@ def _render_table_json(table_json: dict[str, object]) -> str:
     grid = _table_grid(table_json)
     if grid:
         lines = []
-        for row in grid[:80]:
+        for index, row in enumerate(grid[:80]):
             cells = [_cell_text(cell) for cell in row]
             text_cells = [cell for cell in cells if cell]
             if text_cells:
-                lines.append(" | ".join(text_cells))
+                lines.append(f"row_index={index}: " + " | ".join(text_cells))
         if lines:
             return "\n".join(lines)
     return json.dumps(table_json, sort_keys=True)
+
+
+def _render_table_markdown(table_markdown: str) -> str:
+    lines: list[str] = []
+    for index, line in enumerate(table_markdown.splitlines()):
+        if "|" not in line:
+            continue
+        text = " ".join(line.strip().split())
+        if text:
+            lines.append(f"row_index={index}: {text}")
+    return "\n".join(lines) or table_markdown
 
 
 def _table_grid(table_json: dict[str, object]) -> list[list[object]]:

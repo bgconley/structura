@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from lib.extraction.contract_registry import resolved_document_type_from_task_metadata
+from lib.extraction.docling_table_quality import DoclingTableQuality, evaluate_docling_table_quality
 from lib.extraction.evidence_context import evidence_context_for_task
 from lib.extraction.granite_budgets import GraniteTaskBudget
 from lib.extraction.granite_prompting import granite_prompt
@@ -106,6 +107,7 @@ class VisionExtractionGateway:
             semantic_type=semantic_task.semantic_type if semantic_task is not None else None,
             target_schema=schema_name,
             resolved_document_type=_resolved_document_type(semantic_task, schema_name),
+            docling_table_quality=_docling_table_quality(source, semantic_task),
         )
         useful = is_useful_granite_output(
             normalized_json=normalized_json,
@@ -155,6 +157,7 @@ class VisionExtractionGateway:
                 semantic_type=semantic_task.semantic_type if semantic_task is not None else None,
                 target_schema=schema_name,
                 resolved_document_type=_resolved_document_type(semantic_task, schema_name),
+                docling_table_quality=_docling_table_quality(source, semantic_task),
             )
             retry_useful = is_useful_granite_output(
                 normalized_json=retry_normalized_json,
@@ -342,4 +345,22 @@ def _resolved_document_type(
         metadata=task.metadata,
         semantic_type=task.semantic_type,
         target_schema=schema_name,
+    )
+
+
+def _docling_table_quality(
+    source: ExtractionSourceDocument,
+    task: SemanticExtractionTask | None,
+) -> DoclingTableQuality | None:
+    if task is None or task.grounding.table_id is None:
+        return None
+    table = next(
+        (candidate for candidate in source.tables if candidate.table_id == task.grounding.table_id),
+        None,
+    )
+    if table is None:
+        return None
+    return evaluate_docling_table_quality(
+        table,
+        continuation_risk=bool(task.metadata.get("continuation_group")),
     )

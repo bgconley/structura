@@ -5,8 +5,14 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from lib.extraction.docling_table_quality import (
+    DoclingTableQuality,
+    apply_table_consistency_projection,
+    gate_docling_authoritative_rows,
+)
 from lib.extraction.evidence_concretizer import evidence_ref_from_context
 from lib.extraction.evidence_context import EvidenceContext
+from lib.extraction.line_item_provenance import line_item_evidence, line_item_provenance
 from lib.extraction.region_envelope_projection import finalized_region_output
 
 _NON_LINE_ITEM_HEADINGS = {
@@ -57,6 +63,7 @@ def normalize_granite_region_output(
     semantic_type: str | None = None,
     target_schema: str | None = None,
     resolved_document_type: str | None = None,
+    docling_table_quality: DoclingTableQuality | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     model_payload, wrapper_repairs = _unwrapped_payload(payload)
 
@@ -80,6 +87,7 @@ def normalize_granite_region_output(
             document_id,
             model_payload,
             evidence_context=evidence_context,
+            docling_table_quality=docling_table_quality,
         )
         return finalize(normalized, metadata)
     if model_output_schema_name == "granite_payment_summary.v1":
@@ -90,6 +98,7 @@ def normalize_granite_region_output(
             document_id,
             model_payload,
             evidence_context=evidence_context,
+            docling_table_quality=docling_table_quality,
         )
         return finalize(normalized, metadata)
     if model_output_schema_name in {
@@ -100,6 +109,7 @@ def normalize_granite_region_output(
             document_id,
             model_payload,
             evidence_context=evidence_context,
+            docling_table_quality=docling_table_quality,
         )
         metadata["mapper"] = model_output_schema_name
         return finalize(normalized, metadata)
@@ -108,6 +118,7 @@ def normalize_granite_region_output(
             document_id,
             model_payload,
             evidence_context=evidence_context,
+            docling_table_quality=docling_table_quality,
         )
         return finalize(normalized, metadata)
     if model_output_schema_name == "granite_receipt_payment_summary.v1":
@@ -142,6 +153,7 @@ def normalize_granite_region_output(
             document_id,
             model_payload,
             evidence_context=evidence_context,
+            docling_table_quality=docling_table_quality,
         )
         return finalize(normalized, metadata)
     return finalize(
@@ -246,11 +258,14 @@ def _invoice_line_items_output(
     payload: dict[str, Any],
     *,
     evidence_context: EvidenceContext | None,
+    docling_table_quality: DoclingTableQuality | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     line_items = invoice_line_item_dicts_from_payload(
         payload,
         evidence_context=evidence_context,
     )
+    consistency = gate_docling_authoritative_rows(line_items, docling_table_quality)
+    line_items = consistency.accepted_rows
     confidence = payload.get("confidence") if isinstance(payload.get("confidence"), dict) else {}
     normalized: dict[str, Any] = {
         "schema_name": "invoice",
@@ -263,7 +278,7 @@ def _invoice_line_items_output(
     totals = _invoice_totals(payload)
     if totals:
         normalized["totals"] = totals
-    return normalized, {
+    metadata = {
         "mapper": "granite_invoice_line_items.v1",
         "repairs": ["mapped_model_output_to_canonical_invoice_line_items"],
         "rejected_fields": _rejected_fields(
@@ -271,6 +286,7 @@ def _invoice_line_items_output(
             {"line_items", "totals", "confidence"},
         ),
     }
+    return apply_table_consistency_projection(normalized, metadata, consistency)
 
 
 def _invoice_payment_output(
@@ -310,6 +326,7 @@ def _medical_service_lines_output(
     payload: dict[str, Any],
     *,
     evidence_context: EvidenceContext | None,
+    docling_table_quality: DoclingTableQuality | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     confidence = payload.get("confidence") if isinstance(payload.get("confidence"), dict) else {}
     service_lines = payload.get("service_lines") or []
@@ -319,21 +336,22 @@ def _medical_service_lines_output(
             for item in service_lines
             if isinstance(item, dict)
         ]
-    return (
-        {
+    consistency = gate_docling_authoritative_rows(service_lines, docling_table_quality)
+    service_lines = consistency.accepted_rows
+    normalized = {
             "schema_name": "medical_eob",
             "schema_version": "v1",
             "document_id": str(document_id),
             "service_lines": service_lines,
             "confidence": confidence,
             "created_at": datetime.now(UTC).isoformat(),
-        },
-        {
-            "mapper": "granite_medical_service_lines.v1",
-            "repairs": ["mapped_model_output_to_canonical_medical_service_lines"],
-            "rejected_fields": _rejected_fields(payload, {"service_lines", "confidence"}),
-        },
-    )
+    }
+    metadata = {
+        "mapper": "granite_medical_service_lines.v1",
+        "repairs": ["mapped_model_output_to_canonical_medical_service_lines"],
+        "rejected_fields": _rejected_fields(payload, {"service_lines", "confidence"}),
+    }
+    return apply_table_consistency_projection(normalized, metadata, consistency)
 
 
 def _receipt_line_items_output(
@@ -341,6 +359,7 @@ def _receipt_line_items_output(
     payload: dict[str, Any],
     *,
     evidence_context: EvidenceContext | None,
+    docling_table_quality: DoclingTableQuality | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     line_items = _canonical_receipt_line_items(
         _invoice_line_item_records(payload),
@@ -351,6 +370,8 @@ def _receipt_line_items_output(
             payload.get("line_items") or [],
             evidence_context=evidence_context,
         )
+    consistency = gate_docling_authoritative_rows(line_items, docling_table_quality)
+    line_items = consistency.accepted_rows
     confidence = payload.get("confidence") if isinstance(payload.get("confidence"), dict) else {}
     transaction: dict[str, Any] = {}
     raw_totals = payload.get("totals")
@@ -374,7 +395,7 @@ def _receipt_line_items_output(
         "confidence": confidence,
         "created_at": datetime.now(UTC).isoformat(),
     }
-    return normalized, {
+    metadata = {
         "mapper": "granite_receipt_line_items.v1",
         "repairs": ["mapped_model_output_to_canonical_receipt_line_items"],
         "rejected_fields": _rejected_fields(
@@ -382,6 +403,7 @@ def _receipt_line_items_output(
             {"line_items", "totals", "confidence", "merchant_name", "order_number", "order_date"},
         ),
     }
+    return apply_table_consistency_projection(normalized, metadata, consistency)
 
 
 def _service_record_line_items_output(
@@ -389,6 +411,7 @@ def _service_record_line_items_output(
     payload: dict[str, Any],
     *,
     evidence_context: EvidenceContext | None,
+    docling_table_quality: DoclingTableQuality | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     records = _invoice_line_item_records(payload)
     line_items = _canonical_receipt_line_items(records, evidence_context=evidence_context)
@@ -396,6 +419,8 @@ def _service_record_line_items_output(
     if not line_items:
         line_items = _service_record_flat_line_items(payload, evidence_context=evidence_context)
         repairs.append("mapped_flat_service_record_fields_to_line_items")
+    consistency = gate_docling_authoritative_rows(line_items, docling_table_quality)
+    line_items = consistency.accepted_rows
     confidence = payload.get("confidence") if isinstance(payload.get("confidence"), dict) else {}
     transaction: dict[str, Any] = {}
     raw_totals = payload.get("totals")
@@ -420,7 +445,7 @@ def _service_record_line_items_output(
         "created_at": datetime.now(UTC).isoformat(),
         "metadata": {"document_family": "service_record"},
     }
-    return normalized, {
+    metadata = {
         "mapper": "granite_service_record_line_items.v1",
         "repairs": repairs,
         "rejected_fields": _rejected_fields(
@@ -447,6 +472,7 @@ def _service_record_line_items_output(
             },
         ),
     }
+    return apply_table_consistency_projection(normalized, metadata, consistency)
 
 
 def _receipt_payment_output(
@@ -572,6 +598,7 @@ def _canonical_invoice_line_items(
             "ordinal": int(item.get("ordinal") or len(normalized) + 1),
             "description": description,
             **({"service_date": service_date} if service_date else {}),
+            **line_item_provenance(item, evidence_context),
             **({"quantity": _number(item.get("quantity"))} if item.get("quantity") else {}),
             **({"unit": item.get("unit")} if item.get("unit") else {}),
             **({"unit_price": _money(item.get("unit_price"))} if item.get("unit_price") else {}),
@@ -581,7 +608,13 @@ def _canonical_invoice_line_items(
                 if (item.get("gl_hint") or item.get("category_hint"))
                 else {}
             ),
-            "evidence": [_evidence(_line_item_source_text(item, description), evidence_context)],
+            "evidence": [
+                line_item_evidence(
+                    item,
+                    _line_item_source_text(item, description),
+                    evidence_context,
+                )
+            ],
         }
         normalized.append(normalized_item)
     return normalized
@@ -605,11 +638,18 @@ def _canonical_receipt_line_items(
         normalized_item = {
             "ordinal": int(item.get("ordinal") or len(normalized) + 1),
             "description": description,
+            **line_item_provenance(item, evidence_context),
             **({"quantity": _number(item.get("quantity"))} if item.get("quantity") else {}),
             **({"unit_price": _money(item.get("unit_price"))} if item.get("unit_price") else {}),
             **({"amount": amount} if amount else {}),
             **({"sku": item.get("sku")} if item.get("sku") else {}),
-            "evidence": [_evidence(_line_item_source_text(item, description), evidence_context)],
+            "evidence": [
+                line_item_evidence(
+                    item,
+                    _line_item_source_text(item, description),
+                    evidence_context,
+                )
+            ],
         }
         normalized.append(normalized_item)
     return normalized
@@ -1186,7 +1226,13 @@ def _with_evidence_context(
             or copied.get("procedure_code")
             or copied.get("ordinal")
         )
-        copied["evidence"] = [_evidence(source_text, evidence_context)]
+        copied["evidence"] = [
+            line_item_evidence(
+                copied,
+                source_text,
+                evidence_context,
+            )
+        ]
     return copied
 
 
@@ -1196,7 +1242,7 @@ def _merge_evidence_context(
 ) -> dict[str, Any]:
     if evidence_context is None:
         return dict(item)
-    grounded = _evidence(item.get("source_text") or "", evidence_context)
+    grounded = line_item_evidence(item, item.get("source_text") or "", evidence_context)
     return {**item, **{key: value for key, value in grounded.items() if key != "source_text"}}
 
 

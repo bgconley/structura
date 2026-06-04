@@ -20,7 +20,10 @@
           "billed_amount": {"type": ["number", "string", "null"]},
           "allowed_amount": {"type": ["number", "string", "null"]},
           "paid_amount": {"type": ["number", "string", "null"]},
-          "patient_responsibility": {"type": ["number", "string", "null"]}
+          "patient_responsibility": {"type": ["number", "string", "null"]},
+          "row_index": {"type": ["integer", "string", "null"]},
+          "table_id": {"type": ["string", "null"]},
+          "page_number": {"type": ["integer", "string", "null"]}
         }
       }
     },

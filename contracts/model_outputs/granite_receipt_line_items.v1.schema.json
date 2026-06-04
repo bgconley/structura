@@ -18,7 +18,10 @@
           "quantity": {"type": ["number", "string", "null"]},
           "unit_price": {"type": ["number", "string", "null"]},
           "amount": {"type": ["number", "string", "null"]},
-          "sku": {"type": ["string", "null"], "maxLength": 80}
+          "sku": {"type": ["string", "null"], "maxLength": 80},
+          "row_index": {"type": ["integer", "string", "null"]},
+          "table_id": {"type": ["string", "null"]},
+          "page_number": {"type": ["integer", "string", "null"]}
         }
       }
     },
