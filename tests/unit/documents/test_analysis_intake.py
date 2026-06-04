@@ -171,6 +171,52 @@ def test_phase9_document_eligibility_states() -> None:
     )
 
 
+def test_phase9_intake_requires_structura_owned_evidence_locator() -> None:
+    source_text_only = build_phase9_document_intake(
+        {
+            "id": "doc-source-text-only",
+            "fields": [
+                {
+                    "fieldPath": "invoice.total_amount",
+                    "value": {"amount": 42.5, "currency": "USD"},
+                    "reviewStatus": "auto_accepted",
+                    "evidence": [
+                        {
+                            "sourceText": "Invoice total $42.50",
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+
+    assert source_text_only["documentQuality"]["evidence_locator_coverage"] == 0.0
+    assert source_text_only["eligibility"] == "analysis_review_only_evidence_sparse"
+
+    semantic_region_anchored = build_phase9_document_intake(
+        {
+            "id": "doc-semantic-region-anchored",
+            "fields": [
+                {
+                    "fieldPath": "invoice.total_amount",
+                    "value": {"amount": 42.5, "currency": "USD"},
+                    "reviewStatus": "auto_accepted",
+                    "evidence": [
+                        {
+                            "semanticRegionId": "region-1",
+                            "pageNumber": 1,
+                            "sourceText": "Invoice total $42.50",
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+
+    assert semantic_region_anchored["documentQuality"]["evidence_locator_coverage"] == 1.0
+    assert semantic_region_anchored["eligibility"] == "analysis_enabled_with_uncertainty"
+
+
 def test_phase9_output_mutation_guard_blocks_state_changes() -> None:
     violations = phase9_mutation_violations(
         {
