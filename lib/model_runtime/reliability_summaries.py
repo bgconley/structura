@@ -13,6 +13,7 @@ from lib.model_runtime.reliability_report_normalization import (
     get_value,
     int_value,
     list_value,
+    normalized_decision,
     sum_values,
 )
 from lib.model_runtime.reliability_versions import (
@@ -71,7 +72,7 @@ def candidate_admission_summary(run_id: str, documents: list[dict[str, Any]]) ->
     rejected = 0
     rejection_reasons: Counter[str] = Counter()
     for event in events:
-        decision = str(get_value(event, "decision") or "")
+        decision = normalized_decision(get_value(event, "decision"))
         if decision.startswith("admitted"):
             admitted += 1
         elif decision.startswith("rejected"):
@@ -107,7 +108,9 @@ def candidate_admission_summary(run_id: str, documents: list[dict[str, Any]]) ->
         "rejectedCount": rejected,
         "rejectionReasons": dict(sorted(rejection_reasons.items())),
         "duplicateSuppressionCount": sum(
-            1 for event in events if str(get_value(event, "decision")) == "rejected_duplicate"
+            1
+            for event in events
+            if normalized_decision(get_value(event, "decision")) == "rejected_duplicate"
         ),
     }
 

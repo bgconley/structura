@@ -112,3 +112,7 @@ def snake(key: str) -> str:
         else:
             chars.append(char)
     return "".join(chars).lstrip("_")
+
+
+def normalized_decision(value: Any) -> str:
+    return str(value or "").strip().lower()

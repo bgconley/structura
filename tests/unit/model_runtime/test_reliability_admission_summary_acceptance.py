@@ -93,6 +93,53 @@ def test_report_acceptance_fails_when_candidate_admission_summary_is_stale() -> 
     ]
 
 
+def test_report_acceptance_normalizes_candidate_admission_summary_decisions() -> None:
+    report = build_phase85_reliability_report(
+        run_id="phase85-admission-summary",
+        title_prefix="Phase 8.5 Admission Summary",
+        documents=[_document_report_with_cased_decisions()],
+    )
+    report["candidateAdmissionSummary"] = {
+        **report["candidateAdmissionSummary"],
+        "admittedCount": 0,
+        "rejectedCount": 0,
+        "rejectionReasons": {},
+        "duplicateSuppressionCount": 0,
+    }
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["candidateAdmissionSummary"]["status"] == "failed"
+    assert summary["checks"]["candidateAdmissionSummary"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-admission-summary",
+            "invalid": [
+                "admittedCount",
+                "rejectedCount",
+                "rejectionReasons",
+                "duplicateSuppressionCount",
+            ],
+            "details": report["candidateAdmissionSummary"],
+            "recomputed": {
+                "runId": "phase85-admission-summary",
+                "plannerVersion": report["runManifest"]["planner_version"],
+                "candidateGateVersion": CANDIDATE_GATE_VERSION,
+                "contractRegistryVersion": CONTRACT_REGISTRY_VERSION,
+                "regionEnvelopeVersion": report["runManifest"]["region_envelope_version"],
+                "admittedCount": 1,
+                "rejectedCount": 2,
+                "rejectionReasons": {
+                    "duplicate_candidate_fingerprint": 1,
+                    "missing_concrete_evidence": 1,
+                },
+                "duplicateSuppressionCount": 1,
+            },
+        }
+    ]
+
+
 def _document_report() -> dict[str, Any]:
     return {
         "document": {
@@ -131,6 +178,29 @@ def _document_report() -> dict[str, Any]:
             },
         ],
     }
+
+
+def _document_report_with_cased_decisions() -> dict[str, Any]:
+    document = _document_report()
+    document["admissionEvents"][0]["decision"] = " Admitted_Review_Required "
+    document["admissionEvents"][1]["decision"] = " Rejected_Missing_Evidence "
+    document["admissionEvents"].append(
+        {
+            "decision": " Rejected_Duplicate ",
+            "candidate_kind": "field",
+            "candidate_fingerprint": "duplicate-field-1",
+            **_admission_event_telemetry(),
+            "reasons": ["duplicate_candidate_fingerprint"],
+            "payload_json": {
+                "candidate": {
+                    "field_path": "invoice.total_amount",
+                    "value": "42.00",
+                    "evidence": [{"page_id": "page-1"}],
+                }
+            },
+        }
+    )
+    return document
 
 
 def _admission_event_telemetry() -> dict[str, str]:

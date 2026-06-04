@@ -13,6 +13,7 @@ from lib.model_runtime.reliability_report_normalization import (
     get_value,
     int_value,
     list_value,
+    normalized_decision,
     sum_values,
 )
 from lib.model_runtime.reliability_summaries import (
@@ -329,7 +330,7 @@ def report_document_rows(report: dict[str, Any]) -> tuple[bool, list[dict[str, A
 def candidate_rejection_summary(run_id: str, documents: list[dict[str, Any]]) -> dict[str, Any]:
     rejection_reasons: Counter[str] = Counter()
     for event in all_rows(documents, "admissionEvents"):
-        decision = str(get_value(event, "decision") or "")
+        decision = normalized_decision(get_value(event, "decision"))
         if not decision.startswith("rejected"):
             continue
         reasons = list_value(get_value(event, "reasons"))
@@ -348,7 +349,7 @@ def _candidate_admission_evidence(documents: list[dict[str, Any]]) -> dict[str, 
     rejected = 0
     rejection_reasons: Counter[str] = Counter()
     for event in all_rows(documents, "admissionEvents"):
-        decision = str(get_value(event, "decision") or "")
+        decision = normalized_decision(get_value(event, "decision"))
         if decision.startswith("admitted"):
             admitted += 1
         elif decision.startswith("rejected"):
@@ -365,7 +366,7 @@ def _candidate_admission_evidence(documents: list[dict[str, Any]]) -> dict[str, 
         "duplicateSuppressionCount": sum(
             1
             for event in all_rows(documents, "admissionEvents")
-            if str(get_value(event, "decision")) == "rejected_duplicate"
+            if normalized_decision(get_value(event, "decision")) == "rejected_duplicate"
         ),
     }
 
