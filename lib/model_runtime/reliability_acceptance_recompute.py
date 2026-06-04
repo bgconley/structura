@@ -26,6 +26,7 @@ __all__ = [
     "recomputed_planner_summary",
     "recomputed_repeatability_fingerprints",
     "recomputed_retry_summary",
+    "recomputed_safe_outcome_summary",
     "recomputed_visual_input_plan_summary",
     "violating_hard_invariants_summary",
     "violating_operational_slo_summary",
@@ -219,6 +220,30 @@ def recomputed_extraction_pressure(report: dict[str, Any]) -> dict[str, Any] | N
     }
 
 
+def recomputed_safe_outcome_summary(report: dict[str, Any]) -> dict[str, Any] | None:
+    documents = _document_rows(report)
+    if documents is None:
+        return None
+    valid, document_rows = documents
+    if not valid:
+        return {}
+    planner_rows = all_rows(document_rows, "planner")
+    admission_events = all_rows(document_rows, "admissionEvents")
+    job_rows = all_rows(document_rows, "jobs")
+    if not planner_rows and not admission_events and not job_rows:
+        return None
+    return {
+        "safeAbstentionCount": sum_values(
+            planner_rows,
+            "abstention_count",
+            "abstentionCount",
+        ),
+        "safeSkipCount": sum_values(planner_rows, "skipped_task_count", "skippedTaskCount"),
+        "safeRejectionCount": _candidate_admission_evidence(document_rows)["rejectedCount"],
+        "unsafeFailureCount": _unsafe_failure_count(job_rows),
+    }
+
+
 def recomputed_hard_invariants(report: dict[str, Any]) -> dict[str, Any] | None:
     documents = _document_rows(report)
     if documents is None:
@@ -340,6 +365,15 @@ def _candidate_admission_evidence(documents: list[dict[str, Any]]) -> dict[str, 
         "rejectedCount": rejected,
         "rejectionReasons": dict(sorted(rejection_reasons.items())),
     }
+
+
+def _unsafe_failure_count(job_rows: list[dict[str, Any]]) -> int:
+    unsafe = 0
+    for job in job_rows:
+        status = str(get_value(job, "status") or "")
+        if status in {"failed", "dead_letter", "pipeline_failed"}:
+            unsafe += int_value(get_value(job, "count"), default=1)
+    return unsafe
 
 
 def _region_envelope(extraction: dict[str, Any]) -> dict[str, Any]:
