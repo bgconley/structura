@@ -127,6 +127,7 @@ def dedupe_observation_candidates(
 def observation_key(candidate: ObservationCandidateFact) -> tuple[Any, ...]:
     return (
         normalized_text_key(candidate.observation_family),
+        normalized_text_key(candidate.metadata.get("semantic_type")),
         normalized_text_key(candidate.field_name),
         normalized_text_key(candidate.value_type),
         json_key(candidate.value),

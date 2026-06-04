@@ -49,6 +49,9 @@ def observation_fingerprint(
         {
             "kind": "observation",
             "family": _normalized_text(candidate.observation_family),
+            "semantic_type": _normalized_text(
+                candidate.metadata.get("semantic_type") or context.semantic_type
+            ),
             "field_name": _normalized_text(candidate.field_name),
             "value": _normalized_json_value(candidate.value),
             "region": _region_key(context, candidate.evidence),
@@ -84,6 +87,9 @@ def raw_payload_fingerprint(
         fingerprint_payload = {
             "kind": "observation",
             "family": _normalized_text(payload.get("family") or payload.get("observation_family")),
+            "semantic_type": _normalized_text(
+                payload.get("semantic_type") or context.semantic_type
+            ),
             "field_name": _normalized_text(field_path or payload.get("field_name")),
             "value": _normalized_json_value(payload.get("value")),
             "region": _region_key(context, _evidence(payload)),

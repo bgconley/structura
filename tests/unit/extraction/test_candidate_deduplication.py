@@ -175,3 +175,29 @@ def test_candidate_deduplication_preserves_same_observation_from_distinct_region
         ("Customer requested inspection", "region-1"),
         ("Customer requested inspection", "region-2"),
     ]
+
+
+def test_candidate_deduplication_preserves_same_observation_from_distinct_semantic_types() -> None:
+    first = ObservationCandidateFact(
+        observation_family="vehicle",
+        field_name="service_note",
+        value_type="string",
+        value="Customer requested inspection",
+        evidence=[{"page_number": 1, "semantic_region_id": "region-1"}],
+        metadata={"semantic_type": "service_line_item_table"},
+    )
+    second = ObservationCandidateFact(
+        observation_family="vehicle",
+        field_name="service_note",
+        value_type="string",
+        value="Customer requested inspection",
+        evidence=[{"page_number": 1, "semantic_region_id": "region-1"}],
+        metadata={"semantic_type": "vehicle_information_block"},
+    )
+
+    candidates = dedupe_observation_candidates([first, second])
+
+    assert [item.metadata["semantic_type"] for item in candidates] == [
+        "service_line_item_table",
+        "vehicle_information_block",
+    ]

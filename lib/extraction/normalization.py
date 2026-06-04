@@ -168,7 +168,14 @@ def observation_candidates_from_extraction(
                 confidence=_confidence_or_none(item.get("confidence")),
                 validation=validation.as_json(),
                 status="needs_review",
-                metadata={"source_text": item.get("source_text")},
+                metadata={
+                    "source_text": item.get("source_text"),
+                    **(
+                        {"semantic_type": str(item["semantic_type"])}
+                        if item.get("semantic_type") not in (None, "")
+                        else {}
+                    ),
+                },
             )
         )
     return _dedupe_observation_candidates(candidates)

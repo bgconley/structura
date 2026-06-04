@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from datetime import date
 from typing import Any, cast
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from lib.extraction.candidate_admission import (
     CANDIDATE_GATE_VERSION,
@@ -12,6 +12,7 @@ from lib.extraction.candidate_admission import (
     persist_candidate_admission_events,
     rejected_candidates_from_payload,
 )
+from lib.extraction.candidate_admission_fingerprints import observation_fingerprint
 from lib.extraction.contract_registry import CONTRACT_REGISTRY_VERSION
 from lib.extraction.models import (
     CandidateFact,
@@ -1038,6 +1039,29 @@ def test_admitted_candidates_carry_admission_fingerprints_for_report_evidence() 
     )
 
 
+def test_observation_admission_fingerprint_includes_semantic_type() -> None:
+    semantic_region_id = uuid4()
+    payment_context = _context(
+        semantic_region_id=semantic_region_id,
+        semantic_type="receipt_payment_summary",
+    )
+    merchant_context = _context(
+        semantic_region_id=semantic_region_id,
+        semantic_type="merchant_information_block",
+    )
+    candidate = ObservationCandidateFact(
+        observation_family="receipt",
+        field_name="visible_note",
+        value_type="string",
+        value="counter service",
+        evidence=[_evidence(payment_context)],
+    )
+
+    assert observation_fingerprint(candidate, payment_context) != observation_fingerprint(
+        candidate, merchant_context
+    )
+
+
 def test_missing_evidence_rejections_are_recorded_when_no_candidates_are_admitted() -> None:
     context = _context()
 
@@ -1430,13 +1454,15 @@ def _context(
     *,
     canonical_target_schema: str = "receipt",
     source_engine: str = "granite_vision_3b",
+    semantic_region_id: UUID | None = None,
+    semantic_type: str = "receipt_payment_summary",
 ) -> CandidateAdmissionContext:
     return CandidateAdmissionContext(
         document_id=uuid4(),
         run_scope=ExtractionRunScope.semantic_region(
             semantic_annotation_id=uuid4(),
-            source_semantic_region_id=uuid4(),
-            semantic_type="receipt_payment_summary",
+            source_semantic_region_id=semantic_region_id or uuid4(),
+            semantic_type=semantic_type,
             granite_task="kvp",
             plan_id=uuid4(),
             plan_task_id=uuid4(),
