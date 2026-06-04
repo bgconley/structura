@@ -10,7 +10,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.run_model_corpus import (  # noqa: E402
+from lib.model_runtime.model_corpus_manifest import (  # noqa: E402
     AGGREGATE_EVIDENCE_METRICS,
     EVIDENCE_SECTION_METRICS,
     MANIFEST_RUN_PROFILE_KEYS,
@@ -20,8 +20,8 @@ from scripts.run_model_corpus import (  # noqa: E402
     _evidence_artifact_profiles,
     _evidence_artifact_run_id,
     _load_evidence_artifact,
-    _metric_float,
     evaluate_model_corpus_manifest,
+    evidence_metric_number,
 )
 
 
@@ -168,7 +168,7 @@ def _required_artifact_metric(
         raise SystemExit(
             f"Model corpus evidence {section} artifact missing metric evidence {metric}."
         )
-    return _metric_float(metrics[metric], section=section, metric=metric)
+    return evidence_metric_number(metrics[metric], section=section, metric=metric)
 
 
 def _aggregate_metric(artifacts: dict[str, dict[str, Any]], metric: str) -> float:
@@ -177,7 +177,7 @@ def _aggregate_metric(artifacts: dict[str, dict[str, Any]], metric: str) -> floa
         artifact_metrics = artifact.get("metrics")
         if not isinstance(artifact_metrics, dict) or metric not in artifact_metrics:
             continue
-        actual = _metric_float(artifact_metrics[metric], section=section, metric=metric)
+        actual = evidence_metric_number(artifact_metrics[metric], section=section, metric=metric)
         if value is None:
             value = actual
         elif abs(actual - value) > 1e-9:

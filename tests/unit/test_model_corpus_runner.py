@@ -8,9 +8,9 @@ from typing import Any
 
 import pytest
 
+from lib.model_runtime.model_corpus_manifest import evaluate_model_corpus_manifest
 from lib.model_runtime.profiles import QWEN_SEMANTIC_PROFILE
 from lib.model_runtime.reliability_report import PIPELINE_VERSION
-from scripts.run_model_corpus import evaluate_model_corpus_manifest
 
 
 def test_model_corpus_runner_requires_model_backed_evidence_when_requested() -> None:
