@@ -233,6 +233,7 @@ def test_phase9_output_mutation_guard_blocks_state_changes() -> None:
             "canonicalFields": [{"fieldPath": "invoice.total_amount"}],
             "relationships": [{"relationshipType": "invoice_for"}],
             "tags": ["tax"],
+            "tagIds": ["tag-1"],
             "reviewStatus": "auto_accepted",
         }
     )
@@ -241,6 +242,7 @@ def test_phase9_output_mutation_guard_blocks_state_changes() -> None:
         "canonicalFields",
         "relationships",
         "tags",
+        "tagIds",
         "reviewStatus",
     ]
 
@@ -253,6 +255,7 @@ def test_phase9_output_mutation_guard_blocks_snake_case_state_changes() -> None:
             "document_relationships": [{"relationship_type": "invoice_for"}],
             "folder_ids": ["folder-1"],
             "primary_folder_id": "folder-1",
+            "tag_ids": ["tag-1"],
             "document_deadlines": [{"due_on": "2026-06-01"}],
             "review_tasks": [{"id": "task-1"}],
             "review_status": "auto_accepted",
@@ -264,6 +267,7 @@ def test_phase9_output_mutation_guard_blocks_snake_case_state_changes() -> None:
         "document_relationships",
         "folder_ids",
         "primary_folder_id",
+        "tag_ids",
         "document_deadlines",
         "review_tasks",
         "review_status",

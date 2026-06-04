@@ -39,6 +39,8 @@ BLOCKED_PHASE9_MUTATION_KEYS = (
     "primaryFolderId",
     "primary_folder_id",
     "tags",
+    "tagIds",
+    "tag_ids",
     "deadlines",
     "documentDeadlines",
     "document_deadlines",
