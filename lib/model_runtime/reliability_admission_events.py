@@ -10,6 +10,7 @@ from lib.model_runtime.reliability_report_normalization import (
     dict_value,
     get_value,
 )
+from lib.model_runtime.source_engines import is_model_source_engine
 
 ViolationMap = dict[str, list[dict[str, Any]]]
 
@@ -40,14 +41,6 @@ _PRIMARY_VALUE_KEYS = {
     "text",
     "total",
     "value",
-}
-_MODEL_SOURCE_ENGINES = {
-    "granite",
-    "granite_vision",
-    "model",
-    "model_runtime",
-    "qwen",
-    "qwen_vl",
 }
 
 
@@ -111,8 +104,8 @@ def _is_admitted(event: dict[str, Any]) -> bool:
 
 
 def _is_model_backed_event(event: dict[str, Any]) -> bool:
-    source_engine = str(get_value(event, "source_engine", "sourceEngine") or "").lower()
-    if source_engine in _MODEL_SOURCE_ENGINES:
+    source_engine = get_value(event, "source_engine", "sourceEngine")
+    if is_model_source_engine(source_engine):
         return True
     return get_value(event, "semantic_region_id", "semanticRegionId") not in (None, "")
 

@@ -9,27 +9,14 @@ from lib.model_runtime.reliability_report_normalization import (
     get_value,
     list_value,
 )
+from lib.model_runtime.source_engines import (
+    is_model_source_engine,
+    is_non_model_source_engine,
+)
 
 ViolationMap = dict[str, list[dict[str, Any]]]
 
 _ACCEPTED_STATUSES = {"auto_accepted", "user_confirmed", "user_corrected", "accepted"}
-_MODEL_SOURCE_ENGINES = {
-    "granite",
-    "granite_vision",
-    "model",
-    "model_runtime",
-    "qwen",
-    "qwen_vl",
-}
-_NON_MODEL_SOURCE_ENGINES = {
-    "",
-    "deterministic",
-    "docling_text",
-    "fixture",
-    "heuristic",
-    "system",
-    "system_reconciler",
-}
 _REQUIRED_FIELD_HINTS = {
     "invoice.invoice_number",
     "invoice.issued_date",
@@ -233,10 +220,10 @@ def _is_auto_accepted_model_semantic_region_extraction(extraction: dict[str, Any
 
 
 def _is_model_backed_extraction(extraction: dict[str, Any]) -> bool:
-    source_engine = str(get_value(extraction, "source_engine", "sourceEngine") or "").lower()
-    if source_engine in _MODEL_SOURCE_ENGINES:
+    source_engine = get_value(extraction, "source_engine", "sourceEngine")
+    if is_model_source_engine(source_engine):
         return True
-    if source_engine in _NON_MODEL_SOURCE_ENGINES:
+    if is_non_model_source_engine(source_engine):
         return False
     return bool(
         get_value(

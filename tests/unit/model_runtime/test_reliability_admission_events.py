@@ -56,6 +56,29 @@ def test_hard_invariants_flag_missing_admission_event_telemetry() -> None:
     }
 
 
+def test_hard_invariants_require_region_envelope_for_versioned_model_sources() -> None:
+    document = _document_with_versioned_model_source_missing_region_envelope()
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 1
+    assert summary["invariants"]["admissionEventsMissingTelemetry"] == {
+        "description": (
+            "Admission events must include queryable lineage, gate versions, "
+            "and candidate fingerprints."
+        ),
+        "violationCount": 1,
+        "examples": [
+            {
+                "reason": "missing_region_envelope_version",
+                "documentId": None,
+                "entityId": "line-fingerprint-versioned",
+            }
+        ],
+    }
+
+
 def test_report_acceptance_fails_when_admission_event_telemetry_is_missing() -> None:
     report = _passing_report_with_documents([_document_with_missing_telemetry()])
 
@@ -100,6 +123,31 @@ def _document_missing_run_lineage() -> dict[str, Any]:
                 "contract_registry_version": CONTRACT_REGISTRY_VERSION,
                 "region_envelope_version": REGION_ENVELOPE_VERSION,
                 "source_engine": "granite",
+                "evidence_concrete": True,
+                "payload_json": {
+                    "candidate": {
+                        "description": "Labor",
+                        "evidence": [{"page_id": "page-1", "semantic_region_id": "region-1"}],
+                    }
+                },
+            }
+        ],
+    }
+
+
+def _document_with_versioned_model_source_missing_region_envelope() -> dict[str, Any]:
+    return {
+        "document": {"id": "doc-versioned-model-source", "document_family": "invoice"},
+        "admissionEvents": [
+            {
+                "decision": "admitted_review_required",
+                "candidate_kind": "line_item",
+                "candidate_fingerprint": "line-fingerprint-versioned",
+                "run_id": "phase85-smoke-versioned",
+                "planner_version": "planner-v1",
+                "candidate_gate_version": CANDIDATE_GATE_VERSION,
+                "contract_registry_version": CONTRACT_REGISTRY_VERSION,
+                "source_engine": "granite_vision_3b",
                 "evidence_concrete": True,
                 "payload_json": {
                     "candidate": {

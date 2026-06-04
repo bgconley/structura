@@ -108,6 +108,34 @@ def test_hard_invariants_flag_title_derived_seller_source_engine_alias() -> None
     ]
 
 
+def test_hard_invariants_flag_versioned_model_source_engine_auto_acceptance() -> None:
+    for source_engine in ("granite_vision_3b", "qwen3_vl_8b"):
+        document = _safe_document_report()
+        document["extractions"].append(
+            {
+                "schema_name": "invoice",
+                "extraction_scope": "semantic_region",
+                "source_semantic_region_id": "region-versioned",
+                "source_engine": source_engine,
+                "review_status": "auto_accepted",
+                "is_current": True,
+            }
+        )
+
+        summary = evaluate_hard_correctness_invariants([document])
+
+        assert summary["status"] == "failed"
+        assert summary["totalViolationCount"] == 1
+        assert summary["invariants"]["modelBackedSemanticRegionAutoAccepted"]["violationCount"] == 1
+        assert summary["invariants"]["modelBackedSemanticRegionAutoAccepted"]["examples"] == [
+            {
+                "reason": "model_backed_semantic_region_auto_accepted",
+                "documentId": None,
+                "entityId": None,
+            }
+        ]
+
+
 def test_hard_invariants_flag_rejected_candidate_rows_inserted() -> None:
     document = _safe_document_report()
     document["admissionEvents"].append(
