@@ -141,6 +141,54 @@ def test_phase9_intake_surfaces_planner_task_explanations_for_review() -> None:
     ]
 
 
+def test_phase9_intake_summarizes_candidate_rejections_for_review() -> None:
+    intake = build_phase9_document_intake(
+        {
+            "id": "doc-candidate-rejections",
+            "admissionEvents": [
+                {
+                    "id": "event-rejected",
+                    "decision": "rejected_placeholder_value",
+                    "reasons": ["placeholder_or_literal_null"],
+                    "candidateKind": "field",
+                    "candidateFingerprint": "fingerprint-1",
+                    "fieldPath": "invoice.total_amount",
+                    "semanticType": "payment_summary",
+                    "modelOutputSchemaName": "granite_payment_summary.v1",
+                    "sourceEngine": "granite_vision_3b",
+                    "payloadJson": {
+                        "candidate": {"value": "null"},
+                        "rawModelOutput": {"debug": "excluded from review surface"},
+                    },
+                },
+                {
+                    "id": "event-admitted",
+                    "decision": "admitted",
+                    "reasons": [],
+                    "candidateKind": "field",
+                    "candidateFingerprint": "fingerprint-2",
+                },
+            ],
+        }
+    )
+
+    assert intake["review"]["candidateRejections"] == [
+        {
+            "admissionEventId": "event-rejected",
+            "decision": "rejected_placeholder_value",
+            "reasons": ["placeholder_or_literal_null"],
+            "candidateKind": "field",
+            "candidateFingerprint": "fingerprint-1",
+            "fieldPath": "invoice.total_amount",
+            "semanticType": "payment_summary",
+            "modelOutputSchemaName": "granite_payment_summary.v1",
+            "sourceEngine": "granite_vision_3b",
+            "surface": "review",
+            "uncertaintyLabel": "rejected_not_truth",
+        }
+    ]
+
+
 def test_phase9_intake_routes_review_required_detail_rows_to_review_surface() -> None:
     intake = build_phase9_document_intake(
         {

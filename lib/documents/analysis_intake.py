@@ -102,11 +102,7 @@ def _review_surface(document: Mapping[str, Any]) -> dict[str, Any]:
             "canonicalObservations",
         )
     ]
-    rejections = [
-        _surface_item(event, surface="review", uncertainty_label="rejected_not_truth")
-        for event in _rows(document, "admissionEvents", "candidateAdmissionEvents")
-        if str(_value(event, "decision") or "").startswith("rejected")
-    ]
+    rejections = _candidate_rejection_summaries(document)
     review_items = [*field_candidates, *line_item_candidates, *observation_candidates]
     return {
         "fieldCandidates": field_candidates,
@@ -191,6 +187,47 @@ def _uncertain_item(item: Mapping[str, Any]) -> dict[str, Any]:
         surface="review",
         uncertainty_label="uncertain_review_required",
     )
+
+
+def _candidate_rejection_summaries(document: Mapping[str, Any]) -> list[dict[str, Any]]:
+    summaries: list[dict[str, Any]] = []
+    for event in _rows(document, "admissionEvents", "candidateAdmissionEvents"):
+        decision = _status(event, "decision")
+        if not decision.startswith("rejected"):
+            continue
+        summaries.append(
+            _surface_item(
+                _compact_mapping(
+                    {
+                        "admissionEventId": _value(
+                            event,
+                            "admissionEventId",
+                            "admission_event_id",
+                            "id",
+                        ),
+                        "decision": decision,
+                        "reasons": _list(_value(event, "reasons")),
+                        "candidateKind": _value(event, "candidateKind", "candidate_kind"),
+                        "candidateFingerprint": _value(
+                            event,
+                            "candidateFingerprint",
+                            "candidate_fingerprint",
+                        ),
+                        "fieldPath": _value(event, "fieldPath", "field_path"),
+                        "semanticType": _value(event, "semanticType", "semantic_type"),
+                        "modelOutputSchemaName": _value(
+                            event,
+                            "modelOutputSchemaName",
+                            "model_output_schema_name",
+                        ),
+                        "sourceEngine": _value(event, "sourceEngine", "source_engine"),
+                    }
+                ),
+                surface="review",
+                uncertainty_label="rejected_not_truth",
+            )
+        )
+    return summaries
 
 
 def _is_review_required(item: Mapping[str, Any]) -> bool:
