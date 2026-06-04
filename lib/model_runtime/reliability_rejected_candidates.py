@@ -34,7 +34,7 @@ def _rejected_candidate_identities(doc: dict[str, Any]) -> set[str]:
     for event in list_value(get_value(doc, "admissionEvents", "candidateAdmissionEvents")):
         if not isinstance(event, dict):
             continue
-        decision = str(get_value(event, "decision") or "")
+        decision = _normalized_decision(get_value(event, "decision"))
         if not decision.startswith("rejected"):
             continue
         candidate_kind = str(get_value(event, "candidate_kind", "candidateKind") or "field")
@@ -149,6 +149,10 @@ def _normalized_identity_text(value: Any) -> str:
     if value in (None, ""):
         return ""
     return " ".join(str(value).strip().lower().split())
+
+
+def _normalized_decision(value: Any) -> str:
+    return str(value or "").strip().lower()
 
 
 def _add_violation(

@@ -337,6 +337,48 @@ def test_hard_invariants_flag_rejected_candidate_canonical_alias_rows_inserted()
     ]
 
 
+def test_hard_invariants_normalize_rejected_event_decisions_before_matching_rows() -> None:
+    document = _safe_document_report()
+    document["admissionEvents"].append(
+        {
+            "decision": " Rejected_Missing_Evidence ",
+            "candidateKind": "observation",
+            "candidateFingerprint": "rejected-observation-fingerprint",
+            **_admission_event_telemetry(),
+            "fieldPath": "service.note",
+            "payloadJson": {
+                "candidate": {
+                    "observationFamily": "service_record",
+                    "fieldName": "service.note",
+                    "valueJson": {"text": "Deferred rear tire service"},
+                },
+            },
+        }
+    )
+    document["observationCandidates"] = [
+        {
+            "id": "observation-rejected",
+            "observationFamily": "service_record",
+            "fieldName": "service.note",
+            "valueJson": {"text": "Deferred rear tire service"},
+            "status": "needs_review",
+        }
+    ]
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 1
+    assert summary["invariants"]["rejectedCandidatesInserted"]["violationCount"] == 1
+    assert summary["invariants"]["rejectedCandidatesInserted"]["examples"] == [
+        {
+            "reason": "rejected_candidate_inserted",
+            "documentId": "doc-safe",
+            "entityId": "observation-rejected",
+        }
+    ]
+
+
 def test_hard_invariants_flag_fabricated_canonical_field_alias_rows() -> None:
     document = _safe_document_report()
     document["canonicalFields"] = [
