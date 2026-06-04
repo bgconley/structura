@@ -229,7 +229,7 @@ def recomputed_extraction_pressure(report: dict[str, Any]) -> dict[str, Any] | N
         if normalized_text(get_value(task, "status")).startswith("selected")
     ]
     selected_by_backend = Counter(
-        str(get_value(task, "extractor_backend", "extractorBackend") or "unknown")
+        normalized_text(get_value(task, "extractor_backend", "extractorBackend")) or "unknown"
         for task in selected_tasks
     )
     selected_by_page = Counter(

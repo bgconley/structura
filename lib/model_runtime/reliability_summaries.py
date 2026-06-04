@@ -229,7 +229,7 @@ def extraction_pressure(documents: list[dict[str, Any]]) -> dict[str, Any]:
         task for task in tasks if normalized_text(get_value(task, "status")).startswith("selected")
     ]
     selected_by_backend = Counter(
-        str(get_value(task, "extractor_backend", "extractorBackend") or "unknown")
+        normalized_text(get_value(task, "extractor_backend", "extractorBackend")) or "unknown"
         for task in selected_tasks
     )
     selected_by_page = Counter(
