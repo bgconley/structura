@@ -35,7 +35,9 @@ def evaluate_planner_tasks(documents: list[dict[str, Any]], violations: Violatio
     for task in all_rows(documents, "plannerTasks"):
         if not _is_selected_or_enqueued_task(task) or not _is_granite_semantic_region_task(task):
             continue
-        if not get_value(task, "model_output_schema_name", "modelOutputSchemaName"):
+        if not _normalized_text(
+            get_value(task, "model_output_schema_name", "modelOutputSchemaName")
+        ):
             _add_violation(
                 violations,
                 "selectedGraniteTasksMissingContract",

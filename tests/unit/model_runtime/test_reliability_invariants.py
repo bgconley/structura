@@ -32,6 +32,25 @@ def test_hard_invariants_flag_unsafe_planner_admission_and_extraction_rows() -> 
     assert summary["invariants"]["modelBackedSemanticRegionAutoAccepted"]["violationCount"] == 1
 
 
+def test_hard_invariants_treat_whitespace_granite_contract_as_missing() -> None:
+    document = _safe_document_report()
+    document["plannerTasks"][0]["model_output_schema_name"] = "   "
+    document["plannerTasks"][0]["modelOutputSchemaName"] = "   "
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 1
+    assert summary["invariants"]["selectedGraniteTasksMissingContract"]["violationCount"] == 1
+    assert summary["invariants"]["selectedGraniteTasksMissingContract"]["examples"] == [
+        {
+            "reason": "missing_model_output_schema_name",
+            "documentId": "task-selected",
+            "entityId": "task-selected",
+        }
+    ]
+
+
 def test_hard_invariants_flag_admitted_artifacts_placeholders_and_fabrication() -> None:
     summary = evaluate_hard_correctness_invariants([_artifact_document_report()])
 
