@@ -14,6 +14,12 @@ DEFAULT_MANIFEST = Path("tests/fixtures/model_corpus/phase8_5_model_manifest.exa
 
 REQUIRED_EVIDENCE_SECTIONS = ("qwen", "granite", "textEmbedding", "visualEmbedding")
 REQUIRED_MODEL_BACKED_EVIDENCE_KEYS = ("profile", "runId", "measuredAt", "evidencePath")
+REQUIRED_EVIDENCE_ARTIFACT_PAYLOAD_KEYS = (
+    "acceptanceGates",
+    "checks",
+    "documents",
+    "metrics",
+)
 REQUIRED_METRICS = (
     "qwen_handwriting_route_success_rate",
     "qwen_review_required_rate",
@@ -136,12 +142,13 @@ def _assert_model_backed_evidence(
     if not evidence_path.is_file():
         raise SystemExit(f"Model corpus evidence {section} evidencePath not found: {evidence_path}")
     evidence_artifact = _load_evidence_artifact(section, evidence_path)
-    artifact_run_id = evidence_artifact.get("runId") or evidence_artifact.get("run_id")
+    artifact_run_id = _evidence_artifact_run_id(evidence_artifact)
     if artifact_run_id is not None and str(artifact_run_id) != str(evidence["runId"]):
         raise SystemExit(
             f"Model corpus evidence {section} runId mismatch: "
             f"{artifact_run_id} != {evidence['runId']}"
         )
+    _assert_evidence_artifact_lineage(section, evidence_artifact, evidence_path)
 
 
 def _evidence_summary(evidence: dict[str, Any]) -> dict[str, str]:
@@ -172,6 +179,50 @@ def _load_evidence_artifact(section: str, path: Path) -> dict[str, Any]:
             f"Model corpus evidence {section} evidencePath must contain a JSON object: {path}"
         )
     return payload
+
+
+def _evidence_artifact_run_id(artifact: dict[str, Any]) -> Any:
+    run_id = artifact.get("runId") or artifact.get("run_id")
+    if run_id is not None:
+        return run_id
+    run_manifest = artifact.get("runManifest") or artifact.get("run_manifest")
+    if isinstance(run_manifest, dict):
+        return run_manifest.get("run_id") or run_manifest.get("runId")
+    return None
+
+
+def _assert_evidence_artifact_lineage(
+    section: str,
+    artifact: dict[str, Any],
+    path: Path,
+) -> None:
+    if artifact.get("fixtureType") == "deterministic_fixture":
+        raise SystemExit(
+            f"Model corpus evidence {section} evidencePath must not be fixture-backed: {path}"
+        )
+
+    run_manifest = artifact.get("runManifest") or artifact.get("run_manifest")
+    if not isinstance(run_manifest, dict):
+        raise SystemExit(
+            f"Model corpus evidence {section} evidencePath must include "
+            f"report evidence runManifest: {path}"
+        )
+    pipeline_version = run_manifest.get("pipeline_version") or run_manifest.get("pipelineVersion")
+    if pipeline_version != _expected_pipeline_version():
+        raise SystemExit(
+            f"Model corpus evidence {section} evidencePath has unexpected "
+            f"pipeline_version {pipeline_version!r}: {path}"
+        )
+    if not any(key in artifact for key in REQUIRED_EVIDENCE_ARTIFACT_PAYLOAD_KEYS):
+        raise SystemExit(
+            f"Model corpus evidence {section} evidencePath must include report evidence: {path}"
+        )
+
+
+def _expected_pipeline_version() -> str:
+    from lib.model_runtime.reliability_report import PIPELINE_VERSION
+
+    return PIPELINE_VERSION
 
 
 if __name__ == "__main__":

@@ -146,9 +146,9 @@ def test_model_corpus_script_requires_parseable_evidence_artifacts(tmp_path) -> 
 
 def test_model_corpus_script_requires_matching_evidence_artifact_run_id(tmp_path) -> None:
     payload = _manifest(fixture_type="model_backed")
-    _write_evidence_artifacts(tmp_path, payload)
+    _write_evidence_artifacts(tmp_path, payload, fixture_type="model_backed")
     (tmp_path / "evidence" / "granite.json").write_text(
-        json.dumps({"runId": "different-run"}),
+        json.dumps(_evidence_artifact("different-run", fixture_type="model_backed")),
         encoding="utf-8",
     )
     manifest = tmp_path / "phase8_5_model_manifest.json"
@@ -170,6 +170,63 @@ def test_model_corpus_script_requires_matching_evidence_artifact_run_id(tmp_path
     assert result.returncode != 0
     assert "granite" in result.stderr
     assert "runId mismatch" in result.stderr
+
+
+def test_model_corpus_script_requires_report_lineage_in_evidence_artifacts(tmp_path) -> None:
+    payload = _manifest(fixture_type="model_backed")
+    _write_evidence_artifacts(tmp_path, payload)
+    manifest = tmp_path / "phase8_5_model_manifest.json"
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_model_corpus.py",
+            "--require-model-backed",
+            "--manifest",
+            str(manifest),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "qwen" in result.stderr
+    assert "report evidence" in result.stderr
+
+
+def test_model_corpus_script_rejects_fixture_evidence_artifacts(tmp_path) -> None:
+    payload = _manifest(fixture_type="model_backed")
+    _write_evidence_artifacts(tmp_path, payload, fixture_type="model_backed")
+    (tmp_path / "evidence" / "visualEmbedding.json").write_text(
+        json.dumps(
+            _evidence_artifact(
+                "phase85-fixture-run-visual",
+                fixture_type="deterministic_fixture",
+            )
+        ),
+        encoding="utf-8",
+    )
+    manifest = tmp_path / "phase8_5_model_manifest.json"
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_model_corpus.py",
+            "--require-model-backed",
+            "--manifest",
+            str(manifest),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "visualEmbedding" in result.stderr
+    assert "fixture-backed" in result.stderr
 
 
 def _manifest(*, fixture_type: str) -> dict[str, object]:
@@ -254,7 +311,12 @@ def _evidence(profile: str, slug: str) -> dict[str, object]:
     }
 
 
-def _write_evidence_artifacts(tmp_path: Path, payload: dict[str, object]) -> None:
+def _write_evidence_artifacts(
+    tmp_path: Path,
+    payload: dict[str, object],
+    *,
+    fixture_type: str | None = None,
+) -> None:
     evidence_dir = tmp_path / "evidence"
     evidence_dir.mkdir()
     evidence_sections = payload["evidence"]
@@ -262,7 +324,24 @@ def _write_evidence_artifacts(tmp_path: Path, payload: dict[str, object]) -> Non
     for section, evidence in evidence_sections.items():
         assert isinstance(evidence, dict)
         evidence["evidencePath"] = f"evidence/{section}.json"
+        artifact: dict[str, object]
+        if fixture_type:
+            artifact = _evidence_artifact(str(evidence["runId"]), fixture_type=fixture_type)
+        else:
+            artifact = {"runId": evidence["runId"]}
         (evidence_dir / f"{section}.json").write_text(
-            json.dumps({"runId": evidence["runId"]}),
+            json.dumps(artifact),
             encoding="utf-8",
         )
+
+
+def _evidence_artifact(run_id: str, *, fixture_type: str) -> dict[str, object]:
+    return {
+        "fixtureType": fixture_type,
+        "runId": run_id,
+        "runManifest": {
+            "run_id": run_id,
+            "pipeline_version": PIPELINE_VERSION,
+        },
+        "metrics": {"source": "unit-test"},
+    }
