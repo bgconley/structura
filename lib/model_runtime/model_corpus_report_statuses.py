@@ -16,6 +16,17 @@ REPORT_PROBLEM_LIST_KEYS = frozenset(
         "drift",
     }
 )
+REPORT_PROBLEM_COUNT_KEYS = frozenset(
+    {
+        "failedCount",
+        "failureCount",
+        "invalidCount",
+        "missingCount",
+        "targetQueueDeadLetterCount",
+        "totalViolationCount",
+        "violationCount",
+    }
+)
 
 __all__ = ["assert_model_corpus_report_statuses_pass"]
 
@@ -32,6 +43,14 @@ def assert_model_corpus_report_statuses_pass(
         raise SystemExit(
             f"Model corpus evidence {section} evidencePath has report failures "
             f"{failure_lists[0]}: {path}"
+        )
+    problem_counts = [
+        count_path for count_path, count in _iter_report_problem_counts(artifact) if count > 0
+    ]
+    if problem_counts:
+        raise SystemExit(
+            f"Model corpus evidence {section} evidencePath has positive report problem "
+            f"counter {problem_counts[0]}: {path}"
         )
     invalid = [
         (status_path, status)
@@ -84,6 +103,44 @@ def _iter_nested_failure_lists(value: Any, *, prefix: str) -> list[tuple[str, li
             if isinstance(item, dict | list):
                 failures.extend(_iter_nested_failure_lists(item, prefix=f"{prefix}[{index}]"))
     return failures
+
+
+def _iter_report_problem_counts(artifact: dict[str, Any]) -> list[tuple[str, float]]:
+    counts: list[tuple[str, float]] = []
+    for key in REPORT_PROBLEM_COUNT_KEYS:
+        count = _numeric_count(artifact.get(key))
+        if count is not None:
+            counts.append((key, count))
+    for container_key in EVIDENCE_REPORT_STATUS_CONTAINERS:
+        container = artifact.get(container_key)
+        if isinstance(container, dict):
+            counts.extend(_iter_nested_problem_counts(container, prefix=container_key))
+    return counts
+
+
+def _iter_nested_problem_counts(value: Any, *, prefix: str) -> list[tuple[str, float]]:
+    counts: list[tuple[str, float]] = []
+    if isinstance(value, dict):
+        for key, item in value.items():
+            path = f"{prefix}.{key}"
+            count = _numeric_count(item)
+            if key in REPORT_PROBLEM_COUNT_KEYS and count is not None:
+                counts.append((path, count))
+            elif isinstance(item, dict | list):
+                counts.extend(_iter_nested_problem_counts(item, prefix=path))
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            if isinstance(item, dict | list):
+                counts.extend(_iter_nested_problem_counts(item, prefix=f"{prefix}[{index}]"))
+    return counts
+
+
+def _numeric_count(value: Any) -> float | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int | float):
+        return float(value)
+    return None
 
 
 def _iter_nested_statuses(value: Any, *, prefix: str) -> list[tuple[str, str]]:

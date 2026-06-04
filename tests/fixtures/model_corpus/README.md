@@ -37,6 +37,8 @@ explicitly non-required. `not_evaluated` is not valid release evidence. The
 artifact must not include contradictory failure payloads. Any non-empty report
 `failures` list invalidates release evidence. Non-empty report diagnostic lists
 such as `missingByReport`, `missingMetrics`, `failedMetrics`, or `drift` also
+invalidate release evidence. Positive report problem counters such as
+`totalViolationCount`, `violationCount`, or `targetQueueDeadLetterCount`
 invalidate release evidence. The artifact must include model profile metadata
 matching the evidence section `profile`, either as a top-level profile field or
 as the section-specific profile field in `runManifest`, such as

@@ -128,6 +128,16 @@ def test_model_corpus_readme_rejects_artifact_problem_lists() -> None:
     ) in normalized
 
 
+def test_model_corpus_readme_rejects_artifact_problem_counts() -> None:
+    content = MODEL_CORPUS_README.read_text(encoding="utf-8")
+    normalized = re.sub(r"\s+", " ", content)
+
+    assert (
+        "Positive report problem counters such as `totalViolationCount`, "
+        "`violationCount`, or `targetQueueDeadLetterCount` invalidate release evidence"
+    ) in normalized
+
+
 def test_gpu_validation_docs_require_report_lineage() -> None:
     content = Path("docs/model-runtime/phase8_5_gpu_validation.md").read_text(encoding="utf-8")
     normalized = re.sub(r"\s+", " ", content)
