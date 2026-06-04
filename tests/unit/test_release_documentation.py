@@ -93,6 +93,17 @@ def test_model_corpus_readme_requires_manifest_profile_lineage() -> None:
     ) in normalized
 
 
+def test_model_corpus_readme_requires_passing_evidence_artifact_statuses() -> None:
+    content = MODEL_CORPUS_README.read_text(encoding="utf-8")
+    normalized = re.sub(r"\s+", " ", content)
+
+    assert (
+        "Any explicit top-level `status`, report `checks`, or report "
+        "`acceptanceGates` status in a model-backed evidence artifact must be "
+        "passing or explicitly non-required"
+    ) in normalized
+
+
 def test_gpu_validation_docs_require_report_lineage() -> None:
     content = Path("docs/model-runtime/phase8_5_gpu_validation.md").read_text(encoding="utf-8")
     normalized = re.sub(r"\s+", " ", content)

@@ -4,6 +4,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -650,6 +651,47 @@ def test_model_corpus_script_requires_report_lineage_in_evidence_artifacts(tmp_p
     assert "report evidence" in result.stderr
 
 
+def test_model_corpus_script_rejects_failed_evidence_artifact_checks(tmp_path) -> None:
+    payload = _manifest(fixture_type="model_backed")
+    _write_evidence_artifacts(tmp_path, payload, fixture_type="model_backed")
+    qwen_evidence = payload["evidence"]["qwen"]  # type: ignore[index]
+    assert isinstance(qwen_evidence, dict)
+    artifact = _evidence_artifact(
+        str(qwen_evidence["runId"]),
+        fixture_type="model_backed",
+        metrics={
+            **_section_metrics(payload, "qwen"),
+            **_aggregate_metrics(payload),
+        },
+        profile=str(qwen_evidence["profile"]),
+    )
+    artifact["checks"] = {"status": "failed"}
+    (tmp_path / qwen_evidence["evidencePath"]).write_text(  # type: ignore[index]
+        json.dumps(artifact),
+        encoding="utf-8",
+    )
+    manifest = tmp_path / "phase8_5_model_manifest.json"
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_model_corpus.py",
+            "--require-model-backed",
+            "--manifest",
+            str(manifest),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "qwen" in result.stderr
+    assert "checks.status" in result.stderr
+    assert "failed" in result.stderr
+
+
 def test_model_corpus_script_rejects_fixture_evidence_artifacts(tmp_path) -> None:
     payload = _manifest(fixture_type="model_backed")
     _write_evidence_artifacts(tmp_path, payload, fixture_type="model_backed")
@@ -869,8 +911,8 @@ def test_model_corpus_script_rejects_conflicting_aggregate_metric_evidence(
     assert "metric mismatch" in result.stderr
 
 
-def _manifest(*, fixture_type: str) -> dict[str, object]:
-    payload: dict[str, object] = {
+def _manifest(*, fixture_type: str) -> dict[str, Any]:
+    payload: dict[str, Any] = {
         "fixtureType": fixture_type,
         "runId": "phase85-fixture-run",
         "evidence": {
@@ -945,7 +987,7 @@ def _manifest(*, fixture_type: str) -> dict[str, object]:
     return payload
 
 
-def _evidence(profile: str, slug: str) -> dict[str, object]:
+def _evidence(profile: str, slug: str) -> dict[str, Any]:
     return {
         "profile": profile,
         "runId": f"phase85-fixture-run-{slug}",
@@ -956,7 +998,7 @@ def _evidence(profile: str, slug: str) -> dict[str, object]:
 
 def _write_evidence_artifacts(
     tmp_path: Path,
-    payload: dict[str, object],
+    payload: dict[str, Any],
     *,
     fixture_type: str | None = None,
     include_aggregate_metrics: bool = True,
@@ -968,7 +1010,7 @@ def _write_evidence_artifacts(
     for section, evidence in evidence_sections.items():
         assert isinstance(evidence, dict)
         evidence["evidencePath"] = f"evidence/{section}.json"
-        artifact: dict[str, object]
+        artifact: dict[str, Any]
         if fixture_type:
             metrics = _section_metrics(payload, section)
             if include_aggregate_metrics:
@@ -994,20 +1036,20 @@ def _evidence_artifact(
     run_id: str,
     *,
     fixture_type: str,
-    metrics: dict[str, object] | None = None,
+    metrics: dict[str, Any] | None = None,
     measured_at: str = "2026-06-04T12:00:00Z",
     profile: str = QWEN_SEMANTIC_PROFILE,
     include_profile: bool = True,
     model_mode: str | None = "live",
     include_measured_at: bool = True,
-) -> dict[str, object]:
-    run_manifest: dict[str, object] = {
+) -> dict[str, Any]:
+    run_manifest: dict[str, Any] = {
         "run_id": run_id,
         "pipeline_version": PIPELINE_VERSION,
     }
     if model_mode is not None:
         run_manifest["model_mode"] = model_mode
-    artifact: dict[str, object] = {
+    artifact: dict[str, Any] = {
         "fixtureType": fixture_type,
         "runId": run_id,
         "runManifest": run_manifest,
@@ -1020,7 +1062,7 @@ def _evidence_artifact(
     return artifact
 
 
-def _section_metrics(payload: dict[str, object], section: str) -> dict[str, object]:
+def _section_metrics(payload: dict[str, Any], section: str) -> dict[str, Any]:
     metric_names = {
         "qwen": (
             "qwen_handwriting_route_success_rate",
@@ -1038,7 +1080,7 @@ def _section_metrics(payload: dict[str, object], section: str) -> dict[str, obje
     return {name: metrics[name] for name in metric_names}
 
 
-def _aggregate_metrics(payload: dict[str, object]) -> dict[str, object]:
+def _aggregate_metrics(payload: dict[str, Any]) -> dict[str, Any]:
     metrics = payload["metrics"]
     assert isinstance(metrics, dict)
     return {

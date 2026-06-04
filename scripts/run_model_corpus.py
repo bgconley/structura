@@ -11,6 +11,10 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from lib.model_runtime.model_corpus_report_statuses import (  # noqa: E402
+    assert_model_corpus_report_statuses_pass,
+)
+
 DEFAULT_MANIFEST = Path("tests/fixtures/model_corpus/phase8_5_model_manifest.example.json")
 
 REQUIRED_EVIDENCE_SECTIONS = ("qwen", "granite", "textEmbedding", "visualEmbedding")
@@ -376,6 +380,7 @@ def _assert_evidence_artifact_lineage(
         raise SystemExit(
             f"Model corpus evidence {section} evidencePath must include report evidence: {path}"
         )
+    assert_model_corpus_report_statuses_pass(section, artifact, path)
 
 
 def _assert_evidence_artifact_profile(
