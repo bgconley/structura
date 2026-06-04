@@ -63,3 +63,19 @@ for that profile.
 The committed example model-corpus manifest is deterministic documentation only.
 Release validation must use a private `phase8_5_model_manifest.json` with
 `fixtureType = "model_backed"`.
+
+For the Phase 8.5 reliability acceptance gate, run the resident corpus twice and
+compare the committed report gates/fingerprints with the current wrapper:
+
+```bash
+STRUCTURA_MODEL_MODE=live \
+PYTHON=/tank/venvs/structura/bin/python \
+/tank/venvs/structura/bin/python scripts/gpu/run_phase8_5_resident_acceptance.py \
+  --manifest /tank/structura/private/phase8_5_resident_manifest.json \
+  --report-dir /srv/structura/objects/exports/phase85-runs
+```
+
+The wrapper runs `run_phase8_5_resident_corpus.py` twice, writes one report per
+pass, and fails if hard correctness, operational SLO, or repeatability gates fail.
+Use `scripts/gpu/phase8_5_report_acceptance.py` directly when re-checking already
+captured report files.
