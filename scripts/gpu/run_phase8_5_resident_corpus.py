@@ -12,6 +12,7 @@ from uuid import UUID
 
 from lib.db.connection import db_connection
 from lib.documents.ingestion import DocumentIngestionRequest, ingest_document_path
+from lib.model_runtime.reliability_acceptance import evaluate_phase85_report_acceptance
 from lib.model_runtime.reliability_report import build_phase85_reliability_report
 
 ACTIVE_JOB_STATUSES = ("queued", "leased", "running", "failed")
@@ -102,6 +103,9 @@ def main() -> int:
         row["queue_name"] in TARGET_FAILURE_QUEUES for row in _dead_letter_counts(document_ids)
     ):
         return 1
+    acceptance_exit = _acceptance_exit_code(report)
+    if acceptance_exit:
+        return acceptance_exit
     return 0
 
 
@@ -165,6 +169,14 @@ def _assert_clean_queue() -> None:
     if rows:
         _emit("preflight_active_jobs_found", rows=rows)
         raise SystemExit(2)
+
+
+def _acceptance_exit_code(report: dict[str, Any]) -> int:
+    acceptance = evaluate_phase85_report_acceptance([report])
+    if acceptance["status"] != "passed":
+        _emit("acceptance_gates_failed", acceptance=acceptance)
+        return 1
+    return 0
 
 
 def _resolve_owner() -> tuple[UUID, UUID]:
