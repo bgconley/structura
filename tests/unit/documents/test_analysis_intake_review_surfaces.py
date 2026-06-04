@@ -106,6 +106,41 @@ def test_phase9_intake_labels_review_support_surfaces_as_uncertain() -> None:
     }
 
 
+def test_phase9_intake_surfaces_planner_task_explanations_for_review() -> None:
+    intake = build_phase9_document_intake(
+        {
+            "id": "doc-planner-review",
+            "plannerTasks": [
+                {
+                    "id": "task-missing-contract",
+                    "semanticType": "receipt_line_items",
+                    "status": "skipped_missing_contract",
+                    "skipReason": "missing_model_output_contract",
+                    "contractResolutionReason": "missing_contract",
+                    "groundingSummary": {"kind": "table", "pageNumber": 1},
+                    "taskJson": {
+                        "plannerNote": "Receipt table lacked compatible output schema.",
+                        "modelOutputPayload": {"debug": "excluded from review surface"},
+                    },
+                }
+            ],
+        }
+    )
+
+    assert intake["review"]["plannerExplanations"] == [
+        {
+            "planTaskId": "task-missing-contract",
+            "semanticType": "receipt_line_items",
+            "status": "skipped_missing_contract",
+            "reason": "missing_model_output_contract",
+            "contractResolutionReason": "missing_contract",
+            "groundingSummary": {"kind": "table", "pageNumber": 1},
+            "surface": "review",
+            "uncertaintyLabel": "uncertain_planner_explanation",
+        }
+    ]
+
+
 def test_phase9_intake_routes_review_required_detail_rows_to_review_surface() -> None:
     intake = build_phase9_document_intake(
         {

@@ -12,6 +12,7 @@ from lib.documents.analysis_quality import (
 ACCEPTED_REVIEW_STATUSES = {"auto_accepted", "user_confirmed", "user_corrected"}
 TRUTH_OBSERVATION_STATUSES = {"promoted", "auto_accepted", "user_confirmed", "user_corrected"}
 REVIEW_STATUSES = {"needs_review", "proposed", "unreviewed"}
+PLANNER_REVIEW_STATUS_PREFIXES = ("skipped", "abstained", "suppressed")
 
 
 def build_phase9_document_intake(document: Mapping[str, Any]) -> dict[str, Any]:
@@ -227,7 +228,70 @@ def _planner_explanations(document: Mapping[str, Any]) -> list[dict[str, Any]]:
                     uncertainty_label="uncertain_planner_explanation",
                 )
             )
+    explanations.extend(_planner_task_explanations(document))
     return explanations
+
+
+def _planner_task_explanations(document: Mapping[str, Any]) -> list[dict[str, Any]]:
+    explanations: list[dict[str, Any]] = []
+    for task in _rows(document, "plannerTasks", "planTasks"):
+        task_json = _mapping(_value(task, "taskJson", "task_json"))
+        metadata = _mapping(_value(task, "metadata", "metadata_json"))
+        status = _status(task, "status")
+        reason = _planner_task_reason(task, task_json=task_json, metadata=metadata)
+        if not reason and not status.startswith(PLANNER_REVIEW_STATUS_PREFIXES):
+            continue
+        explanations.append(
+            _surface_item(
+                _compact_mapping(
+                    {
+                        "planTaskId": _value(task, "planTaskId", "plan_task_id", "id"),
+                        "semanticType": _value(task, "semanticType", "semantic_type"),
+                        "status": status,
+                        "reason": reason or status,
+                        "contractResolutionReason": _value(
+                            task,
+                            "contractResolutionReason",
+                            "contract_resolution_reason",
+                        ),
+                        "groundingSummary": _value(
+                            task,
+                            "groundingSummary",
+                            "grounding_summary",
+                        ),
+                    }
+                ),
+                surface="review",
+                uncertainty_label="uncertain_planner_explanation",
+            )
+        )
+    return explanations
+
+
+def _planner_task_reason(
+    task: Mapping[str, Any],
+    *,
+    task_json: Mapping[str, Any],
+    metadata: Mapping[str, Any],
+) -> Any:
+    return (
+        _value(task, "skipReason", "skip_reason")
+        or _value(task, "contractResolutionReason", "contract_resolution_reason")
+        or _value(
+            task_json,
+            "plannerNote",
+            "planner_note",
+            "mustExtractReason",
+            "must_extract_reason",
+        )
+        or _value(
+            metadata,
+            "plannerNote",
+            "planner_note",
+            "mustExtractReason",
+            "must_extract_reason",
+        )
+    )
 
 
 def _quality_signals(document: Mapping[str, Any]) -> dict[str, Any]:
@@ -327,3 +391,7 @@ def _mapping(value: Any) -> Mapping[str, Any]:
 
 def _list(value: Any) -> list[Any]:
     return value if isinstance(value, list) else []
+
+
+def _compact_mapping(mapping: Mapping[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in mapping.items() if value not in (None, "")}
