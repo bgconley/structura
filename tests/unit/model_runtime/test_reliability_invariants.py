@@ -78,6 +78,26 @@ def test_hard_invariants_treat_whitespace_grounding_values_as_missing() -> None:
     ]
 
 
+def test_hard_invariants_normalize_incompatible_compatibility_mode_labels() -> None:
+    document = _safe_document_report()
+    document["plannerTasks"][0]["compatibility_mode"] = " Incompatible Family "
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 1
+    assert (
+        summary["invariants"]["selectedGraniteTasksIncompatibleFamilySchema"]["violationCount"] == 1
+    )
+    assert summary["invariants"]["selectedGraniteTasksIncompatibleFamilySchema"]["examples"] == [
+        {
+            "reason": "incompatible_schema_or_contract_resolution",
+            "documentId": "task-selected",
+            "entityId": "task-selected",
+        }
+    ]
+
+
 def test_hard_invariants_flag_admitted_artifacts_placeholders_and_fabrication() -> None:
     summary = evaluate_hard_correctness_invariants([_artifact_document_report()])
 

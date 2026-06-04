@@ -210,10 +210,10 @@ def _has_grounding_value(value: Any) -> bool:
 
 
 def _has_incompatible_schema(task: dict[str, Any]) -> bool:
-    compatibility_mode = _normalized_text(
+    compatibility_mode = _normalized_taxonomy_label(
         get_value(task, "compatibility_mode", "compatibilityMode")
     )
-    contract_reason = _normalized_text(
+    contract_reason = _normalized_taxonomy_label(
         get_value(task, "contract_resolution_reason", "contractResolutionReason")
     )
     if compatibility_mode in {
@@ -225,6 +225,10 @@ def _has_incompatible_schema(task: dict[str, Any]) -> bool:
     }:
         return True
     return "incompatible" in contract_reason or "missing_contract" in contract_reason
+
+
+def _normalized_taxonomy_label(value: Any) -> str:
+    return _normalized_path_segment(value)
 
 
 def _is_auto_accepted_model_semantic_region_extraction(extraction: dict[str, Any]) -> bool:
