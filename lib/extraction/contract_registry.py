@@ -21,6 +21,7 @@ _EXACT_CONTRACTS: dict[tuple[str, str, str, str], str] = {
     ("invoice", "invoice_line_item_table", "tables_json", "invoice"): (
         "granite_invoice_line_items.v1"
     ),
+    ("invoice", "billing_summary", "kvp", "invoice"): "granite_payment_summary.v1",
     ("invoice", "payment_summary", "kvp", "invoice"): "granite_payment_summary.v1",
     ("receipt", "receipt_line_item_table", "tables_json", "receipt"): (
         "granite_receipt_line_items.v1"
@@ -34,6 +35,9 @@ _EXACT_CONTRACTS: dict[tuple[str, str, str, str], str] = {
     ),
     ("medical_eob", "covered_services_line_item_table", "tables_json", "medical_eob"): (
         "granite_medical_service_lines.v1"
+    ),
+    ("medical_eob", "patient_responsibility_summary", "kvp", "medical_eob"): (
+        "granite_healthcare_coverage_decision.v1"
     ),
     ("medical_eob", "denial_or_coverage_decision", "kvp", "medical_eob"): (
         "granite_healthcare_coverage_decision.v1"

@@ -38,6 +38,7 @@ from lib.extraction.schema_registry import ExtractionSchemaRegistry
 from lib.extraction.validators import validate_extraction_payload, validate_semantic_region_payload
 from lib.jobs import JobService
 from lib.jobs.event_payloads import build_extract_document_job_payload
+from lib.model_runtime.source_engines import is_model_source_engine
 from lib.semantic_annotations.models import SemanticExtractionTask
 from lib.semantic_annotations.repository import load_semantic_extraction_task
 from lib.semantic_annotations.task_routing import corrected_granite_task_for_semantic_type
@@ -191,6 +192,7 @@ class ExtractionService:
                 model_output_payload=model_output_payload,
             )
             if semantic_task is not None
+            and is_model_source_engine(gateway_result.route.source_engine)
             else validate_extraction_payload(
                 schema_name,
                 gateway_result.normalized_json,

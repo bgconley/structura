@@ -71,6 +71,22 @@ def test_restaurant_receipt_does_not_trigger_financial_dispute_hint() -> None:
     assert audit.family_tension == ()
 
 
+def test_invoice_due_date_counts_as_invoice_anchor_with_receipt_like_totals() -> None:
+    source = _source_with_pages(
+        [
+            (
+                "Seller: Acme Repairs Invoice Number: INV-4242 Due Date: 2026-04-30 "
+                "Subtotal: 1000.00 Tax: 42.15 Total: 1042.15"
+            )
+        ]
+    )
+
+    audit = build_docling_audit(source)
+
+    assert audit.anchor_counts["invoice"] >= 2
+    assert "invoice" in audit.suggested_family_hints
+
+
 def test_financial_dispute_hint_requires_dispute_trigger() -> None:
     source = _source_with_pages(
         [

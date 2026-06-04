@@ -33,6 +33,7 @@ from lib.extraction.models import (
     ValidationReport,
 )
 from lib.extraction.observation_repository import insert_observation_candidate
+from lib.model_runtime.source_engines import is_model_source_engine
 from lib.review.task_repository import upsert_review_task
 from lib.storage import ObjectStorage, StoredObject, cleanup_unreferenced_stored_object
 
@@ -708,9 +709,8 @@ def _review_status_for_extraction(
     validation: ValidationReport,
     run_scope: ExtractionRunScope,
 ) -> str:
-    if (
-        run_scope.extraction_scope == "semantic_region"
-        and extraction.route.source_engine != "system"
+    if run_scope.extraction_scope == "semantic_region" and is_model_source_engine(
+        extraction.route.source_engine
     ):
         return "needs_review"
     if run_scope.extraction_scope == "aggregate":

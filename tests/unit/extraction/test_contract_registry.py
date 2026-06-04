@@ -42,6 +42,38 @@ def test_service_record_receipt_like_alias_does_not_change_canonical_target() ->
     assert resolution.canonical_target_schema == "service_record"
 
 
+def test_invoice_billing_summary_uses_payment_summary_contract() -> None:
+    resolution = resolve_model_output_contract(
+        resolved_document_type="invoice",
+        semantic_type="billing_summary",
+        granite_task="kvp",
+        target_schema="invoice",
+        allow_generic_fallback=False,
+    )
+
+    assert resolution.schema_name == "granite_payment_summary.v1"
+    assert resolution.compatibility_mode == "exact"
+    assert resolution.exact is True
+    assert resolution.review_only is False
+    assert resolution.canonical_target_schema == "invoice"
+
+
+def test_medical_eob_patient_responsibility_summary_uses_healthcare_contract() -> None:
+    resolution = resolve_model_output_contract(
+        resolved_document_type="medical_eob",
+        semantic_type="patient_responsibility_summary",
+        granite_task="kvp",
+        target_schema="medical_eob",
+        allow_generic_fallback=False,
+    )
+
+    assert resolution.schema_name == "granite_healthcare_coverage_decision.v1"
+    assert resolution.compatibility_mode == "exact"
+    assert resolution.exact is True
+    assert resolution.review_only is False
+    assert resolution.canonical_target_schema == "medical_eob"
+
+
 def test_document_observation_contracts_are_review_only() -> None:
     resolution = resolve_model_output_contract(
         resolved_document_type="real_estate_title",

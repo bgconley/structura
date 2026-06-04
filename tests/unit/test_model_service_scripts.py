@@ -47,3 +47,5 @@ def test_phase8_5_live_runtime_preflight_checks_container_modes() -> None:
     assert "model-granite" in script
     assert 'shutil.which("docker")' in script
     assert "_docker_compose_command(" in script
+    assert "urlopen(" not in script
+    assert "HTTPConnection" in script

@@ -166,5 +166,19 @@ def test_candidate_cancel_query_keeps_title_prefix_parameterized() -> None:
 
     assert candidates == ["job-1"]
     sql, params = cursor.calls[0]
-    assert title_prefix not in str(sql)
-    assert params == [["queued"], f"{title_prefix}%", 10]
+    assert isinstance(sql, str)
+    assert title_prefix not in sql
+    assert params == [
+        ["queued"],
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        f"{title_prefix}%",
+        f"{title_prefix}%",
+        10,
+    ]

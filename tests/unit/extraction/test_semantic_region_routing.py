@@ -393,6 +393,44 @@ def test_extraction_service_builds_candidates_from_region_envelope() -> None:
     assert persisted_total["evidence"][0]["semantic_region_id"] == str(region_id)
 
 
+def test_extraction_service_validates_non_model_semantic_region_as_full_schema() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    region_id = uuid4()
+    source = _source(document_id=document_id, household_id=household_id)
+    task = SemanticExtractionTask(
+        region_id=region_id,
+        annotation_id=uuid4(),
+        document_id=document_id,
+        semantic_type="billing_summary",
+        granite_task="kvp",
+        target_schema="invoice",
+        expected_fields=("total_amount",),
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+    )
+    captured: dict[str, Any] = {}
+
+    def persist(*_args: object, **kwargs: object) -> PersistedExtraction:
+        captured.update(kwargs)
+        return _persisted()
+
+    ExtractionService(
+        gateway=DoclingFullSchemaGateway(),
+        source_loader=lambda loaded_document_id: source,
+        semantic_task_loader=lambda loaded_region_id: task,
+        persister=persist,
+    ).extract_document(
+        document_id,
+        schema_name="invoice",
+        route_profile="docling_plus_granite_structured",
+        semantic_region_id=region_id,
+    )
+
+    validation = captured["validation"]
+    assert validation.needs_review is False
+    assert any(check["code"] == "json_schema" for check in validation.checks)
+
+
 def test_live_classification_does_not_enqueue_broad_document_extraction(monkeypatch) -> None:
     document_id = uuid4()
     household_id = uuid4()
@@ -587,6 +625,56 @@ class EnvelopeOnlyGateway:
         )
 
 
+class DoclingFullSchemaGateway:
+    def extract(
+        self,
+        source: ExtractionSourceDocument,
+        *,
+        schema_name: str,
+        route_profile: str,
+        semantic_task: SemanticExtractionTask | None = None,
+    ) -> GatewayExtraction:
+        assert semantic_task is not None
+        return GatewayExtraction(
+            schema_name=schema_name,
+            schema_version="v1",
+            route=ModelRoute(
+                source_engine="docling",
+                model_name="docling-heuristic-extractor",
+                model_version="phase4-v1",
+                prompt_version="no-prompt-deterministic-v1",
+                route_profile=route_profile,
+            ),
+            normalized_json={
+                "schema_name": "invoice",
+                "schema_version": "v1",
+                "document_id": str(source.document_id),
+                "seller": {
+                    "display_name": "Acme Services",
+                    "party_type": "company",
+                    "evidence": [_evidence(source_engine="docling")],
+                },
+                "invoice": {
+                    "invoice_number": "INV-100",
+                    "issued_on": "2026-01-10",
+                    "evidence": [_evidence(source_engine="docling")],
+                },
+                "line_items": [],
+                "totals": {
+                    "subtotal": {"amount": 10.0, "currency": "USD"},
+                    "tax_total": {"amount": 1.0, "currency": "USD"},
+                    "total": {"amount": 11.0, "currency": "USD"},
+                    "evidence": [_evidence(source_engine="docling")],
+                },
+                "confidence": {"overall": 0.86},
+                "metadata": {},
+                "validation": {"needs_review": False, "checks": []},
+                "created_at": datetime.now(UTC).isoformat(),
+            },
+            raw_output_json={"source": "docling_canonical_text"},
+        )
+
+
 class RecordingJobs:
     def __init__(self) -> None:
         self.created: list[dict[str, Any]] = []
@@ -603,10 +691,10 @@ class RecordedJob:
     job_id: UUID
 
 
-def _evidence() -> dict[str, object]:
+def _evidence(*, source_engine: str = "granite_vision_3b") -> dict[str, object]:
     return {
         "page_number": 1,
-        "source_engine": "granite_vision_3b",
+        "source_engine": source_engine,
         "source_text": "Invoice total $99.00",
         "confidence": 0.8,
     }

@@ -18,6 +18,7 @@ from lib.db.connection import db_connection
 from lib.documents.parse_models import CanonicalParseResult, ParsedChunk, ParsedElement, ParsedPage
 from workers.docling import worker as docling_worker
 from workers.extraction import worker as extraction_worker
+from workers.semantic_annotations import worker as semantic_worker
 
 
 class TextDoclingConverter:
@@ -438,6 +439,10 @@ def _upload_fixture_document(client: TestClient, title: str) -> uuid.UUID:
 
 def _drain_extraction_jobs(document_id: uuid.UUID, *, worker_name: str) -> None:
     for _ in range(4):
+        semantic_worker.process_next_semantic_annotation_job(
+            worker_name=f"{worker_name}-semantic",
+            document_id=document_id,
+        )
         if not extraction_worker.process_next_extraction_job(
             worker_name=worker_name,
             document_id=document_id,

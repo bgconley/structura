@@ -52,6 +52,35 @@ def test_fixture_gateway_has_explicit_fixture_provenance() -> None:
     assert result.manifest.regions[0].granite_task == "kvp"
 
 
+def test_fixture_gateway_infers_target_family_from_generic_docling_text() -> None:
+    source = _source_with_page_image()
+    source = replace(
+        source,
+        title="Uploaded document",
+        original_filename="uploaded.pdf",
+        family="generic",
+        pages=[
+            replace(
+                source.pages[0],
+                text=(
+                    "Seller: Acme Repairs\n"
+                    "Invoice Number: INV-4242\n"
+                    "Issue Date: 2026-04-01\n"
+                    "Total: 1042.15\n"
+                ),
+            )
+        ],
+    )
+
+    result = FixtureSemanticAnnotationGateway().annotate(source, quality_mode="smart")
+
+    assert result.manifest.manifest["document_type"] == "invoice"
+    assert result.manifest.pages[0].document_type_hint == "invoice"
+    assert result.manifest.pages[0].has_structured_targets is True
+    assert result.manifest.regions[0].semantic_type == "billing_summary"
+    assert result.manifest.regions[0].target_schema == "invoice"
+
+
 def test_live_qwen_smart_gateway_builds_truthful_qwen3_vl_8b_manifest() -> None:
     source = _source_with_page_image_and_element()
     client = FakeSemanticVisionClient(

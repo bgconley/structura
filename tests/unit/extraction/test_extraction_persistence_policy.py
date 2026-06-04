@@ -68,6 +68,36 @@ def test_model_backed_semantic_region_extraction_review_status_is_conservative()
     assert status == "needs_review"
 
 
+def test_non_model_semantic_region_can_keep_auto_accepted_review_status() -> None:
+    extraction = GatewayExtraction(
+        schema_name="invoice",
+        schema_version="v1",
+        route=ModelRoute(
+            source_engine="docling",
+            model_name="docling-heuristic-extractor",
+            model_version="phase4-v1",
+            prompt_version="no-prompt-deterministic-v1",
+            route_profile="docling_plus_granite_structured",
+        ),
+        normalized_json={},
+        raw_output_json={},
+    )
+    validation = ValidationReport(needs_review=False, checks=[])
+
+    status = _review_status_for_extraction(
+        extraction=extraction,
+        validation=validation,
+        run_scope=ExtractionRunScope.semantic_region(
+            semantic_annotation_id=uuid4(),
+            source_semantic_region_id=uuid4(),
+            semantic_type="billing_summary",
+            granite_task="kvp",
+        ),
+    )
+
+    assert status == "auto_accepted"
+
+
 def test_bmw_style_flat_granite_invoice_fields_create_line_item_candidates() -> None:
     validation = ValidationReport(
         needs_review=True,

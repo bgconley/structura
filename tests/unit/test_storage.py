@@ -78,7 +78,12 @@ def test_group_writable_storage_root_does_not_require_chmod_ownership(
 ) -> None:
     canonical_root = tmp_path / "canonical"
     canonical_root.mkdir()
-    os.chmod(canonical_root, 0o2770)
+    # This fixture simulates Structura's intentional setgid group-writable storage root.
+    # nosemgrep
+    os.chmod(
+        canonical_root,
+        0o2770,
+    )
     real_chmod = os.chmod
 
     def chmod_without_root_ownership(path: os.PathLike[str] | str, mode: int) -> None:

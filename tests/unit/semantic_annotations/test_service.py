@@ -20,6 +20,7 @@ from lib.semantic_annotations.repository import PersistedSemanticManifest
 from lib.semantic_annotations.service import (
     SemanticAnnotationService,
     SemanticAnnotationServiceError,
+    _granite_extraction_plan,
 )
 
 
@@ -770,6 +771,41 @@ def test_semantic_service_does_not_queue_ignored_or_unmatched_regions() -> None:
 
     assert result.queued_granite_job_ids == ()
     assert jobs.created == []
+
+
+def test_semantic_service_reports_missing_contracts_to_extraction_plan() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    region_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        text="Invoice due date amount due total billing account number",
+    )
+    manifest = _manifest(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        semantic_type="document_header",
+        granite_task="kvp",
+        target_schema="invoice",
+        document_type="invoice",
+    )
+
+    plan = _granite_extraction_plan(
+        source,
+        SemanticAnnotationResult(manifest=manifest),
+        PersistedSemanticManifest(annotation_id=uuid4(), region_ids=(region_id,)),
+    )
+
+    assert plan.selected == ()
+    assert len(plan.dropped) == 1
+    assert plan.summary_counts()["missing_contract_count"] == 1
+    assert plan.warnings == (f"granite_plan_missing_contract:{region_id}",)
+    assert plan.dropped[0].region_id == region_id
+    assert plan.dropped[0].contract_resolution_reason == "missing_contract"
 
 
 def test_semantic_service_rejects_removed_high_quality_mode() -> None:

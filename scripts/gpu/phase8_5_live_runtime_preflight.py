@@ -7,8 +7,8 @@ import subprocess  # nosec B404
 import sys
 import time
 from dataclasses import dataclass
-from urllib.error import URLError
-from urllib.request import urlopen
+from http.client import HTTPConnection, HTTPException
+from urllib.parse import urlsplit
 
 REQUIRED_LIVE_SERVICES = (
     "api",
@@ -157,15 +157,29 @@ def _check_model_health(
     while time.monotonic() < deadline:
         for suffix in ("/healthz", "/health"):
             try:
-                with urlopen(f"{url}{suffix}", timeout=5) as response:  # nosec B310
-                    if 200 <= response.status < 300:
-                        return CheckResult(service, True, f"{suffix} responded")
-            except URLError as exc:
-                last_error = str(exc)
-            except TimeoutError as exc:
+                status = _http_health_status(url, suffix)
+                if 200 <= status < 300:
+                    return CheckResult(service, True, f"{suffix} responded")
+            except (HTTPException, OSError, TimeoutError, ValueError) as exc:
                 last_error = str(exc)
         time.sleep(poll_seconds)
     return CheckResult(service, False, f"health endpoint did not respond: {last_error}")
+
+
+def _http_health_status(url: str, suffix: str) -> int:
+    parsed = urlsplit(url)
+    if parsed.scheme != "http" or not parsed.hostname:
+        raise ValueError("model health target must be an http:// URL")
+    if parsed.query or parsed.fragment:
+        raise ValueError("model health target must not include query or fragment")
+    path = f"{parsed.path.rstrip('/')}{suffix}"
+    connection = HTTPConnection(parsed.hostname, parsed.port or 80, timeout=5)
+    try:
+        connection.request("GET", path)
+        response = connection.getresponse()
+        return int(response.status)
+    finally:
+        connection.close()
 
 
 if __name__ == "__main__":

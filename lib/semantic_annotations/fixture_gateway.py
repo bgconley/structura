@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from lib.extraction.heuristics import classify_text_signals
 from lib.extraction.models import ExtractionSourceDocument
 from lib.semantic_annotations.models import (
     DocumentSemanticManifest,
@@ -20,12 +21,13 @@ class FixtureSemanticAnnotationGateway:
         quality_mode: str,
     ) -> SemanticAnnotationResult:
         page = source.pages[0]
-        semantic_type = _default_semantic_type(source.family)
+        fixture_family = _fixture_family(source)
+        semantic_type = _default_semantic_type(fixture_family)
         region = SemanticRegionAnnotation(
             semantic_type=semantic_type,
             priority="high",
             granite_task="kvp",
-            target_schema=source.family if source.family != "generic" else None,
+            target_schema=fixture_family if fixture_family != "generic" else None,
             expected_fields=(),
             grounding=SemanticGroundingRef(kind="page", page_id=page.page_id),
             reason="Deterministic fixture annotation for local tests.",
@@ -46,21 +48,30 @@ class FixtureSemanticAnnotationGateway:
                     page_id=page.page_id,
                     page_number=page.page_number,
                     page_role="document_summary",
-                    document_type_hint=source.family,
+                    document_type_hint=fixture_family,
                     extraction_usefulness="medium",
-                    has_structured_targets=source.family != "generic",
+                    has_structured_targets=fixture_family != "generic",
                     confidence=0.8,
                 )
             ],
             regions=[region],
             confidence={"overall": 0.8},
-            manifest={"document_type": source.family, "fixture": True},
+            manifest={"document_type": fixture_family, "fixture": True},
             review_required=quality_mode != "smart",
             input_page_hashes=tuple(
                 page.image_sha256 for page in source.pages if page.image_sha256
             ),
         )
         return SemanticAnnotationResult(manifest=manifest)
+
+
+def _fixture_family(source: ExtractionSourceDocument) -> str:
+    if source.family != "generic":
+        return source.family
+    family, _subtype, _reasons, confidence = classify_text_signals(source)
+    if family != "generic" and confidence >= 0.7:
+        return family
+    return source.family
 
 
 def _default_semantic_type(family: str) -> str:

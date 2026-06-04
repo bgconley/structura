@@ -475,8 +475,6 @@ def _granite_extraction_plan(
             target_schema=schema_fit.target_schema,
             allow_generic_fallback=schema_fit.target_schema == "document_observation",
         )
-        if contract.schema_name is None:
-            continue
         metadata = {
             **repaired_region.metadata,
             **repair_metadata,
@@ -496,7 +494,7 @@ def _granite_extraction_plan(
                 target_schema=schema_fit.target_schema,
                 canonical_target_schema=contract.canonical_target_schema
                 or schema_fit.target_schema,
-                model_output_schema_name=contract.schema_name,
+                model_output_schema_name=contract.schema_name or "",
                 contract_resolution_reason=contract.reason,
                 compatibility_mode=contract.compatibility_mode,
                 extractor_backend="granite_region",

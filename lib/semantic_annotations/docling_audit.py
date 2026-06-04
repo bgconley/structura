@@ -22,6 +22,7 @@ FAMILY_ANCHORS: dict[str, dict[str, tuple[str, ...]]] = {
         "invoice": ("invoice", "invoice number"),
         "amount_due": ("amount due", "balance due"),
         "bill_to": ("bill to",),
+        "due_date": ("due date",),
     },
     "receipt": {
         "receipt": ("receipt",),
