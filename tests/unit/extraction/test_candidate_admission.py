@@ -129,6 +129,35 @@ def test_blank_observation_field_name_is_rejected_before_insertion() -> None:
     assert admission.events[0].reasons == ("placeholder_field_name",)
 
 
+def test_nested_placeholder_field_value_is_rejected_before_insertion() -> None:
+    context = _context()
+    candidate = CandidateFact(
+        field_path="receipt.transaction.total",
+        value_type="money",
+        value={"amount": "null", "currency": "USD"},
+        currency="USD",
+        evidence=[_evidence(context)],
+        status="proposed",
+    )
+
+    admission = admit_extraction_candidates(
+        context=context,
+        field_candidates=[candidate],
+        line_item_candidates=[],
+        observation_candidates=[],
+    )
+
+    assert admission.field_candidates == []
+    assert admission.summary == {
+        "produced": 1,
+        "admitted": 0,
+        "rejected": 1,
+        "rejectionReasons": {"rejected_placeholder": 1},
+    }
+    assert admission.events[0].decision == "rejected_placeholder"
+    assert admission.events[0].reasons == ("placeholder_or_null_value",)
+
+
 def test_incompatible_field_schema_candidate_is_rejected_before_insertion() -> None:
     context = _context(canonical_target_schema="invoice")
     candidate = CandidateFact(

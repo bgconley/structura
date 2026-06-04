@@ -24,6 +24,21 @@ PLACEHOLDER_VALUES = {
     "visible value",
     "example value",
 }
+PRIMARY_VALUE_KEYS = {
+    "amount",
+    "date",
+    "description",
+    "display_name",
+    "field_name",
+    "field_value",
+    "key",
+    "merchant",
+    "name",
+    "seller",
+    "text",
+    "total",
+    "value",
+}
 
 
 def reject_observation(field_name: str, value: object) -> tuple[bool, str | None]:
@@ -42,9 +57,7 @@ def reject_observation(field_name: str, value: object) -> tuple[bool, str | None
 def reject_scalar_candidate(value: object) -> tuple[bool, str | None]:
     if contains_prompt_or_schema_artifact(value):
         return True, "prompt_or_schema_echo"
-    if value is None:
-        return True, "placeholder_or_null_value"
-    if isinstance(value, str) and value.strip().lower() in PLACEHOLDER_VALUES:
+    if _contains_placeholder_value(value):
         return True, "placeholder_or_null_value"
     return False, None
 
@@ -151,3 +164,23 @@ def _decimal_value_is_zero(value: str) -> bool:
         return Decimal(value) == Decimal("0")
     except (InvalidOperation, ValueError):
         return False
+
+
+def _contains_placeholder_value(value: object, *, key: object | None = None) -> bool:
+    if value is None:
+        return key is None or _normalized_key(key) in PRIMARY_VALUE_KEYS
+    if isinstance(value, str):
+        return (
+            key is None or _normalized_key(key) in PRIMARY_VALUE_KEYS
+        ) and value.strip().lower() in PLACEHOLDER_VALUES
+    if isinstance(value, dict):
+        return any(
+            _contains_placeholder_value(item, key=item_key) for item_key, item in value.items()
+        )
+    if isinstance(value, list | tuple | set):
+        return any(_contains_placeholder_value(item, key=key) for item in value)
+    return False
+
+
+def _normalized_key(value: object) -> str:
+    return str(value or "").strip().replace("-", "_").replace(" ", "_").lower()
