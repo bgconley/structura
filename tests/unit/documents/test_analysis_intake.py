@@ -125,6 +125,70 @@ def test_phase9_intake_preserves_observation_candidates_with_truth_observations(
     assert intake["review"]["uncertainObservations"][0]["fieldName"] == "possible_discount"
 
 
+def test_phase9_intake_preserves_canonical_alias_truth_with_detail_review_rows() -> None:
+    intake = build_phase9_document_intake(
+        {
+            "id": "doc-mixed-aliases",
+            "fields": [
+                {
+                    "id": "field-review",
+                    "fieldPath": "invoice.total_amount",
+                    "reviewStatus": "needs_review",
+                    "evidence": [_concrete_evidence()],
+                }
+            ],
+            "canonicalFields": [
+                {
+                    "id": "field-truth",
+                    "fieldPath": "invoice.issue_date",
+                    "reviewStatus": "auto_accepted",
+                    "evidence": [_concrete_evidence()],
+                }
+            ],
+            "lineItems": [
+                {
+                    "id": "line-review",
+                    "lineItemType": "invoice.service_line",
+                    "reviewStatus": "needs_review",
+                    "evidence": [_concrete_evidence()],
+                }
+            ],
+            "canonicalLineItems": [
+                {
+                    "id": "line-truth",
+                    "lineItemType": "invoice.service_line",
+                    "reviewStatus": "auto_accepted",
+                    "evidence": [_concrete_evidence()],
+                }
+            ],
+            "observations": [
+                {
+                    "id": "observation-review",
+                    "fieldName": "possible_discount",
+                    "status": "needs_review",
+                    "evidence": [_concrete_evidence()],
+                }
+            ],
+            "canonicalObservations": [
+                {
+                    "id": "observation-truth",
+                    "fieldName": "statement_context",
+                    "status": "auto_accepted",
+                    "evidence": [_concrete_evidence()],
+                }
+            ],
+        }
+    )
+
+    assert [item["id"] for item in intake["truth"]["canonicalFields"]] == ["field-truth"]
+    assert [item["id"] for item in intake["truth"]["canonicalLineItems"]] == ["line-truth"]
+    assert [item["id"] for item in intake["truth"]["canonicalObservations"]] == [
+        "observation-truth"
+    ]
+    assert intake["documentQuality"]["canonical_fact_count"] == 3
+    assert intake["documentQuality"]["candidate_count"] == 3
+
+
 def test_phase9_intake_disables_analysis_for_admitted_placeholder_artifacts() -> None:
     intake = build_phase9_document_intake(
         {

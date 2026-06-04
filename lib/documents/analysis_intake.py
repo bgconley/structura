@@ -95,17 +95,17 @@ def phase9_mutation_violations(output: Mapping[str, Any]) -> list[str]:
 def _truth_surface(document: Mapping[str, Any]) -> dict[str, Any]:
     canonical_fields = [
         _surface_item(field, surface="truth")
-        for field in _rows(document, "fields", "canonicalFields")
+        for field in _merged_rows(document, "fields", "canonicalFields")
         if _status(field, "reviewStatus", "review_status") in ACCEPTED_REVIEW_STATUSES
     ]
     canonical_line_items = [
         _surface_item(item, surface="truth")
-        for item in _rows(document, "lineItems", "canonicalLineItems")
+        for item in _merged_rows(document, "lineItems", "canonicalLineItems")
         if _status(item, "reviewStatus", "review_status") in ACCEPTED_REVIEW_STATUSES
     ]
     canonical_observations = [
         _surface_item(observation, surface="truth")
-        for observation in _rows(document, "observations", "canonicalObservations")
+        for observation in _merged_rows(document, "observations", "canonicalObservations")
         if _status(observation, "status") in TRUTH_OBSERVATION_STATUSES
     ]
     user_confirmed = [
@@ -395,6 +395,21 @@ def _review_required_rows(mapping: Mapping[str, Any], *keys: str) -> list[Mappin
         for row in _rows(mapping, key):
             if not _is_review_required(row):
                 continue
+            row_id = _value(row, "id")
+            if row_id not in (None, ""):
+                row_id_text = str(row_id)
+                if row_id_text in seen_ids:
+                    continue
+                seen_ids.add(row_id_text)
+            rows.append(row)
+    return rows
+
+
+def _merged_rows(mapping: Mapping[str, Any], *keys: str) -> list[Mapping[str, Any]]:
+    rows: list[Mapping[str, Any]] = []
+    seen_ids: set[str] = set()
+    for key in keys:
+        for row in _rows(mapping, key):
             row_id = _value(row, "id")
             if row_id not in (None, ""):
                 row_id_text = str(row_id)
