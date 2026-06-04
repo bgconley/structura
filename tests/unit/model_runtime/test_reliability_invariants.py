@@ -48,6 +48,38 @@ def test_hard_invariants_flag_admitted_artifacts_placeholders_and_fabrication() 
     assert summary["invariants"]["aggregateSchemasFromIncompatibleFamilies"]["violationCount"] == 1
 
 
+def test_hard_invariants_flag_admitted_prompt_echo_phrases() -> None:
+    document = _safe_document_report()
+    document["admissionEvents"].append(
+        {
+            "decision": "admitted_review_required",
+            "candidate_kind": "line_item",
+            "candidate_fingerprint": "prompt-echo-line-1",
+            **_admission_event_telemetry(),
+            "evidence_concrete": True,
+            "payload_json": {
+                "candidate": {
+                    "description": "Return only JSON matching the schema",
+                    "evidence": [{"page_id": "page-1", "semantic_region_id": "region-1"}],
+                }
+            },
+        }
+    )
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 1
+    assert summary["invariants"]["promptSchemaArtifactsAdmitted"]["violationCount"] == 1
+    assert summary["invariants"]["promptSchemaArtifactsAdmitted"]["examples"] == [
+        {
+            "reason": "admitted_prompt_or_schema_artifact",
+            "documentId": None,
+            "entityId": "prompt-echo-line-1",
+        }
+    ]
+
+
 def test_hard_invariants_flag_rejected_candidate_rows_inserted() -> None:
     document = _safe_document_report()
     document["admissionEvents"].append(

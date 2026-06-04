@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any
 
+from lib.candidate_quality_policy import contains_prompt_echo
 from lib.model_runtime.reliability_report_normalization import (
     all_rows,
     bool_value,
@@ -132,6 +133,8 @@ def _contains_prompt_or_schema_artifact(candidate: dict[str, Any]) -> bool:
             continue
         normalized = value.strip().lower()
         if normalized in {"<json_schema>", "json_schema", "response_format"}:
+            return True
+        if contains_prompt_echo(normalized):
             return True
         if any(
             token in normalized
