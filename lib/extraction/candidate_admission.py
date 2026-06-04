@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections import Counter
 from dataclasses import replace
 from typing import Any
@@ -483,9 +484,10 @@ def _is_rejected(event: CandidateAdmissionEvent) -> bool:
 
 
 def _candidate_kind(value: object) -> CandidateKind:
-    if value == "line_item":
+    kind = _normalized_token(value)
+    if kind == "line_item":
         return "line_item"
-    if value == "observation":
+    if kind == "observation":
         return "observation"
     return "field"
 
@@ -519,6 +521,11 @@ def _string_tuple(value: object) -> tuple[str, ...]:
 
 
 def _normalized_decision(value: object) -> str:
-    decision = str(value or "").strip().lower().replace("-", "_").replace(" ", "_")
-    decision = "_".join(part for part in decision.split("_") if part)
+    decision = _normalized_token(value)
     return decision or "rejected_value_sanity"
+
+
+def _normalized_token(value: object) -> str:
+    token = re.sub(r"(?<!^)(?=[A-Z])", "_", str(value or "").strip())
+    token = token.lower().replace("-", "_").replace(" ", "_")
+    return "_".join(part for part in token.split("_") if part)
