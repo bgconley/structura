@@ -12,6 +12,7 @@ from lib.model_runtime.profiles import (
     VISUAL_EMBED_PROFILE,
 )
 from lib.model_runtime.reliability_acceptance import evaluate_phase85_report_acceptance
+from lib.model_runtime.reliability_gold_metrics import REQUIRED_GOLD_METRICS
 from lib.model_runtime.reliability_report import build_phase85_reliability_report
 
 
@@ -527,7 +528,61 @@ def test_report_acceptance_fails_when_gold_gate_hides_metric_gaps() -> None:
             "runId": "phase85-pass-1",
             "status": "passed",
             "details": report["acceptanceGates"]["goldCorpusQuality"],
-            "invalid": ["missingMetrics", "failedMetrics"],
+            "invalid": ["missingMetrics", "failedMetrics", "metrics"],
+        }
+    ]
+
+
+def test_report_acceptance_fails_when_gold_gate_hides_metric_details() -> None:
+    report = _resident_report()
+    report["acceptanceGates"]["goldCorpusQuality"] = {
+        "status": "passed",
+        "missingMetrics": [],
+        "failedMetrics": [],
+    }
+
+    summary = evaluate_phase85_report_acceptance([report], require_gold=True)
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["goldCorpusQuality"]["status"] == "failed"
+    assert summary["checks"]["goldCorpusQuality"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "status": "passed",
+            "details": report["acceptanceGates"]["goldCorpusQuality"],
+            "invalid": ["metrics"],
+        }
+    ]
+
+
+def test_report_acceptance_fails_when_gold_gate_omits_required_metric_details() -> None:
+    report = _resident_report()
+    report["acceptanceGates"]["goldCorpusQuality"] = {
+        "status": "passed",
+        "missingMetrics": [],
+        "failedMetrics": [],
+        "metrics": {
+            REQUIRED_GOLD_METRICS[0]: {
+                "status": "passed",
+                "invalidThreshold": False,
+                "invalidValues": [],
+                "failingKeys": [],
+            },
+        },
+    }
+
+    summary = evaluate_phase85_report_acceptance([report], require_gold=True)
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["goldCorpusQuality"]["status"] == "failed"
+    assert summary["checks"]["goldCorpusQuality"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "status": "passed",
+            "details": report["acceptanceGates"]["goldCorpusQuality"],
+            "invalid": ["metrics.requiredMetrics"],
         }
     ]
 
@@ -571,6 +626,7 @@ def test_report_acceptance_fails_when_gold_gate_hides_failed_metric_detail() -> 
             "status": "passed",
             "details": report["acceptanceGates"]["goldCorpusQuality"],
             "invalid": [
+                "metrics.requiredMetrics",
                 "metrics.duplicateRate.invalidThreshold",
                 "metrics.fieldF1ByFamily.status",
                 "metrics.fieldF1ByFamily.failingKeys",

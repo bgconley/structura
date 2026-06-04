@@ -17,6 +17,7 @@ from lib.model_runtime.reliability_acceptance_recompute import (
     violating_hard_invariants_summary,
     violating_operational_slo_summary,
 )
+from lib.model_runtime.reliability_gold_acceptance import gold_corpus_acceptance_check
 from lib.model_runtime.reliability_report_normalization import dict_value, get_value
 from lib.model_runtime.reliability_versions import PIPELINE_VERSION
 
@@ -77,7 +78,7 @@ def evaluate_phase85_report_acceptance(
         "requiredSummaries": _required_summaries_check(reports),
         "hardCorrectnessInvariants": _hard_correctness_check(reports),
         "operationalSLOs": _operational_slo_check(reports),
-        "goldCorpusQuality": _gold_check(reports, require_gold=require_gold),
+        "goldCorpusQuality": gold_corpus_acceptance_check(reports, require_gold=require_gold),
         "repeatabilityFingerprints": _repeatability_check(reports),
     }
     return {
@@ -345,68 +346,6 @@ def _operational_slo_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
 
 def _is_zero_number(value: Any) -> bool:
     return not isinstance(value, bool) and isinstance(value, int | float) and value == 0
-
-
-def _gold_check(reports: list[dict[str, Any]], *, require_gold: bool) -> dict[str, Any]:
-    failures: list[dict[str, Any]] = []
-    for index, report in enumerate(reports):
-        gate = _gate(report, "goldCorpusQuality")
-        status = str(get_value(gate, "status") or "missing")
-        if status == "passed":
-            invalid = _gold_metric_failure_keys(gate)
-            if not invalid:
-                continue
-            failures.append(
-                {
-                    "reportIndex": index,
-                    "runId": get_value(report, "runId", "run_id"),
-                    "status": status,
-                    "details": gate,
-                    "invalid": invalid,
-                }
-            )
-            continue
-        if not require_gold and status == "not_evaluated":
-            continue
-        failures.append(
-            {
-                "reportIndex": index,
-                "runId": get_value(report, "runId", "run_id"),
-                "status": status,
-                "details": gate,
-            }
-        )
-    if not require_gold and not failures:
-        return {"status": "not_required", "failures": []}
-    return {
-        "status": "passed" if reports and not failures else "failed",
-        "failures": failures,
-    }
-
-
-def _gold_metric_failure_keys(gate: dict[str, Any]) -> list[str]:
-    invalid: list[str] = []
-    missing_metrics = get_value(gate, "missingMetrics", "missing_metrics")
-    failed_metrics = get_value(gate, "failedMetrics", "failed_metrics")
-    if not isinstance(missing_metrics, list) or missing_metrics:
-        invalid.append("missingMetrics")
-    if not isinstance(failed_metrics, list) or failed_metrics:
-        invalid.append("failedMetrics")
-    metrics = dict_value(get_value(gate, "metrics"))
-    for metric, detail_value in sorted(metrics.items()):
-        detail = dict_value(detail_value)
-        status = get_value(detail, "status")
-        if status != "passed":
-            invalid.append(f"metrics.{metric}.status")
-        if get_value(detail, "invalidThreshold", "invalid_threshold"):
-            invalid.append(f"metrics.{metric}.invalidThreshold")
-        invalid_values = get_value(detail, "invalidValues", "invalid_values")
-        if isinstance(invalid_values, list) and invalid_values:
-            invalid.append(f"metrics.{metric}.invalidValues")
-        failing_keys = get_value(detail, "failingKeys", "failing_keys")
-        if isinstance(failing_keys, list) and failing_keys:
-            invalid.append(f"metrics.{metric}.failingKeys")
-    return invalid
 
 
 def _repeatability_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
