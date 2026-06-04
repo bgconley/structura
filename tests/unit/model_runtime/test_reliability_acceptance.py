@@ -168,6 +168,25 @@ def test_report_acceptance_fails_when_target_dead_letter_count_is_nonzero() -> N
     ]
 
 
+def test_report_acceptance_fails_when_target_dead_letter_count_is_boolean() -> None:
+    report = _resident_report()
+    report["acceptanceGates"]["operationalSLOs"]["metrics"]["targetQueueDeadLetterCount"] = False
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["operationalSLOs"]["status"] == "failed"
+    assert summary["checks"]["operationalSLOs"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "status": "passed",
+            "details": report["acceptanceGates"]["operationalSLOs"],
+            "invalid": ["metrics.targetQueueDeadLetterCount"],
+        }
+    ]
+
+
 def test_report_acceptance_fails_when_operational_slo_subgate_fails() -> None:
     report = _resident_report()
     report["acceptanceGates"]["operationalSLOs"]["gates"]["retrySuccessRate"]["status"] = "failed"
@@ -212,6 +231,25 @@ def test_report_acceptance_fails_when_operational_slo_subgate_has_violations() -
 def test_report_acceptance_fails_when_hard_invariant_count_is_nonzero() -> None:
     report = _resident_report()
     report["acceptanceGates"]["hardCorrectnessInvariants"]["totalViolationCount"] = 1
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["hardCorrectnessInvariants"]["status"] == "failed"
+    assert summary["checks"]["hardCorrectnessInvariants"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "status": "passed",
+            "details": report["acceptanceGates"]["hardCorrectnessInvariants"],
+            "invalid": ["totalViolationCount"],
+        }
+    ]
+
+
+def test_report_acceptance_fails_when_hard_invariant_count_is_boolean() -> None:
+    report = _resident_report()
+    report["acceptanceGates"]["hardCorrectnessInvariants"]["totalViolationCount"] = False
 
     summary = evaluate_phase85_report_acceptance([report])
 

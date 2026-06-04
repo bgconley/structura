@@ -197,6 +197,7 @@ def test_gpu_validation_docs_require_zero_hard_correctness_count() -> None:
         "`acceptanceGates.hardCorrectnessInvariants.status = passed` and "
         "`totalViolationCount = 0`"
     ) in normalized
+    assert "Hard correctness and operational SLO counters must be numeric zero" in normalized
 
 
 def test_gpu_validation_docs_require_zero_target_dead_letters() -> None:

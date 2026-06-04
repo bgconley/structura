@@ -107,6 +107,8 @@ Hard correctness acceptance requires
 Operational SLO acceptance requires
 `acceptanceGates.operationalSLOs.status = passed` and
 `metrics.targetQueueDeadLetterCount = 0`.
+Hard correctness and operational SLO counters must be numeric zero, not booleans
+or string values.
 Operational SLO reports must include passing subgates for
 `targetQueueDeadLetters`, `classifiedOperationalFailures`, `retrySuccessRate`,
 `runtimeFailureRates`, `runawayFanout`, and `retrySafeJobs`.

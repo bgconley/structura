@@ -239,7 +239,7 @@ def _hard_correctness_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
         invalid: list[str] = []
         if status != "passed":
             invalid.append("status")
-        if get_value(gate, "totalViolationCount", "total_violation_count") != 0:
+        if not _is_zero_number(get_value(gate, "totalViolationCount", "total_violation_count")):
             invalid.append("totalViolationCount")
         if invalid:
             failures.append(
@@ -267,7 +267,9 @@ def _operational_slo_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
         invalid: list[str] = []
         if status != "passed":
             invalid.append("status")
-        if get_value(metrics, "targetQueueDeadLetterCount", "target_queue_dead_letter_count") != 0:
+        if not _is_zero_number(
+            get_value(metrics, "targetQueueDeadLetterCount", "target_queue_dead_letter_count")
+        ):
             invalid.append("metrics.targetQueueDeadLetterCount")
         for gate_key in OPERATIONAL_SLO_GATE_KEYS:
             subgate = dict_value(get_value(gates, gate_key))
