@@ -372,9 +372,10 @@ Tasks:
 - PGMQ bootstrap if compatible with the chosen database image.
 - Redis only under explicit fallback profile.
 - Model placeholders:
-  - `model-qwen` on port `8100`, GPU 0 default.
-  - `model-granite` on port `8101`, GPU 0 default for the initial placeholder only; Phase 8.5 supersedes live placement to Blackwell GPU 1.
-  - `model-embed` on port `8102`, GPU 1 default for the initial placeholder only; Phase 8.5 supersedes live placement to the RTX 3090 text-embedding node.
+  - `model-granite-placeholder` on port `8101`, health-only; Phase 8.5 supersedes live placement to Blackwell GPU 1.
+  - `model-embed-placeholder` on port `8102`, health-only; Phase 8.5 supersedes live placement to the RTX 3090 text-embedding node.
+  - `model-vl-embed-placeholder` on port `8103`, health-only; Phase 8.5 visual embedding validation uses the live visual embedding service.
+  - Qwen is not represented by a health placeholder in the current Compose file; Phase 8.5 Smart Parse uses `model-qwen-semantic` under the live model profile.
   - `worker-analysis` remains optional and must not be required for normal filing/search.
 - Bind mounts aligned to:
   - `/srv/structura/postgres`

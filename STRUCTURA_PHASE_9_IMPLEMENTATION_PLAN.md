@@ -11,8 +11,8 @@ This plan expands Phase 9 from `STRUCTURA_IMPLEMENTATION_PLAN.md`. It does not r
 - When an artifact exists in both Markdown and DOCX form, read the Markdown artifact by default. Only inspect DOCX when the user explicitly asks for layout/fidelity review or the Markdown file is missing/incomplete.
 - Keep generated FastAPI OpenAPI paths aligned with `contracts/api/openapi.yaml`. If implementation and contract differ, stop and resolve the contract question explicitly.
 - Preserve Phase 1-8 invariants: original bytes are immutable, canonical facts remain the default read model, candidates and model outputs remain reviewable, search indexes are assistive, relationship suggestions remain distinct from confirmed relationships, visual/handwriting uncertainty is explicit, browser-mutating routes require CSRF, and access control is enforced before returning document-derived content.
-- Analysis is opt-in. The app must stay useful when analysis is disabled, when the analysis worker is offline, or when `model-qwen` is unavailable.
-- Phase 8.5 is a prerequisite for release-quality Phase 9 work. Do not enable user-facing analysis on top of fixture visual embeddings, fake Qwen provenance, or placeholder Granite/Qwen services.
+- Analysis is opt-in. The app must stay useful when analysis is disabled, when the analysis worker is offline, or when the future analysis model profile is unavailable.
+- Phase 8.5 is a prerequisite for release-quality Phase 9 work. Do not enable user-facing analysis on top of fixture visual embeddings, fake Qwen provenance, placeholder model services, or ambiguous model-backed corpus evidence.
 - Analysis notes are persisted separately from extraction, canonical facts, relationships, folders, tags, deadlines, and exports. They must never silently mutate accepted data.
 - Every analysis answer must cite source documents and pages. Do not present uncited model assertions as trusted analysis.
 - Do not log raw document text, model prompts, model responses, analysis answers, citations excerpts, object-storage paths, or presigned asset URLs.
@@ -76,7 +76,8 @@ Work:
 
 - Confirm Gate D retrieval baseline, Phase 8 difficult-document gate, and Phase 8.5 live model-service gate are implemented or explicitly accepted as prerequisites before user-facing analysis is enabled.
 - Confirm structured viewing of receipt, invoice, and EOB extractions, manual correction flows, related-document navigation, and search are strong enough that analysis is additive rather than a workaround.
-- Inventory the active Phase 9 baseline: `analysis_notes` table, `job_type = analyze`, `POST /api/v1/analysis-notes`, `analyze_documents_job.v1`, `analysis_note.v1`, `worker-analysis`, and `model-qwen`.
+- Inventory the active Phase 9 baseline: `analysis_notes` table, `job_type = analyze`, `POST /api/v1/analysis-notes`, `analyze_documents_job.v1`, `analysis_note.v1`, `worker-analysis`, and the still-to-be-selected analysis model profile.
+- Record that model-qwen-semantic is not an analysis service; it is the Phase 8.5 Smart Parse semantic planner.
 - Decide whether Phase 9 needs only the existing POST route plus job lookup, or whether additional analysis-note read/list/delete routes are required. Any public API extension must update OpenAPI and route parity tests in the same change.
 - Define the default feature flag behavior: analysis disabled or unavailable must show a clear UI state and must not block ingest, browse, filing, review, search, relationships, exports, or admin health.
 - Record implementation assumptions for note editability. The artifact risk register asks whether notes should be editable; prefer immutable generated notes plus future user annotations unless the user decides otherwise.
@@ -244,7 +245,7 @@ Fresh Context:
 - `pro-merged-master-v1.2/docs/11_Model_Routing_and_Output_Contracts.md`, Qwen analysis and structured output guidance.
 - `pro-merged-master-v1.2/contracts/schemas/analysis_note.v1.schema.json`.
 - `pro-merged-master-v1.2/contracts/schemas/common_defs.schema.json`.
-- `pro-merged-master-v1.2/infrastructure/runtime_service_matrix.csv`, `worker-analysis` and `model-qwen`.
+- `pro-merged-master-v1.2/infrastructure/runtime_service_matrix.csv`, `worker-analysis`, and historical analysis-model expectations.
 - Active model gateway/configuration from Phase 4.
 
 Work:
@@ -276,7 +277,7 @@ Fresh Context:
 - `STRUCTURA_IMPLEMENTATION_PLAN.md`, analysis run model task.
 - `pro-merged-master-v1.2/contracts/events/analyze_documents_job.v1.schema.json`.
 - `pro-merged-master-v1.2/infrastructure/runtime_service_matrix.csv`, `worker-analysis`.
-- `compose.yaml`, `worker-analysis`, `model-qwen`, and analysis profile.
+- `compose.yaml`, `worker-analysis`, the analysis profile, and any future Phase 9 analysis model profile.
 - `workers/analysis/`.
 - `workers/placeholder.py`.
 - `lib/jobs/service.py`.
@@ -453,7 +454,7 @@ Goal: operate analysis runs with clear job state, bounded resource use, and mode
 Fresh Context:
 
 - `STRUCTURA_IMPLEMENTATION_PLAN.md`, analysis run model and disabled behavior.
-- `pro-merged-master-v1.2/infrastructure/runtime_service_matrix.csv`, `worker-analysis` and `model-qwen`.
+- `pro-merged-master-v1.2/infrastructure/runtime_service_matrix.csv`, `worker-analysis`, and historical analysis-model expectations.
 - `pro-merged-master-v1.2/docs/05_Nonfunctional_Requirements_Security_Privacy_Observability.md`, observability and audit requirements.
 - `compose.yaml`, analysis profile and model profiles.
 - `README.md`.
@@ -464,7 +465,7 @@ Work:
 
 - Ensure `worker-analysis` can run under a profile-gated local configuration and can be absent without failing core services.
 - Add service health fields for analysis worker enabled/disabled, queue depth, oldest job age, success/failure counts, model availability, validation failures, timeout counts, and dead-letter counts.
-- Keep model-qwen optional for analysis, with clear degraded behavior when unavailable.
+- Keep the analysis model profile optional for analysis, with clear degraded behavior when unavailable.
 - Add admin visibility for analysis jobs through existing jobs/admin surfaces rather than inventing a parallel operations screen.
 - Add metrics/logs for job lifecycle and validation class without raw content.
 - Update README or implementation notes with analysis profile commands, disabled-mode behavior, and optional live-model validation steps.
@@ -497,7 +498,7 @@ Work:
 
 - Add deterministic analysis fixtures for EOB explanation, document comparison, timeline, obligation scan, tax scan, and summary.
 - Define expected properties rather than brittle full-text equality: required citations, selected documents, note type, recommended-action shape, absence of canonical mutation, and safety language where applicable.
-- Add live-model benchmark hooks that can run against local Qwen when enabled, with stored before/after metrics and manual review notes.
+- Add live-model benchmark hooks that can run against the selected local analysis model profile when enabled, with stored before/after metrics and manual review notes.
 - Add ACL and sensitivity regression cases: unauthorized documents, mixed-sensitivity scopes, hidden related documents, and disabled analysis.
 - Add UI QA for frame `14:990` using Figma screenshot comparison, Playwright workflows, responsive states, keyboard focus, and network assertions.
 - Confirm Gate E:
