@@ -29,6 +29,15 @@ SCHEMA_ARTIFACT_VALUES = (
     "response_format",
     "tool schema",
 )
+SCHEMA_ARTIFACT_VALUE_TOKENS = frozenset(
+    {
+        "$schema",
+        "json_schema",
+        "response_format",
+        "system_prompt",
+        "tool_schema",
+    }
+)
 
 
 def contains_prompt_echo(value: object) -> bool:
@@ -49,11 +58,16 @@ def contains_prompt_or_schema_artifact(value: Any) -> bool:
     if not isinstance(value, str):
         return False
     normalized = value.strip().lower()
+    normalized_token = _normalized_key(value)
     if normalized in {"<json_schema>", "json_schema", "response_format"}:
+        return True
+    if normalized_token in SCHEMA_ARTIFACT_VALUE_TOKENS:
         return True
     if contains_prompt_echo(normalized):
         return True
-    return any(token in normalized for token in SCHEMA_ARTIFACT_VALUES)
+    return any(token in normalized for token in SCHEMA_ARTIFACT_VALUES) or any(
+        token in normalized_token for token in SCHEMA_ARTIFACT_VALUE_TOKENS
+    )
 
 
 def _is_schema_artifact_key(value: object) -> bool:
