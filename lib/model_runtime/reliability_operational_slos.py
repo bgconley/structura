@@ -17,6 +17,7 @@ from lib.model_runtime.reliability_report_normalization import (
     get_value,
     int_value,
     list_value,
+    normalized_text,
 )
 
 SELECTED_TASK_STATUSES = frozenset({"selected", "enqueued", "queued", "running", "completed"})
@@ -283,7 +284,7 @@ def _gate_results(violations: dict[str, list[dict[str, Any]]]) -> dict[str, dict
 
 
 def _task_is_selected(row: dict[str, Any]) -> bool:
-    return str(get_value(row, "status") or "").lower() in SELECTED_TASK_STATUSES
+    return normalized_text(get_value(row, "status")) in SELECTED_TASK_STATUSES
 
 
 def _queue(row: dict[str, Any]) -> str:
@@ -352,7 +353,7 @@ def _add_violation(
         {
             "reason": reason,
             "queueName": _queue(row),
-            "jobType": get_value(row, "job_type", "jobType"),
+            "jobType": normalized_text(get_value(row, "job_type", "jobType")) or "unknown",
             "status": _status(row),
             "count": count if count is not None else _job_count(row),
         }

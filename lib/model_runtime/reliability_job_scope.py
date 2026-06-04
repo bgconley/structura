@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from lib.model_runtime.reliability_report_normalization import get_value
+from lib.model_runtime.reliability_report_normalization import get_value, normalized_text
 
 TARGET_FAILURE_QUEUES = frozenset(
     {"docling", "semantic-annotations", "extraction", "visual-embeddings"}
@@ -11,11 +11,11 @@ FAILURE_STATUSES = frozenset({"failed", "dead_letter", "pipeline_failed"})
 
 
 def job_queue_name(row: dict[str, Any]) -> str:
-    return str(get_value(row, "queue_name", "queueName", "queue") or "")
+    return normalized_text(get_value(row, "queue_name", "queueName", "queue"))
 
 
 def job_status(row: dict[str, Any]) -> str:
-    return str(get_value(row, "status") or "").lower()
+    return normalized_text(get_value(row, "status"))
 
 
 def is_phase85_target_failure(row: dict[str, Any]) -> bool:

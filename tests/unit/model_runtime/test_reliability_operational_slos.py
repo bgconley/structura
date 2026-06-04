@@ -36,6 +36,41 @@ def test_operational_slos_fail_for_retry_and_fanout_regressions() -> None:
     assert summary["gates"]["retrySafeJobs"]["violationCount"] == 1
 
 
+def test_operational_slos_normalize_target_job_queue_and_status() -> None:
+    summary = evaluate_operational_slos([_cased_dead_letter_document_report()])
+
+    assert summary["status"] == "failed"
+    assert summary["metrics"]["targetQueueDeadLetterCount"] == 1
+    assert summary["gates"]["targetQueueDeadLetters"]["violationCount"] == 1
+    assert summary["gates"]["classifiedOperationalFailures"]["violationCount"] == 1
+    assert summary["gates"]["runtimeFailureRates"]["violationCount"] == 1
+    assert summary["gates"]["targetQueueDeadLetters"]["examples"] == [
+        {
+            "reason": "target_queue_dead_letter",
+            "queueName": "extraction",
+            "jobType": "extract",
+            "status": "dead_letter",
+            "count": 1,
+        }
+    ]
+
+
+def test_operational_slos_normalize_selected_planner_task_statuses() -> None:
+    summary = evaluate_operational_slos([_cased_fanout_document_report()])
+
+    assert summary["status"] == "failed"
+    assert summary["gates"]["runawayFanout"]["violationCount"] == 1
+    assert summary["gates"]["runawayFanout"]["examples"] == [
+        {
+            "reason": "selected_tasks_exceed_page_policy",
+            "documentId": "doc-cased-fanout",
+            "pageNumber": "1",
+            "selectedTaskCount": 4,
+            "maxTasksPerPagePolicy": 3,
+        }
+    ]
+
+
 def test_reliability_report_includes_operational_slo_summary() -> None:
     report = build_phase85_reliability_report(
         run_id="phase85-20260604-smoke-001",
@@ -70,6 +105,43 @@ def _clean_document_report() -> dict[str, object]:
             {"status": "selected", "page_number": 1},
             {"status": "selected", "page_number": 1},
             {"status": "selected", "page_number": 2},
+        ],
+    }
+
+
+def _cased_dead_letter_document_report() -> dict[str, object]:
+    return {
+        "document": {"id": "doc-cased-dead-letter"},
+        "jobs": [
+            {
+                "queue_name": " Extraction ",
+                "job_type": " extract ",
+                "status": " Dead_Letter ",
+                "count": 1,
+                "attempt_count": 5,
+                "max_attempts": 5,
+                "error_jsons": [{}],
+            }
+        ],
+    }
+
+
+def _cased_fanout_document_report() -> dict[str, object]:
+    return {
+        "document": {"id": "doc-cased-fanout"},
+        "planner": [
+            {
+                "report_json": {
+                    "maxTasksPerDocumentPolicy": 6,
+                    "maxTasksPerPagePolicy": 3,
+                },
+            }
+        ],
+        "plannerTasks": [
+            {"status": " Selected ", "page_number": 1},
+            {"status": " Selected ", "page_number": 1},
+            {"status": " Selected ", "page_number": 1},
+            {"status": " Selected ", "page_number": 1},
         ],
     }
 
