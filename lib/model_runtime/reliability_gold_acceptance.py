@@ -67,6 +67,8 @@ def _gold_metric_failure_keys(gate: dict[str, Any]) -> list[str]:
         invalid.append("metrics")
     elif any(metric not in metrics for metric in REQUIRED_GOLD_METRICS):
         invalid.append("metrics.requiredMetrics")
+    elif get_value(gate, "requiredMetrics", "required_metrics") != list(REQUIRED_GOLD_METRICS):
+        invalid.append("requiredMetrics")
     for metric, detail_value in sorted(metrics.items()):
         detail = dict_value(detail_value)
         status = get_value(detail, "status")
