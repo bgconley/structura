@@ -13,6 +13,11 @@ from lib.model_runtime.reliability_acceptance_recompute import (
 from lib.model_runtime.reliability_admission_summary_acceptance import (
     candidate_admission_summary_acceptance_check,
 )
+from lib.model_runtime.reliability_control_summary_acceptance import (
+    contract_summary_acceptance_check,
+    dedupe_summary_acceptance_check,
+    evidence_summary_acceptance_check,
+)
 from lib.model_runtime.reliability_envelope_summary_acceptance import (
     envelope_summary_acceptance_check,
 )
@@ -80,6 +85,9 @@ def evaluate_phase85_report_acceptance(
         "requiredSummaries": _required_summaries_check(reports),
         "plannerSummary": planner_summary_acceptance_check(reports),
         "candidateAdmissionSummary": candidate_admission_summary_acceptance_check(reports),
+        "contractSummary": contract_summary_acceptance_check(reports),
+        "evidenceSummary": evidence_summary_acceptance_check(reports),
+        "dedupeSummary": dedupe_summary_acceptance_check(reports),
         "envelopeSummary": envelope_summary_acceptance_check(reports),
         "visualInputPlanSummary": visual_input_plan_summary_acceptance_check(reports),
         "retrySummary": retry_summary_acceptance_check(reports),

@@ -11,7 +11,10 @@ from lib.model_runtime.reliability_operational_slos import evaluate_operational_
 from lib.model_runtime.reliability_report_normalization import json_safe
 from lib.model_runtime.reliability_summaries import (
     candidate_admission_summary,
+    contract_summary,
+    dedupe_summary,
     envelope_summary,
+    evidence_summary,
     extraction_pressure,
     planner_summary,
     quality_summary,
@@ -49,6 +52,9 @@ def build_phase85_reliability_report(
     }
     report["plannerSummary"] = planner_summary(run_id, safe_documents)
     report["candidateAdmissionSummary"] = candidate_admission_summary(run_id, safe_documents)
+    report["contractSummary"] = contract_summary(run_id, safe_documents)
+    report["evidenceSummary"] = evidence_summary(safe_documents)
+    report["dedupeSummary"] = dedupe_summary(safe_documents)
     report["envelopeSummary"] = envelope_summary(safe_documents)
     report["visualInputPlanSummary"] = visual_input_plan_summary(safe_documents)
     report["retrySummary"] = retry_summary(safe_documents)

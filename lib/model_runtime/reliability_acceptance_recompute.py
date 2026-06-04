@@ -9,7 +9,10 @@ from lib.model_runtime.reliability_report_normalization import dict_value, get_v
 from lib.model_runtime.reliability_summary_recompute import (
     candidate_rejection_summary,
     recomputed_candidate_admission_summary,
+    recomputed_contract_summary,
+    recomputed_dedupe_summary,
     recomputed_envelope_summary,
+    recomputed_evidence_summary,
     recomputed_extraction_pressure,
     recomputed_planner_summary,
     recomputed_quality_summary,
@@ -21,7 +24,10 @@ from lib.model_runtime.reliability_summary_recompute import (
 
 __all__ = [
     "recomputed_candidate_admission_summary",
+    "recomputed_contract_summary",
+    "recomputed_dedupe_summary",
     "recomputed_envelope_summary",
+    "recomputed_evidence_summary",
     "recomputed_extraction_pressure",
     "recomputed_hard_invariants",
     "recomputed_operational_slos",

@@ -112,27 +112,80 @@ def candidate_admission_summary(run_id: str, documents: list[dict[str, Any]]) ->
     }
 
 
+def contract_summary(run_id: str, documents: list[dict[str, Any]]) -> dict[str, Any]:
+    task_rows = all_rows(documents, "plannerTasks")
+    schema_counts: Counter[str] = Counter()
+    contract_modes: Counter[str] = Counter()
+    contracted = 0
+    missing = 0
+    for task in task_rows:
+        schema_name = get_value(task, "model_output_schema_name", "modelOutputSchemaName")
+        if schema_name not in (None, ""):
+            contracted += 1
+            schema_counts[str(schema_name)] += 1
+        else:
+            missing += 1
+        contract_modes[
+            str(get_value(task, "compatibility_mode", "compatibilityMode") or "unknown")
+        ] += 1
+    return {
+        "runId": run_id,
+        "contractRegistryVersion": CONTRACT_REGISTRY_VERSION,
+        "contractedTaskCount": contracted,
+        "missingContractTaskCount": missing,
+        "schemaCounts": dict(sorted(schema_counts.items())),
+        "contractResolutionModes": dict(sorted(contract_modes.items())),
+    }
+
+
+def evidence_summary(documents: list[dict[str, Any]]) -> dict[str, Any]:
+    candidate_concrete = 0
+    candidate_missing = 0
+    for event in all_rows(documents, "admissionEvents"):
+        if bool_value(get_value(event, "evidence_concrete", "evidenceConcrete")):
+            candidate_concrete += 1
+        else:
+            candidate_missing += 1
+    envelope_evidence = _envelope_evidence_counts(documents)
+    return {
+        "candidateEvidenceConcreteCount": candidate_concrete,
+        "candidateEvidenceMissingCount": candidate_missing,
+        **envelope_evidence,
+    }
+
+
+def dedupe_summary(documents: list[dict[str, Any]]) -> dict[str, Any]:
+    planner_duplicate_suppressed = sum_values(
+        all_rows(documents, "planner"),
+        "duplicate_suppressed_count",
+        "duplicateSuppressedCount",
+    )
+    admission_duplicate_rejections = sum(
+        1
+        for event in all_rows(documents, "admissionEvents")
+        if str(get_value(event, "decision")) == "rejected_duplicate"
+    )
+    return {
+        "plannerDuplicateSuppressedCount": planner_duplicate_suppressed,
+        "admissionDuplicateRejectionCount": admission_duplicate_rejections,
+        "totalDuplicateSuppressionCount": planner_duplicate_suppressed
+        + admission_duplicate_rejections,
+    }
+
+
 def envelope_summary(documents: list[dict[str, Any]]) -> dict[str, Any]:
     counts = Counter({"facts": 0, "lineItems": 0, "tableRows": 0, "observations": 0})
-    concrete = 0
-    total_evidence = 0
     for extraction in all_rows(documents, "extractions"):
         envelope = _region_envelope(extraction)
         counts["facts"] += len(list_value(get_value(envelope, "facts")))
         counts["lineItems"] += len(list_value(get_value(envelope, "line_items", "lineItems")))
         counts["tableRows"] += len(list_value(get_value(envelope, "table_rows", "tableRows")))
         counts["observations"] += len(list_value(get_value(envelope, "observations")))
-        for evidence in list_value(get_value(envelope, "evidence")):
-            if isinstance(evidence, dict):
-                total_evidence += 1
-                if bool_value(
-                    get_value(evidence, "concrete", "evidence_concrete", "evidenceConcrete")
-                ):
-                    concrete += 1
-    coverage = round(concrete / total_evidence, 4) if total_evidence else 0.0
     return {
         **dict(counts),
-        "concreteEvidenceCoverage": coverage,
+        "concreteEvidenceCoverage": _envelope_evidence_counts(documents)[
+            "concreteEvidenceCoverage"
+        ],
     }
 
 
@@ -250,3 +303,23 @@ def quality_summary(documents: list[dict[str, Any]]) -> dict[str, Any]:
 def _region_envelope(extraction: dict[str, Any]) -> dict[str, Any]:
     normalization = dict_value(get_value(extraction, "normalization_json", "normalizationJson"))
     return dict_value(get_value(normalization, "regionEnvelope", "region_envelope"))
+
+
+def _envelope_evidence_counts(documents: list[dict[str, Any]]) -> dict[str, Any]:
+    concrete = 0
+    total_evidence = 0
+    for extraction in all_rows(documents, "extractions"):
+        envelope = _region_envelope(extraction)
+        for evidence in list_value(get_value(envelope, "evidence")):
+            if isinstance(evidence, dict):
+                total_evidence += 1
+                if bool_value(
+                    get_value(evidence, "concrete", "evidence_concrete", "evidenceConcrete")
+                ):
+                    concrete += 1
+    coverage = round(concrete / total_evidence, 4) if total_evidence else 0.0
+    return {
+        "regionEnvelopeEvidenceCount": total_evidence,
+        "regionEnvelopeConcreteEvidenceCount": concrete,
+        "concreteEvidenceCoverage": coverage,
+    }

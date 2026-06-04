@@ -15,11 +15,19 @@ from lib.model_runtime.reliability_report_normalization import (
     list_value,
     sum_values,
 )
+from lib.model_runtime.reliability_summaries import (
+    contract_summary,
+    dedupe_summary,
+    evidence_summary,
+)
 
 __all__ = [
     "candidate_rejection_summary",
     "recomputed_candidate_admission_summary",
+    "recomputed_contract_summary",
+    "recomputed_dedupe_summary",
     "recomputed_envelope_summary",
+    "recomputed_evidence_summary",
     "recomputed_extraction_pressure",
     "recomputed_planner_summary",
     "recomputed_quality_summary",
@@ -41,6 +49,36 @@ def recomputed_candidate_admission_summary(report: dict[str, Any]) -> dict[str, 
         **_candidate_admission_lineage(report, document_rows),
         **_candidate_admission_evidence(document_rows),
     }
+
+
+def recomputed_contract_summary(report: dict[str, Any]) -> dict[str, Any] | None:
+    documents = report_document_rows(report)
+    if documents is None:
+        return None
+    valid, document_rows = documents
+    if not valid:
+        return {}
+    return contract_summary(str(_report_run_id(report) or ""), document_rows)
+
+
+def recomputed_evidence_summary(report: dict[str, Any]) -> dict[str, Any] | None:
+    documents = report_document_rows(report)
+    if documents is None:
+        return None
+    valid, document_rows = documents
+    if not valid:
+        return {}
+    return evidence_summary(document_rows)
+
+
+def recomputed_dedupe_summary(report: dict[str, Any]) -> dict[str, Any] | None:
+    documents = report_document_rows(report)
+    if documents is None:
+        return None
+    valid, document_rows = documents
+    if not valid:
+        return {}
+    return dedupe_summary(document_rows)
 
 
 def recomputed_planner_summary(report: dict[str, Any]) -> dict[str, Any] | None:

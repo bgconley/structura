@@ -103,6 +103,35 @@ def test_reliability_report_summarizes_envelopes_visual_routes_and_safe_outcomes
     }
 
 
+def test_reliability_report_exposes_task15_contract_evidence_and_dedupe_summaries() -> None:
+    report = build_phase85_reliability_report(
+        run_id="phase85-20260604-smoke-001",
+        title_prefix="Phase 8.5 Smoke",
+        documents=[_document_report()],
+    )
+
+    assert report["contractSummary"] == {
+        "runId": "phase85-20260604-smoke-001",
+        "contractRegistryVersion": CONTRACT_REGISTRY_VERSION,
+        "contractedTaskCount": 1,
+        "missingContractTaskCount": 1,
+        "schemaCounts": {"granite_invoice_line_items.v1": 1},
+        "contractResolutionModes": {"exact": 1, "missing": 1},
+    }
+    assert report["evidenceSummary"] == {
+        "candidateEvidenceConcreteCount": 1,
+        "candidateEvidenceMissingCount": 1,
+        "regionEnvelopeEvidenceCount": 4,
+        "regionEnvelopeConcreteEvidenceCount": 3,
+        "concreteEvidenceCoverage": 0.75,
+    }
+    assert report["dedupeSummary"] == {
+        "plannerDuplicateSuppressedCount": 1,
+        "admissionDuplicateRejectionCount": 0,
+        "totalDuplicateSuppressionCount": 1,
+    }
+
+
 def test_reliability_report_fingerprints_are_stable_for_deterministic_runs() -> None:
     first = build_phase85_reliability_report(
         run_id="phase85-20260604-smoke-001",
