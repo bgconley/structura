@@ -103,6 +103,7 @@ def maybe_reconcile_semantic_annotation(
             "mapper": "phase8_5_region_reconciler.v1",
             "repairs": ["merged_current_semantic_region_outputs"],
             "rejected_fields": [],
+            "sourceFamilies": _aggregate_source_families(aggregate_json),
         },
         metadata={"semanticAnnotationId": str(semantic_annotation_id)},
     )
@@ -218,3 +219,13 @@ def _force_aggregate_review(validation: ValidationReport) -> ValidationReport:
         },
     ]
     return ValidationReport(needs_review=True, checks=checks)
+
+
+def _aggregate_source_families(aggregate_json: dict[str, Any]) -> list[str]:
+    metadata = aggregate_json.get("metadata")
+    if not isinstance(metadata, dict):
+        return []
+    source_families = metadata.get("source_families")
+    if not isinstance(source_families, list):
+        return []
+    return [str(item) for item in source_families if item not in (None, "")]

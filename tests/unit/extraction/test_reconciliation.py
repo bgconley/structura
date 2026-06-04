@@ -66,6 +66,7 @@ def test_invoice_region_reconciliation_preserves_line_items_and_payment_summary(
         },
     )
 
+    assert aggregate is not None
     assert [item["description"] for item in aggregate["line_items"]] == [
         "PERFORM 600 MILE RUNNING-IN CHECK",
         "MOUNT AND BALANCE FRONT AND REAR TIRES",
@@ -117,6 +118,7 @@ def test_invoice_region_reconciliation_uses_document_level_invoice_fallback() ->
         },
     )
 
+    assert aggregate is not None
     assert aggregate["invoice"]["invoice_number"] == "6046058/1"
     assert aggregate["invoice"]["issued_on"] == "2023-04-25"
 
@@ -149,6 +151,106 @@ def test_invoice_region_reconciliation_does_not_fabricate_required_fields() -> N
     assert "invoice.invoice_number" in aggregate["metadata"]["missing_fields"]
     assert aggregate["line_items"][0]["description"] == "PERFORM 600 MILE RUNNING-IN CHECK"
     assert aggregate["validation"]["needs_review"] is True
+
+
+def test_invoice_region_reconciliation_collapses_duplicate_line_items_from_same_evidence() -> None:
+    region_id = uuid4()
+
+    aggregate = reconcile_invoice_region_extractions(
+        document_id=uuid4(),
+        seller={"display_name": "MAX BMW", "party_type": "company"},
+        created_at=datetime.now(UTC),
+        regions=[
+            RegionExtraction(
+                extraction_id=uuid4(),
+                semantic_region_id=region_id,
+                semantic_type="invoice_line_item_table",
+                normalized_json={
+                    "schema_name": "invoice",
+                    "line_items": [
+                        {
+                            "description": "PERFORM 600 MILE RUNNING-IN CHECK",
+                            "amount": {"amount": 250.00, "currency": "USD"},
+                            "table_id": "table-1",
+                            "row_index": 3,
+                            "page_number": 1,
+                            "evidence": [
+                                {
+                                    "semantic_region_id": str(region_id),
+                                    "table_id": "table-1",
+                                    "row_index": 3,
+                                    "page_number": 1,
+                                }
+                            ],
+                        },
+                        {
+                            "description": " perform 600 mile running-in check ",
+                            "amount": {"amount": 250.00, "currency": "USD"},
+                            "table_id": "table-1",
+                            "row_index": 3,
+                            "page_number": 1,
+                            "evidence": [
+                                {
+                                    "semantic_region_id": str(region_id),
+                                    "table_id": "table-1",
+                                    "row_index": 3,
+                                    "page_number": 1,
+                                }
+                            ],
+                        },
+                    ],
+                    "totals": {"total": {"amount": 250.00, "currency": "USD"}},
+                },
+            ),
+        ],
+        document_fallback={"invoice_number": "6046058/1"},
+    )
+
+    assert aggregate is not None
+    assert [
+        (
+            item["ordinal"],
+            item["description"],
+            item["amount"],
+            item["evidence"][0]["row_index"],
+        )
+        for item in aggregate["line_items"]
+    ] == [
+        (
+            1,
+            "PERFORM 600 MILE RUNNING-IN CHECK",
+            {"amount": 250.00, "currency": "USD"},
+            3,
+        )
+    ]
+
+
+def test_invoice_region_reconciliation_skips_incompatible_source_family() -> None:
+    aggregate = reconcile_invoice_region_extractions(
+        document_id=uuid4(),
+        seller={"display_name": "Health Plan", "party_type": "company"},
+        created_at=datetime.now(UTC),
+        regions=[
+            RegionExtraction(
+                extraction_id=uuid4(),
+                semantic_region_id=uuid4(),
+                semantic_type="invoice_line_item_table",
+                normalized_json={
+                    "schema_name": "medical_eob",
+                    "line_items": [
+                        {
+                            "description": "Office visit",
+                            "amount": {"amount": 120.00, "currency": "USD"},
+                            "evidence": [{"page_number": 1}],
+                        }
+                    ],
+                    "totals": {"total": {"amount": 120.00, "currency": "USD"}},
+                },
+            ),
+        ],
+    )
+
+    assert aggregate is None
 
 
 def test_invoice_region_reconciliation_requires_non_placeholder_seller() -> None:
