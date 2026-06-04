@@ -231,6 +231,7 @@ def test_gpu_validation_docs_require_clean_gold_metric_lists() -> None:
         "`acceptanceGates.goldCorpusQuality.status = passed` with empty "
         "`missingMetrics` and `failedMetrics` lists"
     ) in normalized
+    assert "gold metric summaries must have passing statuses and no invalid values" in normalized
 
 
 def test_gpu_validation_docs_describe_manifest_builder_inputs() -> None:

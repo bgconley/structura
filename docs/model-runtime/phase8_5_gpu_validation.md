@@ -112,6 +112,7 @@ Operational SLO reports must include passing subgates for
 `runtimeFailureRates`, `runawayFanout`, and `retrySafeJobs`.
 Gold corpus acceptance requires
 `acceptanceGates.goldCorpusQuality.status = passed` with empty
-`missingMetrics` and `failedMetrics` lists.
+`missingMetrics` and `failedMetrics` lists; gold metric summaries must have
+passing statuses and no invalid values, invalid thresholds, or failing keys.
 Use `scripts/gpu/phase8_5_report_acceptance.py` directly when re-checking already
 captured report files.

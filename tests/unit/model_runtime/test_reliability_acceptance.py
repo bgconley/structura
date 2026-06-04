@@ -258,6 +258,54 @@ def test_report_acceptance_fails_when_gold_gate_hides_metric_gaps() -> None:
     ]
 
 
+def test_report_acceptance_fails_when_gold_gate_hides_failed_metric_detail() -> None:
+    report = _resident_report()
+    report["acceptanceGates"]["goldCorpusQuality"] = {
+        "status": "passed",
+        "missingMetrics": [],
+        "failedMetrics": [],
+        "metrics": {
+            "fieldF1ByFamily": {
+                "status": "failed",
+                "invalidThreshold": False,
+                "invalidValues": [],
+                "failingKeys": [{"key": "invoice", "value": 0.2}],
+            },
+            "duplicateRate": {
+                "status": "passed",
+                "invalidThreshold": True,
+                "invalidValues": [],
+                "failingKeys": [],
+            },
+            "fieldPrecisionByFamily": {
+                "status": "passed",
+                "invalidThreshold": False,
+                "invalidValues": [{"key": "receipt", "reason": "non_finite"}],
+                "failingKeys": [],
+            },
+        },
+    }
+
+    summary = evaluate_phase85_report_acceptance([report], require_gold=True)
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["goldCorpusQuality"]["status"] == "failed"
+    assert summary["checks"]["goldCorpusQuality"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "status": "passed",
+            "details": report["acceptanceGates"]["goldCorpusQuality"],
+            "invalid": [
+                "metrics.duplicateRate.invalidThreshold",
+                "metrics.fieldF1ByFamily.status",
+                "metrics.fieldF1ByFamily.failingKeys",
+                "metrics.fieldPrecisionByFamily.invalidValues",
+            ],
+        }
+    ]
+
+
 def test_report_acceptance_compares_repeatability_fingerprints_across_two_passes() -> None:
     first = _resident_report()
     second = deepcopy(first)

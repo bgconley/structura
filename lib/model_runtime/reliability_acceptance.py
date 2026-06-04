@@ -342,6 +342,20 @@ def _gold_metric_failure_keys(gate: dict[str, Any]) -> list[str]:
         invalid.append("missingMetrics")
     if not isinstance(failed_metrics, list) or failed_metrics:
         invalid.append("failedMetrics")
+    metrics = dict_value(get_value(gate, "metrics"))
+    for metric, detail_value in sorted(metrics.items()):
+        detail = dict_value(detail_value)
+        status = get_value(detail, "status")
+        if status != "passed":
+            invalid.append(f"metrics.{metric}.status")
+        if get_value(detail, "invalidThreshold", "invalid_threshold"):
+            invalid.append(f"metrics.{metric}.invalidThreshold")
+        invalid_values = get_value(detail, "invalidValues", "invalid_values")
+        if isinstance(invalid_values, list) and invalid_values:
+            invalid.append(f"metrics.{metric}.invalidValues")
+        failing_keys = get_value(detail, "failingKeys", "failing_keys")
+        if isinstance(failing_keys, list) and failing_keys:
+            invalid.append(f"metrics.{metric}.failingKeys")
     return invalid
 
 
