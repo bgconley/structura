@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from lib.extraction.candidate_quality import reject_line_item
+from lib.extraction.candidate_quality import reject_line_item, reject_observation
 
 
 def test_rejects_zero_amount_line_without_service_context() -> None:
@@ -42,6 +42,13 @@ def test_eob_nonzero_amount_keys_prevent_zero_amount_rejection() -> None:
             "patient_responsibility": {"amount": 300.0, "currency": "USD"},
         }
     )
+
+    assert rejected is False
+    assert reason is None
+
+
+def test_allows_zero_value_observation() -> None:
+    rejected, reason = reject_observation("escrow_balance", 0)
 
     assert rejected is False
     assert reason is None
