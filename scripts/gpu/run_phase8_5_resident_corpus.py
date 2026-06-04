@@ -278,7 +278,7 @@ def _terminal_state(
     active = [
         row
         for row in counts
-        if row["status"] in ACTIVE_JOB_STATUSES and row["queue_name"] != "embeddings"
+        if row["status"] in ACTIVE_JOB_STATUSES and row["queue_name"] in TARGET_FAILURE_QUEUES
     ]
     target_dead_letters = [
         row
