@@ -129,6 +129,17 @@ def test_gpu_validation_docs_require_zero_hard_correctness_count() -> None:
     ) in normalized
 
 
+def test_gpu_validation_docs_require_zero_target_dead_letters() -> None:
+    content = Path("docs/model-runtime/phase8_5_gpu_validation.md").read_text(encoding="utf-8")
+    normalized = re.sub(r"\s+", " ", content)
+
+    assert (
+        "Operational SLO acceptance requires "
+        "`acceptanceGates.operationalSLOs.status = passed` and "
+        "`metrics.targetQueueDeadLetterCount = 0`"
+    ) in normalized
+
+
 def test_gpu_validation_docs_describe_manifest_builder_inputs() -> None:
     content = Path("docs/model-runtime/phase8_5_gpu_validation.md").read_text(encoding="utf-8")
     normalized = re.sub(r"\s+", " ", content)

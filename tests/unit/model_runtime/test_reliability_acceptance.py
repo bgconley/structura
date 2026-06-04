@@ -113,6 +113,25 @@ def test_report_acceptance_fails_for_missing_summaries_and_failed_gates() -> Non
     assert summary["checks"]["hardCorrectnessInvariants"]["status"] == "failed"
 
 
+def test_report_acceptance_fails_when_target_dead_letter_count_is_nonzero() -> None:
+    report = _resident_report()
+    report["acceptanceGates"]["operationalSLOs"]["metrics"]["targetQueueDeadLetterCount"] = 1
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["operationalSLOs"]["status"] == "failed"
+    assert summary["checks"]["operationalSLOs"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "status": "passed",
+            "details": report["acceptanceGates"]["operationalSLOs"],
+            "invalid": ["metrics.targetQueueDeadLetterCount"],
+        }
+    ]
+
+
 def test_report_acceptance_fails_when_hard_invariant_count_is_nonzero() -> None:
     report = _resident_report()
     report["acceptanceGates"]["hardCorrectnessInvariants"]["totalViolationCount"] = 1
@@ -223,6 +242,9 @@ def _resident_report() -> dict[str, Any]:
             },
             "operationalSLOs": {
                 "status": "passed",
+                "metrics": {
+                    "targetQueueDeadLetterCount": 0,
+                },
             },
         },
     }

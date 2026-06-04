@@ -70,6 +70,9 @@ def _report(run_id: str, *, candidate_fingerprint: str) -> dict[str, object]:
         "acceptanceGates": {
             "hardCorrectnessInvariants": {"status": "passed"},
             "goldCorpusQuality": {"status": "not_evaluated"},
-            "operationalSLOs": {"status": "passed"},
+            "operationalSLOs": {
+                "status": "passed",
+                "metrics": {"targetQueueDeadLetterCount": 0},
+            },
         },
     }

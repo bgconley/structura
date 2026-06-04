@@ -60,11 +60,7 @@ def evaluate_phase85_report_acceptance(
         "reportLineage": _report_lineage_check(reports),
         "requiredSummaries": _required_summaries_check(reports),
         "hardCorrectnessInvariants": _hard_correctness_check(reports),
-        "operationalSLOs": _gate_check(
-            reports,
-            "operationalSLOs",
-            required_status="passed",
-        ),
+        "operationalSLOs": _operational_slo_check(reports),
         "goldCorpusQuality": _gold_check(reports, require_gold=require_gold),
         "repeatabilityFingerprints": _repeatability_check(reports),
     }
@@ -224,6 +220,33 @@ def _hard_correctness_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
             invalid.append("status")
         if get_value(gate, "totalViolationCount", "total_violation_count") != 0:
             invalid.append("totalViolationCount")
+        if invalid:
+            failures.append(
+                {
+                    "reportIndex": index,
+                    "runId": get_value(report, "runId", "run_id"),
+                    "status": status,
+                    "details": gate,
+                    "invalid": invalid,
+                }
+            )
+    return {
+        "status": "passed" if reports and not failures else "failed",
+        "failures": failures,
+    }
+
+
+def _operational_slo_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
+    failures: list[dict[str, Any]] = []
+    for index, report in enumerate(reports):
+        gate = _gate(report, "operationalSLOs")
+        status = str(get_value(gate, "status") or "missing")
+        metrics = dict_value(get_value(gate, "metrics"))
+        invalid: list[str] = []
+        if status != "passed":
+            invalid.append("status")
+        if get_value(metrics, "targetQueueDeadLetterCount", "target_queue_dead_letter_count") != 0:
+            invalid.append("metrics.targetQueueDeadLetterCount")
         if invalid:
             failures.append(
                 {

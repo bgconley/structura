@@ -101,5 +101,8 @@ Report acceptance requires the full repeatability fingerprint set:
 Hard correctness acceptance requires
 `acceptanceGates.hardCorrectnessInvariants.status = passed` and
 `totalViolationCount = 0`.
+Operational SLO acceptance requires
+`acceptanceGates.operationalSLOs.status = passed` and
+`metrics.targetQueueDeadLetterCount = 0`.
 Use `scripts/gpu/phase8_5_report_acceptance.py` directly when re-checking already
 captured report files.
