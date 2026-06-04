@@ -10,7 +10,12 @@ from lib.model_runtime.profiles import (
     TEXT_EMBED_PROFILE,
     VISUAL_EMBED_PROFILE,
 )
-from lib.model_runtime.reliability_invariants import evaluate_hard_correctness_invariants
+from lib.model_runtime.reliability_acceptance_recompute import (
+    recomputed_hard_invariants,
+    recomputed_operational_slos,
+    violating_hard_invariants_summary,
+    violating_operational_slo_summary,
+)
 from lib.model_runtime.reliability_report_normalization import dict_value, get_value
 from lib.model_runtime.reliability_versions import PIPELINE_VERSION
 
@@ -238,7 +243,7 @@ def _hard_correctness_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
         gate = _gate(report, "hardCorrectnessInvariants")
         status = str(get_value(gate, "status") or "missing")
         invalid: list[str] = []
-        recomputed = _recomputed_hard_invariants(report)
+        recomputed = recomputed_hard_invariants(report)
         if status != "passed":
             invalid.append("status")
         if not _is_zero_number(get_value(gate, "totalViolationCount", "total_violation_count")):
@@ -256,39 +261,11 @@ def _hard_correctness_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
                 "invalid": invalid,
             }
             if recomputed is not None:
-                failure["recomputed"] = _violating_invariants_summary(recomputed)
+                failure["recomputed"] = violating_hard_invariants_summary(recomputed)
             failures.append(failure)
     return {
         "status": "passed" if reports and not failures else "failed",
         "failures": failures,
-    }
-
-
-def _recomputed_hard_invariants(report: dict[str, Any]) -> dict[str, Any] | None:
-    documents = get_value(report, "documents")
-    if documents is None:
-        return None
-    if not isinstance(documents, list):
-        return {
-            "status": "failed",
-            "totalViolationCount": 1,
-            "invariants": {},
-        }
-    document_rows = [row for row in documents if isinstance(row, dict)]
-    return evaluate_hard_correctness_invariants(document_rows)
-
-
-def _violating_invariants_summary(summary: dict[str, Any]) -> dict[str, Any]:
-    invariants = dict_value(get_value(summary, "invariants"))
-    violating_invariants = {
-        key: detail
-        for key, detail in invariants.items()
-        if not _is_zero_number(get_value(dict_value(detail), "violationCount", "violation_count"))
-    }
-    return {
-        "status": get_value(summary, "status"),
-        "totalViolationCount": get_value(summary, "totalViolationCount", "total_violation_count"),
-        "invariants": violating_invariants,
     }
 
 
@@ -300,12 +277,27 @@ def _operational_slo_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
         metrics = dict_value(get_value(gate, "metrics"))
         gates = dict_value(get_value(gate, "gates"))
         invalid: list[str] = []
+        recomputed = recomputed_operational_slos(report)
         if status != "passed":
             invalid.append("status")
         if not _is_zero_number(
             get_value(metrics, "targetQueueDeadLetterCount", "target_queue_dead_letter_count")
         ):
             invalid.append("metrics.targetQueueDeadLetterCount")
+        recomputed_metrics = (
+            dict_value(get_value(recomputed, "metrics")) if recomputed is not None else {}
+        )
+        recomputed_gates = (
+            dict_value(get_value(recomputed, "gates")) if recomputed is not None else {}
+        )
+        if recomputed is not None and not _is_zero_number(
+            get_value(
+                recomputed_metrics,
+                "targetQueueDeadLetterCount",
+                "target_queue_dead_letter_count",
+            )
+        ):
+            invalid.append("recomputed.metrics.targetQueueDeadLetterCount")
         for gate_key in OPERATIONAL_SLO_GATE_KEYS:
             subgate = dict_value(get_value(gates, gate_key))
             gate_status = get_value(subgate, "status")
@@ -314,16 +306,29 @@ def _operational_slo_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
             violation_count = get_value(subgate, "violationCount", "violation_count")
             if not _is_zero_number(violation_count):
                 invalid.append(f"gates.{gate_key}.violationCount")
+            recomputed_subgate = dict_value(get_value(recomputed_gates, gate_key))
+            if recomputed is not None and recomputed_subgate:
+                recomputed_status = get_value(recomputed_subgate, "status")
+                if recomputed_status != "passed":
+                    invalid.append(f"recomputed.gates.{gate_key}.status")
+                recomputed_violation_count = get_value(
+                    recomputed_subgate,
+                    "violationCount",
+                    "violation_count",
+                )
+                if not _is_zero_number(recomputed_violation_count):
+                    invalid.append(f"recomputed.gates.{gate_key}.violationCount")
         if invalid:
-            failures.append(
-                {
-                    "reportIndex": index,
-                    "runId": get_value(report, "runId", "run_id"),
-                    "status": status,
-                    "details": gate,
-                    "invalid": invalid,
-                }
-            )
+            failure = {
+                "reportIndex": index,
+                "runId": get_value(report, "runId", "run_id"),
+                "status": status,
+                "details": gate,
+                "invalid": invalid,
+            }
+            if recomputed is not None:
+                failure["recomputed"] = violating_operational_slo_summary(recomputed)
+            failures.append(failure)
     return {
         "status": "passed" if reports and not failures else "failed",
         "failures": failures,

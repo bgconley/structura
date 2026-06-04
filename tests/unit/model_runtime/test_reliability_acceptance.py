@@ -228,6 +228,122 @@ def test_report_acceptance_fails_when_operational_slo_subgate_has_violations() -
     ]
 
 
+def test_report_acceptance_recomputes_operational_slos_from_document_rows() -> None:
+    report = _resident_report()
+    report["documents"] = [
+        {
+            "document": {"id": "doc-dead-letter"},
+            "jobs": [
+                {
+                    "queue_name": "extraction",
+                    "job_type": "extract",
+                    "status": "dead_letter",
+                    "count": 1,
+                    "attempt_count": 5,
+                    "max_attempts": 5,
+                    "error_jsons": [{}],
+                }
+            ],
+        }
+    ]
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["operationalSLOs"]["status"] == "failed"
+    assert summary["checks"]["operationalSLOs"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "status": "passed",
+            "details": report["acceptanceGates"]["operationalSLOs"],
+            "invalid": [
+                "recomputed.metrics.targetQueueDeadLetterCount",
+                "recomputed.gates.targetQueueDeadLetters.status",
+                "recomputed.gates.targetQueueDeadLetters.violationCount",
+                "recomputed.gates.classifiedOperationalFailures.status",
+                "recomputed.gates.classifiedOperationalFailures.violationCount",
+                "recomputed.gates.retrySuccessRate.status",
+                "recomputed.gates.retrySuccessRate.violationCount",
+                "recomputed.gates.runtimeFailureRates.status",
+                "recomputed.gates.runtimeFailureRates.violationCount",
+                "recomputed.gates.retrySafeJobs.status",
+                "recomputed.gates.retrySafeJobs.violationCount",
+            ],
+            "recomputed": {
+                "status": "failed",
+                "metrics": {
+                    "targetQueueDeadLetterCount": 1,
+                },
+                "gates": {
+                    "classifiedOperationalFailures": {
+                        "status": "failed",
+                        "violationCount": 1,
+                        "examples": [
+                            {
+                                "reason": "operational_failure_missing_taxonomy_code",
+                                "queueName": "extraction",
+                                "jobType": "extract",
+                                "status": "dead_letter",
+                                "count": 1,
+                            }
+                        ],
+                    },
+                    "retrySafeJobs": {
+                        "status": "failed",
+                        "violationCount": 1,
+                        "examples": [
+                            {
+                                "reason": "operational_failure_missing_retryable_flag",
+                                "queueName": "extraction",
+                                "jobType": "extract",
+                                "status": "dead_letter",
+                                "count": 1,
+                            }
+                        ],
+                    },
+                    "retrySuccessRate": {
+                        "status": "failed",
+                        "violationCount": 1,
+                        "examples": [
+                            {
+                                "reason": "retry_success_rate_below_threshold",
+                                "observed": 0.0,
+                                "required": 1.0,
+                            }
+                        ],
+                    },
+                    "runtimeFailureRates": {
+                        "status": "failed",
+                        "violationCount": 1,
+                        "examples": [
+                            {
+                                "reason": "runtime_failure_rate_above_threshold",
+                                "queueName": "extraction",
+                                "observed": 1.0,
+                                "allowed": 0.0,
+                            }
+                        ],
+                    },
+                    "targetQueueDeadLetters": {
+                        "status": "failed",
+                        "violationCount": 1,
+                        "examples": [
+                            {
+                                "reason": "target_queue_dead_letter",
+                                "queueName": "extraction",
+                                "jobType": "extract",
+                                "status": "dead_letter",
+                                "count": 1,
+                            }
+                        ],
+                    },
+                },
+            },
+        }
+    ]
+
+
 def test_report_acceptance_fails_when_hard_invariant_count_is_nonzero() -> None:
     report = _resident_report()
     report["acceptanceGates"]["hardCorrectnessInvariants"]["totalViolationCount"] = 1
