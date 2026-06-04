@@ -175,6 +175,86 @@ def test_build_model_corpus_manifest_rejects_missing_evidence_metrics(
     assert "qwen_handwriting_route_success_rate" in result.stderr
 
 
+def test_build_model_corpus_manifest_rejects_wrong_section_profile(
+    tmp_path: Path,
+) -> None:
+    evidence_dir = tmp_path / "evidence"
+    evidence_dir.mkdir()
+    metrics = _metrics()
+    qwen = evidence_dir / "qwen.json"
+    granite = evidence_dir / "granite.json"
+    text = evidence_dir / "text.json"
+    visual = evidence_dir / "visual.json"
+    _write_artifact(
+        qwen,
+        run_id="phase85-qwen-run",
+        profile=QWEN_SEMANTIC_PROFILE,
+        run_manifest_profiles={"semantic_profile": QWEN_SEMANTIC_PROFILE},
+        metrics=metrics,
+    )
+    _write_artifact(
+        granite,
+        run_id="phase85-granite-run",
+        profile=GRANITE_VISION_PROFILE,
+        run_manifest_profiles={"granite_profile": GRANITE_VISION_PROFILE},
+        metrics=metrics,
+    )
+    _write_artifact(
+        text,
+        run_id="phase85-text-run",
+        profile=GRANITE_VISION_PROFILE,
+        run_manifest_profiles={"text_embedding_profile": GRANITE_VISION_PROFILE},
+        metrics=metrics,
+    )
+    _write_artifact(
+        visual,
+        run_id="phase85-visual-run",
+        profile=VISUAL_EMBED_PROFILE,
+        run_manifest_profiles={"visual_embedding_profile": VISUAL_EMBED_PROFILE},
+        metrics=metrics,
+    )
+    thresholds = tmp_path / "thresholds.json"
+    gold_metrics = tmp_path / "gold-metrics.json"
+    gold_thresholds = tmp_path / "gold-thresholds.json"
+    thresholds.write_text(json.dumps(_thresholds()), encoding="utf-8")
+    gold_metrics.write_text(json.dumps(_gold_metrics()), encoding="utf-8")
+    gold_thresholds.write_text(json.dumps(_gold_thresholds()), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/build_model_corpus_manifest.py",
+            "--output",
+            str(tmp_path / "phase8_5_model_manifest.json"),
+            "--run-id",
+            "phase85-private-release",
+            "--model-mode",
+            "live",
+            "--qwen-evidence",
+            str(qwen),
+            "--granite-evidence",
+            str(granite),
+            "--text-embedding-evidence",
+            str(text),
+            "--visual-embedding-evidence",
+            str(visual),
+            "--thresholds-json",
+            str(thresholds),
+            "--gold-metrics-json",
+            str(gold_metrics),
+            "--gold-thresholds-json",
+            str(gold_thresholds),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "textEmbedding" in result.stderr
+    assert TEXT_EMBED_PROFILE in result.stderr
+
+
 def _write_artifact(
     path: Path,
     *,

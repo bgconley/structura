@@ -92,6 +92,12 @@ def evaluate_model_corpus_manifest(
     require_model_backed: bool,
     manifest_path: Path | None = None,
 ) -> dict[str, Any]:
+    from lib.model_runtime.profiles import (
+        GRANITE_VISION_PROFILE,
+        QWEN_SEMANTIC_PROFILE,
+        TEXT_EMBED_PROFILE,
+        VISUAL_EMBED_PROFILE,
+    )
     from lib.model_runtime.reliability_gold_metrics import (
         assert_gold_corpus_metrics_pass,
         evaluate_gold_corpus_metrics,
@@ -136,6 +142,15 @@ def evaluate_model_corpus_manifest(
         overrides=manifest_overrides,
     )
     if fixture_type == "model_backed":
+        _assert_model_backed_evidence_profiles(
+            evidence,
+            expected_profiles={
+                "qwen": QWEN_SEMANTIC_PROFILE,
+                "granite": GRANITE_VISION_PROFILE,
+                "textEmbedding": TEXT_EMBED_PROFILE,
+                "visualEmbedding": VISUAL_EMBED_PROFILE,
+            },
+        )
         _assert_model_backed_manifest_profiles(evidence, run_manifest)
     return {
         "fixtureType": fixture_type,
@@ -176,6 +191,21 @@ def _assert_model_backed_manifest_run_mode(run_manifest: Any) -> None:
             "Model corpus model-backed manifest runManifest.model_mode must be "
             f"live or required; got {normalized_mode!r}."
         )
+
+
+def _assert_model_backed_evidence_profiles(
+    evidence: dict[str, Any],
+    *,
+    expected_profiles: dict[str, str],
+) -> None:
+    for section, expected_profile in expected_profiles.items():
+        value = evidence[section].get("profile")
+        actual_profile = value.strip() if isinstance(value, str) else ""
+        if actual_profile != expected_profile:
+            raise SystemExit(
+                f"Model corpus evidence {section} profile must be {expected_profile}; "
+                f"got {actual_profile!r}."
+            )
 
 
 def _assert_model_backed_manifest_profiles(

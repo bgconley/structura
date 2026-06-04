@@ -37,6 +37,19 @@ def test_model_corpus_runner_rejects_manifest_profile_mismatch() -> None:
         evaluate_model_corpus_manifest(payload, require_model_backed=True)
 
 
+def test_model_corpus_runner_rejects_wrong_section_profile() -> None:
+    payload = _manifest(fixture_type="model_backed")
+    text_evidence = payload["evidence"]["textEmbedding"]  # type: ignore[index]
+    assert isinstance(text_evidence, dict)
+    text_evidence["profile"] = "granite-4.0-3b-vision-bf16:v1"
+    run_manifest = payload["runManifest"]
+    assert isinstance(run_manifest, dict)
+    run_manifest["text_embedding_profile"] = "granite-4.0-3b-vision-bf16:v1"
+
+    with pytest.raises(SystemExit, match="textEmbedding.*profile"):
+        evaluate_model_corpus_manifest(payload, require_model_backed=True)
+
+
 def test_model_corpus_runner_enforces_required_sections_and_thresholds() -> None:
     payload = _manifest(fixture_type="model_backed")
     result = evaluate_model_corpus_manifest(payload, require_model_backed=True)
