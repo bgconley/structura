@@ -302,7 +302,7 @@ def recomputed_quality_summary(report: dict[str, Any]) -> dict[str, Any] | None:
     review_required = 0
     for row in document_rows:
         document = dict_value(get_value(row, "document"))
-        status = str(get_value(document, "review_status", "reviewStatus") or "unknown")
+        status = normalized_text(get_value(document, "review_status", "reviewStatus")) or "unknown"
         statuses[status] += 1
         semantic_review = any(
             bool_value(get_value(semantic, "review_required", "reviewRequired"))
@@ -310,7 +310,8 @@ def recomputed_quality_summary(report: dict[str, Any]) -> dict[str, Any] | None:
             if isinstance(semantic, dict)
         )
         extraction_review = any(
-            str(get_value(extraction, "review_status", "reviewStatus") or "") == "needs_review"
+            normalized_text(get_value(extraction, "review_status", "reviewStatus"))
+            == "needs_review"
             for extraction in list_value(get_value(row, "extractions"))
             if isinstance(extraction, dict)
         )

@@ -41,6 +41,47 @@ def test_report_acceptance_fails_when_quality_summary_is_stale() -> None:
     ]
 
 
+def test_report_quality_summary_normalizes_review_statuses() -> None:
+    report = build_phase85_reliability_report(
+        run_id="phase85-quality-normalized-statuses",
+        title_prefix="Phase 8.5 Quality Summary",
+        documents=_cased_document_reports(),
+    )
+
+    assert report["qualitySummary"] == {
+        "documents": 3,
+        "reviewRequiredDocuments": 2,
+        "reviewStatusCounts": {"filed": 2, "needs_review": 1},
+    }
+
+    report["qualitySummary"] = {
+        "documents": 3,
+        "reviewRequiredDocuments": 0,
+        "reviewStatusCounts": {" Filed ": 2, " Needs_Review ": 1},
+    }
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["qualitySummary"]["status"] == "failed"
+    assert summary["checks"]["qualitySummary"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-quality-normalized-statuses",
+            "invalid": [
+                "reviewRequiredDocuments",
+                "reviewStatusCounts",
+            ],
+            "details": report["qualitySummary"],
+            "recomputed": {
+                "documents": 3,
+                "reviewRequiredDocuments": 2,
+                "reviewStatusCounts": {"filed": 2, "needs_review": 1},
+            },
+        }
+    ]
+
+
 def _document_reports() -> list[dict[str, Any]]:
     return [
         {
@@ -69,5 +110,37 @@ def _document_reports() -> list[dict[str, Any]]:
             },
             "semantic": [{"review_required": False}],
             "extractions": [{"review_status": "reviewed"}],
+        },
+    ]
+
+
+def _cased_document_reports() -> list[dict[str, Any]]:
+    return [
+        {
+            "document": {
+                "id": "doc-quality-direct-review-cased",
+                "document_family": "invoice",
+                "reviewStatus": " Needs_Review ",
+            },
+            "semantic": [{"review_required": False}],
+            "extractions": [{"review_status": " Reviewed "}],
+        },
+        {
+            "document": {
+                "id": "doc-quality-extraction-review-cased",
+                "document_family": "receipt",
+                "review_status": " Filed ",
+            },
+            "semantic": [{"review_required": False}],
+            "extractions": [{"reviewStatus": " Needs_Review "}],
+        },
+        {
+            "document": {
+                "id": "doc-quality-clean-cased",
+                "document_family": "statement",
+                "review_status": " Filed ",
+            },
+            "semantic": [{"review_required": False}],
+            "extractions": [{"review_status": " Reviewed "}],
         },
     ]

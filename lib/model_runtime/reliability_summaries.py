@@ -285,7 +285,7 @@ def quality_summary(documents: list[dict[str, Any]]) -> dict[str, Any]:
     review_required = 0
     for doc in documents:
         document = dict_value(get_value(doc, "document"))
-        status = str(get_value(document, "review_status", "reviewStatus") or "unknown")
+        status = normalized_text(get_value(document, "review_status", "reviewStatus")) or "unknown"
         statuses[status] += 1
         semantic_review = any(
             bool_value(get_value(row, "review_required", "reviewRequired"))
@@ -293,7 +293,7 @@ def quality_summary(documents: list[dict[str, Any]]) -> dict[str, Any]:
             if isinstance(row, dict)
         )
         extraction_review = any(
-            str(get_value(row, "review_status", "reviewStatus") or "") == "needs_review"
+            normalized_text(get_value(row, "review_status", "reviewStatus")) == "needs_review"
             for row in list_value(get_value(doc, "extractions"))
             if isinstance(row, dict)
         )
