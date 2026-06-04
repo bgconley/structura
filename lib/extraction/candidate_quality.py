@@ -268,5 +268,4 @@ def _normalized_key(value: object) -> str:
 
 
 def _normalized_placeholder_value(value: str) -> str:
-    text = value.strip().lower().replace("-", "_").replace(" ", "_")
-    return "_".join(part for part in text.split("_") if part)
+    return _normalized_key(value)

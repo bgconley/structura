@@ -23,7 +23,7 @@ ViolationMap = dict[str, list[dict[str, Any]]]
 
 
 def _normalized_placeholder_text(value: str) -> str:
-    text = value.strip().lower().replace("-", "_").replace(" ", "_")
+    text = snake(value.strip()).lower().replace("-", "_").replace(" ", "_")
     return "_".join(part for part in text.split("_") if part)
 
 
@@ -221,7 +221,7 @@ def _contains_placeholder_value(candidate: dict[str, Any]) -> bool:
             text = value.strip().lower()
             if (
                 text in _PLACEHOLDER_VALUES
-                or _normalized_placeholder_text(text) in _NORMALIZED_PLACEHOLDER_VALUES
+                or _normalized_placeholder_text(value) in _NORMALIZED_PLACEHOLDER_VALUES
             ):
                 return True
     return False

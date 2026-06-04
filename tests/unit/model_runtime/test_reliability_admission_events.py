@@ -171,6 +171,26 @@ def test_hard_invariants_normalize_placeholder_values_before_admission_check() -
     }
 
 
+def test_hard_invariants_normalize_camel_case_placeholder_tokens_before_admission_check() -> None:
+    document = _document_with_camel_case_placeholder_token_value()
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 1
+    assert summary["invariants"]["placeholderOrLiteralNullCandidatesAdmitted"] == {
+        "description": "Placeholder and literal-null candidate values must never be admitted.",
+        "violationCount": 1,
+        "examples": [
+            {
+                "reason": "admitted_placeholder_or_literal_null",
+                "documentId": None,
+                "entityId": "placeholder-token-camel",
+            }
+        ],
+    }
+
+
 def test_hard_invariants_accept_whitespace_padded_true_evidence_concrete() -> None:
     document = _document_with_whitespace_padded_true_evidence_concrete()
 
@@ -362,6 +382,31 @@ def _document_with_spaced_placeholder_value() -> dict[str, Any]:
                     "candidate": {
                         "field_path": "invoice.notes",
                         "value": "Visible Field",
+                        "evidence": [{"page_id": "page-1"}],
+                    }
+                },
+            }
+        ],
+    }
+
+
+def _document_with_camel_case_placeholder_token_value() -> dict[str, Any]:
+    return {
+        "document": {"id": "doc-camel-token-placeholder", "document_family": "invoice"},
+        "admissionEvents": [
+            {
+                "decision": "admitted_review_required",
+                "candidate_kind": "field",
+                "candidate_fingerprint": "placeholder-token-camel",
+                "run_id": "phase85-smoke-placeholder",
+                "planner_version": PLANNER_VERSION,
+                "candidate_gate_version": CANDIDATE_GATE_VERSION,
+                "contract_registry_version": CONTRACT_REGISTRY_VERSION,
+                "evidence_concrete": True,
+                "payload_json": {
+                    "candidate": {
+                        "field_path": "receipt.merchant.display_name",
+                        "value": {"displayName": "NotProvided"},
                         "evidence": [{"page_id": "page-1"}],
                     }
                 },
