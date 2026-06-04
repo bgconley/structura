@@ -101,9 +101,21 @@ def _report_lineage_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
         invalid: list[str] = []
         fixture_type = get_value(report, "fixtureType", "fixture_type")
         measured_at = get_value(report, "measuredAt", "measured_at")
+        run_id = get_value(report, "runId", "run_id")
         run_manifest = dict_value(get_value(report, "runManifest", "run_manifest"))
+        manifest_run_id = get_value(run_manifest, "run_id", "runId")
         pipeline_version = get_value(run_manifest, "pipeline_version", "pipelineVersion")
         model_mode = get_value(run_manifest, "model_mode", "modelMode")
+
+        if not isinstance(run_id, str) or not run_id.strip():
+            missing.append("runId")
+
+        if not isinstance(manifest_run_id, str) or not manifest_run_id.strip():
+            missing.append("runManifest.run_id")
+        elif (
+            isinstance(run_id, str) and run_id.strip() and run_id.strip() != manifest_run_id.strip()
+        ):
+            invalid.append("runId/runManifest.run_id")
 
         if not isinstance(fixture_type, str) or not fixture_type.strip():
             missing.append("fixtureType")

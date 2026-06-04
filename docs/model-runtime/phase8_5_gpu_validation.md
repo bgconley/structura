@@ -92,7 +92,8 @@ The wrapper runs `run_phase8_5_resident_corpus.py` twice, writes one report per
 pass, and fails if hard correctness, operational SLO, or repeatability gates fail.
 Report acceptance also requires `fixtureType`, `measuredAt`, and
 `runManifest.model_mode` so stale fixture or pre-lineage reports cannot pass as
-release evidence; live or required reports must include current
+release evidence; the top-level `runId` must match `runManifest.run_id`; live or
+required reports must include current
 `semantic_profile`, `granite_profile`, `text_embedding_profile`, and
 `visual_embedding_profile` lineage.
 Report acceptance requires the full repeatability fingerprint set:

@@ -100,6 +100,42 @@ def test_report_acceptance_fails_for_stale_live_model_profile_lineage() -> None:
     ]
 
 
+def test_report_acceptance_fails_for_missing_manifest_run_id() -> None:
+    report = _resident_report()
+    report["runManifest"].pop("run_id")
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["reportLineage"]["status"] == "failed"
+    assert summary["checks"]["reportLineage"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "missing": ["runManifest.run_id"],
+            "invalid": [],
+        }
+    ]
+
+
+def test_report_acceptance_fails_for_mismatched_manifest_run_id() -> None:
+    report = _resident_report()
+    report["runManifest"]["run_id"] = "phase85-other-run"
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["reportLineage"]["status"] == "failed"
+    assert summary["checks"]["reportLineage"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "missing": [],
+            "invalid": ["runId/runManifest.run_id"],
+        }
+    ]
+
+
 def test_report_acceptance_fails_for_missing_summaries_and_failed_gates() -> None:
     report = _resident_report()
     del report["plannerSummary"]
@@ -294,6 +330,7 @@ def _resident_report() -> dict[str, Any]:
         "fixtureType": "model_backed",
         "measuredAt": "2026-06-04T12:00:00+00:00",
         "runManifest": {
+            "run_id": "phase85-pass-1",
             "pipeline_version": "phase8_5_reliability_v1",
             "model_mode": "live",
             "semantic_profile": QWEN_SEMANTIC_PROFILE,

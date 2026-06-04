@@ -166,6 +166,7 @@ def test_gpu_validation_docs_require_report_lineage() -> None:
         "live or required reports must include current `semantic_profile`, "
         "`granite_profile`, `text_embedding_profile`, and `visual_embedding_profile`"
     ) in normalized
+    assert "top-level `runId` must match `runManifest.run_id`" in normalized
 
 
 def test_gpu_validation_docs_require_full_repeatability_fingerprint_set() -> None:
