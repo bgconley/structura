@@ -137,8 +137,12 @@ def _review_surface(document: Mapping[str, Any]) -> dict[str, Any]:
     ]
     observation_candidates = [
         _uncertain_item(candidate)
-        for candidate in _rows(document, "observations", "observationCandidates")
-        if _is_review_required(candidate)
+        for candidate in _review_required_rows(
+            document,
+            "observationCandidates",
+            "observations",
+            "canonicalObservations",
+        )
     ]
     rejections = [
         _surface_item(event, surface="review", uncertainty_label="rejected_not_truth")

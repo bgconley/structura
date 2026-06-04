@@ -93,6 +93,38 @@ def test_phase9_intake_routes_review_required_detail_rows_to_review_surface() ->
     assert intake["eligibility"] == "analysis_enabled_with_uncertainty"
 
 
+def test_phase9_intake_preserves_observation_candidates_with_truth_observations() -> None:
+    intake = build_phase9_document_intake(
+        {
+            "id": "doc-observation-candidate",
+            "observations": [
+                {
+                    "observationFamily": "invoice",
+                    "fieldName": "statement_context",
+                    "status": "auto_accepted",
+                    "value": {"text": "Monthly statement"},
+                    "evidence": [_concrete_evidence()],
+                }
+            ],
+            "observationCandidates": [
+                {
+                    "observationFamily": "invoice",
+                    "fieldName": "possible_discount",
+                    "status": "needs_review",
+                    "value": {"text": "Possible discount terms"},
+                    "evidence": [_concrete_evidence()],
+                }
+            ],
+        }
+    )
+
+    assert len(intake["truth"]["canonicalObservations"]) == 1
+    assert len(intake["review"]["observationCandidates"]) == 1
+    assert intake["documentQuality"]["canonical_fact_count"] == 1
+    assert intake["documentQuality"]["candidate_count"] == 1
+    assert intake["review"]["uncertainObservations"][0]["fieldName"] == "possible_discount"
+
+
 def test_phase9_intake_excludes_debug_envelopes_from_truth_context() -> None:
     intake = build_phase9_document_intake(
         {
