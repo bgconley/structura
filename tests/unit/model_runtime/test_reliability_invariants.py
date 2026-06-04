@@ -198,6 +198,32 @@ def test_hard_invariants_flag_versioned_model_source_engine_auto_acceptance() ->
         ]
 
 
+def test_hard_invariants_normalize_model_extraction_scope_and_review_status() -> None:
+    document = _safe_document_report()
+    document["semanticRegionExtractions"] = [
+        {
+            "schemaName": "invoice",
+            "extractionScope": " Semantic_Region ",
+            "sourceSemanticRegionId": "region-normalized",
+            "sourceEngine": " Granite_Vision_3B ",
+            "reviewStatus": " Auto_Accepted ",
+        }
+    ]
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 1
+    assert summary["invariants"]["modelBackedSemanticRegionAutoAccepted"]["violationCount"] == 1
+    assert summary["invariants"]["modelBackedSemanticRegionAutoAccepted"]["examples"] == [
+        {
+            "reason": "model_backed_semantic_region_auto_accepted",
+            "documentId": None,
+            "entityId": None,
+        }
+    ]
+
+
 def test_hard_invariants_flag_rejected_candidate_rows_inserted() -> None:
     document = _safe_document_report()
     document["admissionEvents"].append(

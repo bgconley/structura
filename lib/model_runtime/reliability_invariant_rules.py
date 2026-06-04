@@ -120,7 +120,7 @@ def _semantic_regions_by_id(documents: list[dict[str, Any]]) -> dict[str, dict[s
 
 
 def _is_selected_or_enqueued_task(task: dict[str, Any]) -> bool:
-    status = str(get_value(task, "status") or "").lower()
+    status = _normalized_text(get_value(task, "status"))
     return status.startswith("selected") or status in {
         "enqueued",
         "queued",
@@ -131,7 +131,7 @@ def _is_selected_or_enqueued_task(task: dict[str, Any]) -> bool:
 
 
 def _is_granite_semantic_region_task(task: dict[str, Any]) -> bool:
-    backend = str(get_value(task, "extractor_backend", "extractorBackend") or "").lower()
+    backend = _normalized_text(get_value(task, "extractor_backend", "extractorBackend"))
     semantic_region_id = get_value(task, "semantic_region_id", "semanticRegionId")
     return "granite" in backend and semantic_region_id not in (None, "")
 
@@ -146,7 +146,7 @@ def _has_concrete_grounding(
     region = region_by_id.get(str(region_id)) if region_id else None
     region_grounding = dict_value(get_value(region or {}, "grounding"))
 
-    kind = str(
+    kind = _normalized_text(
         get_value(
             task,
             "grounding_kind",
@@ -155,7 +155,7 @@ def _has_concrete_grounding(
         or get_value(grounding, "kind")
         or get_value(region_grounding, "kind")
         or ""
-    ).lower()
+    )
     page_value = (
         get_value(task, "page_number", "pageNumber")
         or get_value(grounding, "page_number", "pageNumber", "page_id", "pageId")
@@ -192,12 +192,12 @@ def _has_concrete_grounding(
 
 
 def _has_incompatible_schema(task: dict[str, Any]) -> bool:
-    compatibility_mode = str(
-        get_value(task, "compatibility_mode", "compatibilityMode") or ""
-    ).lower()
-    contract_reason = str(
-        get_value(task, "contract_resolution_reason", "contractResolutionReason") or ""
-    ).lower()
+    compatibility_mode = _normalized_text(
+        get_value(task, "compatibility_mode", "compatibilityMode")
+    )
+    contract_reason = _normalized_text(
+        get_value(task, "contract_resolution_reason", "contractResolutionReason")
+    )
     if compatibility_mode in {
         "missing",
         "incompatible",
@@ -210,7 +210,7 @@ def _has_incompatible_schema(task: dict[str, Any]) -> bool:
 
 
 def _is_auto_accepted_model_semantic_region_extraction(extraction: dict[str, Any]) -> bool:
-    scope = str(get_value(extraction, "extraction_scope", "extractionScope") or "")
+    scope = _normalized_text(get_value(extraction, "extraction_scope", "extractionScope"))
     region_id = get_value(
         extraction,
         "source_semantic_region_id",
@@ -218,7 +218,7 @@ def _is_auto_accepted_model_semantic_region_extraction(extraction: dict[str, Any
         "semantic_region_id",
         "semanticRegionId",
     )
-    review_status = str(get_value(extraction, "review_status", "reviewStatus") or "")
+    review_status = _normalized_text(get_value(extraction, "review_status", "reviewStatus"))
     return (
         review_status == "auto_accepted"
         and (scope == "semantic_region" or region_id not in (None, ""))
@@ -244,7 +244,7 @@ def _is_model_backed_extraction(extraction: dict[str, Any]) -> bool:
 
 
 def _is_incompatible_aggregate_extraction(extraction: dict[str, Any]) -> bool:
-    scope = str(get_value(extraction, "extraction_scope", "extractionScope") or "")
+    scope = _normalized_text(get_value(extraction, "extraction_scope", "extractionScope"))
     if scope not in {"aggregate", "document"}:
         return False
     schema_name = str(get_value(extraction, "schema_name", "schemaName") or "")
@@ -274,7 +274,7 @@ def _is_incompatible_aggregate_extraction(extraction: dict[str, Any]) -> bool:
 
 
 def _is_accepted_field(field: dict[str, Any]) -> bool:
-    status = str(get_value(field, "review_status", "reviewStatus", "status") or "")
+    status = _normalized_text(get_value(field, "review_status", "reviewStatus", "status"))
     return status in _ACCEPTED_STATUSES
 
 
@@ -297,6 +297,10 @@ def _is_required_field(field_path: str) -> bool:
     if field_path in _REQUIRED_FIELD_HINTS:
         return True
     return any(field_path.endswith(f".{suffix}") for suffix in ("invoice_number", "total_amount"))
+
+
+def _normalized_text(value: Any) -> str:
+    return str(value or "").strip().lower()
 
 
 def _is_title_derived_merchant_or_seller(
