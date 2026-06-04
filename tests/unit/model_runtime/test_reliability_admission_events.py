@@ -112,6 +112,26 @@ def test_hard_invariants_require_semantic_plan_lineage_for_model_sources() -> No
     }
 
 
+def test_hard_invariants_normalize_placeholder_values_before_admission_check() -> None:
+    document = _document_with_spaced_placeholder_value()
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 1
+    assert summary["invariants"]["placeholderOrLiteralNullCandidatesAdmitted"] == {
+        "description": "Placeholder and literal-null candidate values must never be admitted.",
+        "violationCount": 1,
+        "examples": [
+            {
+                "reason": "admitted_placeholder_or_literal_null",
+                "documentId": None,
+                "entityId": "placeholder-value-spaced",
+            }
+        ],
+    }
+
+
 def test_report_acceptance_fails_when_admission_event_telemetry_is_missing() -> None:
     report = _passing_report_with_documents([_document_with_missing_telemetry()])
 
@@ -241,6 +261,31 @@ def _document_with_missing_telemetry() -> dict[str, Any]:
                     "candidate": {
                         "field_path": "invoice.total_amount",
                         "value": "42.00",
+                        "evidence": [{"page_id": "page-1"}],
+                    }
+                },
+            }
+        ],
+    }
+
+
+def _document_with_spaced_placeholder_value() -> dict[str, Any]:
+    return {
+        "document": {"id": "doc-spaced-placeholder", "document_family": "invoice"},
+        "admissionEvents": [
+            {
+                "decision": "admitted_review_required",
+                "candidate_kind": "field",
+                "candidate_fingerprint": "placeholder-value-spaced",
+                "run_id": "phase85-smoke-placeholder",
+                "planner_version": "planner-v1",
+                "candidate_gate_version": CANDIDATE_GATE_VERSION,
+                "contract_registry_version": CONTRACT_REGISTRY_VERSION,
+                "evidence_concrete": True,
+                "payload_json": {
+                    "candidate": {
+                        "field_path": "invoice.notes",
+                        "value": "Visible Field",
                         "evidence": [{"page_id": "page-1"}],
                     }
                 },

@@ -15,6 +15,12 @@ from lib.model_runtime.source_engines import is_model_source_engine
 
 ViolationMap = dict[str, list[dict[str, Any]]]
 
+
+def _normalized_placeholder_text(value: str) -> str:
+    text = value.strip().lower().replace("-", "_").replace(" ", "_")
+    return "_".join(part for part in text.split("_") if part)
+
+
 _PLACEHOLDER_VALUES = {
     "",
     "--",
@@ -36,6 +42,9 @@ _PLACEHOLDER_VALUES = {
     "visible value",
     "example value",
     "<placeholder>",
+}
+_NORMALIZED_PLACEHOLDER_VALUES = {
+    _normalized_placeholder_text(value) for value in _PLACEHOLDER_VALUES
 }
 _PRIMARY_VALUE_KEYS = {
     "amount",
@@ -154,8 +163,13 @@ def _contains_placeholder_value(candidate: dict[str, Any]) -> bool:
             continue
         if value is None:
             return True
-        if isinstance(value, str) and value.strip().lower() in _PLACEHOLDER_VALUES:
-            return True
+        if isinstance(value, str):
+            text = value.strip().lower()
+            if (
+                text in _PLACEHOLDER_VALUES
+                or _normalized_placeholder_text(text) in _NORMALIZED_PLACEHOLDER_VALUES
+            ):
+                return True
     return False
 
 
