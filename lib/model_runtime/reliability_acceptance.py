@@ -42,6 +42,14 @@ REPEATABILITY_KEYS = (
     "reviewTasks",
     "rejectionDistribution",
 )
+OPERATIONAL_SLO_GATE_KEYS = (
+    "targetQueueDeadLetters",
+    "classifiedOperationalFailures",
+    "retrySuccessRate",
+    "runtimeFailureRates",
+    "runawayFanout",
+    "retrySafeJobs",
+)
 
 __all__ = [
     "REQUIRED_REPORT_SUMMARIES",
@@ -242,11 +250,16 @@ def _operational_slo_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
         gate = _gate(report, "operationalSLOs")
         status = str(get_value(gate, "status") or "missing")
         metrics = dict_value(get_value(gate, "metrics"))
+        gates = dict_value(get_value(gate, "gates"))
         invalid: list[str] = []
         if status != "passed":
             invalid.append("status")
         if get_value(metrics, "targetQueueDeadLetterCount", "target_queue_dead_letter_count") != 0:
             invalid.append("metrics.targetQueueDeadLetterCount")
+        for gate_key in OPERATIONAL_SLO_GATE_KEYS:
+            gate_status = get_value(dict_value(get_value(gates, gate_key)), "status")
+            if gate_status != "passed":
+                invalid.append(f"gates.{gate_key}.status")
         if invalid:
             failures.append(
                 {

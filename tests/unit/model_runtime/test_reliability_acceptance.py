@@ -132,6 +132,25 @@ def test_report_acceptance_fails_when_target_dead_letter_count_is_nonzero() -> N
     ]
 
 
+def test_report_acceptance_fails_when_operational_slo_subgate_fails() -> None:
+    report = _resident_report()
+    report["acceptanceGates"]["operationalSLOs"]["gates"]["retrySuccessRate"]["status"] = "failed"
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["operationalSLOs"]["status"] == "failed"
+    assert summary["checks"]["operationalSLOs"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "status": "passed",
+            "details": report["acceptanceGates"]["operationalSLOs"],
+            "invalid": ["gates.retrySuccessRate.status"],
+        }
+    ]
+
+
 def test_report_acceptance_fails_when_hard_invariant_count_is_nonzero() -> None:
     report = _resident_report()
     report["acceptanceGates"]["hardCorrectnessInvariants"]["totalViolationCount"] = 1
@@ -245,6 +264,18 @@ def _resident_report() -> dict[str, Any]:
                 "metrics": {
                     "targetQueueDeadLetterCount": 0,
                 },
+                "gates": _passed_operational_slo_gates(),
             },
         },
+    }
+
+
+def _passed_operational_slo_gates() -> dict[str, dict[str, object]]:
+    return {
+        "targetQueueDeadLetters": {"status": "passed", "violationCount": 0},
+        "classifiedOperationalFailures": {"status": "passed", "violationCount": 0},
+        "retrySuccessRate": {"status": "passed", "violationCount": 0},
+        "runtimeFailureRates": {"status": "passed", "violationCount": 0},
+        "runawayFanout": {"status": "passed", "violationCount": 0},
+        "retrySafeJobs": {"status": "passed", "violationCount": 0},
     }

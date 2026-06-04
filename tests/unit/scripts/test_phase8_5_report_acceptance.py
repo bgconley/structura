@@ -73,6 +73,18 @@ def _report(run_id: str, *, candidate_fingerprint: str) -> dict[str, object]:
             "operationalSLOs": {
                 "status": "passed",
                 "metrics": {"targetQueueDeadLetterCount": 0},
+                "gates": _passed_operational_slo_gates(),
             },
         },
+    }
+
+
+def _passed_operational_slo_gates() -> dict[str, dict[str, object]]:
+    return {
+        "targetQueueDeadLetters": {"status": "passed", "violationCount": 0},
+        "classifiedOperationalFailures": {"status": "passed", "violationCount": 0},
+        "retrySuccessRate": {"status": "passed", "violationCount": 0},
+        "runtimeFailureRates": {"status": "passed", "violationCount": 0},
+        "runawayFanout": {"status": "passed", "violationCount": 0},
+        "retrySafeJobs": {"status": "passed", "violationCount": 0},
     }

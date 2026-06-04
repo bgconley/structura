@@ -104,5 +104,8 @@ Hard correctness acceptance requires
 Operational SLO acceptance requires
 `acceptanceGates.operationalSLOs.status = passed` and
 `metrics.targetQueueDeadLetterCount = 0`.
+Operational SLO reports must include passing subgates for
+`targetQueueDeadLetters`, `classifiedOperationalFailures`, `retrySuccessRate`,
+`runtimeFailureRates`, `runawayFanout`, and `retrySafeJobs`.
 Use `scripts/gpu/phase8_5_report_acceptance.py` directly when re-checking already
 captured report files.

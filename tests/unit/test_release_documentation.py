@@ -140,6 +140,18 @@ def test_gpu_validation_docs_require_zero_target_dead_letters() -> None:
     ) in normalized
 
 
+def test_gpu_validation_docs_require_operational_slo_subgates() -> None:
+    content = Path("docs/model-runtime/phase8_5_gpu_validation.md").read_text(encoding="utf-8")
+    normalized = re.sub(r"\s+", " ", content)
+
+    assert (
+        "Operational SLO reports must include passing subgates for "
+        "`targetQueueDeadLetters`, `classifiedOperationalFailures`, "
+        "`retrySuccessRate`, `runtimeFailureRates`, `runawayFanout`, and "
+        "`retrySafeJobs`"
+    ) in normalized
+
+
 def test_gpu_validation_docs_describe_manifest_builder_inputs() -> None:
     content = Path("docs/model-runtime/phase8_5_gpu_validation.md").read_text(encoding="utf-8")
     normalized = re.sub(r"\s+", " ", content)
