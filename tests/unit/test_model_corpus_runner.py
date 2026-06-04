@@ -27,6 +27,16 @@ def test_model_corpus_runner_requires_model_backed_manifest_run_mode() -> None:
         evaluate_model_corpus_manifest(payload, require_model_backed=True)
 
 
+def test_model_corpus_runner_rejects_manifest_profile_mismatch() -> None:
+    payload = _manifest(fixture_type="model_backed")
+    run_manifest = payload["runManifest"]
+    assert isinstance(run_manifest, dict)
+    run_manifest["semantic_profile"] = "qwen3-vl-4b-semantic:v1"
+
+    with pytest.raises(SystemExit, match="semantic_profile.*profile mismatch"):
+        evaluate_model_corpus_manifest(payload, require_model_backed=True)
+
+
 def test_model_corpus_runner_enforces_required_sections_and_thresholds() -> None:
     payload = _manifest(fixture_type="model_backed")
     result = evaluate_model_corpus_manifest(payload, require_model_backed=True)

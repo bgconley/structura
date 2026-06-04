@@ -63,7 +63,8 @@ for that profile.
 The committed example model-corpus manifest is deterministic documentation only.
 Release validation must use a private `phase8_5_model_manifest.json` with
 `fixtureType = "model_backed"` and `runManifest.model_mode` set to `live` or
-`required`.
+`required`. Any run-manifest model profile fields must match the corresponding
+evidence section `profile` values.
 
 Use `make model-corpus` only as a deterministic manifest shape check. Use
 `make model-corpus-release MODEL_CORPUS_RELEASE_MANIFEST=/path/to/private/phase8_5_model_manifest.json`

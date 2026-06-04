@@ -81,3 +81,13 @@ def test_model_corpus_readme_requires_manifest_run_mode() -> None:
         "private `phase8_5_model_manifest.json` must include "
         "`runManifest.model_mode` set to `live` or `required`"
     ) in normalized
+
+
+def test_model_corpus_readme_requires_manifest_profile_lineage() -> None:
+    content = MODEL_CORPUS_README.read_text(encoding="utf-8")
+    normalized = re.sub(r"\s+", " ", content)
+
+    assert (
+        "runManifest model profile fields must match the corresponding "
+        "evidence section `profile` values"
+    ) in normalized

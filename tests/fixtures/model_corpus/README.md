@@ -11,6 +11,10 @@ visual embedding, hybrid retrieval, and provenance metrics.
 The private `phase8_5_model_manifest.json` must include `runManifest.model_mode`
 set to `live` or `required`; release validation must not infer live model mode
 from the runner process environment.
+If the private manifest supplies runManifest model profile fields such as
+`semantic_profile`, `granite_profile`, `text_embedding_profile`, or
+`visual_embedding_profile`, those runManifest model profile fields must match the
+corresponding evidence section `profile` values.
 
 Each model-backed evidence section (`qwen`, `granite`, `textEmbedding`, and
 `visualEmbedding`) must include non-empty `profile`, `runId`, `measuredAt`, and

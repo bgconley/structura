@@ -28,6 +28,12 @@ EVIDENCE_ARTIFACT_RUN_MANIFEST_PROFILE_KEYS = {
     "textEmbedding": ("text_embedding_profile", "text_embed_profile"),
     "visualEmbedding": ("visual_embedding_profile", "visual_embed_profile"),
 }
+MANIFEST_RUN_PROFILE_KEYS = {
+    "qwen": "semantic_profile",
+    "granite": "granite_profile",
+    "textEmbedding": "text_embedding_profile",
+    "visualEmbedding": "visual_embedding_profile",
+}
 MODEL_BACKED_RUN_MODES = frozenset({"live", "required"})
 REQUIRED_EVIDENCE_ARTIFACT_PAYLOAD_KEYS = (
     "acceptanceGates",
@@ -125,15 +131,18 @@ def evaluate_model_corpus_manifest(
     gold_summary = evaluate_gold_corpus_metrics(gold_metrics, gold_thresholds)
     assert_gold_corpus_metrics_pass(gold_summary)
     run_id = str(payload.get("runId") or payload.get("run_id") or "phase85-manifest")
+    run_manifest = build_phase85_run_manifest(
+        run_id=run_id,
+        overrides=manifest_overrides,
+    )
+    if fixture_type == "model_backed":
+        _assert_model_backed_manifest_profiles(evidence, run_manifest)
     return {
         "fixtureType": fixture_type,
         "evidence": {
             section: _evidence_summary(evidence[section]) for section in REQUIRED_EVIDENCE_SECTIONS
         },
-        "runManifest": build_phase85_run_manifest(
-            run_id=run_id,
-            overrides=manifest_overrides,
-        ),
+        "runManifest": run_manifest,
         "metrics": {metric: float(metrics[metric]) for metric in REQUIRED_METRICS},
         "goldCorpusMetrics": gold_summary,
     }
@@ -167,6 +176,25 @@ def _assert_model_backed_manifest_run_mode(run_manifest: Any) -> None:
             "Model corpus model-backed manifest runManifest.model_mode must be "
             f"live or required; got {normalized_mode!r}."
         )
+
+
+def _assert_model_backed_manifest_profiles(
+    evidence: dict[str, Any],
+    run_manifest: dict[str, Any],
+) -> None:
+    for section, run_manifest_key in MANIFEST_RUN_PROFILE_KEYS.items():
+        expected_profile = str(evidence[section]["profile"]).strip()
+        actual_profile = run_manifest.get(run_manifest_key)
+        if not isinstance(actual_profile, str) or not actual_profile.strip():
+            raise SystemExit(
+                f"Model corpus model-backed manifest must include runManifest.{run_manifest_key}."
+            )
+        normalized_profile = actual_profile.strip()
+        if normalized_profile != expected_profile:
+            raise SystemExit(
+                f"Model corpus model-backed manifest {run_manifest_key} "
+                f"profile mismatch: {normalized_profile} != {expected_profile}."
+            )
 
 
 def _assert_metric(metrics: dict[str, Any], thresholds: dict[str, Any], metric: str) -> None:
