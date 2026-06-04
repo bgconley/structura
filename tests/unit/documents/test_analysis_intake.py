@@ -59,6 +59,40 @@ def test_phase9_intake_labels_review_required_candidates_as_uncertain() -> None:
     assert {item["uncertaintyLabel"] for item in review_items} == {"uncertain_review_required"}
 
 
+def test_phase9_intake_routes_review_required_detail_rows_to_review_surface() -> None:
+    intake = build_phase9_document_intake(
+        {
+            "id": "doc-detail-review",
+            "fields": [
+                {
+                    "fieldPath": "invoice.total_amount",
+                    "value": {"amount": 42.5, "currency": "USD"},
+                    "reviewStatus": "needs_review",
+                    "evidence": [_concrete_evidence()],
+                }
+            ],
+            "lineItems": [
+                {
+                    "lineItemType": "invoice.service_line",
+                    "description": "Labor",
+                    "reviewStatus": "needs_review",
+                    "evidence": [_concrete_evidence()],
+                }
+            ],
+        }
+    )
+
+    assert intake["truth"]["canonicalFields"] == []
+    assert intake["truth"]["canonicalLineItems"] == []
+    assert intake["documentQuality"]["candidate_count"] == 2
+    review_items = intake["review"]["fieldCandidates"] + intake["review"]["lineItemCandidates"]
+    assert [item["uncertaintyLabel"] for item in review_items] == [
+        "uncertain_review_required",
+        "uncertain_review_required",
+    ]
+    assert intake["eligibility"] == "analysis_enabled_with_uncertainty"
+
+
 def test_phase9_intake_excludes_debug_envelopes_from_truth_context() -> None:
     intake = build_phase9_document_intake(
         {
@@ -292,4 +326,11 @@ def _evidence() -> dict[str, object]:
         "pageNumber": 1,
         "sourceEngine": "granite_vision_3b",
         "sourceText": "Invoice total $42.50",
+    }
+
+
+def _concrete_evidence() -> dict[str, object]:
+    return {
+        **_evidence(),
+        "elementId": "element-1",
     }

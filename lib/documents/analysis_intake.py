@@ -119,13 +119,21 @@ def _truth_surface(document: Mapping[str, Any]) -> dict[str, Any]:
 def _review_surface(document: Mapping[str, Any]) -> dict[str, Any]:
     field_candidates = [
         _uncertain_item(candidate)
-        for candidate in _rows(document, "fieldCandidates")
-        if _is_review_required(candidate)
+        for candidate in _review_required_rows(
+            document,
+            "fieldCandidates",
+            "fields",
+            "canonicalFields",
+        )
     ]
     line_item_candidates = [
         _uncertain_item(candidate)
-        for candidate in _rows(document, "lineItemCandidates")
-        if _is_review_required(candidate)
+        for candidate in _review_required_rows(
+            document,
+            "lineItemCandidates",
+            "lineItems",
+            "canonicalLineItems",
+        )
     ]
     observation_candidates = [
         _uncertain_item(candidate)
@@ -365,6 +373,23 @@ def _collect_mutation_keys(value: Any, found: list[str]) -> None:
     elif isinstance(value, list):
         for item in value:
             _collect_mutation_keys(item, found)
+
+
+def _review_required_rows(mapping: Mapping[str, Any], *keys: str) -> list[Mapping[str, Any]]:
+    rows: list[Mapping[str, Any]] = []
+    seen_ids: set[str] = set()
+    for key in keys:
+        for row in _rows(mapping, key):
+            if not _is_review_required(row):
+                continue
+            row_id = _value(row, "id")
+            if row_id not in (None, ""):
+                row_id_text = str(row_id)
+                if row_id_text in seen_ids:
+                    continue
+                seen_ids.add(row_id_text)
+            rows.append(row)
+    return rows
 
 
 def _rows(mapping: Mapping[str, Any], *keys: str) -> list[Mapping[str, Any]]:
