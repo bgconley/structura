@@ -698,6 +698,111 @@ def test_hard_invariants_flag_admitted_compact_compound_amount_placeholder_paylo
     ]
 
 
+def test_hard_invariants_flag_admitted_identifier_placeholder_payloads() -> None:
+    document = _safe_document_report()
+    document["admissionEvents"].append(
+        {
+            "decision": "admitted_review_required",
+            "candidate_kind": "field",
+            "candidate_fingerprint": "identifier-placeholder-field-1",
+            **_admission_event_telemetry(),
+            "evidence_concrete": True,
+            "payload_json": {
+                "candidate": {
+                    "field_path": "invoice.invoice_number",
+                    "value": {"invoice_number": "Unknown"},
+                    "evidence": [{"page_id": "page-1", "semantic_region_id": "region-1"}],
+                }
+            },
+        }
+    )
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 1
+    assert (
+        summary["invariants"]["placeholderOrLiteralNullCandidatesAdmitted"]["violationCount"] == 1
+    )
+    assert summary["invariants"]["placeholderOrLiteralNullCandidatesAdmitted"]["examples"] == [
+        {
+            "reason": "admitted_placeholder_or_literal_null",
+            "documentId": None,
+            "entityId": "identifier-placeholder-field-1",
+        }
+    ]
+
+
+def test_hard_invariants_flag_admitted_compact_date_placeholder_payloads() -> None:
+    document = _safe_document_report()
+    document["admissionEvents"].append(
+        {
+            "decision": "admitted_review_required",
+            "candidate_kind": "field",
+            "candidate_fingerprint": "compact-date-placeholder-field-1",
+            **_admission_event_telemetry(),
+            "evidence_concrete": True,
+            "payload_json": {
+                "candidate": {
+                    "field_path": "receipt.transaction.date_local",
+                    "value": {"transactiondate": "NotProvided"},
+                    "evidence": [{"page_id": "page-1", "semantic_region_id": "region-1"}],
+                }
+            },
+        }
+    )
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 1
+    assert (
+        summary["invariants"]["placeholderOrLiteralNullCandidatesAdmitted"]["violationCount"] == 1
+    )
+    assert summary["invariants"]["placeholderOrLiteralNullCandidatesAdmitted"]["examples"] == [
+        {
+            "reason": "admitted_placeholder_or_literal_null",
+            "documentId": None,
+            "entityId": "compact-date-placeholder-field-1",
+        }
+    ]
+
+
+def test_hard_invariants_flag_admitted_address_placeholder_payloads() -> None:
+    document = _safe_document_report()
+    document["admissionEvents"].append(
+        {
+            "decision": "admitted_review_required",
+            "candidate_kind": "field",
+            "candidate_fingerprint": "address-placeholder-field-1",
+            **_admission_event_telemetry(),
+            "evidence_concrete": True,
+            "payload_json": {
+                "candidate": {
+                    "field_path": "invoice.seller.display_name",
+                    "value": {"property_address": "Unknown"},
+                    "evidence": [{"page_id": "page-1", "semantic_region_id": "region-1"}],
+                }
+            },
+        }
+    )
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 1
+    assert (
+        summary["invariants"]["placeholderOrLiteralNullCandidatesAdmitted"]["violationCount"] == 1
+    )
+    assert summary["invariants"]["placeholderOrLiteralNullCandidatesAdmitted"]["examples"] == [
+        {
+            "reason": "admitted_placeholder_or_literal_null",
+            "documentId": None,
+            "entityId": "address-placeholder-field-1",
+        }
+    ]
+
+
 def test_hard_invariants_flag_admitted_compact_placeholder_field_names() -> None:
     document = _safe_document_report()
     document["admissionEvents"].append(
