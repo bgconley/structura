@@ -1,3 +1,4 @@
+from lib.jobs.failure_taxonomy import failure_taxonomy_code
 from lib.jobs.service import (
     BulkCancelResult,
     ClaimedJob,
@@ -24,4 +25,5 @@ __all__ = [
     "record_service_health",
     "retry_delay_seconds",
     "sanitize_job_payload",
+    "failure_taxonomy_code",
 ]

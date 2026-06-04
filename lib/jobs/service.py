@@ -11,6 +11,7 @@ from psycopg.types.json import Jsonb
 from lib.config import get_settings
 from lib.contracts import AcceptedJob, JobState
 from lib.db.connection import db_connection
+from lib.jobs.failure_taxonomy import failure_taxonomy_code
 
 SENSITIVE_PAYLOAD_KEYS = {
     "document_text",
@@ -405,10 +406,17 @@ class JobService:
                     status = "dead_letter"
                 retry_after_seconds = retry_delay_seconds(current["attempt_count"])
                 next_retry_at = datetime.now(UTC) + timedelta(seconds=retry_after_seconds)
+                taxonomy_code = failure_taxonomy_code(
+                    queue_name=str(current["queue_name"]),
+                    job_type=str(current["job_type"]),
+                    error_class=error_class,
+                    details=details,
+                )
                 error_json = {
                     "document_id": str(current["document_id"]) if current["document_id"] else None,
                     "stage": current["job_type"],
                     "error_class": error_class,
+                    "taxonomy_code": taxonomy_code,
                     "message": message,
                     "last_error": message,
                     "retryable": retryable,
@@ -583,6 +591,12 @@ def _recover_expired_running_jobs(
     queue_name: str,
     document_id: UUID | None,
 ) -> int:
+    taxonomy_code = failure_taxonomy_code(
+        queue_name=queue_name,
+        job_type="worker_lease",
+        error_class="WorkerLeaseExpired",
+        details=None,
+    )
     cur.execute(
         """
         UPDATE pipeline_jobs
@@ -609,6 +623,8 @@ def _recover_expired_running_jobs(
               || jsonb_build_object(
                 'error_class',
                 'WorkerLeaseExpired',
+                'taxonomy_code',
+                %s::text,
                 'message',
                 'Worker lease expired before completion.',
                 'last_error',
@@ -628,7 +644,7 @@ def _recover_expired_running_jobs(
           AND lease_expires_at IS NOT NULL
           AND lease_expires_at <= now()
         """,
-        (queue_name, document_id, document_id),
+        (taxonomy_code, queue_name, document_id, document_id),
     )
     return int(cur.rowcount)
 
