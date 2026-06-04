@@ -197,6 +197,7 @@ def _parse_report_timestamp(value: str) -> datetime | None:
 
 def _required_summaries_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
     missing_by_report: list[dict[str, Any]] = []
+    invalid_by_report: list[dict[str, Any]] = []
     for index, report in enumerate(reports):
         missing = [key for key in REQUIRED_REPORT_SUMMARIES if key not in report]
         if missing:
@@ -207,9 +208,25 @@ def _required_summaries_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
                     "missing": missing,
                 }
             )
+        invalid = [
+            key
+            for key in REQUIRED_REPORT_SUMMARIES
+            if key in report and not isinstance(report[key], dict)
+        ]
+        if invalid:
+            invalid_by_report.append(
+                {
+                    "reportIndex": index,
+                    "runId": get_value(report, "runId", "run_id"),
+                    "invalid": invalid,
+                }
+            )
     return {
-        "status": "passed" if reports and not missing_by_report else "failed",
+        "status": "passed"
+        if reports and not missing_by_report and not invalid_by_report
+        else "failed",
         "missingByReport": missing_by_report,
+        "invalidByReport": invalid_by_report,
     }
 
 
