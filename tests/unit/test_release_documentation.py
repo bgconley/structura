@@ -56,6 +56,23 @@ def test_phase85_plan_uses_current_live_model_commands() -> None:
     assert "model-qwen-semantic model-granite model-embed" in content
 
 
+def test_phase85_plan_does_not_list_legacy_qwen_rescue_runtime_intents() -> None:
+    content = PHASE85_PLAN.read_text(encoding="utf-8")
+
+    forbidden = (
+        "semantic_quality_mode`: `smart` or `high_quality`",
+        "allow_8b_rescue",
+        "high_quality` / `rescue_permitted`",
+        "semantic_annotation_high_quality",
+        "blackwell-0-high-quality",
+        "Replace placeholder `model-qwen`",
+        "always-on `model-qwen`",
+    )
+    for phrase in forbidden:
+        assert phrase not in content
+    assert not re.search(r"\bmodel-qwen\b(?!-semantic)", content)
+
+
 def test_phase9_plan_does_not_reintroduce_removed_model_qwen_service() -> None:
     content = PHASE9_PLAN.read_text(encoding="utf-8")
 

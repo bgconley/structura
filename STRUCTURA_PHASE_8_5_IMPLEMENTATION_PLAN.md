@@ -20,21 +20,17 @@ Docling physical parse
 -> canonical facts + evidence/search layer
 ```
 
-User-selectable modes:
+Active operator-visible modes:
 
 - `smart`: default Qwen3-VL-8B-Instruct-FP8 semantic pass using the same
   semantic manifest contract and Docling-grounded harness as the original 2B/4B
   path.
 - `review_only`: uncertain output routes to review without hidden automatic
   escalation.
-- `high_quality` / `rescue_permitted`: deferred legacy intent fields. They must
-  not silently start a separate second-pass Qwen service unless a future explicit
-  evaluation re-enables that path.
 
 Persist these intent fields in semantic job payloads and audit-visible job data:
 
-- `semantic_quality_mode`: `smart` or `high_quality`
-- `allow_8b_rescue`: `true` or `false`
+- `semantic_quality_mode`: `smart`
 - `requested_by_user_id`
 - `user_intent_reason`
 
@@ -63,9 +59,9 @@ Phase 8.5 is therefore a mandatory stop point before Phase 9.
 ## Final Model Priority Decision
 
 Treat Qwen3-VL-8B-Instruct-FP8 semantic annotation and Granite 4.0 3B Vision as
-the default implementation priorities. The separate legacy `model-qwen` HQ/rescue
-service remains disabled/deferred; default Smart Parse uses the FP8 8B semantic
-service directly.
+the default implementation priorities. Default Smart Parse uses the FP8 8B
+semantic service directly, and there is no separate active High Quality or rescue
+Qwen service.
 
 Qwen3-VL-8B-Instruct-FP8 owns:
 
@@ -73,7 +69,8 @@ Qwen3-VL-8B-Instruct-FP8 owns:
 - bounded routing metadata for Granite;
 - ambiguity flags and review hints that do not become canonical facts.
 
-Deferred HQ/rescue paths own no active default runtime until re-evaluated.
+Uncertainty stays on review/skip/abstention paths until a future explicit plan
+re-evaluates a separate escalation runtime.
 
 Granite 4.0 3B Vision owns:
 
@@ -200,10 +197,6 @@ Canonical GPU placement:
 P620 Blackwell node, GPU 0:
   model-qwen-semantic
   Qwen3-VL-8B-Instruct-FP8 smart semantic annotation.
-
-P620 Blackwell node, GPU 0 deferred explicit user-selected/user-permitted profile:
-  model-qwen
-  Disabled/deferred legacy high-quality or one-pass rescue profile.
 
 P620 Blackwell node, GPU 1:
   model-granite
@@ -340,18 +333,6 @@ The canary report must show Docling audit anchors/table signals, Qwen
 document-family candidates, page role/usefulness coverage, source-signal and
 extraction-scope coverage, page coverage, fan-in/fallback telemetry, schema-fit
 decisions, and expectation scorecard failures before Granite is reintroduced.
-
-qwen3-vl-8b-semantic-hq:v1
-  engine: qwen
-  task: semantic_annotation_high_quality
-  model_family: Qwen3-VL
-  base_model: Qwen/Qwen3-VL-8B-Instruct
-  backend: vllm-openai
-  default_gpu: blackwell-0-high-quality
-  max_images_per_request: 1
-  max_image_bytes: 10485760
-  max_model_len: 32768
-  source_engine: qwen3_vl_8b
 
 granite-4.0-3b-vision-bf16:v1
   engine: granite
@@ -772,15 +753,9 @@ Validation rules:
 
 - [ ] **Step 4: Configure Compose service**
 
-  Replace placeholder `model-qwen` with a model profile that can run one of:
-
-  ```text
-  qwen3-vl-8b-instruct-nvfp4-local:v1
-  qwen3-vl-8b-instruct-int4-local:v1
-  qwen3-vl-8b-instruct-bf16:v1, only if memory tests pass
-  ```
-
-  The service must be pinned by image tag and digest before release. `latest` is not acceptable.
+  Configure `model-qwen-semantic` for the active
+  `qwen3-vl-8b-fp8-semantic:v1` Smart Parse profile. The service must be pinned
+  by image tag and digest before release. `latest` is not acceptable.
 
 - [ ] **Step 5: Run tests**
 
@@ -840,7 +815,8 @@ Validation rules:
 
 - [ ] **Step 4: Configure Compose service**
 
-  `model-granite` must run on Blackwell GPU 1 by default and must not share the same GPU with always-on `model-qwen`.
+  `model-granite` must run on Blackwell GPU 1 by default and must not share the
+  same GPU with the always-on Qwen Smart Parse service.
 
 - [ ] **Step 5: Run tests**
 
@@ -1006,7 +982,7 @@ Validation rules:
   handwriting-heavy page -> Qwen3-VL-8B FP8 smart semantic routing, review-required when uncertain
   degraded low-text page -> Qwen3-VL-8B FP8 smart semantic routing or visual review route
   Granite validation needs_review -> review-required, no hidden Qwen escalation
-  Granite recoverable semantic issue + future re-enabled rescue policy -> explicit separate rescue only
+  Granite recoverable semantic issue -> review-required or classified skip, no Qwen escalation
   ```
 
 - [ ] **Step 2: Implement routing policy**
@@ -1016,7 +992,7 @@ Validation rules:
   - Docling remains canonical structural parse.
   - Granite is preferred for tables, KVPs, line items, bills, receipts, invoices, and EOBs with layout complexity.
   - Qwen3-VL-8B FP8 provides semantic planning/routing and may not create canonical facts.
-  - Separate rescue/HQ services remain disabled/deferred unless re-enabled by a future explicit plan.
+  - No separate Qwen escalation services run in the active runtime.
   - Model-derived uncertain output remains review-required.
 
 - [ ] **Step 3: Persist route trace**
@@ -1079,7 +1055,7 @@ Validation rules:
   Record service health for:
 
   ```text
-  model-qwen
+  model-qwen-semantic
   model-granite
   model-embed
   model-vl-embed
