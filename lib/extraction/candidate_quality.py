@@ -247,4 +247,4 @@ def _contains_placeholder_value_for_keys(
 def _normalized_key(value: object) -> str:
     text = str(value or "").strip().replace("-", "_").replace(" ", "_")
     text = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", text)
-    return text.lower()
+    return "_".join(part for part in text.lower().split("_") if part)
