@@ -11,12 +11,14 @@ from lib.model_runtime.reliability_report_normalization import (
     dict_value,
     get_value,
     list_value,
+    sum_values,
 )
 
 __all__ = [
     "recomputed_candidate_admission_summary",
     "recomputed_hard_invariants",
     "recomputed_operational_slos",
+    "recomputed_planner_summary",
     "recomputed_repeatability_fingerprints",
     "violating_hard_invariants_summary",
     "violating_operational_slo_summary",
@@ -31,6 +33,51 @@ def recomputed_candidate_admission_summary(report: dict[str, Any]) -> dict[str, 
     if not valid:
         return {}
     return _candidate_admission_evidence(document_rows)
+
+
+def recomputed_planner_summary(report: dict[str, Any]) -> dict[str, Any] | None:
+    documents = _document_rows(report)
+    if documents is None:
+        return None
+    valid, document_rows = documents
+    if not valid:
+        return {}
+    planner_rows = all_rows(document_rows, "planner")
+    task_rows = all_rows(document_rows, "plannerTasks")
+    contract_modes = Counter(
+        str(get_value(row, "compatibility_mode", "compatibilityMode") or "unknown")
+        for row in task_rows
+    )
+    return {
+        "selectedTaskCount": sum_values(
+            planner_rows,
+            "selected_task_count",
+            "selectedTaskCount",
+        ),
+        "skippedTaskCount": sum_values(planner_rows, "skipped_task_count", "skippedTaskCount"),
+        "abstentionCount": sum_values(planner_rows, "abstention_count", "abstentionCount"),
+        "missingContractCount": sum_values(
+            planner_rows,
+            "missing_contract_count",
+            "missingContractCount",
+        ),
+        "missingGroundingCount": sum_values(
+            planner_rows,
+            "missing_grounding_count",
+            "missingGroundingCount",
+        ),
+        "incompatibleSchemaCount": sum_values(
+            planner_rows,
+            "incompatible_schema_count",
+            "incompatibleSchemaCount",
+        ),
+        "duplicateSuppressedCount": sum_values(
+            planner_rows,
+            "duplicate_suppressed_count",
+            "duplicateSuppressedCount",
+        ),
+        "contractResolutionModes": dict(sorted(contract_modes.items())),
+    }
 
 
 def recomputed_hard_invariants(report: dict[str, Any]) -> dict[str, Any] | None:

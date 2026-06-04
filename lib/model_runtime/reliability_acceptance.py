@@ -21,6 +21,9 @@ from lib.model_runtime.reliability_admission_summary_acceptance import (
     candidate_admission_summary_acceptance_check,
 )
 from lib.model_runtime.reliability_gold_acceptance import gold_corpus_acceptance_check
+from lib.model_runtime.reliability_planner_summary_acceptance import (
+    planner_summary_acceptance_check,
+)
 from lib.model_runtime.reliability_report_normalization import dict_value, get_value
 from lib.model_runtime.reliability_versions import PIPELINE_VERSION
 
@@ -79,6 +82,7 @@ def evaluate_phase85_report_acceptance(
     checks = {
         "reportLineage": _report_lineage_check(reports),
         "requiredSummaries": _required_summaries_check(reports),
+        "plannerSummary": planner_summary_acceptance_check(reports),
         "candidateAdmissionSummary": candidate_admission_summary_acceptance_check(reports),
         "hardCorrectnessInvariants": _hard_correctness_check(reports),
         "operationalSLOs": _operational_slo_check(reports),
