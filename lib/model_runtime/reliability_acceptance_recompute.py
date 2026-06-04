@@ -22,6 +22,7 @@ __all__ = [
     "recomputed_operational_slos",
     "recomputed_planner_summary",
     "recomputed_repeatability_fingerprints",
+    "recomputed_visual_input_plan_summary",
     "violating_hard_invariants_summary",
     "violating_operational_slo_summary",
 ]
@@ -116,6 +117,24 @@ def recomputed_envelope_summary(report: dict[str, Any]) -> dict[str, Any] | None
         **dict(counts),
         "concreteEvidenceCoverage": coverage,
     }
+
+
+def recomputed_visual_input_plan_summary(report: dict[str, Any]) -> dict[str, Any] | None:
+    documents = _document_rows(report)
+    if documents is None:
+        return None
+    valid, document_rows = documents
+    if not valid:
+        return {}
+    routes: Counter[str] = Counter()
+    for extraction in all_rows(document_rows, "extractions"):
+        plan = dict_value(get_value(extraction, "visual_plan", "visualPlan"))
+        route = get_value(plan, "route", "selectedRoute", "mode")
+        if route:
+            routes[str(route)] += 1
+    if not routes:
+        return None
+    return {"routeDistribution": dict(sorted(routes.items()))}
 
 
 def recomputed_hard_invariants(report: dict[str, Any]) -> dict[str, Any] | None:

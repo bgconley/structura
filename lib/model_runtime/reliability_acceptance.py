@@ -29,6 +29,9 @@ from lib.model_runtime.reliability_planner_summary_acceptance import (
 )
 from lib.model_runtime.reliability_report_normalization import dict_value, get_value
 from lib.model_runtime.reliability_versions import PIPELINE_VERSION
+from lib.model_runtime.reliability_visual_plan_summary_acceptance import (
+    visual_input_plan_summary_acceptance_check,
+)
 
 VALID_FIXTURE_TYPES = frozenset({"deterministic_fixture", "model_backed"})
 VALID_MODEL_MODES = frozenset({"fixture", "live", "required"})
@@ -88,6 +91,7 @@ def evaluate_phase85_report_acceptance(
         "plannerSummary": planner_summary_acceptance_check(reports),
         "candidateAdmissionSummary": candidate_admission_summary_acceptance_check(reports),
         "envelopeSummary": envelope_summary_acceptance_check(reports),
+        "visualInputPlanSummary": visual_input_plan_summary_acceptance_check(reports),
         "hardCorrectnessInvariants": _hard_correctness_check(reports),
         "operationalSLOs": _operational_slo_check(reports),
         "goldCorpusQuality": gold_corpus_acceptance_check(reports, require_gold=require_gold),
