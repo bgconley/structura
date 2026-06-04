@@ -129,6 +129,34 @@ def test_blank_observation_field_name_is_rejected_before_insertion() -> None:
     assert admission.events[0].reasons == ("placeholder_field_name",)
 
 
+def test_normalized_placeholder_observation_field_name_is_rejected_before_insertion() -> None:
+    context = _context()
+    candidate = ObservationCandidateFact(
+        observation_family="document_observation",
+        field_name="visible field",
+        value_type="string",
+        value="printed receipt",
+        evidence=[_evidence(context)],
+    )
+
+    admission = admit_extraction_candidates(
+        context=context,
+        field_candidates=[],
+        line_item_candidates=[],
+        observation_candidates=[candidate],
+    )
+
+    assert admission.observation_candidates == []
+    assert admission.summary == {
+        "produced": 1,
+        "admitted": 0,
+        "rejected": 1,
+        "rejectionReasons": {"rejected_placeholder": 1},
+    }
+    assert admission.events[0].decision == "rejected_placeholder"
+    assert admission.events[0].reasons == ("placeholder_field_name",)
+
+
 def test_nested_placeholder_field_value_is_rejected_before_insertion() -> None:
     context = _context()
     candidate = CandidateFact(

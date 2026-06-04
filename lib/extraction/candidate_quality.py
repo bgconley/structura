@@ -77,7 +77,7 @@ LINE_ITEM_VALUE_KEYS = PRIMARY_VALUE_KEYS | {
 
 
 def reject_observation(field_name: str, value: object) -> tuple[bool, str | None]:
-    name = str(field_name or "").strip().lower()
+    name = _normalized_key(field_name)
     val = "" if value is None else str(value).strip().lower()
 
     if not name or name in PLACEHOLDER_FIELD_NAMES:
