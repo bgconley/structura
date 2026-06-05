@@ -6,7 +6,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Literal
 
-from lib.extraction.claim_registry import claim_key_is_admissible
+from lib.extraction.claim_registry import (
+    claim_key_is_admissible,
+    claim_value_type_is_admissible,
+)
 from lib.extraction.region_envelope import (
     EvidenceRef,
     RegionExtractionEnvelope,
@@ -150,6 +153,8 @@ def _claim_from_fact(
     typed = _typed_value(fact.value_type, fact.value)
     if typed is None:
         return None
+    if not claim_value_type_is_admissible(fact.name, typed[0]):
+        return None
     source_engine = _source_engine(fact.evidence)
     if source_engine is None:
         return None
@@ -202,12 +207,15 @@ def _claims_from_line_item(
         typed = _typed_value(value_type, value)
         if typed is None:
             continue
+        canonical_key = f"{prefix}.{field_name}"
+        if not claim_value_type_is_admissible(canonical_key, typed[0]):
+            continue
         claims.append(
             _claim(
                 document_id=document_id,
                 source_engine=source_engine,
                 anchor=anchor,
-                canonical_key=f"{prefix}.{field_name}",
+                canonical_key=canonical_key,
                 raw_value=_stable_json(value),
                 typed_value=typed[1],
                 value_type=typed[0],

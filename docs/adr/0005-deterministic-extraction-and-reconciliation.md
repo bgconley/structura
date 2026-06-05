@@ -227,6 +227,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   `invoice.*`, `receipt.*`, or `medical_eob.*` are dropped before becoming
   Claims, while unregistered families remain admissible for review-only
   `document_observation` fallback.
+- 2026-06-05: Registered Claim fields and line-item suffixes now declare
+  acceptable typed primitives in the family registry. Claim admission rejects
+  wrong-type values such as text emitted for `invoice.total_amount`, preserving
+  the typed-or-dropped boundary before resolver projection.
 
 ## Deferred Work
 

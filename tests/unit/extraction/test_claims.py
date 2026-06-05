@@ -190,6 +190,45 @@ def test_claims_drop_unknown_registered_family_keys() -> None:
     ]
 
 
+def test_claims_drop_registered_field_values_with_wrong_type() -> None:
+    document_id = uuid4()
+    region_id = uuid4()
+    evidence = EvidenceRef(
+        document_id=str(document_id),
+        semantic_region_id=str(region_id),
+        page_number=1,
+        table_id="table-1",
+        row_index=3,
+        source_engine="granite_vision_3b",
+    )
+    envelope = RegionExtractionEnvelope(
+        document_id=str(document_id),
+        semantic_region_id=str(region_id),
+        resolved_document_type="invoice",
+        semantic_type="payment_summary",
+        target_schema="invoice",
+        model_output_schema_name="granite_payment_summary.v1",
+        facts=[
+            RegionFact(
+                name="invoice.total_amount",
+                value="$42.50",
+                value_type="string",
+                evidence=[evidence],
+            ),
+            RegionFact(
+                name="invoice.invoice_number",
+                value="INV-42",
+                value_type="string",
+                evidence=[evidence],
+            ),
+        ],
+    )
+
+    assert [claim.canonical_key for claim in claims_from_region_envelope(envelope)] == [
+        "invoice.invoice_number"
+    ]
+
+
 def test_receipt_line_item_claims_use_family_specific_keys() -> None:
     document_id = uuid4()
     region_id = uuid4()
