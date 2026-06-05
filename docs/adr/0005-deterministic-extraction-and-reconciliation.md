@@ -222,6 +222,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   reasons when no usable Docling/Granite Claim exists. Partial first-class
   projections with required Claim gaps are marked `needs_human_review` instead
   of `extracted_cleanly`, while empty projections remain `insufficient_signal`.
+- 2026-06-05: Claim admission is now controlled by the family registry for
+  registered first-class families. Unknown keys such as schema echoes under
+  `invoice.*`, `receipt.*`, or `medical_eob.*` are dropped before becoming
+  Claims, while unregistered families remain admissible for review-only
+  `document_observation` fallback.
 
 ## Deferred Work
 

@@ -177,3 +177,21 @@ CLAIM_FAMILY_REGISTRIES: dict[str, ClaimFamilyRegistry] = {
         RETAIL_ORDER_CLAIM_REGISTRY,
     )
 }
+
+
+def claim_key_is_admissible(canonical_key: str) -> bool:
+    family, separator, _field_name = canonical_key.partition(".")
+    if not separator:
+        return True
+    registry = CLAIM_FAMILY_REGISTRIES.get(family)
+    if registry is None:
+        return True
+    if any(projection.canonical_key == canonical_key for projection in registry.field_projections):
+        return True
+    if registry.line_item_projection is None:
+        return False
+    prefix = registry.line_item_projection.canonical_prefix
+    if not canonical_key.startswith(prefix):
+        return False
+    suffix = canonical_key.removeprefix(prefix)
+    return suffix in registry.line_item_projection.field_map

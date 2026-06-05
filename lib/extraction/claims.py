@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Literal
 
+from lib.extraction.claim_registry import claim_key_is_admissible
 from lib.extraction.region_envelope import (
     EvidenceRef,
     RegionExtractionEnvelope,
@@ -143,6 +144,8 @@ def _claim_from_fact(
 ) -> Claim | None:
     anchor = claim_anchor_from_evidence(fact.evidence)
     if anchor is None:
+        return None
+    if not claim_key_is_admissible(fact.name):
         return None
     typed = _typed_value(fact.value_type, fact.value)
     if typed is None:
