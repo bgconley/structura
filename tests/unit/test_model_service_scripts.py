@@ -120,3 +120,19 @@ def test_phase8_5_model_smoke_probes_models_before_manifest_gate_when_manifest_i
     assert "STRUCTURA_MODEL_CORPUS_MANIFEST" in output
     assert nvidia_marker.exists()
     assert python_marker.exists()
+
+
+def test_phase8_5_model_smoke_restores_gpu1_models_in_staged_order() -> None:
+    script = Path("scripts/gpu/phase8_5_model_smoke.sh").read_text()
+
+    assert "compose_model up -d --force-recreate model-granite model-vl-embed" not in script
+    restore_block = script.split("remove_model_services model-embed", maxsplit=1)[1]
+    granite_start = restore_block.index(
+        'compose_model up -d --force-recreate "${BLACKWELL_BASE_SERVICES[@]}"'
+    )
+    granite_health = restore_block.index('probe_health "model-granite" "${GRANITE_URL}"')
+    visual_start = restore_block.index("compose_model up -d --force-recreate model-vl-embed")
+    visual_health = restore_block.index('probe_health "model-vl-embed" "${VISUAL_EMBED_URL}"')
+    restored_probe = restore_block.index("probe_live_models --skip-qwen-semantic --skip-text-embed")
+
+    assert granite_start < granite_health < visual_start < visual_health < restored_probe

@@ -108,9 +108,11 @@ probe_text_embedding() {
     --skip-granite \
     --skip-visual-embed
   remove_model_services model-embed
-  compose_model up -d --force-recreate model-granite model-vl-embed
+  compose_model up -d --force-recreate "${BLACKWELL_BASE_SERVICES[@]}"
   probe_health "model-granite" "${GRANITE_URL}"
+  compose_model up -d --force-recreate model-vl-embed
   probe_health "model-vl-embed" "${VISUAL_EMBED_URL}"
+  probe_live_models --skip-qwen-semantic --skip-text-embed
 }
 
 if [[ "$MANAGE_COMPOSE" == "1" || "$MANAGE_COMPOSE" == "true" ]]; then
