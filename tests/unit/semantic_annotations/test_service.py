@@ -1772,6 +1772,104 @@ def test_semantic_service_uses_docling_observation_targets_when_qwen_emits_no_re
     assert payload["metadata"]["schema_fit"]["reason"] == "observation_schema"
 
 
+def test_semantic_service_requires_docling_anchors_for_model_observation_family() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="generic",
+        title="Vehicle Registration",
+        original_filename="Vehicle registration scan.pdf",
+        text=(
+            "Certificate of title motor vehicle registration owner name mailing address "
+            "vin license plate year make model odometer"
+        ),
+    )
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        document_type="real_estate_title",
+        regions=[
+            SemanticRegionAnnotation(
+                semantic_type="seller_information_block",
+                priority="high",
+                granite_task="kvp",
+                target_schema="document_observation",
+                expected_fields=("seller_name", "property_address", "title_company"),
+                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+                reason="contains owner name, address, vehicle details, and registration info",
+                confidence=0.98,
+            )
+        ],
+    )
+    jobs = RecordingJobs()
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    assert jobs.created == []
+
+
+def test_granite_plan_keeps_unknown_observation_regions_generic_without_anchors() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    region_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="generic",
+        title="Vehicle Registration",
+        original_filename="Vehicle registration scan.pdf",
+        text=(
+            "Certificate of title motor vehicle registration owner name mailing address "
+            "vin license plate year make model odometer"
+        ),
+    )
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        document_type="real_estate_title",
+        regions=[
+            SemanticRegionAnnotation(
+                semantic_type="vehicle_or_asset_block",
+                priority="high",
+                granite_task="kvp",
+                target_schema="document_observation",
+                expected_fields=("owner_name", "vin", "license_plate"),
+                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+                reason="contains owner and vehicle details",
+                confidence=0.99,
+            )
+        ],
+    )
+
+    plan = _granite_extraction_plan(
+        source,
+        SemanticAnnotationResult(manifest=manifest),
+        PersistedSemanticManifest(annotation_id=uuid4(), region_ids=(region_id,)),
+    )
+
+    assert plan.selected == ()
+    assert len(plan.dropped) == 1
+    assert plan.dropped[0].metadata["resolved_document_type"] == "generic"
+    assert plan.dropped[0].contract_resolution_reason == "missing_contract"
+
+
 def test_semantic_service_uses_only_dominant_docling_observation_family() -> None:
     document_id = uuid4()
     household_id = uuid4()
@@ -1895,7 +1993,15 @@ def test_semantic_service_dedupes_repeated_regions_before_enqueue() -> None:
     element_id = uuid4()
     annotation_id = uuid4()
     region_ids = tuple(uuid4() for _ in range(3))
-    source = _source(document_id=document_id, household_id=household_id, page_id=page_id)
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="real_estate_title",
+        title="Phenix Title Seller Info",
+        original_filename="Phenix Title Seller Info 032924.pdf",
+        text="Seller information title company closing settlement property address",
+    )
     regions = [
         SemanticRegionAnnotation(
             semantic_type="seller_information_block",

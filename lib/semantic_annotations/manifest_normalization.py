@@ -150,7 +150,7 @@ def normalize_manifest_for_planning(
 ) -> DocumentSemanticManifest:
     regions = [_normalize_region(source, manifest, region) for region in manifest.regions]
     regions = _drop_low_value_regions(regions)
-    regions = _drop_unanchored_observation_family_regions(source, manifest, regions)
+    regions = _drop_unanchored_observation_family_regions(source, regions)
     regions = _normalize_retail_order_regions(source, manifest, regions)
     regions = _normalize_service_record_regions(source, manifest, regions)
     regions = _drop_unsupported_model_payment_summaries(source, manifest, regions)
@@ -535,11 +535,9 @@ def _with_medical_eob_decision_pages(
 
 def _drop_unanchored_observation_family_regions(
     source: ExtractionSourceDocument,
-    manifest: DocumentSemanticManifest,
     regions: list[SemanticRegionAnnotation],
 ) -> list[SemanticRegionAnnotation]:
     audit = build_docling_audit(source)
-    document_type = _document_type(manifest)
     source_family = source.family.strip().lower()
     filtered: list[SemanticRegionAnnotation] = []
     for region in regions:
@@ -555,7 +553,7 @@ def _drop_unanchored_observation_family_regions(
         if family in audit.suggested_family_hints:
             filtered.append(region)
             continue
-        if family in {document_type, source_family}:
+        if family == source_family:
             filtered.append(region)
             continue
         continue

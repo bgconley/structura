@@ -17,6 +17,7 @@ from lib.extraction.repository import load_extraction_source
 from lib.jobs import JobService, create_job_with_cursor
 from lib.jobs.event_payloads import build_extract_document_job_payload
 from lib.model_runtime.reliability_versions import REGION_ENVELOPE_VERSION
+from lib.semantic_annotations.docling_audit import build_docling_audit
 from lib.semantic_annotations.docling_targets import (
     augment_result_with_docling_structural_targets,
 )
@@ -77,6 +78,18 @@ _LOW_VALUE_SEMANTIC_TYPES = {
     "unsupported_document_region",
     "no_extraction_target",
     "unmatched_region",
+}
+_OBSERVATION_DOCUMENT_TYPES = {
+    "real_estate_title",
+    "mortgage_escrow_statement",
+    "financial_dispute_form",
+}
+_GENERIC_DOCUMENT_TYPES = {
+    "document_observation",
+    "generic",
+    "generic_form",
+    "unsupported_document",
+    "no_extraction_target",
 }
 
 
@@ -581,20 +594,33 @@ def _resolved_document_type_for_plan(
             region.semantic_type
         )
         if observation_document_type:
-            return observation_document_type
+            if _document_type_has_source_support(source, observation_document_type):
+                return observation_document_type
+            return source.family if source.family and source.family != "generic" else "generic"
     document_type = _semantic_document_type(manifest)
-    if document_type and document_type not in {
-        "document_observation",
-        "generic_form",
-        "unsupported_document",
-        "no_extraction_target",
-    }:
+    if (
+        target_schema == "document_observation"
+        and document_type in _OBSERVATION_DOCUMENT_TYPES
+        and not _document_type_has_source_support(source, document_type)
+    ):
+        document_type = None
+    if document_type and document_type not in _GENERIC_DOCUMENT_TYPES:
         return document_type
     if source.family and source.family != "generic":
         return source.family
     if target_schema != "document_observation":
         return target_schema
     return document_type or source.family or "generic"
+
+
+def _document_type_has_source_support(
+    source: ExtractionSourceDocument,
+    document_type: str,
+) -> bool:
+    normalized = document_type.strip().lower()
+    if source.family.strip().lower() == normalized:
+        return True
+    return normalized in build_docling_audit(source).suggested_family_hints
 
 
 def _semantic_document_type(manifest: DocumentSemanticManifest) -> str | None:
