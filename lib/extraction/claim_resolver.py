@@ -310,6 +310,14 @@ def _observation_value_type(value: Any) -> str:
 def _source_text(raw_value: str) -> str | None:
     if not raw_value:
         return None
+    import json
+
+    try:
+        parsed = json.loads(raw_value)
+    except json.JSONDecodeError:
+        parsed = None
+    if isinstance(parsed, str):
+        return parsed[:500]
     return raw_value[:500]
 
 

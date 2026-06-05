@@ -8,6 +8,7 @@ from lib.db.connection import db_connection
 from lib.extraction.claims import claims_from_region_envelope
 from lib.extraction.models import (
     ExtractionRunScope,
+    ExtractionSourceDocument,
     GatewayExtraction,
     ModelRoute,
     PersistedExtraction,
@@ -16,11 +17,20 @@ from lib.extraction.models import (
 from lib.extraction.normalization import (
     field_candidates_from_extraction,
     line_item_candidates_from_extraction,
+    observation_candidates_from_extraction,
 )
-from lib.extraction.reconciliation import RegionExtraction, reconcile_invoice_region_extractions
+from lib.extraction.observation_reconciliation import (
+    reconcile_document_observation_region_extractions,
+)
+from lib.extraction.reconciliation import (
+    RegionExtraction,
+    reconcile_invoice_region_extractions,
+)
 from lib.extraction.region_envelope import region_envelope_from_normalization_json
 from lib.extraction.repository import load_extraction_source, persist_extraction_run
 from lib.extraction.validators import validate_extraction_payload
+
+AGGREGATE_RECONCILIATION_SCHEMAS = {"invoice", "document_observation"}
 
 
 def maybe_reconcile_semantic_annotation(
@@ -29,7 +39,7 @@ def maybe_reconcile_semantic_annotation(
     semantic_annotation_id: UUID | None,
     schema_name: str,
 ) -> PersistedExtraction | None:
-    if semantic_annotation_id is None or schema_name != "invoice":
+    if semantic_annotation_id is None or schema_name not in AGGREGATE_RECONCILIATION_SCHEMAS:
         return None
     with db_connection() as conn:
         with conn.cursor() as cur:
@@ -45,10 +55,14 @@ def maybe_reconcile_semantic_annotation(
                 semantic_annotation_id=semantic_annotation_id,
                 schema_name=schema_name,
             )
-            document_fallback = _current_document_extraction_json(
-                cur,
-                document_id=document_id,
-                schema_name=schema_name,
+            document_fallback = (
+                _current_document_extraction_json(
+                    cur,
+                    document_id=document_id,
+                    schema_name=schema_name,
+                )
+                if schema_name == "invoice"
+                else {}
             )
     if expected_count == 0 or len(rows) < expected_count:
         return None
@@ -77,15 +91,10 @@ def maybe_reconcile_semantic_annotation(
         return None
 
     source = load_extraction_source(document_id)
-    seller = (
-        {"display_name": source.counterparty_display, "party_type": "company"}
-        if source.counterparty_display
-        else {}
-    )
-    aggregate_json = reconcile_invoice_region_extractions(
+    aggregate_json = _reconcile_regions(
+        schema_name=schema_name,
         document_id=document_id,
-        seller=seller,
-        created_at=datetime.now(UTC),
+        source=source,
         regions=regions,
         document_fallback=document_fallback,
     )
@@ -132,14 +141,51 @@ def maybe_reconcile_semantic_annotation(
         validation=validation,
         source_engine=gateway_extraction.route.source_engine,
     )
+    observation_candidates = observation_candidates_from_extraction(
+        schema_name=schema_name,
+        payload=aggregate_json,
+        validation=validation,
+    )
     return persist_extraction_run(
         gateway_extraction,
         source=source,
         validation=validation,
         field_candidates=field_candidates,
         line_item_candidates=line_item_candidates,
+        observation_candidates=observation_candidates,
         run_scope=ExtractionRunScope.aggregate(semantic_annotation_id=semantic_annotation_id),
     )
+
+
+def _reconcile_regions(
+    *,
+    schema_name: str,
+    document_id: UUID,
+    source: ExtractionSourceDocument,
+    regions: list[RegionExtraction],
+    document_fallback: dict[str, Any],
+) -> dict[str, Any] | None:
+    created_at = datetime.now(UTC)
+    if schema_name == "invoice":
+        seller = (
+            {"display_name": source.counterparty_display, "party_type": "company"}
+            if source.counterparty_display
+            else {}
+        )
+        return reconcile_invoice_region_extractions(
+            document_id=document_id,
+            seller=seller,
+            created_at=created_at,
+            regions=regions,
+            document_fallback=document_fallback,
+        )
+    if schema_name == "document_observation":
+        return reconcile_document_observation_region_extractions(
+            document_id=document_id,
+            created_at=created_at,
+            regions=regions,
+        )
+    return None
 
 
 def _expected_region_job_count(

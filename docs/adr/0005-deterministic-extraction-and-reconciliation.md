@@ -145,6 +145,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   with the same source-precedence decisions, then emitted as review-only observations
   instead of requiring a new per-family reconciliation function or failing at registry
   lookup time.
+- 2026-06-05: Semantic-region aggregate persistence now supports
+  `document_observation` in addition to invoice. Observation aggregates are built only
+  from anchored Claims, validated against `document_observation.v1`, and persisted with
+  observation candidates; raw unanchored region `normalized_json` remains excluded from
+  the aggregate path.
 
 ## Deferred Work
 
