@@ -71,6 +71,7 @@ def test_invoice_region_reconciliation_preserves_line_items_and_payment_summary(
         document_fallback={
             "invoice_number": "6046058/1",
         },
+        allow_legacy_raw_payloads=True,
     )
 
     assert aggregate is not None
@@ -123,6 +124,7 @@ def test_invoice_region_reconciliation_uses_document_level_invoice_fallback() ->
             "invoice_number": "6046058/1",
             "date": "04/25/23",
         },
+        allow_legacy_raw_payloads=True,
     )
 
     assert aggregate is not None
@@ -151,6 +153,7 @@ def test_invoice_region_reconciliation_does_not_fabricate_required_fields() -> N
                 },
             ),
         ],
+        allow_legacy_raw_payloads=True,
     )
 
     assert aggregate is not None
@@ -211,6 +214,7 @@ def test_invoice_region_reconciliation_collapses_duplicate_line_items_from_same_
             ),
         ],
         document_fallback={"invoice_number": "6046058/1"},
+        allow_legacy_raw_payloads=True,
     )
 
     assert aggregate is not None
@@ -255,6 +259,7 @@ def test_invoice_region_reconciliation_skips_incompatible_source_family() -> Non
                 },
             ),
         ],
+        allow_legacy_raw_payloads=True,
     )
 
     assert aggregate is None
@@ -273,6 +278,7 @@ def test_invoice_region_reconciliation_requires_non_placeholder_seller() -> None
                 normalized_json={"invoice": {"invoice_number": "6046058/1"}},
             )
         ],
+        allow_legacy_raw_payloads=True,
     )
 
     assert aggregate is not None

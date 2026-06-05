@@ -101,6 +101,60 @@ def test_maybe_reconcile_semantic_annotation_persists_document_observation_aggre
     assert captured["line_item_candidates"] == []
 
 
+def test_maybe_reconcile_semantic_annotation_rejects_raw_only_invoice_regions(
+    monkeypatch,
+) -> None:
+    document_id = uuid4()
+    semantic_annotation_id = uuid4()
+    region_id = uuid4()
+
+    monkeypatch.setattr(repo, "db_connection", lambda: _FakeConnection())
+    monkeypatch.setattr(repo, "_expected_region_job_count", lambda *args, **kwargs: 1)
+    monkeypatch.setattr(
+        repo,
+        "_current_region_extraction_rows",
+        lambda *args, **kwargs: [
+            {
+                "id": uuid4(),
+                "source_semantic_region_id": region_id,
+                "semantic_type": "invoice_line_item_table",
+                "normalized_json": {
+                    "schema_name": "invoice",
+                    "line_items": [
+                        {
+                            "description": "Raw fallback service",
+                            "amount": {"amount": 42.0, "currency": "USD"},
+                        }
+                    ],
+                    "totals": {"total": {"amount": 42.0, "currency": "USD"}},
+                },
+                "normalization_json": {},
+            }
+        ],
+    )
+    monkeypatch.setattr(repo, "_current_document_extraction_json", lambda *args, **kwargs: {})
+    monkeypatch.setattr(repo, "load_extraction_source", lambda _: _source(document_id))
+    monkeypatch.setattr(
+        repo,
+        "persist_extraction_run",
+        lambda *args, **kwargs: PersistedExtraction(
+            extraction_id=uuid4(),
+            review_status="needs_review",
+            candidate_count=0,
+            canonical_count=0,
+            review_task_count=0,
+        ),
+    )
+
+    persisted = repo.maybe_reconcile_semantic_annotation(
+        document_id=document_id,
+        semantic_annotation_id=semantic_annotation_id,
+        schema_name="invoice",
+    )
+
+    assert persisted is None
+
+
 class _FakeConnection:
     def __enter__(self) -> _FakeConnection:
         return self
