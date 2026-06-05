@@ -2,12 +2,11 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from lib.extraction.evidence import has_concrete_evidence
 from lib.extraction.evidence_context import EvidenceContext
 from lib.extraction.model_output_healthcare import healthcare_coverage_decision_output
 
 
-def test_healthcare_coverage_decision_output_maps_contacts_to_grounded_observations() -> None:
+def test_healthcare_coverage_decision_output_defers_broad_observations() -> None:
     document_id = uuid4()
     normalized, metadata = healthcare_coverage_decision_output(
         document_id=document_id,
@@ -41,9 +40,6 @@ def test_healthcare_coverage_decision_output_maps_contacts_to_grounded_observati
 
     assert metadata["mapper"] == "granite_healthcare_coverage_decision.v1"
     assert normalized["schema_name"] == "document_observation"
-    assert [(item["field_name"], item["value"]) for item in normalized["observations"]] == [
-        ("denial_reason", "Not medically necessary"),
-        ("contact_1.contact_type", "appeal"),
-        ("contact_1.phone", "555-0100"),
-    ]
-    assert all(has_concrete_evidence(item["evidence"]) for item in normalized["observations"])
+    assert normalized["observations"] == []
+    assert metadata["deferred_observation_count"] == 3
+    assert metadata["repairs"] == ["deferred_unbounded_healthcare_coverage_decision_observations"]

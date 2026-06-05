@@ -442,6 +442,8 @@ def _receipt_payment_output(
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     confidence = payload.get("confidence") if isinstance(payload.get("confidence"), dict) else {}
     transaction: dict[str, Any] = {}
+    deferred_fields: list[str] = []
+    defer_money_fields = _is_page_scoped_model_summary(evidence_context)
     for source_key, target_key in (
         ("transaction_date", "date_local"),
         ("subtotal", "subtotal"),
@@ -451,6 +453,9 @@ def _receipt_payment_output(
     ):
         value = payload.get(source_key)
         if target_key in {"subtotal", "tax", "tip", "total"}:
+            if value not in (None, "") and defer_money_fields:
+                deferred_fields.append(source_key)
+                continue
             amount = _money(value)
             if amount:
                 transaction[target_key] = amount
@@ -468,9 +473,14 @@ def _receipt_payment_output(
     }
     if payload.get("payment_method"):
         normalized["metadata"] = {"payment_method": str(payload["payment_method"])}
+    if deferred_fields:
+        metadata = dict(normalized.get("metadata") or {})
+        metadata["deferred_payment_summary_fields"] = deferred_fields
+        normalized["metadata"] = metadata
     return normalized, {
         "mapper": "granite_receipt_payment_summary.v1",
         "repairs": ["mapped_model_output_to_canonical_receipt_payment_summary"],
+        "deferred_payment_summary_fields": deferred_fields,
         "rejected_fields": _rejected_fields(
             payload,
             {
@@ -485,6 +495,18 @@ def _receipt_payment_output(
             },
         ),
     }
+
+
+def _is_page_scoped_model_summary(evidence_context: EvidenceContext | None) -> bool:
+    if evidence_context is None:
+        return False
+    return not (
+        evidence_context.table_id
+        or evidence_context.element_id
+        or evidence_context.bbox
+        or evidence_context.original_bbox
+        or evidence_context.expanded_bbox
+    )
 
 
 def _document_observation_output(

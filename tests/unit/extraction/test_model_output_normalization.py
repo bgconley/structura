@@ -171,7 +171,7 @@ def test_authoritative_docling_table_rejects_line_items_without_row_identity() -
     assert "candidate.missing_docling_row_index" in metadata["tableConsistency"]["warnings"]
 
 
-def test_receipt_payment_summary_concretizes_region_evidence_for_candidates() -> None:
+def test_receipt_payment_summary_concretizes_region_evidence_and_defers_page_money() -> None:
     document_id = uuid4()
     annotation_id = uuid4()
     region_id = uuid4()
@@ -214,16 +214,53 @@ def test_receipt_payment_summary_concretizes_region_evidence_for_candidates() ->
     assert [candidate.field_path for candidate in candidates] == [
         "receipt.merchant.display_name",
         "receipt.transaction.date_local",
-        "receipt.transaction.subtotal",
-        "receipt.transaction.tax",
-        "receipt.transaction.total",
     ]
     assert all(has_concrete_evidence(candidate.evidence) for candidate in candidates)
-    total = next(
-        candidate for candidate in candidates if candidate.field_path == "receipt.transaction.total"
+    assert metadata["deferred_payment_summary_fields"] == ["subtotal", "tax", "total"]
+
+
+def test_receipt_payment_summary_defers_unanchored_money_candidates_for_repeatability() -> None:
+    document_id = uuid4()
+
+    normalized, metadata = normalize_granite_region_output(
+        document_id=document_id,
+        schema_name="receipt",
+        model_output_schema_name="granite_receipt_payment_summary.v1",
+        payload={
+            "merchant_name": "Coffee Shop",
+            "transaction_date": "2026-05-01",
+            "subtotal": "$4.25",
+            "tax": "$0.40",
+            "total": "$4.65",
+            "confidence": {},
+        },
+        evidence_context=EvidenceContext(
+            source_engine="granite_vision_3b",
+            document_id=document_id,
+            semantic_annotation_id=uuid4(),
+            semantic_region_id=uuid4(),
+            page_id=uuid4(),
+            page_number=1,
+        ),
+        semantic_type="receipt_payment_summary",
+        target_schema="receipt",
+        resolved_document_type="receipt",
     )
-    assert total.value == {"amount": 4.65, "currency": "USD"}
-    assert "evidence" not in total.value
+
+    candidates = field_candidates_from_extraction(
+        document_id=document_id,
+        schema_name="receipt",
+        payload=normalized,
+        validation=ValidationReport(needs_review=True, checks=[]),
+        source_engine="granite_vision_3b",
+        require_concrete_evidence=True,
+    )
+
+    assert [candidate.field_path for candidate in candidates] == [
+        "receipt.merchant.display_name",
+        "receipt.transaction.date_local",
+    ]
+    assert metadata["deferred_payment_summary_fields"] == ["subtotal", "tax", "total"]
 
 
 def test_receipt_payment_summary_persists_region_envelope_projection() -> None:
@@ -268,8 +305,9 @@ def test_receipt_payment_summary_persists_region_envelope_projection() -> None:
     assert envelope["coverage"]["normalized_projection"] == normalized
     assert {fact["name"] for fact in envelope["facts"]} >= {
         "receipt.merchant.display_name",
-        "receipt.transaction.total",
+        "receipt.transaction.date_local",
     }
+    assert metadata["deferred_payment_summary_fields"] == ["subtotal", "tax", "total"]
 
 
 def test_receipt_payment_summary_parses_model_datetime_before_candidate_insert() -> None:
@@ -394,7 +432,7 @@ def test_empty_kvp_output_keeps_region_level_evidence_for_validation() -> None:
     ]["status"] == "passed"
 
 
-def test_healthcare_coverage_decision_maps_to_grounded_observations() -> None:
+def test_healthcare_coverage_decision_defers_broad_model_observations() -> None:
     document_id = uuid4()
     normalized, metadata = normalize_granite_region_output(
         document_id=document_id,
@@ -432,12 +470,56 @@ def test_healthcare_coverage_decision_maps_to_grounded_observations() -> None:
 
     assert metadata["mapper"] == "granite_healthcare_coverage_decision.v1"
     assert normalized["schema_name"] == "document_observation"
-    assert [(item["field_name"], item["value"]) for item in normalized["observations"]] == [
-        ("denial_reason", "Not medically necessary"),
-        ("contact_1.contact_type", "appeal"),
-        ("contact_1.phone", "555-0100"),
-    ]
-    assert all(has_concrete_evidence(item["evidence"]) for item in normalized["observations"])
+    assert normalized["observations"] == []
+    assert metadata["deferred_observation_count"] == 3
+    assert "deferred_unbounded_healthcare_coverage_decision_observations" in metadata["repairs"]
+
+
+def test_healthcare_coverage_decision_defers_unbounded_observations_for_repeatability() -> None:
+    document_id = uuid4()
+    normalized, metadata = normalize_granite_region_output(
+        document_id=document_id,
+        schema_name="medical_eob",
+        model_output_schema_name="granite_healthcare_coverage_decision.v1",
+        payload={
+            "facts": [
+                {
+                    "name": "request_status",
+                    "value": "We cannot approve this request.",
+                    "confidence": 0.86,
+                    "source_text": "we cannot approve this request",
+                },
+                {
+                    "name": "grievance_rights",
+                    "value": "You have the right to appeal.",
+                    "confidence": 0.8,
+                    "source_text": "you have the right to appeal",
+                },
+            ],
+            "contacts": [
+                {
+                    "name": "Grievances and Appeals",
+                    "phone": "1-800-365-0609",
+                    "source_text": "Grievances and Appeals 1-800-365-0609",
+                    "confidence": 0.8,
+                }
+            ],
+            "service_lines": [],
+            "warnings": [],
+        },
+        evidence_context=EvidenceContext(
+            source_engine="granite_vision_3b",
+            document_id=document_id,
+            semantic_annotation_id=uuid4(),
+            semantic_region_id=uuid4(),
+            page_id=uuid4(),
+            page_number=1,
+        ),
+    )
+
+    assert normalized["observations"] == []
+    assert metadata["deferred_observation_count"] == 4
+    assert "deferred_unbounded_healthcare_coverage_decision_observations" in metadata["repairs"]
 
 
 def test_observation_mapper_drops_schema_and_prompt_echo_fields() -> None:
