@@ -80,7 +80,7 @@ def _normalize_region(
     source: ExtractionSourceDocument,
     region: SemanticRegionAnnotation,
 ) -> SemanticRegionAnnotation:
-    normalized = _normalize_line_item_grounding(source, region)
+    normalized = _normalize_table_grounding(source, region)
     if _is_model_planned_line_item(normalized):
         normalized = replace(normalized, review_required=True)
     if _is_model_planned_payment_summary(normalized):
@@ -88,13 +88,10 @@ def _normalize_region(
     return normalized
 
 
-def _normalize_line_item_grounding(
+def _normalize_table_grounding(
     source: ExtractionSourceDocument,
     region: SemanticRegionAnnotation,
 ) -> SemanticRegionAnnotation:
-    if region.semantic_type not in _LINE_ITEM_SEMANTIC_TYPES:
-        return region
-
     grounding = region.grounding
     if grounding.kind == "table" and grounding.table_id is not None:
         page_id = grounding.page_id or _page_id_for_table(source, grounding.table_id)
@@ -108,6 +105,9 @@ def _normalize_line_item_grounding(
                 table_id=grounding.table_id,
             ),
         )
+
+    if region.semantic_type not in _LINE_ITEM_SEMANTIC_TYPES:
+        return region
 
     if grounding.kind != "page" or grounding.page_id is None:
         return region

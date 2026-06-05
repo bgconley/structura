@@ -417,6 +417,7 @@ def test_semantic_service_uses_docling_table_targets_when_qwen_emits_no_regions(
         "service_record_line_item_table"
     ]
     assert persisted_regions[0].grounding.table_id == table_id
+    assert persisted_regions[0].grounding.page_id == page_id
     ContractRegistry.load("contracts").validate_schema_instance(
         "semantic_annotation_manifest.v1.schema.json",
         persisted_manifests[0].manifest,
@@ -659,6 +660,67 @@ def test_semantic_service_routes_escrow_docling_tables_as_observations_not_recei
     assert observation_payload["metadata"]["docling_structural_target"]["source"] == (
         "docling_page_anchors"
     )
+
+
+def test_semantic_service_caps_docling_table_fanout_with_page_summary() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    table_ids = [uuid4() for _ in range(3)]
+    annotation_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="generic",
+        title="UWM Final Escrow Statement",
+        original_filename="UWM Final Escrow Statement 4-29-24.pdf",
+        text="UWM mortgage escrow shortage surplus paid payment tax statement",
+        tables=[
+            ParsedTableText(
+                table_id=table_id,
+                page_number=1,
+                table_index=index + 1,
+                table_markdown=(
+                    "| Escrow item | Amount |\n| Shortage | $120.00 |\n| New payment | $2,100.00 |"
+                ),
+            )
+            for index, table_id in enumerate(table_ids)
+        ],
+    )
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        regions=[
+            SemanticRegionAnnotation(
+                semantic_type="escrow_summary",
+                priority="high",
+                granite_task="kvp",
+                target_schema="document_observation",
+                expected_fields=("loan_number", "payment_amount"),
+                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+                confidence=0.92,
+            )
+        ],
+        document_type="mortgage_escrow_statement",
+    )
+    jobs = RecordingJobs()
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    payloads = [job["payload"] for job in jobs.created]
+    assert len(payloads) == 3
+    assert sum(payload["semantic_type"] == "escrow_summary" for payload in payloads) == 1
+    assert sum(payload["semantic_type"] == "generic_form_kvp" for payload in payloads) == 2
 
 
 def test_semantic_service_drops_incompatible_docling_structural_target() -> None:

@@ -161,9 +161,9 @@ def plan_granite_jobs(
 
     for bucket in (
         "line_item",
+        "summary",
         "docling_table",
         "observation_primary",
-        "summary",
         "other",
     ):
         for spec in buckets.get(bucket, [])[: bucket_limits[bucket]]:

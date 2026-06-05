@@ -26,6 +26,41 @@ def test_smart_granite_plan_limits_selected_tasks_per_page() -> None:
     assert metadata["selectedTaskCountByPage"] == {str(page_id): 3}
 
 
+def test_smart_granite_plan_prefers_summary_over_extra_docling_tables_on_same_page() -> None:
+    page_id = uuid4()
+    table_specs = [
+        _generic_form_spec(
+            index=index,
+            page_id=page_id,
+            grounding=SemanticGroundingRef(kind="table", page_id=page_id, table_id=uuid4()),
+            metadata={"region_source": "docling_structural"},
+            priority=30 + index,
+        )
+        for index in range(3)
+    ]
+    summary = _generic_form_spec(
+        index=3,
+        page_id=page_id,
+        semantic_type="escrow_summary",
+        granite_task="kvp",
+        expected_fields=("loan_number", "payment_amount"),
+        model_output_schema_name="granite_mortgage_escrow_statement.v1",
+        compatibility_mode="exact",
+        contract_resolution_reason="exact_contract",
+        priority=28,
+    )
+
+    plan = plan_granite_jobs([*table_specs, summary], quality_mode="smart")
+
+    selected_region_ids = {spec.region_id for spec in plan.selected}
+    dropped_region_ids = {spec.region_id for spec in plan.dropped}
+    assert len(plan.selected) == 3
+    assert summary.region_id in selected_region_ids
+    assert sum(spec.region_id in selected_region_ids for spec in table_specs) == 2
+    assert sum(spec.region_id in dropped_region_ids for spec in table_specs) == 1
+    assert plan.to_metadata()["selectedTaskCountByPage"] == {str(page_id): 3}
+
+
 def test_granite_plan_drops_specs_without_model_output_contract() -> None:
     page_id = uuid4()
     spec = _generic_form_spec(index=0, page_id=page_id, model_output_schema_name=" ")
@@ -99,21 +134,25 @@ def _generic_form_spec(
     index: int,
     page_id: UUID | None,
     grounding: SemanticGroundingRef | None = None,
+    semantic_type: str = "generic_form_kvp",
+    granite_task: str = "kvp",
+    expected_fields: tuple[str, ...] | None = None,
     model_output_schema_name: str = "granite_generic_kvp.v1",
     compatibility_mode: str | None = "generic",
     contract_resolution_reason: str = "generic_observation_fallback",
     priority: int | None = None,
     ordinal: int | None = None,
+    metadata: dict[str, object] | None = None,
 ) -> GraniteJobSpec:
     return GraniteJobSpec(
         region=SemanticRegionAnnotation(
-            semantic_type="generic_form_kvp",
+            semantic_type=semantic_type,
             priority="high",
-            granite_task="kvp",
+            granite_task=granite_task,
             grounding=grounding or SemanticGroundingRef(kind="page", page_id=page_id),
             target_schema="document_observation",
-            expected_fields=(f"field_{index}",),
-            metadata={},
+            expected_fields=expected_fields or (f"field_{index}",),
+            metadata=metadata or {},
         ),
         region_id=uuid4(),
         target_schema="document_observation",

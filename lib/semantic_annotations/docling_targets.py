@@ -187,6 +187,7 @@ def _docling_structural_regions(
         if region.granite_task is not None and region.granite_task != "ignore"
     }
     table_audit_by_id = {summary.table_id: summary for summary in audit.table_summaries}
+    page_id_by_number = {page.page_number: page.page_id for page in source.pages}
     for table in source.tables:
         if len(regions) >= MAX_DOCLING_STRUCTURAL_TARGETS:
             break
@@ -204,6 +205,7 @@ def _docling_structural_regions(
             audit=audit,
             table_signal=table_signal,
             family=table_family,
+            page_id=page_id_by_number.get(table.page_number),
         )
         if table_region is None:
             continue
@@ -287,6 +289,7 @@ def _table_region(
     audit: DoclingAudit,
     table_signal: str,
     family: str | None,
+    page_id: UUID | None,
 ) -> SemanticRegionAnnotation | None:
     target_family = family
     if target_family is None and table_signal not in {"strong", "weak"}:
@@ -299,7 +302,7 @@ def _table_region(
         granite_task="tables_json",
         target_schema=target_schema,
         expected_fields=expected_fields,
-        grounding=SemanticGroundingRef(kind="table", table_id=table.table_id),
+        grounding=SemanticGroundingRef(kind="table", page_id=page_id, table_id=table.table_id),
         review_required=table_signal in {"weak", "none", "unknown"},
         reason=(
             "Docling table structure produced a Granite extraction target independent of "
