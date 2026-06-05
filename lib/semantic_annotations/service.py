@@ -29,6 +29,7 @@ from lib.semantic_annotations.extraction_plan_repository import (
     persist_extraction_plan_with_cursor,
 )
 from lib.semantic_annotations.fixture_gateway import FixtureSemanticAnnotationGateway
+from lib.semantic_annotations.manifest_normalization import normalize_result_for_planning
 from lib.semantic_annotations.models import (
     DocumentSemanticManifest,
     QualityMode,
@@ -138,6 +139,7 @@ class SemanticAnnotationService:
             raise SemanticAnnotationServiceError("Loaded source document ID mismatch.")
         manifest_result = self.gateway.annotate(source, quality_mode=quality_mode)
         manifest_result = augment_result_with_docling_structural_targets(source, manifest_result)
+        manifest_result = normalize_result_for_planning(source, manifest_result)
         family_decision = semantic_document_family_decision(source, manifest_result.manifest)
         effective_source = source_with_semantic_family(source, family_decision)
         if self._use_default_atomic_uow:

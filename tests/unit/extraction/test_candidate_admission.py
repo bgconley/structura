@@ -1115,6 +1115,62 @@ def test_observation_admission_fingerprint_includes_semantic_type() -> None:
     )
 
 
+def test_candidate_fingerprint_ignores_volatile_evidence_ids() -> None:
+    first_context = _context(
+        semantic_region_id=uuid4(),
+        semantic_type="receipt_payment_summary",
+    )
+    second_context = _context(
+        semantic_region_id=uuid4(),
+        semantic_type="receipt_payment_summary",
+    )
+    first_candidate = CandidateFact(
+        field_path="receipt.transaction.total",
+        value_type="money",
+        value={"amount": 120.32, "currency": "USD"},
+        currency="USD",
+        evidence=[
+            {
+                "page_number": 1,
+                "page_id": str(uuid4()),
+                "semantic_region_id": str(first_context.semantic_region_id),
+                "table_id": str(uuid4()),
+            }
+        ],
+        status="proposed",
+    )
+    second_candidate = CandidateFact(
+        field_path="receipt.transaction.total",
+        value_type="money",
+        value={"amount": 120.32, "currency": "USD"},
+        currency="USD",
+        evidence=[
+            {
+                "page_number": 1,
+                "page_id": str(uuid4()),
+                "semantic_region_id": str(second_context.semantic_region_id),
+                "table_id": str(uuid4()),
+            }
+        ],
+        status="proposed",
+    )
+
+    first = admit_extraction_candidates(
+        context=first_context,
+        field_candidates=[first_candidate],
+        line_item_candidates=[],
+        observation_candidates=[],
+    )
+    second = admit_extraction_candidates(
+        context=second_context,
+        field_candidates=[second_candidate],
+        line_item_candidates=[],
+        observation_candidates=[],
+    )
+
+    assert first.events[0].candidate_fingerprint == second.events[0].candidate_fingerprint
+
+
 def test_missing_evidence_rejections_are_recorded_when_no_candidates_are_admitted() -> None:
     context = _context()
 

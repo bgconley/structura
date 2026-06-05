@@ -19,6 +19,40 @@ def test_repeatability_fingerprints_ignore_report_row_order() -> None:
     assert first == second
 
 
+def test_repeatability_fingerprints_ignore_relationship_suggestions() -> None:
+    first_document = _document("doc-1")
+    second_document = deepcopy(first_document)
+    first_document["reviewTasks"].append(
+        {
+            "task_type": "relationship_suggestion",
+            "status": "open",
+            "reason": "Exact content fingerprint match.",
+            "priority": 75,
+        }
+    )
+    second_document["reviewTasks"].extend(
+        [
+            {
+                "task_type": "relationship_suggestion",
+                "status": "open",
+                "reason": "Exact content fingerprint match.",
+                "priority": 75,
+            },
+            {
+                "task_type": "relationship_suggestion",
+                "status": "open",
+                "reason": "Exact content fingerprint match.",
+                "priority": 75,
+            },
+        ]
+    )
+
+    first = repeatability_fingerprints([first_document], {"rejectionReasons": {}})
+    second = repeatability_fingerprints([second_document], {"rejectionReasons": {}})
+
+    assert first["reviewTasks"] == second["reviewTasks"]
+
+
 def _document(document_id: str) -> dict[str, Any]:
     suffix = document_id[-1]
     return {

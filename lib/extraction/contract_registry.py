@@ -92,6 +92,9 @@ _ALIAS_CONTRACTS: dict[tuple[str, str, str, str], str] = {
     ("retail_order", "receipt_line_item_table", "tables_json", "receipt"): (
         "granite_receipt_line_items.v1"
     ),
+    ("retail_order", "receipt_payment_summary", "kvp", "receipt"): (
+        "granite_receipt_payment_summary.v1"
+    ),
     ("service_record", "receipt_payment_summary", "kvp", "receipt"): (
         "granite_receipt_payment_summary.v1"
     ),

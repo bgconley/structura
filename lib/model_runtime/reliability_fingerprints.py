@@ -85,6 +85,7 @@ def repeatability_fingerprints(
             _stable_rows(
                 select_values(row, ("task_type", "status", "reason", "priority"))
                 for row in all_rows(documents, "reviewTasks")
+                if _is_model_runtime_review_task(row)
             )
         ),
         "rejectionDistribution": fingerprint(admission_summary.get("rejectionReasons", {})),
@@ -93,3 +94,8 @@ def repeatability_fingerprints(
 
 def _stable_rows(rows: Any) -> list[Any]:
     return sorted((json_safe(row) for row in rows), key=fingerprint)
+
+
+def _is_model_runtime_review_task(row: dict[str, Any]) -> bool:
+    task_type = str(get_value(row, "task_type", "taskType") or "").strip().lower()
+    return task_type != "relationship_suggestion"

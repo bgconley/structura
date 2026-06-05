@@ -110,13 +110,8 @@ def _region_key(
 ) -> dict[str, Any]:
     first = evidence[0] if evidence else {}
     return {
-        "semantic_region_id": str(
-            first.get("semantic_region_id") or context.semantic_region_id or ""
-        ),
+        "locator_kind": _locator_kind(first, context),
         "page_number": first.get("page_number"),
-        "page_id": str(first.get("page_id") or ""),
-        "element_id": str(first.get("element_id") or ""),
-        "table_id": str(first.get("table_id") or ""),
         "row_index": first.get("row_index"),
     }
 
@@ -124,9 +119,27 @@ def _region_key(
 def _table_key(evidence: list[dict[str, Any]]) -> dict[str, Any]:
     first = evidence[0] if evidence else {}
     return {
-        "table_id": str(first.get("table_id") or ""),
+        "locator_kind": _locator_kind(first, None),
+        "page_number": first.get("page_number"),
         "row_index": first.get("row_index"),
     }
+
+
+def _locator_kind(
+    evidence: dict[str, Any],
+    context: CandidateAdmissionContext | None,
+) -> str:
+    if evidence.get("row_index") is not None:
+        return "table_row"
+    if evidence.get("table_id") not in (None, ""):
+        return "table"
+    if evidence.get("element_id") not in (None, ""):
+        return "element"
+    if evidence.get("page_number") is not None or evidence.get("page_id") not in (None, ""):
+        return "page"
+    if context is not None and context.semantic_region_id is not None:
+        return "semantic_region"
+    return "unknown"
 
 
 def _money_key(value: Any) -> float | None:

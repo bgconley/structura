@@ -447,7 +447,7 @@ def test_semantic_service_suppresses_weak_docling_table_duplicate_when_qwen_has_
         family="generic",
         title="BH Photo order",
         original_filename="BH Photo desktop tripod order.pdf",
-        text="BH Photo order number ship to item total",
+        text="BH Photo order number ship to item sku quantity",
         tables=[
             ParsedTableText(
                 table_id=table_id,
@@ -490,6 +490,92 @@ def test_semantic_service_suppresses_weak_docling_table_duplicate_when_qwen_has_
     assert len(payloads) == 1
     assert payloads[0]["semantic_type"] == "retail_order_line_item_table"
     assert payloads[0]["metadata"].get("region_source") != "docling_structural"
+
+
+def test_semantic_service_stabilizes_retail_order_regions_for_repeatability() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    table_id = uuid4()
+    annotation_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="generic",
+        title="BH Photo order",
+        original_filename="BH Photo desktop tripod order.pdf",
+        text="BH Photo order number item shipping tax total amount paid",
+        tables=[
+            ParsedTableText(
+                table_id=table_id,
+                page_number=1,
+                table_index=1,
+                table_markdown="| item | qty | total |\n| tripod | 1 | 120.32 |",
+            )
+        ],
+    )
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        document_type="retail_order",
+        regions=[
+            SemanticRegionAnnotation(
+                semantic_type="retail_order_line_item_table",
+                priority="high",
+                granite_task="tables_json",
+                target_schema="receipt",
+                expected_fields=("item_description", "quantity", "line_total"),
+                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+                review_required=False,
+                confidence=0.2,
+            )
+        ],
+    )
+    jobs = RecordingJobs()
+    persisted_manifests: list[DocumentSemanticManifest] = []
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+            captured=persisted_manifests,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    assert len(persisted_manifests) == 1
+    persisted_regions = persisted_manifests[0].regions
+    assert [(region.semantic_type, region.grounding.kind) for region in persisted_regions] == [
+        ("retail_order_line_item_table", "table"),
+        ("receipt_payment_summary", "page"),
+    ]
+    assert persisted_regions[0].grounding.table_id == table_id
+    assert persisted_regions[0].grounding.page_id == page_id
+    assert persisted_regions[0].review_required is True
+    assert persisted_regions[1].review_required is True
+    assert len(jobs.created) == 2
+    payloads = [job["payload"] for job in jobs.created]
+    line_payload = next(
+        payload
+        for payload in payloads
+        if payload["semantic_type"] == "retail_order_line_item_table"
+    )
+    summary_payload = next(
+        payload for payload in payloads if payload["semantic_type"] == "receipt_payment_summary"
+    )
+    assert line_payload["semantic_granite_task"] == "tables_json"
+    assert line_payload["metadata"]["semantic_grounding_normalization"] == {
+        "from": "page",
+        "reason": "single_docling_table_on_page",
+        "to": "table",
+    }
+    assert summary_payload["semantic_granite_task"] == "kvp"
+    assert summary_payload["model_output_schema_name"] == "granite_receipt_payment_summary.v1"
+    assert summary_payload["compatibility_mode"] == "compatible_alias"
 
 
 def test_semantic_service_routes_escrow_docling_tables_as_observations_not_receipts() -> None:
