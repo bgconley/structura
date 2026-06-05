@@ -181,7 +181,7 @@ def _claims_from_line_item(
     if source_engine is None:
         return []
     evidence = tuple(ref.model_dump(mode="json", exclude_none=True) for ref in item.evidence)
-    prefix = "invoice.line_item" if target_schema == "invoice" else "line_item"
+    prefix = _line_item_prefix(target_schema)
     raw_fields: tuple[tuple[str, Any, ClaimValueType], ...] = (
         ("description", item.description, "text"),
         ("code", item.code, "identifier"),
@@ -251,6 +251,12 @@ def _claim(
         group_id=group_id,
         evidence=evidence,
     )
+
+
+def _line_item_prefix(target_schema: str | None) -> str:
+    if target_schema in {"invoice", "receipt", "medical_eob", "service_record", "retail_order"}:
+        return f"{target_schema}.line_item"
+    return "line_item"
 
 
 def _anchor_from_ref(ref: EvidenceRef) -> ClaimAnchor | None:

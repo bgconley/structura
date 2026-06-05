@@ -3,7 +3,12 @@ from __future__ import annotations
 from uuid import uuid4
 
 from lib.extraction.claims import claims_from_region_envelope
-from lib.extraction.region_envelope import EvidenceRef, RegionExtractionEnvelope, RegionFact
+from lib.extraction.region_envelope import (
+    EvidenceRef,
+    RegionExtractionEnvelope,
+    RegionFact,
+    RegionLineItem,
+)
 
 
 def test_claims_require_structural_anchor() -> None:
@@ -102,3 +107,44 @@ def test_claim_id_ignores_raw_source_payload_noise() -> None:
     assert first.claim_id == second.claim_id
     assert first.typed_value == {"amount": 42.5, "currency": "USD"}
     assert first.source_engine == "granite"
+
+
+def test_receipt_line_item_claims_use_family_specific_keys() -> None:
+    document_id = uuid4()
+    region_id = uuid4()
+    evidence = EvidenceRef(
+        document_id=str(document_id),
+        semantic_region_id=str(region_id),
+        page_number=1,
+        table_id="receipt-table",
+        row_index=2,
+        source_engine="granite_vision_3b",
+    )
+    envelope = RegionExtractionEnvelope(
+        document_id=str(document_id),
+        semantic_region_id=str(region_id),
+        resolved_document_type="receipt",
+        semantic_type="receipt_line_item_table",
+        target_schema="receipt",
+        model_output_schema_name="granite_receipt_line_items.v1",
+        line_items=[
+            RegionLineItem(
+                description="USB-C cable",
+                quantity=2.0,
+                unit_price=9.99,
+                net_amount=19.98,
+                currency_code="USD",
+                evidence=[evidence],
+                table_id="receipt-table",
+                row_index=2,
+                page_number=1,
+            )
+        ],
+    )
+
+    assert [claim.canonical_key for claim in claims_from_region_envelope(envelope)] == [
+        "receipt.line_item.description",
+        "receipt.line_item.quantity",
+        "receipt.line_item.unit_price",
+        "receipt.line_item.amount",
+    ]

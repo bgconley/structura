@@ -79,8 +79,33 @@ INVOICE_CLAIM_REGISTRY = ClaimFamilyRegistry(
     ),
 )
 
+RECEIPT_CLAIM_REGISTRY = ClaimFamilyRegistry(
+    family="receipt",
+    field_projections=(
+        ClaimFieldProjection("receipt.merchant.display_name", "merchant", "display_name"),
+        ClaimFieldProjection("receipt.transaction.date_local", "transaction", "date_local"),
+        ClaimFieldProjection("receipt.transaction.subtotal", "transaction", "subtotal"),
+        ClaimFieldProjection("receipt.transaction.tax", "transaction", "tax"),
+        ClaimFieldProjection("receipt.transaction.tip", "transaction", "tip"),
+        ClaimFieldProjection("receipt.transaction.total", "transaction", "total"),
+    ),
+    line_item_projection=ClaimLineItemProjection(
+        canonical_prefix="receipt.line_item.",
+        field_map={
+            "description": "description",
+            "code": "sku",
+            "quantity": "quantity",
+            "unit": "unit",
+            "unit_price": "unit_price",
+            "amount": "amount",
+            "category_hint": "category_hint",
+        },
+    ),
+)
+
 CLAIM_FAMILY_REGISTRIES: dict[str, ClaimFamilyRegistry] = {
     INVOICE_CLAIM_REGISTRY.family: INVOICE_CLAIM_REGISTRY,
+    RECEIPT_CLAIM_REGISTRY.family: RECEIPT_CLAIM_REGISTRY,
 }
 
 
@@ -145,7 +170,7 @@ def _resolve_line_items(
         evidence: list[dict[str, Any]] = []
         for field_name, field_claims in sorted(grouped[group_id].items()):
             selected, decision = _resolve_key(
-                f"{projection.canonical_prefix}{field_name}",
+                field_claims[0].canonical_key,
                 field_claims,
             )
             if decision is not None:

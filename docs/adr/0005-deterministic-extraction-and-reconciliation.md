@@ -135,6 +135,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   invoice fields and line-item fragments, conflicts use explicit source precedence, and
   invoice semantic-region reconciliation now consumes this resolver instead of local
   Claim-key merge branches.
+- 2026-06-05: Receipt Claims now use family-specific `receipt.line_item.*` keys and
+  resolve through the same claim resolver registry. Receipt field projections cover
+  merchant and transaction facts, while receipt line-item fragments project through
+  registry data rather than bespoke receipt code. The receipt line-item projection
+  stays within `receipt.v1` instead of importing invoice-only tax fields.
 
 ## Deferred Work
 
