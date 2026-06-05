@@ -5,18 +5,29 @@ from lib.extraction.candidate_admission_models import CandidateAdmissionContext
 _FIELD_PATH_PREFIXES_BY_SCHEMA = {
     "invoice": ("invoice.",),
     "receipt": ("receipt.",),
-    "retail_order": ("receipt.", "retail_order."),
-    "service_record": ("receipt.", "service_record."),
+    "retail_order": ("retail_order.",),
+    "service_record": ("service_record.",),
     "medical_eob": ("medical_eob.",),
     "healthcare_coverage_decision": ("medical_eob.", "healthcare_coverage_decision."),
 }
+
+_OBSERVATION_ONLY_CANONICAL_TARGET_SCHEMAS = frozenset(
+    {
+        "document_observation",
+        "retail_order",
+        "service_record",
+    }
+)
 
 
 def canonical_candidate_schema_rejection_reason(
     context: CandidateAdmissionContext,
 ) -> str | None:
-    if _canonical_target_schema(context) == "document_observation":
+    schema = _canonical_target_schema(context)
+    if schema == "document_observation":
         return "document_observation_is_review_only"
+    if schema in _OBSERVATION_ONLY_CANONICAL_TARGET_SCHEMAS:
+        return "alias_family_requires_observation_projection"
     return None
 
 

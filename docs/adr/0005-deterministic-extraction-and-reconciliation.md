@@ -176,6 +176,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   instead of collapsing them into receipt keys, and service/retail canonical targets
   without first-class app schemas reconcile into review-only `document_observation`
   aggregates with source-schema metadata.
+- 2026-06-05: Candidate admission now treats service-record and retail-order
+  canonical targets as observation-only until first-class app schemas exist.
+  Receipt-compatible model contracts may still be used for extraction, but
+  receipt-prefixed field and line-item candidates are rejected at the admission
+  boundary instead of being persisted as canonical receipt candidates.
 
 ## Deferred Work
 
