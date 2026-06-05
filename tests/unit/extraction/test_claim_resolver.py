@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 from lib.extraction.claim_resolver import resolve_claims_for_family
 from lib.extraction.claims import Claim, ClaimAnchor, ClaimSourceEngine
 
@@ -444,6 +446,24 @@ def test_claim_resolver_emits_insufficient_signal_without_usable_claims() -> Non
 
     assert projection.fields == {}
     assert projection.line_items == []
+    assert projection.quality_outcome == "insufficient_signal"
+
+
+def test_claim_resolver_ignores_qwen_value_claims() -> None:
+    qwen_total = _claim(
+        canonical_key="invoice.total_amount",
+        typed_value={"amount": 42.0, "currency": "USD"},
+        source_engine=cast(ClaimSourceEngine, "qwen"),
+        anchor=ClaimAnchor(page_number=1, table_id="table-1", row_index=1),
+    )
+
+    projection = resolve_claims_for_family(
+        family="invoice",
+        claims=[qwen_total],
+    )
+
+    assert projection.fields == {}
+    assert projection.decisions == []
     assert projection.quality_outcome == "insufficient_signal"
 
 

@@ -61,7 +61,7 @@ model output. The model cannot be made deterministic; everything after it can.
 |---|---|---|
 | `claim_id` | string | Deterministic `hash(document_id, anchor, canonical_key, typed_value)` |
 | `document_id` | uuid | - |
-| `source_engine` | enum | `docling \| qwen \| granite` - truthful provenance only |
+| `source_engine` | enum | `docling \| granite` - truthful value provenance only; Qwen is planner provenance and may not create Claims |
 | `anchor` | object | `{ page, docling_element_ids[], bbox, text_span }` - **REQUIRED**; no anchor => no Claim |
 | `canonical_key` | string | From the controlled vocabulary, e.g. `invoice.total_amount` |
 | `raw_value` | string | Verbatim model/source value |

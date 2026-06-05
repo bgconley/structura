@@ -13,7 +13,7 @@ from lib.extraction.region_envelope import (
     RegionLineItem,
 )
 
-ClaimSourceEngine = Literal["docling", "qwen", "granite"]
+ClaimSourceEngine = Literal["docling", "granite"]
 ClaimValueType = Literal[
     "money",
     "date",

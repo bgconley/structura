@@ -31,7 +31,6 @@ class ClaimFamilyProjection:
 SOURCE_PRECEDENCE: dict[str, int] = {
     "granite": 30,
     "docling": 20,
-    "qwen": 10,
 }
 
 
@@ -40,6 +39,7 @@ def resolve_claims_for_family(
     family: str,
     claims: list[Claim],
 ) -> ClaimFamilyProjection:
+    claims = _value_claims(claims)
     registry = CLAIM_FAMILY_REGISTRIES.get(family)
     if registry is None:
         return _resolve_document_observations(requested_family=family, claims=claims)
@@ -190,6 +190,10 @@ def _claim_sort_key(claim: Claim) -> tuple[int, float, str]:
         -(claim.confidence or 0.0),
         claim.claim_id,
     )
+
+
+def _value_claims(claims: list[Claim]) -> list[Claim]:
+    return [claim for claim in claims if claim.source_engine in SOURCE_PRECEDENCE]
 
 
 def _quality_outcome(
