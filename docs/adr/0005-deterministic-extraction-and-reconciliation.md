@@ -213,6 +213,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   metadata, missing-field warnings, and line-item dedupe, while Claim
   collection, family compatibility, resolver decisions, and quality outcome
   come from the shared path.
+- 2026-06-05: Qwen-sourced evidence is no longer allowed to construct typed
+  Claims. Qwen remains the semantic planner/router, while value Claims must
+  come from Docling or Granite evidence so Qwen annotations cannot become
+  canonical facts by provenance drift.
 
 ## Deferred Work
 

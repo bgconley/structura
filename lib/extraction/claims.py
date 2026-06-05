@@ -357,8 +357,6 @@ def _source_engine(refs: list[EvidenceRef]) -> ClaimSourceEngine | None:
     normalized = source_engine.strip().lower()
     if normalized.startswith("granite"):
         return "granite"
-    if normalized.startswith("qwen"):
-        return "qwen"
     if normalized.startswith("docling"):
         return "docling"
     return None
