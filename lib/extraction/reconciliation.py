@@ -12,9 +12,9 @@ from lib.extraction.candidate_value_parsing import (
     normalized_text_key,
     number_value,
 )
-from lib.extraction.claim_aggregate_reconciliation import source_families_from_claims
-from lib.extraction.claim_resolver import resolve_claims_for_family
-from lib.extraction.quality_outcomes import QualityOutcome, combine_quality_outcomes
+from lib.extraction.claim_aggregate_reconciliation import (
+    resolve_claim_regions_for_family,
+)
 from lib.extraction.region_envelope import RegionExtractionEnvelope
 from lib.extraction.region_reconciliation import RegionExtraction
 
@@ -26,56 +26,26 @@ def reconcile_invoice_region_extractions(
     created_at: datetime,
     regions: list[RegionExtraction],
 ) -> dict[str, Any] | None:
-    line_items: list[dict[str, Any]] = []
     invoice: dict[str, Any] = {}
     totals: dict[str, Any] = {}
-    source_families: set[str] = set()
-    metadata: dict[str, Any] = {"region_extractions": []}
-    reconciled_region_count = 0
-    quality_outcomes: list[QualityOutcome] = []
+    claim_regions = resolve_claim_regions_for_family(
+        family="invoice",
+        missing_claims_reason="claims_required_for_invoice_aggregate",
+        regions=regions,
+    )
+    if claim_regions is None:
+        return None
+    metadata = claim_regions.metadata
+    claim_projection = claim_regions.claim_projection
+    if claim_projection.family != "invoice":
+        return None
 
     for region in regions:
-        if not region.claims:
-            metadata.setdefault("skipped_region_extractions", []).append(
-                {
-                    **_region_reference(region),
-                    "reason": "claims_required_for_invoice_aggregate",
-                }
-            )
-            continue
-
-        if not _region_source_family_is_invoice_compatible(region):
-            metadata.setdefault("skipped_region_extractions", []).append(
-                {
-                    **_region_reference(region),
-                    "reason": "aggregate_incompatible_source_family",
-                    "source_families": sorted(_region_source_families(region)),
-                }
-            )
-            continue
-        source_families.update(_region_source_families(region))
-        metadata["region_extractions"].append(_region_reference(region))
-        reconciled_region_count += 1
-        claim_projection = resolve_claims_for_family(
-            family="invoice",
-            claims=list(region.claims),
-        )
-        line_items.extend(claim_projection.line_items)
-        _merge_projection_fields(invoice, totals, claim_projection.fields)
-        quality_outcomes.append(claim_projection.quality_outcome)
-        if claim_projection.decisions:
-            metadata.setdefault("claim_resolution_decisions", []).extend(
-                decision.__dict__ for decision in claim_projection.decisions
-            )
         if region.region_envelope is not None:
             _merge_envelope_metadata(metadata, region.region_envelope)
 
-    if source_families:
-        metadata["source_families"] = sorted(source_families)
-    if quality_outcomes:
-        metadata["quality_outcome"] = combine_quality_outcomes(quality_outcomes)
-    if reconciled_region_count == 0:
-        return None
+    _merge_projection_fields(invoice, totals, claim_projection.fields)
+    line_items = claim_projection.line_items
     if not line_items and not invoice and not totals:
         return None
     if not invoice.get("invoice_number"):
@@ -201,23 +171,6 @@ def _json_key(value: Any) -> str:
     import json
 
     return json.dumps(value, sort_keys=True, separators=(",", ":"))
-
-
-def _region_reference(region: RegionExtraction) -> dict[str, str]:
-    return {
-        "extraction_id": str(region.extraction_id),
-        "semantic_region_id": str(region.semantic_region_id),
-        "semantic_type": region.semantic_type,
-    }
-
-
-def _region_source_family_is_invoice_compatible(region: RegionExtraction) -> bool:
-    source_families = _region_source_families(region)
-    return bool(source_families) and source_families <= {"invoice"}
-
-
-def _region_source_families(region: RegionExtraction) -> set[str]:
-    return {normalized_text_key(family) for family in source_families_from_claims(region.claims)}
 
 
 def _renumber(line_items: list[dict[str, Any]]) -> list[dict[str, Any]]:

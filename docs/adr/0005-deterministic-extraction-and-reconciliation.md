@@ -207,6 +207,12 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   families are skipped with `aggregate_incompatible_source_family` metadata,
   while `document_observation` remains the review-only path that can collect
   arbitrary anchored Claim families.
+- 2026-06-05: Invoice semantic-region aggregation now uses the same shared
+  Claim-region aggregate assembly as medical EOB and document observations.
+  Invoice-specific formatting still owns seller checks, payment-summary
+  metadata, missing-field warnings, and line-item dedupe, while Claim
+  collection, family compatibility, resolver decisions, and quality outcome
+  come from the shared path.
 
 ## Deferred Work
 

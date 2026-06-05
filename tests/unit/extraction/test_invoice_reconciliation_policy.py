@@ -54,6 +54,8 @@ def test_invoice_region_reconciliation_has_no_legacy_escape_hatches() -> None:
     assert "FORBIDDEN_CANONICAL_PLACEHOLDERS" not in source
     assert "semantic_type.endswith" not in source
     assert "legacy_invoice" not in source
+    assert "resolve_claims_for_family" not in source
+    assert "resolve_claim_regions_for_family" in source
 
 
 def test_invoice_region_reconciliation_disables_envelope_fallback_by_default() -> None:
