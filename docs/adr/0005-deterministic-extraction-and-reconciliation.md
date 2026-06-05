@@ -118,18 +118,16 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   `VisionGenerateRequest.allow_structured_output_fallback` and the free-form
   `json_object` retry path were removed; structured-output failures now fail closed as
   model protocol/runtime errors for the job layer to retry or dead-letter.
-- 2026-06-05: Invoice semantic-region reconciliation now prefers persisted
-  `RegionExtractionEnvelope` facts and line items when present, with the legacy raw
-  payload path retained only for rows that predate the envelope. This is a compatibility
-  bridge toward D3/D6, not the final `Claim` IR or generic resolver.
+- 2026-06-05: Invoice semantic-region reconciliation first moved from raw
+  `normalized_json` payloads to persisted `RegionExtractionEnvelope` facts and line
+  items. This was a temporary compatibility bridge toward D3/D6, not the final
+  `Claim` IR or generic resolver.
 - 2026-06-05: The first `Claim` IR module is implemented in `lib/extraction/claims.py`.
   It emits deterministic claim IDs from `(document_id, anchor, canonical_key,
   typed_value)`, drops unanchored values, normalizes Granite provenance to `granite`,
   and converts region-envelope facts and line items into anchored typed claims.
-- 2026-06-05: Invoice semantic-region reconciliation now prefers explicit Claims over
-  both region envelopes and raw normalized payloads. The older envelope/raw paths remain
-  only as compatibility fallbacks while the generic resolver and registry migration are
-  still in progress.
+- 2026-06-05: Invoice semantic-region reconciliation moved again to explicit Claims,
+  ahead of both region envelopes and raw normalized payloads.
 - 2026-06-05: `lib/extraction/claim_resolver.py` introduces the first registry-driven
   deterministic resolver seam. Invoice Claims are projected through registry entries for
   invoice fields and line-item fragments, conflicts use explicit source precedence, and
@@ -150,11 +148,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   from anchored Claims, validated against `document_observation.v1`, and persisted with
   observation candidates; raw unanchored region `normalized_json` remains excluded from
   the aggregate path.
-- 2026-06-05: Invoice semantic-region aggregation no longer uses raw
-  `normalized_json` payloads or envelope-only reconciliation by default. Runtime
-  aggregation requires Claims; raw invoice dicts and pre-Claim typed envelopes remain
-  available only through explicit legacy compatibility flags for pre-envelope and
-  pre-Claim unit coverage.
+- 2026-06-05: Invoice semantic-region aggregation now requires Claims. Raw invoice
+  dicts, envelope-only facts/line items, legacy fallback flags,
+  `FORBIDDEN_CANONICAL_PLACEHOLDERS`, and `semantic_type.endswith(...)` raw routing
+  were removed from invoice reconciliation; raw region `normalized_json` is retained
+  only as lineage/debug payload, not as reconciliation input.
 - 2026-06-05: Medical EOB Claims now resolve through the family registry and
   semantic-region aggregate persistence supports `medical_eob`. EOB aggregates are
   projected from anchored Claims into payer, patient, claim, financial summary, and
@@ -185,5 +183,5 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   decoding, Docling-anchored region identity, and treating plan drift as a quality
   signal; a fully deterministic plan is out of scope.
 - Remaining migration order (highest leverage first): (1) keep expanding the resolver
-  registry while retiring raw-payload compatibility paths; (2) refactor schemas into
-  fragments+registry.
+  registry while retiring any remaining non-Claim compatibility paths; (2) refactor
+  schemas into fragments+registry.

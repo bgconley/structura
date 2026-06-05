@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import inspect
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from lib.extraction import reconciliation as reconciliation_module
 from lib.extraction.reconciliation import (
     RegionExtraction,
     reconcile_invoice_region_extractions,
@@ -41,6 +43,17 @@ def test_invoice_region_reconciliation_disables_raw_payloads_by_default() -> Non
     )
 
     assert aggregate is None
+
+
+def test_invoice_region_reconciliation_has_no_legacy_escape_hatches() -> None:
+    signature = inspect.signature(reconcile_invoice_region_extractions)
+    assert "allow_legacy_region_envelopes" not in signature.parameters
+    assert "allow_legacy_raw_payloads" not in signature.parameters
+
+    source = inspect.getsource(reconciliation_module)
+    assert "FORBIDDEN_CANONICAL_PLACEHOLDERS" not in source
+    assert "semantic_type.endswith" not in source
+    assert "legacy_invoice" not in source
 
 
 def test_invoice_region_reconciliation_disables_envelope_fallback_by_default() -> None:
