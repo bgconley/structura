@@ -361,7 +361,7 @@ def test_semantic_service_downgrades_weak_receipt_guess_when_title_anchors_domin
     assert payload["metadata"]["schema_fit"]["downgraded"] is True
 
 
-def test_semantic_service_uses_docling_table_targets_when_qwen_emits_no_regions() -> None:
+def test_semantic_service_uses_docling_service_record_targets_when_qwen_emits_no_regions() -> None:
     document_id = uuid4()
     household_id = uuid4()
     page_id = uuid4()
@@ -416,8 +416,9 @@ def test_semantic_service_uses_docling_table_targets_when_qwen_emits_no_regions(
     assert [region.semantic_type for region in persisted_regions] == [
         "service_record_line_item_table"
     ]
-    assert persisted_regions[0].grounding.table_id == table_id
+    assert persisted_regions[0].grounding.kind == "page"
     assert persisted_regions[0].grounding.page_id == page_id
+    assert persisted_regions[0].grounding.table_id is None
     ContractRegistry.load("contracts").validate_schema_instance(
         "semantic_annotation_manifest.v1.schema.json",
         persisted_manifests[0].manifest,
@@ -432,7 +433,9 @@ def test_semantic_service_uses_docling_table_targets_when_qwen_emits_no_regions(
     assert payload["canonical_target_schema"] == "service_record"
     assert payload["compatibility_mode"] == "exact"
     assert payload["metadata"]["region_source"] == "docling_structural"
-    assert payload["metadata"]["docling_structural_target"]["source"] == "docling_table"
+    assert payload["metadata"]["semantic_planner_normalization"] == {
+        "reason": "service_record_docling_line_item_page_coverage"
+    }
 
 
 def test_semantic_service_suppresses_weak_docling_table_duplicate_when_qwen_has_type() -> None:
@@ -1150,6 +1153,112 @@ def test_semantic_service_stabilizes_service_record_payment_summary_page() -> No
 
     assert persisted_by_page[2].semantic_type == "service_record_line_item_table"
     assert persisted_by_page[3].semantic_type == "receipt_payment_summary"
+    assert [job["payload"]["semantic_type"] for job in jobs.created] == [
+        "service_record_line_item_table",
+        "receipt_payment_summary",
+    ]
+
+
+def test_semantic_service_collapses_service_record_line_item_fanout_to_docling_anchor() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_ids = {page_number: uuid4() for page_number in (1, 2, 3)}
+    table_id = uuid4()
+    annotation_id = uuid4()
+    source = _source_with_pages(
+        document_id=document_id,
+        household_id=household_id,
+        family="service_record",
+        title="BMW service record",
+        original_filename="BMW CE-04 service record.pdf",
+        page_texts={
+            1: "repair order motorcycle vin mileage opened advisor",
+            2: "service description labor operation part number quantity line total",
+            3: "subtotal tax amount paid total credit card balance due",
+        },
+        page_ids=page_ids,
+        tables=[
+            ParsedTableText(
+                table_id=table_id,
+                page_number=2,
+                table_index=1,
+                table_markdown=(
+                    "| Service Description | Quantity | Line Total |\n"
+                    "| 600 mile service | 1 | 304.72 |"
+                ),
+            )
+        ],
+    )
+    manifest = _manifest_with_regions_for_pages(
+        document_id=document_id,
+        household_id=household_id,
+        page_ids=page_ids,
+        document_type="service_record",
+        regions=[
+            SemanticRegionAnnotation(
+                semantic_type="service_record_line_item_table",
+                priority="high",
+                granite_task="tables_json",
+                target_schema="receipt",
+                expected_fields=("service_description", "quantity", "line_total"),
+                grounding=SemanticGroundingRef(kind="page", page_id=page_ids[1]),
+                review_required=True,
+                confidence=0.98,
+            ),
+            SemanticRegionAnnotation(
+                semantic_type="service_record_line_item_table",
+                priority="high",
+                granite_task="tables_json",
+                target_schema="receipt",
+                expected_fields=("service_description", "quantity", "line_total"),
+                grounding=SemanticGroundingRef(
+                    kind="table",
+                    page_id=page_ids[2],
+                    table_id=table_id,
+                ),
+                review_required=True,
+                confidence=0.98,
+            ),
+            SemanticRegionAnnotation(
+                semantic_type="service_record_line_item_table",
+                priority="high",
+                granite_task="tables_json",
+                target_schema="receipt",
+                expected_fields=("service_description", "quantity", "line_total"),
+                grounding=SemanticGroundingRef(kind="page", page_id=page_ids[3]),
+                review_required=True,
+                confidence=0.98,
+            ),
+        ],
+    )
+    jobs = RecordingJobs()
+    persisted_manifests: list[DocumentSemanticManifest] = []
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+            captured=persisted_manifests,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    persisted_regions = persisted_manifests[0].regions
+    line_regions = [
+        region
+        for region in persisted_regions
+        if region.semantic_type == "service_record_line_item_table"
+    ]
+    summary_regions = [
+        region for region in persisted_regions if region.semantic_type == "receipt_payment_summary"
+    ]
+
+    assert [(region.grounding.kind, region.grounding.page_id) for region in line_regions] == [
+        ("page", page_ids[2])
+    ]
+    assert [region.grounding.page_id for region in summary_regions] == [page_ids[3]]
     assert [job["payload"]["semantic_type"] for job in jobs.created] == [
         "service_record_line_item_table",
         "receipt_payment_summary",

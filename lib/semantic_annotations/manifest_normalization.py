@@ -15,6 +15,7 @@ from lib.semantic_annotations.models import (
     SemanticGroundingRef,
     SemanticRegionAnnotation,
 )
+from lib.semantic_annotations.service_record_normalization import normalize_service_record_regions
 
 _LINE_ITEM_SEMANTIC_TYPES = frozenset(
     {
@@ -113,25 +114,6 @@ _RECEIPT_PAYMENT_SUMMARY_FAMILIES = frozenset(
         "service_record",
     }
 )
-_SERVICE_RECORD_PAYMENT_TERMS = (
-    "amount paid",
-    "balance due",
-    "card",
-    "cash",
-    "credit",
-    "paid",
-    "payment",
-    "subtotal",
-    "tax",
-    "total",
-)
-_SERVICE_RECORD_LINE_ITEM_TERMS = (
-    "labor operation",
-    "line total",
-    "part number",
-    "quantity",
-    "service description",
-)
 
 
 def normalize_result_for_planning(
@@ -152,7 +134,7 @@ def normalize_manifest_for_planning(
     regions = _drop_low_value_regions(regions)
     regions = _drop_unanchored_observation_family_regions(source, regions)
     regions = _normalize_retail_order_regions(source, manifest, regions)
-    regions = _normalize_service_record_regions(source, manifest, regions)
+    regions = normalize_service_record_regions(source, manifest, regions)
     regions = _drop_unsupported_model_payment_summaries(source, manifest, regions)
     regions = _with_medical_eob_decision_pages(source, manifest, regions)
     regions = _dedupe_page_kvp_regions(regions)
@@ -418,58 +400,6 @@ def _drop_unsupported_model_payment_summaries(
             region.semantic_type == "receipt_payment_summary"
             and region.metadata.get("region_source") != DOCLING_STRUCTURAL_REGION_SOURCE
         )
-    ]
-
-
-def _normalize_service_record_regions(
-    source: ExtractionSourceDocument,
-    manifest: DocumentSemanticManifest,
-    regions: list[SemanticRegionAnnotation],
-) -> list[SemanticRegionAnnotation]:
-    if not _is_service_record_source(source, manifest):
-        return regions
-    summary_page_id = _service_record_payment_summary_page(source)
-    if summary_page_id is None:
-        return regions
-
-    normalized: list[SemanticRegionAnnotation] = []
-    has_summary = False
-    for region in regions:
-        if region.semantic_type == "receipt_payment_summary":
-            if region.grounding.page_id == summary_page_id:
-                normalized.append(region)
-                has_summary = True
-            continue
-        if (
-            region.semantic_type == "service_record_line_item_table"
-            and region.grounding.page_id == summary_page_id
-            and region.grounding.kind != "table"
-        ):
-            continue
-        normalized.append(region)
-
-    if has_summary:
-        return normalized
-    return [
-        *normalized,
-        SemanticRegionAnnotation(
-            semantic_type="receipt_payment_summary",
-            priority="high",
-            granite_task="kvp",
-            target_schema="receipt",
-            expected_fields=_RECEIPT_PAYMENT_FIELDS,
-            grounding=SemanticGroundingRef(kind="page", page_id=summary_page_id),
-            review_required=True,
-            reason="Docling text anchors indicate a service-record payment summary.",
-            confidence=0.68,
-            metadata={
-                "region_source": DOCLING_STRUCTURAL_REGION_SOURCE,
-                "source_signal": "text",
-                "coverage_role": "summary",
-                "extraction_scope": "page",
-                "must_extract_reason": "payment_summary",
-            },
-        ),
     ]
 
 
@@ -877,32 +807,6 @@ def _supports_receipt_payment_summary(
 
 def _has_receipt_docling_support(source: ExtractionSourceDocument) -> bool:
     return "receipt" in build_docling_audit(source).suggested_family_hints
-
-
-def _is_service_record_source(
-    source: ExtractionSourceDocument,
-    manifest: DocumentSemanticManifest,
-) -> bool:
-    document_type = _document_type(manifest)
-    source_family = source.family.strip().lower()
-    if document_type == "service_record" or source_family == "service_record":
-        return True
-    return "service_record" in build_docling_audit(source).suggested_family_hints
-
-
-def _service_record_payment_summary_page(source: ExtractionSourceDocument) -> UUID | None:
-    best: tuple[int, int, UUID] | None = None
-    for page in source.pages:
-        text = _normalized_text(page.text)
-        payment_score = sum(1 for term in _SERVICE_RECORD_PAYMENT_TERMS if term in text)
-        if payment_score < 2:
-            continue
-        line_item_score = sum(1 for term in _SERVICE_RECORD_LINE_ITEM_TERMS if term in text)
-        score = payment_score - line_item_score
-        candidate = (-score, page.page_number, page.page_id)
-        if best is None or candidate < best:
-            best = candidate
-    return best[2] if best is not None else None
 
 
 def _is_medical_eob_source(
