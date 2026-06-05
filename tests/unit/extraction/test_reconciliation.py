@@ -372,6 +372,7 @@ def test_invoice_region_reconciliation_prefers_typed_envelope_over_raw_payload()
             ),
         ],
         document_fallback={"invoice_number": "INV-typed"},
+        allow_legacy_region_envelopes=True,
     )
 
     assert aggregate is not None

@@ -56,6 +56,7 @@ def reconcile_invoice_region_extractions(
     created_at: datetime,
     regions: list[RegionExtraction],
     document_fallback: dict[str, Any] | None = None,
+    allow_legacy_region_envelopes: bool = False,
     allow_legacy_raw_payloads: bool = False,
 ) -> dict[str, Any] | None:
     line_items: list[dict[str, Any]] = []
@@ -96,6 +97,14 @@ def reconcile_invoice_region_extractions(
             continue
 
         if region.region_envelope is not None:
+            if not allow_legacy_region_envelopes:
+                metadata.setdefault("skipped_region_extractions", []).append(
+                    {
+                        **_region_reference(region),
+                        "reason": "legacy_region_envelope_reconciliation_disabled",
+                    }
+                )
+                continue
             if not _region_source_family_is_invoice_compatible(region):
                 metadata.setdefault("skipped_region_extractions", []).append(
                     {

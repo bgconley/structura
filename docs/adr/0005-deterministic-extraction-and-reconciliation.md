@@ -151,9 +151,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   observation candidates; raw unanchored region `normalized_json` remains excluded from
   the aggregate path.
 - 2026-06-05: Invoice semantic-region aggregation no longer uses raw
-  `normalized_json` payloads by default. Runtime aggregation requires Claims or typed
-  region envelopes; raw invoice dict reconciliation remains available only through an
-  explicit legacy compatibility flag for pre-envelope unit coverage.
+  `normalized_json` payloads or envelope-only reconciliation by default. Runtime
+  aggregation requires Claims; raw invoice dicts and pre-Claim typed envelopes remain
+  available only through explicit legacy compatibility flags for pre-envelope and
+  pre-Claim unit coverage.
 
 ## Deferred Work
 
