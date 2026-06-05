@@ -32,11 +32,14 @@ class OpenAIVisionGenerateClient:
             raise ModelProtocolError("Vision request profile does not match client profile.")
         start = time.monotonic()
         input_hashes = _validated_input_hashes(request, profile=self.profile)
-        structured_output_requested = request.response_json_schema is not None
+        if request.response_json_schema is None:
+            raise ModelProtocolError(
+                f"Vision profile {self.profile.name} requires a JSON Schema for "
+                "structured generation."
+            )
         payload = _openai_payload(
             request=request,
             profile=self.profile,
-            use_structured_output=structured_output_requested,
         )
         response = self._http.post_json(
             "/v1/chat/completions",
@@ -60,7 +63,7 @@ class OpenAIVisionGenerateClient:
             latency_ms=max(0, int((time.monotonic() - start) * 1000)),
             finish_reason=finish_reason,
             usage_json=_usage_json(response),
-            structured_output_used=structured_output_requested,
+            structured_output_used=True,
         )
 
 
@@ -89,7 +92,6 @@ def _openai_payload(
     *,
     request: VisionGenerateRequest,
     profile: ModelProfile,
-    use_structured_output: bool,
 ) -> dict[str, Any]:
     content: list[dict[str, object]] = [{"type": "text", "text": request.prompt}]
     for image in request.image_inputs:
@@ -115,25 +117,22 @@ def _openai_payload(
     }
     if request.seed is not None:
         payload["seed"] = request.seed
-    if use_structured_output and request.response_json_schema is not None:
-        schema_name = request.response_schema_name or "structured_response"
-        if request.structured_output_mode == "response_format_json_schema":
-            payload["response_format"] = {
-                "type": "json_schema",
-                "json_schema": {
-                    "name": schema_name,
-                    "schema": request.response_json_schema,
-                    "strict": True,
-                },
-            }
-        elif request.structured_output_mode == "structured_outputs_json":
-            payload["structured_outputs"] = {"json": request.response_json_schema}
-        else:
-            raise ModelProtocolError(
-                f"Unsupported structured output mode: {request.structured_output_mode}"
-            )
+    schema_name = request.response_schema_name or "structured_response"
+    if request.structured_output_mode == "response_format_json_schema":
+        payload["response_format"] = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": schema_name,
+                "schema": request.response_json_schema,
+                "strict": True,
+            },
+        }
+    elif request.structured_output_mode == "structured_outputs_json":
+        payload["structured_outputs"] = {"json": request.response_json_schema}
     else:
-        payload["response_format"] = {"type": "json_object"}
+        raise ModelProtocolError(
+            f"Unsupported structured output mode: {request.structured_output_mode}"
+        )
     return payload
 
 

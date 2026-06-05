@@ -91,13 +91,46 @@ def probe_vision_generate(target: ProbeTarget, *, timeout: float) -> None:
         ],
         "max_tokens": 64,
         "temperature": 0,
-        "response_format": {"type": "json_object"},
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "structura_phase8_5_vision_probe",
+                "schema": _vision_probe_schema(),
+                "strict": True,
+            },
+        },
     }
     response = post_json(target.base_url, "/v1/chat/completions", payload, timeout=timeout)
     choices = response.get("choices")
     if not isinstance(choices, list) or not choices:
         raise SystemExit(f"{target.name}: chat completion response is missing choices")
     print(f"{target.name}: chat completion ok")
+
+
+def _vision_probe_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "normalized": {
+                "type": "object",
+                "properties": {
+                    "ok": {"type": "boolean"},
+                },
+                "required": ["ok"],
+                "additionalProperties": False,
+            },
+            "confidence": {
+                "type": "object",
+                "properties": {
+                    "ok": {"type": "number"},
+                },
+                "required": ["ok"],
+                "additionalProperties": False,
+            },
+        },
+        "required": ["normalized", "confidence"],
+        "additionalProperties": False,
+    }
 
 
 def probe_embedding(

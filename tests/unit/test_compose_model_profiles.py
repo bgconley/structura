@@ -148,6 +148,8 @@ def test_phase8_5_smoke_supports_managed_model_validation() -> None:
     assert "probe_text_embedding" in smoke
     assert "--skip-visual-embed" in smoke
     assert "rm -sf" in smoke
+    assert '"type": "json_object"' not in probe
+    assert '"type": "json_schema"' in probe
 
     for flag in (
         "--skip-qwen-semantic",

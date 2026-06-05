@@ -10,8 +10,46 @@ import pytest
 from lib.model_runtime.clients.qwen_vl import QwenVLClient
 from lib.model_runtime.contracts import ModelImageInput, VisionGenerateRequest
 from lib.model_runtime.http_client import ModelProtocolError
-from lib.model_runtime.profiles import QWEN_VL_PROFILE, get_model_profile
+from lib.model_runtime.profiles import QWEN_SEMANTIC_PROFILE, QWEN_VL_PROFILE, get_model_profile
 from lib.semantic_annotations.schema import semantic_annotation_manifest_schema
+
+
+def test_qwen_semantic_client_requires_json_schema_before_transport() -> None:
+    calls = 0
+    image_sha256 = hashlib.sha256(b"image-bytes").hexdigest()
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, json={})
+
+    client = QwenVLClient(
+        profile=get_model_profile(QWEN_SEMANTIC_PROFILE),
+        http_client_base_url="http://model-qwen-semantic:8104",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(ModelProtocolError, match="JSON Schema"):
+        client.generate(
+            VisionGenerateRequest(
+                profile_name=QWEN_SEMANTIC_PROFILE,
+                prompt_version="phase8_5-semantic-smart-v3",
+                prompt="Return JSON only",
+                image_inputs=(
+                    ModelImageInput(
+                        content=b"image-bytes",
+                        mime_type="image/png",
+                        sha256=image_sha256,
+                    ),
+                ),
+                response_schema_name="semantic_annotation_model_output",
+                max_output_tokens=4096,
+                temperature=0.0,
+                timeout_seconds=30,
+            )
+        )
+
+    assert calls == 0
 
 
 def test_qwen_client_builds_multimodal_payload_and_returns_truthful_provenance() -> None:
@@ -58,6 +96,7 @@ def test_qwen_client_builds_multimodal_payload_and_returns_truthful_provenance()
                 ),
             ),
             response_schema_name="invoice",
+            response_json_schema=_schema(),
             max_output_tokens=512,
             temperature=0.0,
             timeout_seconds=30,
@@ -77,7 +116,14 @@ def test_qwen_client_builds_multimodal_payload_and_returns_truthful_provenance()
     assert payload["model"] == "Qwen/Qwen3-VL-8B-Instruct"
     content = payload["messages"][0]["content"]
     assert any(part["type"] == "image_url" for part in content)
-    assert payload["response_format"] == {"type": "json_object"}
+    assert payload["response_format"] == {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "invoice",
+            "schema": _schema(),
+            "strict": True,
+        },
+    }
     assert payload["seed"] == 0
     assert payload["metadata"]["profile_name"] == QWEN_VL_PROFILE
 
@@ -355,7 +401,12 @@ def _request() -> VisionGenerateRequest:
             ModelImageInput(content=b"image-bytes", mime_type="image/png", sha256=image_sha256),
         ),
         response_schema_name="invoice",
+        response_json_schema=_schema(),
         max_output_tokens=512,
         temperature=0.0,
         timeout_seconds=30,
     )
+
+
+def _schema() -> dict[str, object]:
+    return {"type": "object", "additionalProperties": True}

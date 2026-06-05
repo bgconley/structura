@@ -181,6 +181,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   Receipt-compatible model contracts may still be used for extraction, but
   receipt-prefixed field and line-item candidates are rejected at the admission
   boundary instead of being persisted as canonical receipt candidates.
+- 2026-06-05: The shared OpenAI-compatible vision adapter now requires every
+  vision generation request to include a JSON Schema before it will call the
+  model transport. The last manual Phase 8.5 GPU live-probe `json_object`
+  request was replaced with a strict `json_schema` probe payload, so
+  free-form JSON is no longer a permitted runtime path for vision generation.
 
 ## Deferred Work
 
