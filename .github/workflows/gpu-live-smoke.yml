@@ -34,5 +34,5 @@ jobs:
             mcr.microsoft.com/playwright:v1.59.1-noble \
             sh -lc "npm ci && npx playwright test tests/e2e/phase1-live.spec.ts tests/e2e/phase2-live.spec.ts tests/e2e/phase3-live.spec.ts tests/e2e/phase4-live.spec.ts tests/e2e/phase5-live.spec.ts tests/e2e/phase6-live.spec.ts tests/e2e/phase7-live.spec.ts tests/e2e/phase8-live.spec.ts --workers=1"
       - name: Run Phase 8.5 model smoke
-        if: ${{ inputs.run_model_smoke == 'true' }}
+        if: ${{ github.event_name == 'schedule' || inputs.run_model_smoke == 'true' }}
         run: bash scripts/gpu/phase8_5_model_smoke.sh

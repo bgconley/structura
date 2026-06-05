@@ -1,22 +1,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any
 from uuid import UUID
 
 from lib.config import get_settings
 from lib.db.connection import db_connection
-from lib.model_runtime.clients.text_embeddings import TextEmbeddingClient
-from lib.model_runtime.clients.visual_embeddings import VisualEmbeddingClient
-from lib.model_runtime.profiles import get_model_profile
-from lib.search.embedding_gateway import (
-    DeterministicEmbeddingGateway,
-    DeterministicVisualEmbeddingGateway,
-    EmbeddingProfile,
-    VisualEmbeddingInput,
-    default_text_embedding_profile,
-    default_visual_embedding_profile,
+from lib.search.embedding_defaults import (
+    TextEmbeddingGatewayProtocol,
+    VisualAssetEmbeddingGatewayProtocol,
+    default_text_embedding_gateway,
+    default_visual_asset_embedding_gateway,
 )
+from lib.search.embedding_gateway import EmbeddingProfile, VisualEmbeddingInput
 from lib.search.embedding_repository import (
     EmbeddingSource,
     count_visual_eligible_pages_without_assets,
@@ -26,21 +22,7 @@ from lib.search.embedding_repository import (
     persist_text_embedding,
     refresh_search_projection,
 )
-from lib.search.embeddings.text_model import TextModelEmbeddingGateway
-from lib.search.embeddings.visual_model import VisualModelEmbeddingGateway
 from lib.storage import ObjectStorage
-
-
-class TextEmbeddingGatewayProtocol(Protocol):
-    profile: EmbeddingProfile
-
-    def embed_texts(self, texts: list[str]) -> list[Any]: ...
-
-
-class VisualEmbeddingGatewayProtocol(Protocol):
-    profile: EmbeddingProfile
-
-    def embed_assets(self, assets: list[VisualEmbeddingInput]) -> list[Any]: ...
 
 
 @dataclass(frozen=True)
@@ -62,16 +44,16 @@ class EmbeddingService:
         profile: EmbeddingProfile | None = None,
         gateway: TextEmbeddingGatewayProtocol | None = None,
         visual_profile: EmbeddingProfile | None = None,
-        visual_gateway: VisualEmbeddingGatewayProtocol | None = None,
+        visual_gateway: VisualAssetEmbeddingGatewayProtocol | None = None,
         storage: ObjectStorage | None = None,
     ) -> None:
         settings = get_settings()
-        self.gateway = gateway or _default_text_gateway(
+        self.gateway = gateway or default_text_embedding_gateway(
             settings=settings,
             profile=profile,
         )
         self.profile = self.gateway.profile
-        self.visual_gateway = visual_gateway or _default_visual_gateway(
+        self.visual_gateway = visual_gateway or default_visual_asset_embedding_gateway(
             settings=settings,
             profile=visual_profile,
         )
@@ -143,7 +125,7 @@ class EmbeddingService:
         for source, embedding in zip(sources, embedded, strict=True):
             if persist_text_embedding(
                 cur,
-                source=source,
+                source=_with_embedding_provenance(source, self.profile),
                 embedding=embedding,
                 force_reembed=force_reembed,
             ):
@@ -225,46 +207,8 @@ def _with_embedding_provenance(
 
 
 def _embedding_adapter_name(profile: EmbeddingProfile) -> str:
+    if profile.name == "structura-fixture-text-embedding":
+        return "deterministic_text_fixture"
     if profile.name == "structura-fixture-visual-byte-embedding":
         return "deterministic_visual_byte_embedding"
     return profile.name
-
-
-def _default_text_gateway(
-    *,
-    settings: Any,
-    profile: EmbeddingProfile | None,
-) -> TextEmbeddingGatewayProtocol:
-    if settings.model_mode == "fixture":
-        resolved_profile = profile or default_text_embedding_profile(
-            settings.embedding_text_dimensions
-        )
-        return DeterministicEmbeddingGateway(resolved_profile)
-    model_profile = get_model_profile(settings.text_embed_profile)
-    return TextModelEmbeddingGateway(
-        client=TextEmbeddingClient(
-            profile=model_profile,
-            http_client_base_url=settings.model_text_embed_url,
-        ),
-        profile_name=model_profile.name,
-    )
-
-
-def _default_visual_gateway(
-    *,
-    settings: Any,
-    profile: EmbeddingProfile | None,
-) -> VisualEmbeddingGatewayProtocol:
-    if settings.model_mode == "fixture":
-        resolved_profile = profile or default_visual_embedding_profile(
-            settings.embedding_visual_dimensions
-        )
-        return DeterministicVisualEmbeddingGateway(resolved_profile)
-    model_profile = get_model_profile(settings.visual_embed_profile)
-    return VisualModelEmbeddingGateway(
-        client=VisualEmbeddingClient(
-            profile=model_profile,
-            http_client_base_url=settings.model_visual_embed_url,
-        ),
-        profile_name=model_profile.name,
-    )

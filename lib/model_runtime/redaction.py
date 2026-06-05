@@ -5,8 +5,13 @@ from typing import Any
 
 _SENSITIVE_KEY_FRAGMENTS = (
     "answer",
+    "content",
+    "data",
     "data_url",
+    "image",
     "image_path",
+    "input",
+    "messages",
     "object_uri",
     "objecturi",
     "path",

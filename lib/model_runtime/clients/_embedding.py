@@ -117,6 +117,12 @@ class EmbeddingHttpClient:
     def _payload(self, request: EmbeddingRequest) -> tuple[dict[str, Any], tuple[str, ...]]:
         if not request.inputs:
             raise ModelProtocolError("Embedding request requires at least one input.")
+        if self.requires_image:
+            max_inputs = self.profile.max_images_per_request
+            if max_inputs is not None and len(request.inputs) > max_inputs:
+                raise ModelProtocolError(
+                    "Visual embedding request has too many image inputs for profile."
+                )
         inputs = [self._input_payload(item) for item in request.inputs]
         return (
             {
@@ -136,6 +142,11 @@ class EmbeddingHttpClient:
                 or not item.mime_type.startswith("image/")
             ):
                 raise ModelProtocolError("Visual embedding input requires image bytes.")
+            if (
+                self.profile.max_image_bytes is not None
+                and len(item.image_bytes) > self.profile.max_image_bytes
+            ):
+                raise ModelProtocolError("Visual embedding image input exceeds profile byte limit.")
             return {
                 "text": item.text,
                 "image": {

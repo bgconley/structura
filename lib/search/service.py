@@ -7,9 +7,12 @@ from lib.config import get_settings
 from lib.contracts import EvidenceRef, SearchRequest, SearchResponse, SearchResult
 from lib.documents.access_policy import DocumentAccessContext
 from lib.search import repository
+from lib.search.embedding_defaults import (
+    TextEmbeddingGatewayProtocol,
+    default_text_embedding_gateway,
+    default_visual_query_embedding_gateway,
+)
 from lib.search.embedding_gateway import (
-    DeterministicEmbeddingGateway,
-    DeterministicVisualEmbeddingGateway,
     EmbeddingProfile,
     default_text_embedding_profile,
     default_visual_embedding_profile,
@@ -51,25 +54,31 @@ class SearchService:
         self,
         *,
         embedding_profile: EmbeddingProfile | None = None,
-        embedding_gateway: DeterministicEmbeddingGateway | None = None,
+        embedding_gateway: TextEmbeddingGatewayProtocol | None = None,
         visual_embedding_profile: EmbeddingProfile | None = None,
-        visual_embedding_gateway: DeterministicVisualEmbeddingGateway | None = None,
+        visual_embedding_gateway: TextEmbeddingGatewayProtocol | None = None,
     ) -> None:
         settings = get_settings()
         self.embedding_profile = embedding_profile or default_text_embedding_profile(
             settings.embedding_text_dimensions
         )
-        self.embedding_gateway = embedding_gateway or DeterministicEmbeddingGateway(
-            self.embedding_profile
+        self.embedding_gateway = embedding_gateway or default_text_embedding_gateway(
+            settings=settings,
+            profile=embedding_profile,
         )
+        self.embedding_profile = self.embedding_gateway.profile
         self.visual_embedding_profile = (
             visual_embedding_profile
             or default_visual_embedding_profile(settings.embedding_visual_dimensions)
         )
         self.visual_embedding_gateway = (
             visual_embedding_gateway
-            or DeterministicVisualEmbeddingGateway(self.visual_embedding_profile)
+            or default_visual_query_embedding_gateway(
+                settings=settings,
+                profile=visual_embedding_profile,
+            )
         )
+        self.visual_embedding_profile = self.visual_embedding_gateway.profile
 
     def search(self, request: SearchRequest, *, access: DocumentAccessContext) -> SearchResponse:
         parsed = parse_search_request(request)

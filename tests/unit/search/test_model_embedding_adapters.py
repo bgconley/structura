@@ -2,14 +2,20 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
+from uuid import UUID
 
 from lib.config import get_settings
 from lib.model_runtime.contracts import EmbeddingRequest, EmbeddingResponse
 from lib.model_runtime.profiles import TEXT_EMBED_PROFILE, VISUAL_EMBED_PROFILE
-from lib.search.embedding_gateway import VisualEmbeddingInput
-from lib.search.embedding_service import EmbeddingService
+from lib.search import SearchService
+from lib.search.embedding_gateway import EmbeddingProfile, VisualEmbeddingInput
+from lib.search.embedding_repository import EmbeddingSource
+from lib.search.embedding_service import EmbeddingService, _with_embedding_provenance
 from lib.search.embeddings.text_model import TextModelEmbeddingGateway
-from lib.search.embeddings.visual_model import VisualModelEmbeddingGateway
+from lib.search.embeddings.visual_model import (
+    VisualModelEmbeddingGateway,
+    VisualQueryEmbeddingGateway,
+)
 
 
 @dataclass
@@ -78,6 +84,30 @@ def test_visual_model_embedding_gateway_requires_image_bytes() -> None:
     assert client.request.timeout_seconds == 90
 
 
+def test_visual_query_embedding_gateway_uses_visual_profile_for_text_queries() -> None:
+    client = FakeEmbeddingClient(
+        EmbeddingResponse(
+            profile_name=VISUAL_EMBED_PROFILE,
+            model_name="Qwen/Qwen3-VL-Embedding-2B",
+            model_version="vllm",
+            dimensions=2048,
+            vectors=(tuple([0.0, 1.0, *([0.0] * 2046)]),),
+            input_sha256=("hash",),
+            latency_ms=4,
+        )
+    )
+
+    embedded = VisualQueryEmbeddingGateway(client=client).embed_texts(["handwritten warranty"])[0]
+
+    assert embedded.profile.name == "qwen3-vl-embedding-2b-2048"
+    assert embedded.profile.dimensions == 2048
+    assert embedded.values[1] == 1.0
+    assert client.request is not None
+    assert client.request.profile_name == VISUAL_EMBED_PROFILE
+    assert client.request.inputs[0].text == "handwritten warranty"
+    assert client.request.inputs[0].image_bytes is None
+
+
 def test_embedding_service_selects_live_model_gateways_when_model_mode_is_live(
     monkeypatch,
 ) -> None:
@@ -91,3 +121,43 @@ def test_embedding_service_selects_live_model_gateways_when_model_mode_is_live(
 
     assert isinstance(service.gateway, TextModelEmbeddingGateway)
     assert isinstance(service.visual_gateway, VisualModelEmbeddingGateway)
+
+
+def test_search_service_selects_live_query_gateways_when_model_mode_is_live(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("STRUCTURA_MODEL_MODE", "live")
+    get_settings.cache_clear()
+
+    try:
+        service = SearchService()
+    finally:
+        get_settings.cache_clear()
+
+    assert isinstance(service.embedding_gateway, TextModelEmbeddingGateway)
+    assert isinstance(service.visual_embedding_gateway, VisualQueryEmbeddingGateway)
+    assert service.embedding_profile.name == "qwen3-embedding-4b-1536"
+    assert service.visual_embedding_profile.name == "qwen3-vl-embedding-2b-2048"
+
+
+def test_text_embedding_provenance_preserves_live_adapter_truthfulness() -> None:
+    source = EmbeddingSource(
+        owner_type="chunk",
+        owner_id=UUID("00000000-0000-0000-0000-000000000001"),
+        document_id=UUID("00000000-0000-0000-0000-000000000002"),
+        text="invoice total",
+        metadata={},
+    )
+    profile = EmbeddingProfile(
+        name="qwen3-embedding-4b-1536",
+        version="v1",
+        modality="text",
+        dimensions=1536,
+        metric="cosine",
+    )
+
+    stamped = _with_embedding_provenance(source, profile)
+
+    assert stamped.metadata["embeddingAdapter"] == "qwen3-embedding-4b-1536"
+    assert stamped.metadata["embeddingModelVersion"] == "v1"
+    assert stamped.metadata["embeddingModality"] == "text"

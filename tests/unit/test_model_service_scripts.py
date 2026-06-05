@@ -136,3 +136,17 @@ def test_phase8_5_model_smoke_restores_gpu1_models_in_staged_order() -> None:
     restored_probe = restore_block.index("probe_live_models --skip-qwen-semantic --skip-text-embed")
 
     assert granite_start < granite_health < visual_start < visual_health < restored_probe
+
+
+def test_phase8_5_model_smoke_runs_live_phase8_e2e() -> None:
+    script = Path("scripts/gpu/phase8_5_model_smoke.sh").read_text()
+
+    assert "run_phase8_live_e2e" in script
+    assert "STRUCTURA_E2E_LIVE=1" in script
+    assert "tests/e2e/phase8-live.spec.ts" in script
+
+
+def test_gpu_live_smoke_schedule_runs_model_smoke() -> None:
+    workflow = Path(".github/workflows/gpu-live-smoke.yml").read_text()
+
+    assert "github.event_name == 'schedule' || inputs.run_model_smoke == 'true'" in workflow

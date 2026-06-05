@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import httpx
 import pytest
 
-from lib.model_runtime.clients.visual_embeddings import VisualEmbeddingClient
+from lib.model_runtime.clients.visual_embeddings import (
+    VisualEmbeddingClient,
+    VisualQueryEmbeddingClient,
+)
 from lib.model_runtime.contracts import EmbeddingInput, EmbeddingRequest
 from lib.model_runtime.http_client import ModelProtocolError
 from lib.model_runtime.profiles import VISUAL_EMBED_PROFILE, get_model_profile
@@ -166,3 +171,57 @@ def test_visual_embedding_client_rejects_descriptor_only_input() -> None:
                 timeout_seconds=30,
             )
         )
+
+
+def test_visual_embedding_client_rejects_images_above_profile_byte_limit() -> None:
+    profile = replace(get_model_profile(VISUAL_EMBED_PROFILE), max_image_bytes=4)
+    client = VisualEmbeddingClient(
+        profile=profile,
+        http_client_base_url="http://model-vl-embed:8103",
+        transport=httpx.MockTransport(lambda _request: httpx.Response(200, json={})),
+    )
+
+    with pytest.raises(ModelProtocolError, match="byte limit"):
+        client.embed(
+            EmbeddingRequest(
+                profile_name=VISUAL_EMBED_PROFILE,
+                inputs=(
+                    EmbeddingInput(
+                        text="oversized image",
+                        image_bytes=b"12345",
+                        mime_type="image/png",
+                    ),
+                ),
+                output_dimensions=2048,
+                timeout_seconds=30,
+            )
+        )
+
+
+def test_visual_query_embedding_client_accepts_text_query_without_image_bytes() -> None:
+    vector = [0.0] * 2048
+    vector[11] = 1.0
+    client = VisualQueryEmbeddingClient(
+        profile=get_model_profile(VISUAL_EMBED_PROFILE),
+        http_client_base_url="http://model-vl-embed:8103",
+        transport=httpx.MockTransport(
+            lambda _request: httpx.Response(
+                200,
+                json={
+                    "model": "Qwen/Qwen3-VL-Embedding-2B",
+                    "data": [{"embedding": vector}],
+                },
+            )
+        ),
+    )
+
+    response = client.embed(
+        EmbeddingRequest(
+            profile_name=VISUAL_EMBED_PROFILE,
+            inputs=(EmbeddingInput(text="handwritten receipt"),),
+            output_dimensions=2048,
+            timeout_seconds=30,
+        )
+    )
+
+    assert response.vectors == (tuple(vector),)

@@ -9,6 +9,8 @@ HEALTH_TIMEOUT_SECONDS="${STRUCTURA_MODEL_SMOKE_HEALTH_TIMEOUT_SECONDS:-1200}"
 HEALTH_POLL_SECONDS="${STRUCTURA_MODEL_SMOKE_HEALTH_POLL_SECONDS:-5}"
 MANAGE_COMPOSE="${STRUCTURA_MODEL_SMOKE_MANAGE_COMPOSE:-0}"
 MODEL_CORPUS_MANIFEST="${STRUCTURA_MODEL_CORPUS_MANIFEST:-tests/fixtures/model_corpus/phase8_5_model_manifest.json}"
+E2E_WEB_URL="${STRUCTURA_E2E_WEB_URL:-http://10.25.0.50:13000}"
+PLAYWRIGHT_IMAGE="${STRUCTURA_MODEL_SMOKE_PLAYWRIGHT_IMAGE:-mcr.microsoft.com/playwright:v1.59.1-noble}"
 COMPOSE_PROFILES=(
   --profile models-live
   --profile text-embed-live
@@ -115,6 +117,19 @@ probe_text_embedding() {
   probe_live_models --skip-qwen-semantic --skip-text-embed
 }
 
+run_phase8_live_e2e() {
+  echo "Validating live Phase 8 browser E2E against ${E2E_WEB_URL}"
+  docker run --rm \
+    -e STRUCTURA_E2E_LIVE=1 \
+    -e STRUCTURA_E2E_WEB_URL="${E2E_WEB_URL}" \
+    -v "$PWD":/workspace \
+    --mount type=volume,src=structura-ci-node-modules,dst=/workspace/node_modules \
+    --mount type=volume,src=structura-ci-web-node-modules,dst=/workspace/apps/web/node_modules \
+    -w /workspace \
+    "${PLAYWRIGHT_IMAGE}" \
+    sh -lc "npm ci && npx playwright test tests/e2e/phase8-live.spec.ts --workers=1"
+}
+
 if [[ "$MANAGE_COMPOSE" == "1" || "$MANAGE_COMPOSE" == "true" ]]; then
   start_core_services
   probe_core_services
@@ -136,5 +151,7 @@ fi
 "${PYTHON:-python3}" scripts/run_model_corpus.py \
   --require-model-backed \
   --manifest "$MODEL_CORPUS_MANIFEST"
+
+run_phase8_live_e2e
 
 echo "Phase 8.5 GPU model smoke completed"

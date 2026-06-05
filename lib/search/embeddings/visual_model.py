@@ -51,3 +51,34 @@ class VisualModelEmbeddingGateway:
             EmbeddedText(text=asset.descriptor_text, values=list(vector), profile=self.profile)
             for asset, vector in zip(assets, vectors, strict=True)
         ]
+
+
+class VisualQueryEmbeddingGateway:
+    def __init__(
+        self,
+        *,
+        client: VisualEmbeddingClientProtocol,
+        profile_name: str = VISUAL_EMBED_PROFILE,
+    ) -> None:
+        self.client = client
+        self.model_profile = get_model_profile(profile_name)
+        self.profile = search_embedding_profile(self.model_profile)
+
+    def embed_texts(self, texts: list[str]) -> list[EmbeddedText]:
+        response = self.client.embed(
+            EmbeddingRequest(
+                profile_name=self.model_profile.name,
+                inputs=tuple(EmbeddingInput(text=text) for text in texts),
+                output_dimensions=self.profile.dimensions,
+                timeout_seconds=60,
+            )
+        )
+        vectors = validated_response_vectors(
+            response,
+            expected_count=len(texts),
+            expected_dimensions=self.profile.dimensions,
+        )
+        return [
+            EmbeddedText(text=text, values=list(vector), profile=self.profile)
+            for text, vector in zip(texts, vectors, strict=True)
+        ]

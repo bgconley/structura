@@ -31,7 +31,7 @@ class OpenAIVisionGenerateClient:
         if request.profile_name != self.profile.name:
             raise ModelProtocolError("Vision request profile does not match client profile.")
         start = time.monotonic()
-        input_hashes = _validated_input_hashes(request)
+        input_hashes = _validated_input_hashes(request, profile=self.profile)
         structured_output_requested = request.response_json_schema is not None
         structured_output_used = structured_output_requested
         fallback_reason: str | None = None
@@ -83,13 +83,20 @@ class OpenAIVisionGenerateClient:
         )
 
 
-def _validated_input_hashes(request: VisionGenerateRequest) -> tuple[str, ...]:
+def _validated_input_hashes(
+    request: VisionGenerateRequest,
+    *,
+    profile: ModelProfile,
+) -> tuple[str, ...]:
     if not request.image_inputs:
         raise ModelProtocolError("Vision model request requires at least one image input.")
-    if len(request.image_inputs) > 4:
+    max_images = profile.max_images_per_request or 4
+    if len(request.image_inputs) > max_images:
         raise ModelProtocolError("Vision model request has too many image inputs.")
     hashes: list[str] = []
     for image in request.image_inputs:
+        if profile.max_image_bytes is not None and len(image.content) > profile.max_image_bytes:
+            raise ModelProtocolError("Vision model image input exceeds profile byte limit.")
         try:
             hashes.append(image.validated_sha256())
         except ValueError as exc:

@@ -367,6 +367,11 @@ def test_phase8_5_semantic_annotation_contract_has_qwen2b_and_response_schema() 
     ]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
     assert response_schema == {"$ref": "#/components/schemas/SemanticAnnotationCurrentResponse"}
 
+    health_schema = registry.openapi["paths"]["/api/v1/health"]["get"]["responses"]["200"][
+        "content"
+    ]["application/json"]["schema"]
+    assert health_schema == {"$ref": "#/components/schemas/ApiHealthResponse"}
+
 
 def test_phase_0_contract_models_accept_openapi_shapes_and_reject_loose_evidence() -> None:
     evidence = {"pageNumber": 1, "sourceEngine": "docling", "bbox": [0, 0, 1, 1]}

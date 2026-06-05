@@ -47,16 +47,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SemanticAnnotationCurrentResponse'
-                additionalProperties: false
-                required:
-                - status
-                - environment
-                properties:
-                  status:
-                    type: string
-                  environment:
-                    type: string
+                $ref: '#/components/schemas/ApiHealthResponse'
   /api/v1/version:
     get:
       tags:
@@ -1714,6 +1705,17 @@ components:
           anyOf:
           - $ref: '#/components/schemas/SemanticAnnotationManifest'
           - type: 'null'
+    ApiHealthResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - status
+      - environment
+      properties:
+        status:
+          type: string
+        environment:
+          type: string
     SemanticAnnotationManifest:
       type: object
       additionalProperties: false

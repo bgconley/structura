@@ -58,8 +58,21 @@ def test_model_http_client_maps_timeout_and_service_errors() -> None:
         transport=httpx.MockTransport(lambda _request: httpx.Response(503, json={"error": "busy"})),
     )
     with pytest.raises(ModelServiceError) as exc_info:
-        service_client.post_json("/v1/chat/completions", {"messages": []})
+        service_client.post_json(
+            "/v1/chat/completions",
+            {
+                "prompt": "private prompt",
+                "messages": [{"content": "private content"}],
+                "image": {"data": "private-bytes"},
+            },
+        )
     assert exc_info.value.retryable is True
+    assert exc_info.value.details["request"] == {
+        "prompt": "[redacted]",
+        "messages": "[redacted]",
+        "image": "[redacted]",
+    }
+    assert "private" not in repr(exc_info.value.details)
 
 
 def test_model_http_client_returns_json_and_rejects_oversized_or_invalid_json() -> None:
@@ -89,6 +102,9 @@ def test_redact_model_payload_removes_private_model_inputs_and_outputs() -> None
     redacted = redact_model_payload(
         {
             "prompt": "show diagnosis details",
+            "messages": [{"content": "patient content"}],
+            "input": ["private search text"],
+            "image": {"data": "raw-image-bytes"},
             "raw_text": "patient owes $42",
             "image_path": "/srv/structura/tmp/model-inputs/secret.png",
             "objectUri": "filesystem://canonical/sha256/aa/bb/hash/source.pdf",
@@ -98,6 +114,9 @@ def test_redact_model_payload_removes_private_model_inputs_and_outputs() -> None
     )
 
     assert redacted["prompt"] == "[redacted]"
+    assert redacted["messages"] == "[redacted]"
+    assert redacted["input"] == "[redacted]"
+    assert redacted["image"] == "[redacted]"
     assert redacted["raw_text"] == "[redacted]"
     assert redacted["image_path"] == "[redacted]"
     assert redacted["objectUri"] == "[redacted]"

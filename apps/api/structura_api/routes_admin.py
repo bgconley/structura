@@ -34,9 +34,9 @@ def service_health(_principal: Annotated[object, Depends(require_admin)]) -> dic
     by_name = {row["service_name"]: row for row in rows}
     settings = get_settings()
     model_snapshots = (
-        configured_model_health_snapshots(settings)
+        configured_model_health_snapshots(settings, include_queue_metrics=True)
         if settings.model_mode == "fixture"
-        else probed_model_health_snapshots(settings)
+        else probed_model_health_snapshots(settings, include_queue_metrics=True)
     )
     for snapshot in model_snapshots:
         by_name[snapshot["service_name"]] = snapshot

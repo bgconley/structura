@@ -30,6 +30,11 @@ def test_model_health_snapshots_report_mode_and_profiles_without_private_payload
     for snapshot in snapshots:
         metrics = snapshot["metrics_json"]
         assert metrics["model_mode"] == "fixture"
+        assert metrics["last_success_at"] is None
+        assert metrics["timeout_count"] == 0
+        assert metrics["error_count"] == 0
+        assert metrics["queue_depth"] is None
+        assert metrics["oldest_job_age_seconds"] is None
         rendered = repr(snapshot)
         assert "prompt" not in rendered
         assert "filesystem://" not in rendered
@@ -60,6 +65,11 @@ def test_model_health_probe_reports_live_service_readiness_without_sensitive_pay
     assert by_name["model-qwen-semantic"]["status"] == "ok"
     assert by_name["model-granite"]["status"] == "unavailable"
     assert by_name["model-granite"]["checked_at"] is not None
+    assert by_name["model-qwen-semantic"]["metrics_json"]["last_success_at"] is None
+    assert by_name["model-qwen-semantic"]["metrics_json"]["timeout_count"] == 0
+    assert by_name["model-qwen-semantic"]["metrics_json"]["error_count"] == 0
+    assert by_name["model-qwen-semantic"]["metrics_json"]["queue_depth"] is None
+    assert by_name["model-qwen-semantic"]["metrics_json"]["oldest_job_age_seconds"] is None
     rendered = repr(snapshots)
     assert "prompt" not in rendered
     assert "data:image" not in rendered

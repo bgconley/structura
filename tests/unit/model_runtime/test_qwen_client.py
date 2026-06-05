@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import replace
 
 import httpx
 import pytest
@@ -98,6 +99,36 @@ def test_qwen_client_rejects_malformed_model_content() -> None:
 
     with pytest.raises(ModelProtocolError, match="JSON"):
         client.generate(_request())
+
+
+def test_qwen_client_rejects_images_above_profile_byte_limit_before_base64() -> None:
+    profile = replace(get_model_profile(QWEN_VL_PROFILE), max_image_bytes=4)
+    client = QwenVLClient(
+        profile=profile,
+        http_client_base_url="http://model-qwen-semantic:8104",
+        transport=httpx.MockTransport(lambda _request: httpx.Response(200, json={})),
+    )
+
+    oversized = b"12345"
+    with pytest.raises(ModelProtocolError, match="byte limit"):
+        client.generate(
+            VisionGenerateRequest(
+                profile_name=QWEN_VL_PROFILE,
+                prompt_version="phase8_5-qwen-handwriting-v1",
+                prompt="extract handwriting",
+                image_inputs=(
+                    ModelImageInput(
+                        content=oversized,
+                        mime_type="image/png",
+                        sha256=hashlib.sha256(oversized).hexdigest(),
+                    ),
+                ),
+                response_schema_name="invoice",
+                max_output_tokens=512,
+                temperature=0.0,
+                timeout_seconds=30,
+            )
+        )
 
 
 def test_qwen_client_sends_json_schema_structured_output_payload() -> None:
