@@ -129,6 +129,42 @@ def test_granite_plan_records_suppressed_duplicate_specs() -> None:
     )
 
 
+def test_granite_plan_prefers_exact_contracts_over_generic_review_fallbacks() -> None:
+    exact_specs = [
+        _generic_form_spec(
+            index=index,
+            page_id=uuid4(),
+            semantic_type="denial_or_coverage_decision",
+            target_schema="medical_eob",
+            canonical_target_schema="medical_eob",
+            model_output_schema_name="granite_healthcare_coverage_decision.v1",
+            compatibility_mode="exact",
+            contract_resolution_reason="exact_contract",
+            priority=40,
+        )
+        for index in range(6)
+    ]
+    generic_review_only = _generic_form_spec(
+        index=99,
+        page_id=uuid4(),
+        semantic_type="generic_form_kvp",
+        target_schema="document_observation",
+        canonical_target_schema="document_observation",
+        model_output_schema_name="granite_generic_kvp.v1",
+        compatibility_mode="generic_review_only",
+        contract_resolution_reason="generic_review_only_fallback",
+        priority=1,
+        metadata={"coverage_role": "primary"},
+    )
+
+    plan = plan_granite_jobs([generic_review_only, *exact_specs], quality_mode="smart")
+
+    selected_region_ids = {spec.region_id for spec in plan.selected}
+    assert generic_review_only.region_id not in selected_region_ids
+    assert selected_region_ids == {spec.region_id for spec in exact_specs}
+    assert [spec.region_id for spec in plan.dropped] == [generic_review_only.region_id]
+
+
 def _generic_form_spec(
     *,
     index: int,
@@ -136,6 +172,8 @@ def _generic_form_spec(
     grounding: SemanticGroundingRef | None = None,
     semantic_type: str = "generic_form_kvp",
     granite_task: str = "kvp",
+    target_schema: str = "document_observation",
+    canonical_target_schema: str = "document_observation",
     expected_fields: tuple[str, ...] | None = None,
     model_output_schema_name: str = "granite_generic_kvp.v1",
     compatibility_mode: str | None = "generic",
@@ -150,13 +188,13 @@ def _generic_form_spec(
             priority="high",
             granite_task=granite_task,
             grounding=grounding or SemanticGroundingRef(kind="page", page_id=page_id),
-            target_schema="document_observation",
+            target_schema=target_schema,
             expected_fields=expected_fields or (f"field_{index}",),
             metadata=metadata or {},
         ),
         region_id=uuid4(),
-        target_schema="document_observation",
-        canonical_target_schema="document_observation",
+        target_schema=target_schema,
+        canonical_target_schema=canonical_target_schema,
         model_output_schema_name=model_output_schema_name,
         contract_resolution_reason=contract_resolution_reason,
         compatibility_mode=compatibility_mode,
@@ -164,8 +202,8 @@ def _generic_form_spec(
         priority=priority if priority is not None else 10 + index,
         ordinal=ordinal if ordinal is not None else index,
         schema_fit=SchemaFitDecision(
-            target_schema="document_observation",
-            requested_target_schema="document_observation",
+            target_schema=target_schema,
+            requested_target_schema=target_schema,
             evidence_families=("generic_form",),
             document_type_hint="generic_form",
             reason="generic_observation_fallback",

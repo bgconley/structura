@@ -280,7 +280,7 @@ def test_semantic_service_uses_semantic_type_before_unclassified_family() -> Non
     assert payload["target_schema_name"] == "invoice"
 
 
-def test_semantic_service_downgrades_unanchored_eob_region_to_observation() -> None:
+def test_semantic_service_prefers_docling_observation_over_unanchored_eob_guess() -> None:
     document_id = uuid4()
     household_id = uuid4()
     page_id = uuid4()
@@ -314,12 +314,15 @@ def test_semantic_service_downgrades_unanchored_eob_region_to_observation() -> N
 
     payload = jobs.created[0]["payload"]
     assert payload["target_schema_name"] == "document_observation"
-    assert payload["metadata"]["schema_fit"]["requested_target_schema"] == "medical_eob"
-    assert payload["metadata"]["schema_fit"]["reason"] == "conflicting_docling_observation_anchors"
-    assert payload["metadata"]["schema_fit"]["downgraded"] is True
+    assert payload["semantic_type"] == "escrow_summary"
+    assert payload["metadata"]["schema_fit"]["requested_target_schema"] == "document_observation"
+    assert payload["metadata"]["schema_fit"]["reason"] == "observation_schema"
+    assert payload["metadata"]["docling_structural_target"]["family"] == (
+        "mortgage_escrow_statement"
+    )
 
 
-def test_semantic_service_downgrades_weak_receipt_guess_when_title_anchors_dominate() -> None:
+def test_semantic_service_prefers_docling_title_observation_over_weak_receipt_guess() -> None:
     document_id = uuid4()
     household_id = uuid4()
     page_id = uuid4()
@@ -357,9 +360,10 @@ def test_semantic_service_downgrades_weak_receipt_guess_when_title_anchors_domin
 
     payload = jobs.created[0]["payload"]
     assert payload["target_schema_name"] == "document_observation"
-    assert payload["metadata"]["schema_fit"]["requested_target_schema"] == "receipt"
-    assert payload["metadata"]["schema_fit"]["reason"] == "conflicting_docling_observation_anchors"
-    assert payload["metadata"]["schema_fit"]["downgraded"] is True
+    assert payload["semantic_type"] == "seller_information_block"
+    assert payload["metadata"]["schema_fit"]["requested_target_schema"] == "document_observation"
+    assert payload["metadata"]["schema_fit"]["reason"] == "observation_schema"
+    assert payload["metadata"]["docling_structural_target"]["family"] == "real_estate_title"
 
 
 def test_semantic_service_uses_docling_service_record_targets_when_qwen_emits_no_regions() -> None:

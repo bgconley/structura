@@ -290,6 +290,8 @@ def _attach_plan_metadata(plan: GraniteExtractionPlan) -> GraniteExtractionPlan:
 def _bucket(spec: GraniteJobSpec) -> str:
     region = spec.region
     metadata = region.metadata
+    if _is_generic_review_only_fallback(spec):
+        return "generic_fallback"
     if region.semantic_type in LINE_ITEM_SEMANTIC_TYPES:
         return "line_item"
     if metadata.get("region_source") == DOCLING_REGION_SOURCE and region.grounding.table_id:
@@ -303,7 +305,30 @@ def _bucket(spec: GraniteJobSpec) -> str:
 
 def _sort_key(spec: GraniteJobSpec) -> tuple[object, ...]:
     confidence = spec.region.confidence if spec.region.confidence is not None else 0.0
-    return (spec.priority, _source_rank(spec), -confidence, spec.ordinal)
+    return (_contract_rank(spec), spec.priority, _source_rank(spec), -confidence, spec.ordinal)
+
+
+def _contract_rank(spec: GraniteJobSpec) -> int:
+    compatibility_mode = _normalized_taxonomy(spec.compatibility_mode)
+    contract_reason = _normalized_taxonomy(spec.contract_resolution_reason)
+    if compatibility_mode == "exact" or contract_reason == "exact_contract":
+        return 0
+    if compatibility_mode == "compatible_alias" or contract_reason == "compatible_alias_contract":
+        return 1
+    if _is_generic_review_only_fallback(spec):
+        return 4
+    if "missing" in compatibility_mode or "missing" in contract_reason:
+        return 5
+    return 2
+
+
+def _is_generic_review_only_fallback(spec: GraniteJobSpec) -> bool:
+    compatibility_mode = _normalized_taxonomy(spec.compatibility_mode)
+    contract_reason = _normalized_taxonomy(spec.contract_resolution_reason)
+    return (
+        compatibility_mode == "generic_review_only"
+        or contract_reason == "generic_review_only_fallback"
+    )
 
 
 def _source_rank(spec: GraniteJobSpec) -> int:
