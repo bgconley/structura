@@ -104,9 +104,56 @@ RECEIPT_CLAIM_REGISTRY = ClaimFamilyRegistry(
     ),
 )
 
+MEDICAL_EOB_CLAIM_REGISTRY = ClaimFamilyRegistry(
+    family="medical_eob",
+    field_projections=(
+        ClaimFieldProjection("medical_eob.payer.display_name", "payer", "display_name"),
+        ClaimFieldProjection("medical_eob.patient.display_name", "patient", "display_name"),
+        ClaimFieldProjection("medical_eob.provider.display_name", "provider", "display_name"),
+        ClaimFieldProjection("medical_eob.claim_number", "claim", "claim_number"),
+        ClaimFieldProjection("medical_eob.received_on", "claim", "received_on"),
+        ClaimFieldProjection("medical_eob.processed_on", "claim", "processed_on"),
+        ClaimFieldProjection("medical_eob.group_number", "claim", "group_number"),
+        ClaimFieldProjection("medical_eob.member_id", "claim", "member_id"),
+        ClaimFieldProjection(
+            "medical_eob.total_billed",
+            "financial_summary",
+            "total_billed",
+        ),
+        ClaimFieldProjection(
+            "medical_eob.total_allowed",
+            "financial_summary",
+            "total_allowed",
+        ),
+        ClaimFieldProjection(
+            "medical_eob.total_plan_paid",
+            "financial_summary",
+            "total_plan_paid",
+        ),
+        ClaimFieldProjection(
+            "medical_eob.total_patient_responsibility",
+            "financial_summary",
+            "total_patient_responsibility",
+        ),
+    ),
+    line_item_projection=ClaimLineItemProjection(
+        canonical_prefix="medical_eob.line_item.",
+        field_map={
+            "description": "service_description",
+            "code": "procedure_code",
+            "quantity": "units",
+            "gross_amount": "billed_amount",
+            "amount": "patient_responsibility",
+            "service_date": "service_date",
+            "category_hint": "adjustment_reason",
+        },
+    ),
+)
+
 CLAIM_FAMILY_REGISTRIES: dict[str, ClaimFamilyRegistry] = {
     INVOICE_CLAIM_REGISTRY.family: INVOICE_CLAIM_REGISTRY,
     RECEIPT_CLAIM_REGISTRY.family: RECEIPT_CLAIM_REGISTRY,
+    MEDICAL_EOB_CLAIM_REGISTRY.family: MEDICAL_EOB_CLAIM_REGISTRY,
 }
 
 
@@ -345,6 +392,11 @@ def _line_item_has_value(item: dict[str, Any]) -> bool:
             "gross_amount",
             "tax_amount",
             "amount",
+            "service_description",
+            "procedure_code",
+            "units",
+            "billed_amount",
+            "patient_responsibility",
         )
     )
 

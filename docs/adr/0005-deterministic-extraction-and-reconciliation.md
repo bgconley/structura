@@ -155,6 +155,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   aggregation requires Claims; raw invoice dicts and pre-Claim typed envelopes remain
   available only through explicit legacy compatibility flags for pre-envelope and
   pre-Claim unit coverage.
+- 2026-06-05: Medical EOB Claims now resolve through the family registry and
+  semantic-region aggregate persistence supports `medical_eob`. EOB aggregates are
+  projected from anchored Claims into payer, patient, claim, financial summary, and
+  service-line contract fields while contradictory raw region `normalized_json` remains
+  outside the aggregate path.
 
 ## Deferred Work
 
@@ -162,6 +167,6 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   decoding, Docling-anchored region identity, and treating plan drift as a quality
   signal; a fully deterministic plan is out of scope.
 - Remaining migration order (highest leverage first): (1) expand the resolver registry
-  beyond invoice and retire raw-payload compatibility paths; (2) refactor schemas into
-  fragments+registry; (3) re-point repeatability fingerprints; (4) emit the
-  quality-outcome vocabulary.
+  beyond invoice, receipt, and medical EOB while retiring raw-payload compatibility
+  paths; (2) refactor schemas into fragments+registry; (3) re-point repeatability
+  fingerprints; (4) emit the quality-outcome vocabulary.

@@ -120,6 +120,110 @@ def test_receipt_claim_resolver_projects_registry_fields_and_line_items() -> Non
     }
 
 
+def test_medical_eob_claim_resolver_projects_registry_fields_and_service_lines() -> None:
+    anchor = ClaimAnchor(
+        page_number=2, table_id="00000000-0000-0000-0000-000000000001", row_index=4
+    )
+    payer = _claim(
+        canonical_key="medical_eob.payer.display_name",
+        typed_value="Anthem Blue Cross",
+        source_engine="granite",
+        anchor=anchor,
+    )
+    patient = _claim(
+        canonical_key="medical_eob.patient.display_name",
+        typed_value="Jane Patient",
+        source_engine="granite",
+        anchor=anchor,
+    )
+    claim_number = _claim(
+        canonical_key="medical_eob.claim_number",
+        typed_value="CLM-123",
+        source_engine="granite",
+        anchor=anchor,
+    )
+    total_patient_responsibility = _claim(
+        canonical_key="medical_eob.total_patient_responsibility",
+        typed_value={"amount": 62.0, "currency": "USD"},
+        source_engine="granite",
+        anchor=anchor,
+    )
+    service_description = _claim(
+        canonical_key="medical_eob.line_item.description",
+        typed_value="Office visit",
+        source_engine="granite",
+        anchor=anchor,
+        group_id="service-line-1",
+    )
+    procedure_code = _claim(
+        canonical_key="medical_eob.line_item.code",
+        typed_value="99213",
+        source_engine="granite",
+        anchor=anchor,
+        group_id="service-line-1",
+    )
+    units = _claim(
+        canonical_key="medical_eob.line_item.quantity",
+        typed_value=1.0,
+        source_engine="granite",
+        anchor=anchor,
+        group_id="service-line-1",
+    )
+    billed_amount = _claim(
+        canonical_key="medical_eob.line_item.gross_amount",
+        typed_value={"amount": 120.0, "currency": "USD"},
+        source_engine="granite",
+        anchor=anchor,
+        group_id="service-line-1",
+    )
+    patient_responsibility = _claim(
+        canonical_key="medical_eob.line_item.amount",
+        typed_value={"amount": 62.0, "currency": "USD"},
+        source_engine="granite",
+        anchor=anchor,
+        group_id="service-line-1",
+    )
+
+    projection = resolve_claims_for_family(
+        family="medical_eob",
+        claims=[
+            payer,
+            patient,
+            claim_number,
+            total_patient_responsibility,
+            service_description,
+            procedure_code,
+            units,
+            billed_amount,
+            patient_responsibility,
+        ],
+    )
+
+    assert projection.family == "medical_eob"
+    assert projection.fields["payer"] == {"display_name": "Anthem Blue Cross"}
+    assert projection.fields["patient"] == {"display_name": "Jane Patient"}
+    assert projection.fields["claim"] == {"claim_number": "CLM-123"}
+    assert projection.fields["financial_summary"] == {
+        "total_patient_responsibility": {"amount": 62.0, "currency": "USD"}
+    }
+    assert projection.line_items == [
+        {
+            "service_description": "Office visit",
+            "procedure_code": "99213",
+            "units": 1.0,
+            "billed_amount": {"amount": 120.0, "currency": "USD"},
+            "patient_responsibility": {"amount": 62.0, "currency": "USD"},
+            "evidence": [
+                {
+                    "page_number": 2,
+                    "table_id": "00000000-0000-0000-0000-000000000001",
+                    "row_index": 4,
+                }
+            ],
+        }
+    ]
+
+
 def test_document_observation_claim_resolver_projects_claims_to_observations() -> None:
     anchor = ClaimAnchor(page_number=3, page_id="page-3", docling_element_ids=("el-9",))
     docling_address = _claim(

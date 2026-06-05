@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
 from copy import deepcopy
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -16,7 +14,6 @@ from lib.extraction.candidate_value_parsing import (
     number_value,
 )
 from lib.extraction.claim_resolver import resolve_claims_for_family
-from lib.extraction.claims import Claim
 from lib.extraction.invoice_legacy_reconciliation import (
     legacy_invoice_line_item_dicts_from_region,
     legacy_invoice_payment_summary_from_region,
@@ -28,6 +25,7 @@ from lib.extraction.region_envelope import (
     RegionFact,
     RegionLineItem,
 )
+from lib.extraction.region_reconciliation import RegionExtraction
 
 FORBIDDEN_CANONICAL_PLACEHOLDERS = {
     "unknown",
@@ -37,16 +35,6 @@ FORBIDDEN_CANONICAL_PLACEHOLDERS = {
     "missing",
     "not found",
 }
-
-
-@dataclass(frozen=True)
-class RegionExtraction:
-    extraction_id: UUID
-    semantic_region_id: UUID
-    semantic_type: str
-    normalized_json: dict[str, Any]
-    region_envelope: RegionExtractionEnvelope | None = None
-    claims: Sequence[Claim] = ()
 
 
 def reconcile_invoice_region_extractions(

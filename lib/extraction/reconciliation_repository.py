@@ -6,6 +6,9 @@ from uuid import UUID
 
 from lib.db.connection import db_connection
 from lib.extraction.claims import claims_from_region_envelope
+from lib.extraction.medical_eob_reconciliation import (
+    reconcile_medical_eob_region_extractions,
+)
 from lib.extraction.models import (
     ExtractionRunScope,
     ExtractionSourceDocument,
@@ -30,7 +33,7 @@ from lib.extraction.region_envelope import region_envelope_from_normalization_js
 from lib.extraction.repository import load_extraction_source, persist_extraction_run
 from lib.extraction.validators import validate_extraction_payload
 
-AGGREGATE_RECONCILIATION_SCHEMAS = {"invoice", "document_observation"}
+AGGREGATE_RECONCILIATION_SCHEMAS = {"invoice", "medical_eob", "document_observation"}
 
 
 def maybe_reconcile_semantic_annotation(
@@ -181,6 +184,12 @@ def _reconcile_regions(
         )
     if schema_name == "document_observation":
         return reconcile_document_observation_region_extractions(
+            document_id=document_id,
+            created_at=created_at,
+            regions=regions,
+        )
+    if schema_name == "medical_eob":
+        return reconcile_medical_eob_region_extractions(
             document_id=document_id,
             created_at=created_at,
             regions=regions,
