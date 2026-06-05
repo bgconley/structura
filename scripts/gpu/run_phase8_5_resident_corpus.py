@@ -15,6 +15,15 @@ from lib.documents.ingestion import DocumentIngestionRequest, ingest_document_pa
 from lib.model_runtime.reliability_acceptance import evaluate_phase85_report_acceptance
 from lib.model_runtime.reliability_job_scope import TARGET_FAILURE_QUEUES
 from lib.model_runtime.reliability_report import build_phase85_reliability_report
+from scripts.gpu.phase8_5_resident_manifest import (
+    ResidentCorpusEntry,
+)
+from scripts.gpu.phase8_5_resident_manifest import (
+    gold_metadata_by_document_id as _gold_metadata_by_document_id,
+)
+from scripts.gpu.phase8_5_resident_manifest import (
+    resolve_corpus_entries as _resolve_corpus_entries,
+)
 
 ACTIVE_JOB_STATUSES = ("queued", "leased", "running", "failed")
 PREFLIGHT_TARGET_QUEUES = tuple(sorted(TARGET_FAILURE_QUEUES))
@@ -29,13 +38,13 @@ def main() -> int:
         f"/srv/structura/objects/exports/phase85-runs/{run_id}-production-corpus-report.json"
     )
 
-    pdfs = _resolve_pdfs(args)
+    entries = _resolve_corpus_entries(args)
     if not args.allow_active_jobs:
         _assert_clean_queue()
 
     started = time.monotonic()
     documents = _ingest_documents(
-        pdfs,
+        entries,
         run_id=run_id,
         title_prefix=title_prefix,
         requested_by=args.requested_by,
@@ -87,7 +96,12 @@ def main() -> int:
             break
         time.sleep(args.poll_seconds)
 
-    report = _fetch_report(document_ids, run_id=run_id, title_prefix=title_prefix)
+    report = _fetch_report(
+        document_ids,
+        run_id=run_id,
+        title_prefix=title_prefix,
+        gold_metadata_by_document_id=_gold_metadata_by_document_id(documents),
+    )
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_json = json.dumps(_json_safe(report), indent=2, sort_keys=True)
     report_path.write_text(report_json, encoding="utf-8")
@@ -122,7 +136,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--manifest",
         type=Path,
-        help='JSON manifest with shape {"documents": [{"path": "..."}]}.',
+        help=(
+            'JSON manifest with shape {"documents": [{"path": "..."}]}; '
+            "private release manifests may add corpus-level or per-document "
+            "goldMetrics and goldThresholds."
+        ),
     )
     parser.add_argument("--run-id")
     parser.add_argument("--title-prefix")
@@ -145,25 +163,6 @@ def _parse_args() -> argparse.Namespace:
         action="store_false",
     )
     return parser.parse_args()
-
-
-def _resolve_pdfs(args: argparse.Namespace) -> list[Path]:
-    pdfs = list(args.pdf or [])
-    if args.manifest:
-        manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
-        documents = manifest.get("documents") if isinstance(manifest, dict) else None
-        if not isinstance(documents, list):
-            raise SystemExit("Manifest must contain a documents array.")
-        for index, item in enumerate(documents, start=1):
-            if not isinstance(item, dict) or not item.get("path"):
-                raise SystemExit(f"Manifest document {index} is missing a path.")
-            pdfs.append(Path(str(item["path"])))
-    if not pdfs:
-        raise SystemExit("At least one --pdf or --manifest document is required.")
-    for pdf in pdfs:
-        if not pdf.exists():
-            raise SystemExit(f"PDF does not exist: {pdf}")
-    return pdfs
 
 
 def _assert_clean_queue() -> None:
@@ -202,7 +201,7 @@ def _resolve_owner() -> tuple[UUID, UUID]:
 
 
 def _ingest_documents(
-    pdfs: list[Path],
+    entries: list[ResidentCorpusEntry],
     *,
     run_id: str,
     title_prefix: str,
@@ -210,7 +209,8 @@ def _ingest_documents(
 ) -> list[dict[str, Any]]:
     household_id, user_id = _resolve_owner()
     documents: list[dict[str, Any]] = []
-    for pdf in pdfs:
+    for entry in entries:
+        pdf = entry.path
         result = ingest_document_path(
             pdf,
             request=DocumentIngestionRequest(
@@ -234,6 +234,9 @@ def _ingest_documents(
             "filename": pdf.name,
             "sha256": result.sha256,
         }
+        if entry.gold_metrics is not None and entry.gold_thresholds is not None:
+            document["goldMetrics"] = dict(entry.gold_metrics)
+            document["goldThresholds"] = dict(entry.gold_thresholds)
         documents.append(document)
         _emit("ingested", run_id=run_id, **document)
     return documents
@@ -403,8 +406,15 @@ def _document_progress(document_ids: list[UUID]) -> list[dict[str, Any]]:
             return [dict(row) for row in cur.fetchall()]
 
 
-def _fetch_report(document_ids: list[UUID], *, run_id: str, title_prefix: str) -> dict[str, Any]:
+def _fetch_report(
+    document_ids: list[UUID],
+    *,
+    run_id: str,
+    title_prefix: str,
+    gold_metadata_by_document_id: dict[UUID, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     documents = []
+    gold_metadata = gold_metadata_by_document_id or {}
     with db_connection() as conn:
         with conn.cursor() as cur:
             for document_id in document_ids:
@@ -428,35 +438,35 @@ def _fetch_report(document_ids: list[UUID], *, run_id: str, title_prefix: str) -
                 )
                 document_row = cur.fetchone()
                 document = dict(document_row) if document_row is not None else {}
-                documents.append(
-                    {
-                        "document": document,
-                        "jobs": _rows_for_document(cur, document_id, _JOBS_SQL),
-                        "semantic": _rows_for_document(cur, document_id, _SEMANTIC_SQL),
-                        "semanticRegions": _rows_for_document(
-                            cur,
-                            document_id,
-                            _SEMANTIC_REGIONS_SQL,
-                        ),
-                        "planner": _rows_for_document(cur, document_id, _PLANNER_SQL),
-                        "plannerTasks": _rows_for_document(
-                            cur,
-                            document_id,
-                            _PLANNER_TASKS_SQL,
-                        ),
-                        "admissionEvents": _rows_for_document(
-                            cur,
-                            document_id,
-                            _ADMISSION_EVENTS_SQL,
-                        ),
-                        "extractions": _rows_for_document(cur, document_id, _EXTRACTIONS_SQL),
-                        "fields": _fields_for_document(cur, document_id),
-                        "lineItems": _rows_for_document(cur, document_id, _LINE_ITEMS_SQL),
-                        "observations": _rows_for_document(cur, document_id, _OBSERVATIONS_SQL),
-                        "embeddings": _rows_for_document(cur, document_id, _EMBEDDINGS_SQL),
-                        "reviewTasks": _rows_for_document(cur, document_id, _REVIEW_TASKS_SQL),
-                    }
-                )
+                report_document = {
+                    "document": document,
+                    "jobs": _rows_for_document(cur, document_id, _JOBS_SQL),
+                    "semantic": _rows_for_document(cur, document_id, _SEMANTIC_SQL),
+                    "semanticRegions": _rows_for_document(
+                        cur,
+                        document_id,
+                        _SEMANTIC_REGIONS_SQL,
+                    ),
+                    "planner": _rows_for_document(cur, document_id, _PLANNER_SQL),
+                    "plannerTasks": _rows_for_document(
+                        cur,
+                        document_id,
+                        _PLANNER_TASKS_SQL,
+                    ),
+                    "admissionEvents": _rows_for_document(
+                        cur,
+                        document_id,
+                        _ADMISSION_EVENTS_SQL,
+                    ),
+                    "extractions": _rows_for_document(cur, document_id, _EXTRACTIONS_SQL),
+                    "fields": _fields_for_document(cur, document_id),
+                    "lineItems": _rows_for_document(cur, document_id, _LINE_ITEMS_SQL),
+                    "observations": _rows_for_document(cur, document_id, _OBSERVATIONS_SQL),
+                    "embeddings": _rows_for_document(cur, document_id, _EMBEDDINGS_SQL),
+                    "reviewTasks": _rows_for_document(cur, document_id, _REVIEW_TASKS_SQL),
+                }
+                report_document.update(gold_metadata.get(document_id, {}))
+                documents.append(report_document)
     return build_phase85_reliability_report(
         run_id=run_id,
         title_prefix=title_prefix,

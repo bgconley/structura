@@ -90,6 +90,13 @@ PYTHON=/tank/venvs/structura/bin/python \
 
 The wrapper runs `run_phase8_5_resident_corpus.py` twice, writes one report per
 pass, and fails if hard correctness, operational SLO, or repeatability gates fail.
+The resident manifest uses `documents[].path` for each private PDF. For release
+gold validation, the same private manifest may include corpus-level `goldMetrics`
+and `goldThresholds`, or document-level overrides using the same keys. The runner
+copies those values into report document rows so
+`acceptanceGates.goldCorpusQuality` is recomputable from captured report
+evidence. Use `--require-gold` only with a private manifest that contains those
+gold annotations.
 Report acceptance also requires `fixtureType`, `measuredAt`, and
 `runManifest.model_mode` so stale fixture or pre-lineage reports cannot pass as
 release evidence; the top-level `runId` must match `runManifest.run_id`; live or

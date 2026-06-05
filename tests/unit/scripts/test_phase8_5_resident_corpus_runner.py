@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
+from types import SimpleNamespace
 from uuid import uuid4
 
 from lib.extraction.candidate_admission_models import CANDIDATE_GATE_VERSION
@@ -150,6 +152,142 @@ def test_candidate_report_queries_project_admission_fingerprints() -> None:
     assert "metadata_json ->> 'candidateAdmissionFingerprint'" in runner._OBSERVATIONS_SQL
 
 
+def test_resident_manifest_carries_private_gold_metrics_into_ingest_metadata(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    runner = _load_resident_runner()
+    pdf = tmp_path / "gold.pdf"
+    pdf.write_bytes(b"%PDF-1.7\n")
+    manifest = tmp_path / "phase8_5_resident_manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "documents": [
+                    {
+                        "path": str(pdf),
+                        "goldMetrics": _gold_metrics(),
+                        "goldThresholds": _gold_thresholds(),
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    document_id = uuid4()
+
+    monkeypatch.setattr(runner, "_resolve_owner", lambda: (uuid4(), uuid4()))
+    monkeypatch.setattr(
+        runner,
+        "ingest_document_path",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            document_id=document_id,
+            sha256="a" * 64,
+        ),
+    )
+
+    entries = runner._resolve_corpus_entries(
+        SimpleNamespace(pdf=None, manifest=manifest),
+    )
+    documents = runner._ingest_documents(
+        entries,
+        run_id="phase85-gold",
+        title_prefix="Phase 8.5 Gold",
+        requested_by="test",
+    )
+
+    assert [entry.path for entry in entries] == [pdf]
+    assert documents[0]["document_id"] == document_id
+    assert documents[0]["goldMetrics"]["familyTop1Accuracy"] == 0.92
+    assert documents[0]["goldThresholds"]["expectedCalibrationError"] == 0.05
+    assert runner._gold_metadata_by_document_id(documents) == {
+        document_id: {
+            "goldMetrics": documents[0]["goldMetrics"],
+            "goldThresholds": documents[0]["goldThresholds"],
+        }
+    }
+
+
+def test_resident_manifest_carries_corpus_gold_metrics_into_ingest_metadata(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    runner = _load_resident_runner()
+    pdf = tmp_path / "gold.pdf"
+    pdf.write_bytes(b"%PDF-1.7\n")
+    manifest = tmp_path / "phase8_5_resident_manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "goldMetrics": _gold_metrics(),
+                "goldThresholds": _gold_thresholds(),
+                "documents": [{"path": str(pdf)}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    document_id = uuid4()
+
+    monkeypatch.setattr(runner, "_resolve_owner", lambda: (uuid4(), uuid4()))
+    monkeypatch.setattr(
+        runner,
+        "ingest_document_path",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            document_id=document_id,
+            sha256="a" * 64,
+        ),
+    )
+
+    documents = runner._ingest_documents(
+        runner._resolve_corpus_entries(SimpleNamespace(pdf=None, manifest=manifest)),
+        run_id="phase85-gold",
+        title_prefix="Phase 8.5 Gold",
+        requested_by="test",
+    )
+
+    assert documents[0]["goldMetrics"]["familyTop1Accuracy"] == 0.92
+    assert documents[0]["goldThresholds"]["expectedCalibrationError"] == 0.05
+
+
+def test_fetch_report_attaches_gold_metadata_to_reliability_report(monkeypatch) -> None:
+    runner = _load_resident_runner()
+    document_id = uuid4()
+    cursor = _FetchReportCursor(
+        row={
+            "id": document_id,
+            "title": "Gold document",
+            "original_filename": "gold.pdf",
+            "document_family": "invoice",
+            "document_subtype": None,
+            "family_confidence": None,
+            "review_status": "needs_review",
+            "page_count": 1,
+            "document_date": None,
+            "counterparty_display": None,
+        }
+    )
+    connection = _RecordingConnection(cursor)
+
+    monkeypatch.setattr(runner, "db_connection", lambda: connection)
+    monkeypatch.setattr(runner, "_rows_for_document", lambda *_args: [])
+    monkeypatch.setattr(runner, "_fields_for_document", lambda *_args: [])
+
+    report = runner._fetch_report(
+        [document_id],
+        run_id="phase85-gold",
+        title_prefix="Phase 8.5 Gold",
+        gold_metadata_by_document_id={
+            document_id: {
+                "goldMetrics": _gold_metrics(),
+                "goldThresholds": _gold_thresholds(),
+            }
+        },
+    )
+
+    assert report["documents"][0]["goldMetrics"]["familyTop1Accuracy"] == 0.92
+    assert report["acceptanceGates"]["goldCorpusQuality"]["status"] == "passed"
+
+
 def _report(*, hard_status: str) -> dict[str, object]:
     return {
         "runId": "phase85-resident",
@@ -247,6 +385,15 @@ class _RecordingCursor:
         return self.rows
 
 
+class _FetchReportCursor(_RecordingCursor):
+    def __init__(self, *, row: dict[str, object]) -> None:
+        super().__init__(rows=[])
+        self.row = row
+
+    def fetchone(self) -> dict[str, object]:
+        return self.row
+
+
 def _task12_manifest_lineage() -> dict[str, object]:
     return {
         "docling_version": "worker-docling-isolated",
@@ -260,4 +407,50 @@ def _task12_manifest_lineage() -> dict[str, object]:
         "reconciler_version": RECONCILER_VERSION,
         "visual_input_plan_version": VISUAL_INPUT_PLAN_VERSION,
         "decoding": {"temperature": 0, "top_p": None, "seed": 0},
+    }
+
+
+def _gold_metrics() -> dict[str, object]:
+    return {
+        "familyTop1Accuracy": 0.92,
+        "familyTop2Accuracy": 0.98,
+        "fieldPrecisionByFamily": {"invoice": 0.93},
+        "fieldRecallByFamily": {"invoice": 0.88},
+        "fieldF1ByFamily": {"invoice": 0.9},
+        "lineItemRowPrecisionByFamily": {"invoice": 0.94},
+        "lineItemRowRecallByFamily": {"invoice": 0.86},
+        "lineItemRowF1ByFamily": {"invoice": 0.895},
+        "amountDateNormalizationAccuracy": 0.96,
+        "evidenceLocatorCompleteness": 0.97,
+        "duplicateRate": 0.02,
+        "reviewBurden": 0.24,
+        "falseCanonicalPromotionRate": 0.0,
+        "repeatabilityStability": 0.99,
+        "confidenceCalibrationByFamilyField": {"invoice.total_amount": 0.04},
+        "expectedCalibrationError": 0.04,
+        "precisionAtConfidenceBuckets": {"0.90-1.00": 0.96},
+        "reviewBurdenAtConfidenceThresholds": {"0.80": 0.18},
+    }
+
+
+def _gold_thresholds() -> dict[str, object]:
+    return {
+        "familyTop1Accuracy": 0.9,
+        "familyTop2Accuracy": 0.95,
+        "fieldPrecisionByFamily": 0.9,
+        "fieldRecallByFamily": 0.85,
+        "fieldF1ByFamily": 0.88,
+        "lineItemRowPrecisionByFamily": 0.88,
+        "lineItemRowRecallByFamily": 0.85,
+        "lineItemRowF1ByFamily": 0.88,
+        "amountDateNormalizationAccuracy": 0.95,
+        "evidenceLocatorCompleteness": 0.95,
+        "duplicateRate": 0.05,
+        "reviewBurden": 0.3,
+        "falseCanonicalPromotionRate": 0.0,
+        "repeatabilityStability": 0.98,
+        "confidenceCalibrationByFamilyField": 0.08,
+        "expectedCalibrationError": 0.05,
+        "precisionAtConfidenceBuckets": 0.8,
+        "reviewBurdenAtConfidenceThresholds": 0.25,
     }
