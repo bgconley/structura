@@ -116,6 +116,17 @@ RECEIPT_CLAIM_REGISTRY = ClaimFamilyRegistry(
         ClaimFieldProjection("receipt.transaction.tip", "transaction", "tip", ("money",)),
         ClaimFieldProjection("receipt.transaction.total", "transaction", "total", ("money",)),
     ),
+    arithmetic_invariants=(
+        ClaimArithmeticInvariant(
+            target_key="receipt.transaction.total",
+            addend_keys=(
+                "receipt.transaction.subtotal",
+                "receipt.transaction.tax",
+                "receipt.transaction.tip",
+            ),
+            reason_code="cross_field_arithmetic_conflict",
+        ),
+    ),
     line_item_projection=ClaimLineItemProjection(
         canonical_prefix="receipt.line_item.",
         field_map={

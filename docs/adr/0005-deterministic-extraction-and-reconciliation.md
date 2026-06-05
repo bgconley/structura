@@ -244,6 +244,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   checked deterministically. A selected subtotal is demoted to `needs_review`
   with `line_item_sum_conflict` when it disagrees with the resolved sum of
   invoice line-item amounts.
+- 2026-06-05: Receipt total arithmetic now uses the same registered Claim
+  invariant path as invoices. `receipt.transaction.total` is demoted to
+  `needs_review` with `cross_field_arithmetic_conflict` when the selected
+  subtotal, tax, and tip Claims do not reconcile.
 
 ## Deferred Work
 
