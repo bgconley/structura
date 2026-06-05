@@ -88,6 +88,28 @@ def test_terminal_state_ignores_failed_non_target_maintenance_jobs(monkeypatch) 
     assert target_dead_letters == []
 
 
+def test_cancel_text_embedding_jobs_cancels_claimed_worker_race(monkeypatch) -> None:
+    runner = _load_resident_runner()
+    document_id = uuid4()
+    cursor = _RecordingCursor(rows=[{"id": uuid4()}, {"id": uuid4()}])
+    connection = _RecordingConnection(cursor)
+
+    monkeypatch.setattr(runner, "db_connection", lambda: connection)
+
+    cancelled = runner._cancel_text_embedding_jobs(
+        [document_id],
+        run_id="phase85-pass",
+        requested_by="phase8_5_resident_acceptance",
+    )
+
+    assert cancelled == 2
+    assert connection.committed
+    sql, params = cursor.calls[0]
+    assert "lease_expires_at = NULL" in sql
+    assert "status::text = ANY(%s)" in sql
+    assert params[-1] == ["failed", "leased", "queued", "running"]
+
+
 def test_planner_task_report_query_derives_missing_page_number() -> None:
     runner = _load_resident_runner()
 
@@ -172,6 +194,42 @@ def _passed_operational_slo_gates() -> dict[str, dict[str, object]]:
         "runawayFanout": {"status": "passed", "violationCount": 0},
         "retrySafeJobs": {"status": "passed", "violationCount": 0},
     }
+
+
+class _RecordingConnection:
+    def __init__(self, cursor: _RecordingCursor) -> None:
+        self.cursor_obj = cursor
+        self.committed = False
+
+    def __enter__(self) -> _RecordingConnection:
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        return None
+
+    def cursor(self) -> _RecordingCursor:
+        return self.cursor_obj
+
+    def commit(self) -> None:
+        self.committed = True
+
+
+class _RecordingCursor:
+    def __init__(self, *, rows: list[dict[str, object]]) -> None:
+        self.rows = rows
+        self.calls: list[tuple[str, tuple[object, ...]]] = []
+
+    def __enter__(self) -> _RecordingCursor:
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        return None
+
+    def execute(self, sql: str, params: tuple[object, ...]) -> None:
+        self.calls.append((sql, params))
+
+    def fetchall(self) -> list[dict[str, object]]:
+        return self.rows
 
 
 def _task12_manifest_lineage() -> dict[str, object]:

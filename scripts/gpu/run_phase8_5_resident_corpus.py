@@ -17,6 +17,7 @@ from lib.model_runtime.reliability_job_scope import TARGET_FAILURE_QUEUES
 from lib.model_runtime.reliability_report import build_phase85_reliability_report
 
 ACTIVE_JOB_STATUSES = ("queued", "leased", "running", "failed")
+SKIPPED_TEXT_EMBEDDING_STATUSES = ("failed", "leased", "queued", "running")
 
 
 def main() -> int:
@@ -252,19 +253,32 @@ def _cancel_text_embedding_jobs(
                 UPDATE pipeline_jobs
                 SET status = 'cancelled',
                     finished_at = now(),
+                    lease_expires_at = NULL,
+                    scheduled_at = now(),
                     error_json = jsonb_build_object(
+                      'error_class', 'JobCancelled',
                       'message', 'Text embedding skipped for private Phase 8.5 corpus run.',
+                      'last_error', 'Text embedding skipped for private Phase 8.5 corpus run.',
+                      'retryable', false,
                       'requested_by', %s::text,
-                      'run_id', %s::text
+                      'run_id', %s::text,
+                      'cancelled_by', %s::text,
+                      'cancelled_at', now()
                     ),
                     updated_at = now()
                 WHERE document_id = ANY(%s::uuid[])
                   AND queue_name = 'embeddings'
                   AND job_type = 'embed'
-                  AND status IN ('queued', 'failed')
+                  AND status::text = ANY(%s)
                 RETURNING id
                 """,
-                (requested_by, run_id, [str(document_id) for document_id in document_ids]),
+                (
+                    requested_by,
+                    run_id,
+                    requested_by,
+                    [str(document_id) for document_id in document_ids],
+                    list(SKIPPED_TEXT_EMBEDDING_STATUSES),
+                ),
             )
             count = len(cur.fetchall())
         conn.commit()
