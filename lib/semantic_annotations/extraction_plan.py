@@ -114,6 +114,7 @@ def plan_granite_jobs(
     *,
     quality_mode: str,
 ) -> GraniteExtractionPlan:
+    del quality_mode
     selectable_specs, invalid_specs, invalid_warnings = _partition_selectable_specs(specs)
     deduped, duplicate_suppressed_specs = _dedupe_specs(selectable_specs)
     buckets: dict[str, list[GraniteJobSpec]] = defaultdict(list)
@@ -122,16 +123,8 @@ def plan_granite_jobs(
     for bucket_specs in buckets.values():
         bucket_specs.sort(key=_sort_key)
 
-    hard_limit = {
-        "smart": 6,
-        "high_quality": 8,
-        "rescue": 1,
-    }.get(quality_mode, 6)
-    per_page_limit = {
-        "smart": 3,
-        "high_quality": 4,
-        "rescue": 1,
-    }.get(quality_mode, 3)
+    hard_limit = 6
+    per_page_limit = 3
     bucket_limits = {
         "line_item": 4,
         "docling_table": 3,

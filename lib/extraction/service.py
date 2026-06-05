@@ -33,7 +33,6 @@ from lib.extraction.repository import (
     persist_classification,
     persist_extraction_run,
 )
-from lib.extraction.rescue_policy import RescuePolicy, RescuePolicyContext
 from lib.extraction.schema_registry import ExtractionSchemaRegistry
 from lib.extraction.validators import validate_extraction_payload, validate_semantic_region_payload
 from lib.jobs import JobService
@@ -82,7 +81,6 @@ class ExtractionService:
             load_semantic_extraction_task
         ),
         persister: Callable[..., PersistedExtraction] = persist_extraction_run,
-        rescue_policy: RescuePolicy | None = None,
     ) -> None:
         self.registry = registry or ExtractionSchemaRegistry()
         self.gateway = gateway or default_extraction_gateway()
@@ -90,7 +88,6 @@ class ExtractionService:
         self.source_loader = source_loader
         self.semantic_task_loader = semantic_task_loader
         self.persister = persister
-        self.rescue_policy = rescue_policy or RescuePolicy()
 
     def classify_document(
         self,
@@ -255,17 +252,6 @@ class ExtractionService:
             line_item_candidates=line_item_candidates,
             observation_candidates=observation_candidates,
             semantic_task=semantic_task,
-        )
-        self.rescue_policy.decide(
-            RescuePolicyContext(
-                allow_8b_rescue=allow_8b_rescue,
-                validation=validation,
-                semantic_task=semantic_task,
-                candidate_count=(
-                    len(field_candidates) + len(line_item_candidates) + len(observation_candidates)
-                ),
-                prior_rescue_attempted=False,
-            )
         )
         return persisted
 

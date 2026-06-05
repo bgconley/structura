@@ -262,13 +262,11 @@ class SemanticAnnotationService:
                     extractor_backend=spec.extractor_backend,
                     contract_resolution_reason=spec.contract_resolution_reason,
                     region_envelope_version=REGION_ENVELOPE_VERSION,
-                    semantic_quality_mode=_semantic_quality_mode(
-                        manifest_result.manifest.quality_mode
-                    ),
+                    semantic_quality_mode="smart",
                     allow_8b_rescue=allow_8b_rescue,
                     requested_by_user_id=requested_by_user_id,
                     user_intent_reason=user_intent_reason,
-                    semantic_rescue=manifest_result.manifest.quality_mode == "rescue",
+                    semantic_rescue=False,
                     metadata={
                         "schema_fit": spec.schema_fit.to_json(),
                         **spec.metadata,
@@ -341,13 +339,11 @@ class SemanticAnnotationService:
                     extractor_backend=spec.extractor_backend,
                     contract_resolution_reason=spec.contract_resolution_reason,
                     region_envelope_version=REGION_ENVELOPE_VERSION,
-                    semantic_quality_mode=_semantic_quality_mode(
-                        manifest_result.manifest.quality_mode
-                    ),
+                    semantic_quality_mode="smart",
                     allow_8b_rescue=allow_8b_rescue,
                     requested_by_user_id=requested_by_user_id,
                     user_intent_reason=user_intent_reason,
-                    semantic_rescue=manifest_result.manifest.quality_mode == "rescue",
+                    semantic_rescue=False,
                     metadata={
                         "schema_fit": spec.schema_fit.to_json(),
                         **spec.metadata,
@@ -397,12 +393,6 @@ def _should_enqueue_granite(region: SemanticRegionAnnotation) -> bool:
         and region.granite_task != "ignore"
         and region.grounding.kind != "unmatched_region"
     )
-
-
-def _semantic_quality_mode(quality_mode: str) -> str:
-    if quality_mode == "high_quality":
-        return "high_quality"
-    return "smart"
 
 
 def _run_id_from_source(source: ExtractionSourceDocument) -> str | None:

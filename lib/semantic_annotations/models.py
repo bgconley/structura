@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 from uuid import UUID
 
-QualityMode = Literal["smart", "high_quality", "rescue"]
+QualityMode = Literal["smart"]
 AnnotationStatus = Literal["pending", "succeeded", "failed", "superseded"]
 Priority = Literal["low", "medium", "high", "critical"]
 GroundingKind = Literal["page", "element", "table", "unmatched_region"]

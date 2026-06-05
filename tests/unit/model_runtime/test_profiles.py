@@ -6,7 +6,6 @@ from lib.model_runtime.profiles import (
     GRANITE_VISION_PROFILE,
     QWEN_HISTORICAL_SEMANTIC_2B_PROFILE,
     QWEN_HISTORICAL_SEMANTIC_4B_PROFILE,
-    QWEN_SEMANTIC_HQ_PROFILE,
     QWEN_SEMANTIC_PROFILE,
     QWEN_VL_PROFILE,
     TEXT_EMBED_PROFILE,
@@ -48,20 +47,19 @@ def test_qwen_semantic_profile_uses_qwen3_vl_8b_fp8_for_default_smart_parse() ->
 def test_historical_qwen_profiles_are_not_required_live() -> None:
     historical_smart = get_model_profile(QWEN_HISTORICAL_SEMANTIC_2B_PROFILE)
     historical_qwen4b = get_model_profile(QWEN_HISTORICAL_SEMANTIC_4B_PROFILE)
-    high_quality = get_model_profile(QWEN_SEMANTIC_HQ_PROFILE)
 
     assert historical_smart.base_model == "Qwen/Qwen3-VL-2B-Instruct"
     assert historical_smart.source_engine == "qwen3_vl_2b"
     assert historical_qwen4b.base_model == "Qwen/Qwen3-VL-4B-Instruct"
     assert historical_qwen4b.source_engine == "qwen3_vl_4b"
-    assert high_quality.base_model == "Qwen/Qwen3-VL-8B-Instruct"
-    assert high_quality.source_engine == "qwen3_vl_8b"
-    assert high_quality.default_gpu_role == "blackwell-0-high-quality"
-    assert high_quality.max_images_per_request == 1
     assert QWEN_HISTORICAL_SEMANTIC_2B_PROFILE not in required_live_profile_names()
     assert QWEN_HISTORICAL_SEMANTIC_4B_PROFILE not in required_live_profile_names()
-    assert QWEN_SEMANTIC_HQ_PROFILE not in required_live_profile_names()
     assert QWEN_VL_PROFILE not in required_live_profile_names()
+
+
+def test_removed_high_quality_semantic_profile_fails_closed() -> None:
+    with pytest.raises(KeyError, match="Unknown model profile"):
+        get_model_profile("qwen3-vl-8b-semantic-hq:v1")
 
 
 def test_qwen_and_granite_profiles_have_distinct_truthful_source_engines() -> None:

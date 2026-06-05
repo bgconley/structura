@@ -36,8 +36,6 @@ from lib.semantic_annotations.policy import (
     validate_manifest,
 )
 from lib.semantic_annotations.prompting import (
-    HIGH_QUALITY_PROMPT_VERSION,
-    RESCUE_PROMPT_VERSION,
     SMART_PROMPT_VERSION,
     build_semantic_planner_prompt,
 )
@@ -122,8 +120,9 @@ class QwenSemanticAnnotationGateway:
         *,
         quality_mode: str,
     ) -> SemanticAnnotationResult:
-        profile_name = _profile_for_mode(quality_mode)
-        prompt_version = _prompt_version_for_mode(quality_mode)
+        _validate_active_quality_mode(quality_mode)
+        profile_name = _active_profile()
+        prompt_version = _active_prompt_version()
         max_images = _max_image_inputs_for_profile(profile_name)
         if len(source.pages) <= max_images:
             manifest = self._generate_manifest_for_source(
@@ -250,16 +249,20 @@ class QwenSemanticAnnotationGateway:
         )
 
 
-def _profile_for_mode(quality_mode: str) -> str:
+def _active_profile() -> str:
     return QWEN_SEMANTIC_PROFILE
 
 
-def _prompt_version_for_mode(quality_mode: str) -> str:
-    if quality_mode == "high_quality":
-        return HIGH_QUALITY_PROMPT_VERSION
-    if quality_mode == "rescue":
-        return RESCUE_PROMPT_VERSION
+def _active_prompt_version() -> str:
     return SMART_PROMPT_VERSION
+
+
+def _validate_active_quality_mode(quality_mode: str) -> None:
+    if quality_mode != "smart":
+        raise ModelProtocolError(
+            "Smart Parse is the only active semantic annotation mode; "
+            "separate high-quality/rescue passes have been removed."
+        )
 
 
 def _max_image_inputs_for_profile(profile_name: str) -> int:

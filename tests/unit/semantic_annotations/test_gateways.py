@@ -11,7 +11,7 @@ import pytest
 from lib.extraction.models import ExtractionSourceDocument, ParsedElementText, ParsedPageText
 from lib.model_runtime.contracts import VisionGenerateRequest, VisionGenerateResponse
 from lib.model_runtime.http_client import ModelProtocolError
-from lib.model_runtime.profiles import QWEN_SEMANTIC_HQ_PROFILE, QWEN_SEMANTIC_PROFILE
+from lib.model_runtime.profiles import QWEN_SEMANTIC_PROFILE
 from lib.semantic_annotations import qwen_gateway
 from lib.semantic_annotations.fixture_gateway import FixtureSemanticAnnotationGateway
 from lib.semantic_annotations.qwen_gateway import QwenSemanticAnnotationGateway
@@ -157,36 +157,34 @@ def test_live_qwen_smart_gateway_uses_compact_output_budget_for_16k_service() ->
     assert client.request.max_output_tokens == 6144
 
 
-def test_live_qwen_high_quality_gateway_uses_high_quality_prompt_version() -> None:
+def test_live_qwen_gateway_rejects_removed_high_quality_and_rescue_modes() -> None:
     source = _source_with_page_image()
     client = FakeSemanticVisionClient(
-        profile_name=QWEN_SEMANTIC_HQ_PROFILE,
+        profile_name=QWEN_SEMANTIC_PROFILE,
         source_engine="qwen3_vl_8b",
         normalized_json=_semantic_payload(source.pages[0].page_id),
     )
 
-    result = QwenSemanticAnnotationGateway(client=client).annotate(
-        source,
-        quality_mode="high_quality",
-    )
+    with pytest.raises(ModelProtocolError, match="Smart Parse"):
+        QwenSemanticAnnotationGateway(client=client).annotate(
+            source,
+            quality_mode="high_quality",
+        )
+    with pytest.raises(ModelProtocolError, match="Smart Parse"):
+        QwenSemanticAnnotationGateway(client=client).annotate(
+            source,
+            quality_mode="rescue",
+        )
 
-    assert result.manifest.source_engine == "qwen3_vl_8b"
-    assert result.manifest.profile_name == QWEN_SEMANTIC_HQ_PROFILE
-    assert result.manifest.prompt_version == "phase8_5-semantic-high-quality-v1"
-    assert client.request is not None
-    assert client.request.profile_name == QWEN_SEMANTIC_PROFILE
-    assert client.request.timeout_seconds == 300
-    assert client.request.max_output_tokens == 6144
-    assert client.request.response_schema_name == "semantic_annotation_model_output"
-    assert client.request.response_json_schema is not None
+    assert client.request is None
 
 
-def test_live_qwen_high_quality_gateway_normalizes_page_annotations_shape() -> None:
+def test_live_qwen_gateway_normalizes_page_annotations_shape() -> None:
     source = _source_with_page_image_and_element()
     page = source.pages[0]
     element = source.elements[0]
     client = FakeSemanticVisionClient(
-        profile_name=QWEN_SEMANTIC_HQ_PROFILE,
+        profile_name=QWEN_SEMANTIC_PROFILE,
         source_engine="qwen3_vl_8b",
         normalized_json={
             "page_annotations": [
@@ -210,7 +208,7 @@ def test_live_qwen_high_quality_gateway_normalizes_page_annotations_shape() -> N
 
     result = QwenSemanticAnnotationGateway(client=client).annotate(
         source,
-        quality_mode="high_quality",
+        quality_mode="smart",
     )
 
     assert len(result.manifest.pages) == 1
@@ -335,12 +333,12 @@ def test_live_qwen_gateway_resolves_stable_docling_refs_to_persisted_ids() -> No
     assert result.manifest.confidence["normalization"]["stable_docling_refs_resolved"] == 3
 
 
-def test_live_qwen_high_quality_gateway_caps_alternate_page_annotation_regions() -> None:
+def test_live_qwen_gateway_caps_alternate_page_annotation_regions() -> None:
     source = _source_with_page_image_and_element()
     page = source.pages[0]
     element = source.elements[0]
     client = FakeSemanticVisionClient(
-        profile_name=QWEN_SEMANTIC_HQ_PROFILE,
+        profile_name=QWEN_SEMANTIC_PROFILE,
         source_engine="qwen3_vl_8b",
         normalized_json={
             "page_annotations": [
@@ -364,19 +362,19 @@ def test_live_qwen_high_quality_gateway_caps_alternate_page_annotation_regions()
 
     result = QwenSemanticAnnotationGateway(client=client).annotate(
         source,
-        quality_mode="high_quality",
+        quality_mode="smart",
     )
 
     assert len(result.manifest.regions) == 8
     assert result.manifest.regions[0].expected_fields == ("field_0",)
 
 
-def test_live_qwen_high_quality_gateway_normalizes_single_page_wrapper_shape() -> None:
+def test_live_qwen_gateway_normalizes_single_page_wrapper_shape() -> None:
     source = _source_with_page_image_and_element()
     page = source.pages[0]
     element = source.elements[0]
     client = FakeSemanticVisionClient(
-        profile_name=QWEN_SEMANTIC_HQ_PROFILE,
+        profile_name=QWEN_SEMANTIC_PROFILE,
         source_engine="qwen3_vl_8b",
         normalized_json={
             "page": {
@@ -398,7 +396,7 @@ def test_live_qwen_high_quality_gateway_normalizes_single_page_wrapper_shape() -
 
     result = QwenSemanticAnnotationGateway(client=client).annotate(
         source,
-        quality_mode="high_quality",
+        quality_mode="smart",
     )
 
     assert len(result.manifest.regions) == 9
@@ -482,11 +480,11 @@ def test_live_qwen_gateway_preserves_planner_metadata_in_manifest() -> None:
     ]
 
 
-def test_live_qwen_high_quality_gateway_normalizes_nested_pages_shape() -> None:
+def test_live_qwen_gateway_normalizes_nested_pages_shape() -> None:
     source = _source_with_page_image()
     page = source.pages[0]
     client = FakeSemanticVisionClient(
-        profile_name=QWEN_SEMANTIC_HQ_PROFILE,
+        profile_name=QWEN_SEMANTIC_PROFILE,
         source_engine="qwen3_vl_8b",
         normalized_json={
             "pages": [
@@ -511,7 +509,7 @@ def test_live_qwen_high_quality_gateway_normalizes_nested_pages_shape() -> None:
 
     result = QwenSemanticAnnotationGateway(client=client).annotate(
         source,
-        quality_mode="high_quality",
+        quality_mode="smart",
     )
 
     assert result.manifest.pages[0].page_id == page.page_id
@@ -522,12 +520,12 @@ def test_live_qwen_high_quality_gateway_normalizes_nested_pages_shape() -> None:
     assert region.review_required is True
 
 
-def test_live_qwen_high_quality_gateway_repairs_unknown_single_chunk_page_id() -> None:
+def test_live_qwen_gateway_repairs_unknown_single_chunk_page_id() -> None:
     source = _source_with_page_image_and_element()
     page = source.pages[0]
     element = source.elements[0]
     client = FakeSemanticVisionClient(
-        profile_name=QWEN_SEMANTIC_HQ_PROFILE,
+        profile_name=QWEN_SEMANTIC_PROFILE,
         source_engine="qwen3_vl_8b",
         normalized_json={
             "page_annotations": [
@@ -549,7 +547,7 @@ def test_live_qwen_high_quality_gateway_repairs_unknown_single_chunk_page_id() -
 
     result = QwenSemanticAnnotationGateway(client=client).annotate(
         source,
-        quality_mode="high_quality",
+        quality_mode="smart",
     )
 
     assert result.manifest.pages[0].page_id == page.page_id
@@ -561,12 +559,12 @@ def test_live_qwen_high_quality_gateway_repairs_unknown_single_chunk_page_id() -
     assert "missing_docling_grounding" in manifest_page["escalation_reasons"]
 
 
-def test_live_qwen_high_quality_gateway_merges_duplicate_page_annotations() -> None:
+def test_live_qwen_gateway_merges_duplicate_page_annotations() -> None:
     source = _source_with_page_image_and_element()
     page = source.pages[0]
     element = source.elements[0]
     client = FakeSemanticVisionClient(
-        profile_name=QWEN_SEMANTIC_HQ_PROFILE,
+        profile_name=QWEN_SEMANTIC_PROFILE,
         source_engine="qwen3_vl_8b",
         normalized_json={
             "page_annotations": [
@@ -600,7 +598,7 @@ def test_live_qwen_high_quality_gateway_merges_duplicate_page_annotations() -> N
 
     result = QwenSemanticAnnotationGateway(client=client).annotate(
         source,
-        quality_mode="high_quality",
+        quality_mode="smart",
     )
 
     assert len(result.manifest.pages) == 1
@@ -881,7 +879,7 @@ def test_live_qwen_smart_gateway_chunks_long_documents_without_one_page_fallback
     assert "fallback_reason" not in result.manifest.confidence
 
 
-def test_live_qwen_high_quality_gateway_uses_active_semantic_fan_in() -> None:
+def test_live_qwen_gateway_uses_active_semantic_fan_in() -> None:
     source = _source_with_two_page_images()
     page_by_hash = {page.image_sha256: page.page_id for page in source.pages if page.image_sha256}
 
@@ -899,7 +897,7 @@ def test_live_qwen_high_quality_gateway_uses_active_semantic_fan_in() -> None:
                 if image.validated_sha256() in page_by_hash
             ]
             return VisionGenerateResponse(
-                profile_name=QWEN_SEMANTIC_HQ_PROFILE,
+                profile_name=QWEN_SEMANTIC_PROFILE,
                 model_name="fake-qwen",
                 model_version="test",
                 source_engine="qwen3_vl_8b",
@@ -915,13 +913,13 @@ def test_live_qwen_high_quality_gateway_uses_active_semantic_fan_in() -> None:
 
     result = QwenSemanticAnnotationGateway(client=client).annotate(
         source,
-        quality_mode="high_quality",
+        quality_mode="smart",
     )
 
     assert len(client.requests) == 1
     assert [len(request.image_inputs) for request in client.requests] == [2]
     assert len(result.manifest.pages) == 2
-    assert result.manifest.profile_name == QWEN_SEMANTIC_HQ_PROFILE
+    assert result.manifest.profile_name == QWEN_SEMANTIC_PROFILE
     assert "chunk_count" not in result.manifest.confidence
 
 
@@ -991,14 +989,14 @@ def test_live_qwen_gateway_repairs_missing_target_schema_from_qwen_document_type
     assert isinstance(region, dict)
     region["target_schema"] = None
     client = FakeSemanticVisionClient(
-        profile_name=QWEN_SEMANTIC_HQ_PROFILE,
+        profile_name=QWEN_SEMANTIC_PROFILE,
         source_engine="qwen3_vl_8b",
         normalized_json=payload,
     )
 
     result = QwenSemanticAnnotationGateway(client=client).annotate(
         source,
-        quality_mode="high_quality",
+        quality_mode="smart",
     )
 
     repaired_region = result.manifest.regions[0]
@@ -1024,14 +1022,14 @@ def test_live_qwen_gateway_does_not_fall_back_to_phase4_when_qwen_document_type_
     assert isinstance(region, dict)
     region["target_schema"] = None
     client = FakeSemanticVisionClient(
-        profile_name=QWEN_SEMANTIC_HQ_PROFILE,
+        profile_name=QWEN_SEMANTIC_PROFILE,
         source_engine="qwen3_vl_8b",
         normalized_json=payload,
     )
 
     result = QwenSemanticAnnotationGateway(client=client).annotate(
         source,
-        quality_mode="high_quality",
+        quality_mode="smart",
     )
 
     repaired_region = result.manifest.regions[0]
