@@ -1019,6 +1019,68 @@ def test_semantic_service_drops_unsupported_generic_receipt_payment_summary() ->
     assert [job["payload"]["semantic_type"] for job in jobs.created] == ["receipt_line_item_table"]
 
 
+def test_semantic_service_drops_model_receipt_summary_for_generic_source() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="generic",
+        title="Low context scan",
+        original_filename="Scan Sep 10, 2025 at 19.57.pdf",
+        text="menu item quantity price total scanned page",
+    )
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        document_type="receipt",
+        regions=[
+            SemanticRegionAnnotation(
+                semantic_type="receipt_line_item_table",
+                priority="high",
+                granite_task="tables_json",
+                target_schema="receipt",
+                expected_fields=("item_description", "quantity", "line_total"),
+                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+                review_required=True,
+                confidence=0.97,
+            ),
+            SemanticRegionAnnotation(
+                semantic_type="receipt_payment_summary",
+                priority="high",
+                granite_task="kvp",
+                target_schema="receipt",
+                expected_fields=("subtotal", "tax", "total_amount"),
+                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+                review_required=True,
+                confidence=0.96,
+            ),
+        ],
+    )
+    jobs = RecordingJobs()
+    persisted_manifests: list[DocumentSemanticManifest] = []
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+            captured=persisted_manifests,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    assert [region.semantic_type for region in persisted_manifests[0].regions] == [
+        "receipt_line_item_table"
+    ]
+    assert [job["payload"]["semantic_type"] for job in jobs.created] == ["receipt_line_item_table"]
+
+
 def test_semantic_service_stabilizes_service_record_payment_summary_page() -> None:
     document_id = uuid4()
     household_id = uuid4()

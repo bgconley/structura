@@ -456,7 +456,9 @@ def _receipt_payment_output(
     confidence = payload.get("confidence") if isinstance(payload.get("confidence"), dict) else {}
     transaction: dict[str, Any] = {}
     deferred_fields: list[str] = []
+    deferred_identity_fields: list[str] = []
     defer_money_fields = _is_page_scoped_model_summary(evidence_context)
+    defer_identity_fields = defer_money_fields and not _receipt_payment_amount_signal(payload)
     for source_key, target_key in (
         ("transaction_date", "date_local"),
         ("subtotal", "subtotal"),
@@ -473,27 +475,56 @@ def _receipt_payment_output(
             if amount:
                 transaction[target_key] = amount
         elif value not in (None, ""):
+            if defer_identity_fields:
+                deferred_identity_fields.append(source_key)
+                continue
             transaction[target_key] = str(value)
+    merchant: dict[str, Any] = {}
+    if defer_identity_fields:
+        if payload.get("merchant_name") not in (None, ""):
+            deferred_identity_fields.append("merchant_name")
+        elif payload.get("merchant") not in (None, ""):
+            deferred_identity_fields.append("merchant")
+    else:
+        merchant = _receipt_merchant(payload, evidence_context=evidence_context)
     normalized: dict[str, Any] = {
         "schema_name": "receipt",
         "schema_version": "v1",
         "document_id": str(document_id),
-        "merchant": _receipt_merchant(payload, evidence_context=evidence_context),
+        "merchant": merchant,
         "transaction": transaction,
         "line_items": [],
         "confidence": confidence,
         "created_at": datetime.now(UTC).isoformat(),
     }
-    if payload.get("payment_method"):
+    if payload.get("payment_method") and not defer_identity_fields:
         normalized["metadata"] = {"payment_method": str(payload["payment_method"])}
     if deferred_fields:
         metadata = dict(normalized.get("metadata") or {})
         metadata["deferred_payment_summary_fields"] = deferred_fields
         normalized["metadata"] = metadata
+    if deferred_identity_fields:
+        metadata = dict(normalized.get("metadata") or {})
+        metadata["deferred_payment_summary_identity_fields"] = sorted(
+            dict.fromkeys(deferred_identity_fields)
+        )
+        normalized["metadata"] = metadata
+    repairs = ["mapped_model_output_to_canonical_receipt_payment_summary"]
+    if deferred_identity_fields:
+        repairs.append("deferred_payment_summary_identity_without_amount_signal")
     return normalized, {
         "mapper": "granite_receipt_payment_summary.v1",
-        "repairs": ["mapped_model_output_to_canonical_receipt_payment_summary"],
+        "repairs": repairs,
         "deferred_payment_summary_fields": deferred_fields,
+        **(
+            {
+                "deferred_payment_summary_identity_fields": sorted(
+                    dict.fromkeys(deferred_identity_fields)
+                )
+            }
+            if deferred_identity_fields
+            else {}
+        ),
         "rejected_fields": _rejected_fields(
             payload,
             {
@@ -508,6 +539,10 @@ def _receipt_payment_output(
             },
         ),
     }
+
+
+def _receipt_payment_amount_signal(payload: dict[str, Any]) -> bool:
+    return any(_money(payload.get(key)) for key in ("subtotal", "tax", "tip", "total"))
 
 
 def _is_page_scoped_model_summary(evidence_context: EvidenceContext | None) -> bool:
@@ -598,13 +633,6 @@ def _should_defer_review_only_receipt_like_observations(
     if model_output_schema_name != "granite_generic_kvp.v1":
         return False
     if (target_schema or "").strip().lower() != "document_observation":
-        return False
-    if (resolved_document_type or "").strip().lower() in {
-        "receipt",
-        "retail_order",
-        "service_record",
-        "invoice",
-    }:
         return False
     return (semantic_type or "").strip().lower() in _REVIEW_ONLY_RECEIPT_LIKE_SEMANTIC_TYPES
 

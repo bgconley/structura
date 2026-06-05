@@ -843,7 +843,11 @@ def _is_receipt_source(
     source_family = source.family.strip().lower()
     if document_type in _OBSERVATION_DOCUMENT_TYPES or source_family in _OBSERVATION_DOCUMENT_TYPES:
         return False
-    if document_type == "receipt" or source_family == "receipt":
+    if source_family == "receipt":
+        return True
+    if document_type == "receipt":
+        if source_family in {"", "generic"}:
+            return _has_receipt_docling_support(source)
         return True
     if document_type in _GENERIC_DOCUMENT_TYPES and source_family in {"", "generic"}:
         return False
@@ -859,9 +863,11 @@ def _supports_receipt_payment_summary(
 ) -> bool:
     document_type = _document_type(manifest)
     source_family = source.family.strip().lower()
-    if document_type in _RECEIPT_PAYMENT_SUMMARY_FAMILIES:
-        return True
     if source_family in _RECEIPT_PAYMENT_SUMMARY_FAMILIES:
+        return True
+    if document_type in _RECEIPT_PAYMENT_SUMMARY_FAMILIES:
+        if document_type == "receipt" and source_family in {"", "generic"}:
+            return _has_receipt_docling_support(source)
         return True
     if document_type in _GENERIC_DOCUMENT_TYPES and source_family in {"", "generic"}:
         return False
@@ -869,6 +875,10 @@ def _supports_receipt_payment_summary(
     return any(
         family in audit.suggested_family_hints for family in _RECEIPT_PAYMENT_SUMMARY_FAMILIES
     )
+
+
+def _has_receipt_docling_support(source: ExtractionSourceDocument) -> bool:
+    return "receipt" in build_docling_audit(source).suggested_family_hints
 
 
 def _is_service_record_source(

@@ -102,6 +102,34 @@ def test_review_only_receipt_like_output_defers_broad_observations() -> None:
     assert "deferred_review_only_receipt_like_observations" in metadata["repairs"]
 
 
+def test_review_only_receipt_like_output_defers_when_resolved_as_receipt() -> None:
+    document_id = uuid4()
+
+    normalized, metadata = normalize_granite_region_output(
+        document_id=document_id,
+        schema_name="document_observation",
+        model_output_schema_name="granite_generic_kvp.v1",
+        payload={
+            "fields": [
+                {"name": "subtotal", "value": "$20.00"},
+                {"name": "tax", "value": "$1.60"},
+                {"name": "total_amount", "value": "$21.60"},
+                {"name": "payment_method", "value": "CARD"},
+            ],
+            "confidence": {"overall": 0.74},
+        },
+        semantic_type="receipt_payment_summary",
+        target_schema="document_observation",
+        resolved_document_type="receipt",
+    )
+
+    assert normalized["schema_name"] == "document_observation"
+    assert normalized["observations"] == []
+    assert normalized["metadata"]["deferred_observation_count"] == 4
+    assert metadata["deferred_observation_count"] == 4
+    assert "deferred_review_only_receipt_like_observations" in metadata["repairs"]
+
+
 def test_granite_line_item_evidence_uses_region_grounding_context() -> None:
     document_id = uuid4()
     annotation_id = uuid4()
@@ -287,6 +315,48 @@ def test_receipt_payment_summary_defers_unanchored_money_candidates_for_repeatab
         "receipt.transaction.date_local",
     ]
     assert metadata["deferred_payment_summary_fields"] == ["subtotal", "tax", "total"]
+
+
+def test_receipt_payment_summary_defers_page_identity_without_amount_signal() -> None:
+    document_id = uuid4()
+
+    normalized, metadata = normalize_granite_region_output(
+        document_id=document_id,
+        schema_name="receipt",
+        model_output_schema_name="granite_receipt_payment_summary.v1",
+        payload={
+            "merchant_name": "Amtra",
+            "transaction_date": "2025-09-09",
+            "confidence": {},
+        },
+        evidence_context=EvidenceContext(
+            source_engine="granite_vision_3b",
+            document_id=document_id,
+            semantic_annotation_id=uuid4(),
+            semantic_region_id=uuid4(),
+            page_id=uuid4(),
+            page_number=1,
+        ),
+        semantic_type="receipt_payment_summary",
+        target_schema="receipt",
+        resolved_document_type="receipt",
+    )
+
+    candidates = field_candidates_from_extraction(
+        document_id=document_id,
+        schema_name="receipt",
+        payload=normalized,
+        validation=ValidationReport(needs_review=True, checks=[]),
+        source_engine="granite_vision_3b",
+        require_concrete_evidence=True,
+    )
+
+    assert candidates == []
+    assert metadata["deferred_payment_summary_identity_fields"] == [
+        "merchant_name",
+        "transaction_date",
+    ]
+    assert "deferred_payment_summary_identity_without_amount_signal" in metadata["repairs"]
 
 
 def test_receipt_payment_summary_persists_region_envelope_projection() -> None:
