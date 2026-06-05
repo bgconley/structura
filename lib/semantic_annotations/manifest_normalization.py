@@ -48,6 +48,16 @@ _OBSERVATION_FAMILY_BY_SEMANTIC_TYPE = {
     "mortgage_payment_summary": "mortgage_escrow_statement",
     "dispute_reason_block": "financial_dispute_form",
 }
+_LOW_VALUE_SEMANTIC_TYPES = frozenset(
+    {
+        "boilerplate",
+        "contact_block",
+        "document_header",
+        "no_extraction_target",
+        "unmatched_region",
+        "unsupported_document_region",
+    }
+)
 _PAGE_KVP_DEDUPE_TYPES = frozenset(
     {
         "denial_or_coverage_decision",
@@ -60,6 +70,20 @@ _PAGE_KVP_DEDUPE_TYPES = frozenset(
     }
 )
 _PRIORITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+_MEDICAL_EOB_APPEAL_TERMS = (
+    "appeal",
+    "coverage decision",
+    "denial",
+    "denied",
+    "grievance",
+    "medical necessity",
+)
+_MEDICAL_EOB_DECISION_FIELDS = (
+    "appeal_deadline",
+    "denial_reason",
+    "grievance_rights",
+    "request_status",
+)
 
 
 def normalize_result_for_planning(
@@ -76,7 +100,8 @@ def normalize_manifest_for_planning(
     source: ExtractionSourceDocument,
     manifest: DocumentSemanticManifest,
 ) -> DocumentSemanticManifest:
-    regions = [_normalize_region(source, region) for region in manifest.regions]
+    regions = [_normalize_region(source, manifest, region) for region in manifest.regions]
+    regions = _drop_low_value_regions(regions)
     regions = _drop_unanchored_observation_family_regions(source, manifest, regions)
     regions = _normalize_retail_order_regions(source, manifest, regions)
     regions = _dedupe_page_kvp_regions(regions)
@@ -106,9 +131,12 @@ def normalize_manifest_for_planning(
 
 def _normalize_region(
     source: ExtractionSourceDocument,
+    manifest: DocumentSemanticManifest,
     region: SemanticRegionAnnotation,
 ) -> SemanticRegionAnnotation:
     normalized = _normalize_table_grounding(source, region)
+    normalized = _normalize_page_scoped_kvp_grounding(source, normalized)
+    normalized = _normalize_medical_eob_generic_region(source, manifest, normalized)
     if _is_model_planned_line_item(normalized):
         normalized = replace(normalized, review_required=True)
     if _is_model_planned_payment_summary(normalized):
@@ -162,6 +190,73 @@ def _normalize_table_grounding(
             page_id=grounding.page_id,
             table_id=table.table_id,
         ),
+        metadata=metadata,
+    )
+
+
+def _normalize_page_scoped_kvp_grounding(
+    source: ExtractionSourceDocument,
+    region: SemanticRegionAnnotation,
+) -> SemanticRegionAnnotation:
+    if region.semantic_type not in _PAGE_KVP_DEDUPE_TYPES:
+        return region
+    if region.granite_task != "kvp":
+        return region
+    grounding = region.grounding
+    page_id = grounding.page_id
+    if page_id is None and grounding.element_id is not None:
+        page_id = _page_id_for_element(source, grounding.element_id)
+    if page_id is None and grounding.table_id is not None:
+        page_id = _page_id_for_table(source, grounding.table_id)
+    if page_id is None:
+        return region
+    if grounding.kind == "page" and grounding.page_id == page_id:
+        return region
+    metadata = {
+        **region.metadata,
+        "semantic_grounding_normalization": {
+            "from": grounding.kind,
+            "to": "page",
+            "reason": "page_scoped_kvp_intent",
+        },
+    }
+    return replace(
+        region,
+        grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+        metadata=metadata,
+    )
+
+
+def _normalize_medical_eob_generic_region(
+    source: ExtractionSourceDocument,
+    manifest: DocumentSemanticManifest,
+    region: SemanticRegionAnnotation,
+) -> SemanticRegionAnnotation:
+    if region.semantic_type != "generic_form_kvp":
+        return region
+    if region.granite_task != "kvp":
+        return region
+    if not _is_medical_eob_source(source, manifest):
+        return region
+    page_text = _normalized_text(_page_text_for_region(source, region))
+    if not any(term in page_text for term in _MEDICAL_EOB_APPEAL_TERMS):
+        return region
+    metadata = {
+        **region.metadata,
+        "semantic_planner_normalization": {
+            "from": "generic_form_kvp",
+            "to": "denial_or_coverage_decision",
+            "reason": "medical_eob_appeal_or_denial_anchor",
+        },
+    }
+    expected_fields = tuple(
+        dict.fromkeys(sorted((*region.expected_fields, *_MEDICAL_EOB_DECISION_FIELDS)))
+    )
+    return replace(
+        region,
+        semantic_type="denial_or_coverage_decision",
+        target_schema="medical_eob",
+        expected_fields=expected_fields,
         metadata=metadata,
     )
 
@@ -275,7 +370,7 @@ def _drop_unanchored_observation_family_regions(
             continue
         if region.grounding.kind == "table":
             continue
-        if audit.anchor_counts.get(family, 0) > 0:
+        if family in audit.suggested_family_hints:
             filtered.append(region)
             continue
         if family in {document_type, source_family}:
@@ -283,6 +378,17 @@ def _drop_unanchored_observation_family_regions(
             continue
         continue
     return filtered
+
+
+def _drop_low_value_regions(
+    regions: list[SemanticRegionAnnotation],
+) -> list[SemanticRegionAnnotation]:
+    return [
+        region
+        for region in regions
+        if region.semantic_type not in _LOW_VALUE_SEMANTIC_TYPES
+        or region.metadata.get("region_source") == DOCLING_STRUCTURAL_REGION_SOURCE
+    ]
 
 
 def _dedupe_page_kvp_regions(
@@ -482,6 +588,14 @@ def _page_id_for_table(source: ExtractionSourceDocument, table_id: UUID) -> UUID
     return None
 
 
+def _page_id_for_element(source: ExtractionSourceDocument, element_id: UUID) -> UUID | None:
+    page_by_number = {page.page_number: page.page_id for page in source.pages}
+    for element in source.elements:
+        if element.element_id == element_id:
+            return page_by_number.get(element.page_number)
+    return None
+
+
 def _page_number_for_table(source: ExtractionSourceDocument, table_id: UUID) -> int | None:
     for table in source.tables:
         if table.table_id == table_id:
@@ -538,6 +652,29 @@ def _is_receipt_source(
     if any(family in audit.suggested_family_hints for family in _OBSERVATION_DOCUMENT_TYPES):
         return False
     return "receipt" in audit.suggested_family_hints
+
+
+def _is_medical_eob_source(
+    source: ExtractionSourceDocument,
+    manifest: DocumentSemanticManifest,
+) -> bool:
+    document_type = _document_type(manifest)
+    source_family = source.family.strip().lower()
+    if document_type == "medical_eob" or source_family == "medical_eob":
+        return True
+    return "medical_eob" in build_docling_audit(source).suggested_family_hints
+
+
+def _page_text_for_region(
+    source: ExtractionSourceDocument,
+    region: SemanticRegionAnnotation,
+) -> str:
+    page_number = _region_page_number(source, region)
+    if page_number is None and region.grounding.page_id is not None:
+        page_number = _page_number_for_id(source, region.grounding.page_id)
+    if page_number is None:
+        return source.full_text
+    return " ".join(page.text for page in source.pages if page.page_number == page_number)
 
 
 def _normalized_text(value: Any) -> str:

@@ -722,6 +722,140 @@ def test_semantic_service_dedupes_duplicate_page_kvp_regions_before_persistence(
     assert len(jobs.created) == 1
 
 
+def test_semantic_service_dedupes_element_grounded_page_kvp_regions_before_persistence() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="receipt",
+        title="Restaurant receipt",
+        text="Restaurant receipt subtotal tax tip total amount paid visa payment approval",
+    )
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        document_type="receipt",
+        regions=[
+            SemanticRegionAnnotation(
+                semantic_type="receipt_payment_summary",
+                priority="high",
+                granite_task="kvp",
+                target_schema="receipt",
+                expected_fields=("subtotal", "tax", "total_amount"),
+                grounding=SemanticGroundingRef(
+                    kind="element",
+                    page_id=page_id,
+                    element_id=uuid4(),
+                ),
+                review_required=True,
+                confidence=0.75,
+            ),
+            SemanticRegionAnnotation(
+                semantic_type="receipt_payment_summary",
+                priority="high",
+                granite_task="kvp",
+                target_schema="receipt",
+                expected_fields=("payment_method", "tip", "total_amount"),
+                grounding=SemanticGroundingRef(
+                    kind="element",
+                    page_id=page_id,
+                    element_id=uuid4(),
+                ),
+                review_required=True,
+                confidence=0.71,
+            ),
+        ],
+    )
+    jobs = RecordingJobs()
+    persisted_manifests: list[DocumentSemanticManifest] = []
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+            captured=persisted_manifests,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    persisted_regions = persisted_manifests[0].regions
+    assert len(persisted_regions) == 1
+    assert persisted_regions[0].semantic_type == "receipt_payment_summary"
+    assert persisted_regions[0].grounding.kind == "page"
+    assert persisted_regions[0].grounding.page_id == page_id
+    assert persisted_regions[0].expected_fields == (
+        "payment_method",
+        "subtotal",
+        "tax",
+        "tip",
+        "total_amount",
+    )
+    assert len(jobs.created) == 1
+
+
+def test_semantic_service_normalizes_medical_eob_generic_appeal_regions() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="medical_eob",
+        title="Anthem denial",
+        text="Explanation of benefits claim denied appeal grievance rights deadline",
+    )
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        document_type="medical_eob",
+        regions=[
+            SemanticRegionAnnotation(
+                semantic_type="generic_form_kvp",
+                priority="high",
+                granite_task="kvp",
+                target_schema="medical_eob",
+                expected_fields=("appeal_deadline", "grievance_rights"),
+                grounding=SemanticGroundingRef(
+                    kind="element",
+                    page_id=page_id,
+                    element_id=uuid4(),
+                ),
+                review_required=True,
+                confidence=0.69,
+            )
+        ],
+    )
+    jobs = RecordingJobs()
+    persisted_manifests: list[DocumentSemanticManifest] = []
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+            captured=persisted_manifests,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    persisted_region = persisted_manifests[0].regions[0]
+    assert persisted_region.semantic_type == "denial_or_coverage_decision"
+    assert persisted_region.target_schema == "medical_eob"
+    assert persisted_region.grounding.kind == "page"
+    assert jobs.created[0]["payload"]["semantic_type"] == "denial_or_coverage_decision"
+
+
 def test_semantic_service_drops_unanchored_observation_family_region() -> None:
     document_id = uuid4()
     household_id = uuid4()
@@ -770,6 +904,135 @@ def test_semantic_service_drops_unanchored_observation_family_region() -> None:
 
     assert persisted_manifests[0].regions == []
     assert jobs.created == []
+
+
+def test_semantic_service_drops_weak_observation_family_false_positive() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="generic",
+        title="Vehicle registration scan",
+        text="seller owner vehicle registration fee amount paid",
+    )
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        document_type="generic_form",
+        regions=[
+            SemanticRegionAnnotation(
+                semantic_type="seller_information_block",
+                priority="high",
+                granite_task="kvp",
+                target_schema="document_observation",
+                expected_fields=("seller_name", "property_address"),
+                grounding=SemanticGroundingRef(
+                    kind="element",
+                    page_id=page_id,
+                    element_id=uuid4(),
+                ),
+                review_required=True,
+                confidence=0.67,
+            )
+        ],
+    )
+    jobs = RecordingJobs()
+    persisted_manifests: list[DocumentSemanticManifest] = []
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+            captured=persisted_manifests,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    assert persisted_manifests[0].regions == []
+    assert jobs.created == []
+
+
+def test_semantic_service_dedupes_supported_observation_family_by_page() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="generic",
+        title="Dispute form",
+        text="dispute transaction charge unauthorized reason for dispute",
+    )
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        document_type="generic_form",
+        regions=[
+            SemanticRegionAnnotation(
+                semantic_type="dispute_reason_block",
+                priority="high",
+                granite_task="kvp",
+                target_schema="document_observation",
+                expected_fields=("transaction_date", "merchant"),
+                grounding=SemanticGroundingRef(
+                    kind="element",
+                    page_id=page_id,
+                    element_id=uuid4(),
+                ),
+                review_required=True,
+                confidence=0.77,
+            ),
+            SemanticRegionAnnotation(
+                semantic_type="dispute_reason_block",
+                priority="high",
+                granite_task="kvp",
+                target_schema="document_observation",
+                expected_fields=("amount", "dispute_reason"),
+                grounding=SemanticGroundingRef(
+                    kind="element",
+                    page_id=page_id,
+                    element_id=uuid4(),
+                ),
+                review_required=True,
+                confidence=0.74,
+            ),
+        ],
+    )
+    jobs = RecordingJobs()
+    persisted_manifests: list[DocumentSemanticManifest] = []
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+            captured=persisted_manifests,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    persisted_regions = persisted_manifests[0].regions
+    assert len(persisted_regions) == 1
+    assert persisted_regions[0].semantic_type == "dispute_reason_block"
+    assert persisted_regions[0].grounding.kind == "page"
+    assert persisted_regions[0].expected_fields == (
+        "amount",
+        "dispute_reason",
+        "merchant",
+        "transaction_date",
+    )
+    assert len(jobs.created) == 1
 
 
 def test_semantic_service_routes_escrow_docling_tables_as_observations_not_receipts() -> None:
@@ -1353,8 +1616,6 @@ def test_semantic_service_prioritizes_line_items_over_header_regions() -> None:
     household_id = uuid4()
     page_id = uuid4()
     annotation_id = uuid4()
-    line_item_region_id = uuid4()
-    header_region_ids = tuple(uuid4() for _ in range(6))
     source = _source(document_id=document_id, household_id=household_id, page_id=page_id)
     regions = [
         SemanticRegionAnnotation(
@@ -1391,20 +1652,24 @@ def test_semantic_service_prioritizes_line_items_over_header_regions() -> None:
         regions=regions,
     )
     jobs = RecordingJobs()
+    persisted_manifests: list[DocumentSemanticManifest] = []
 
     SemanticAnnotationService(
         source_loader=lambda loaded_document_id: source,
         gateway=StaticGateway(manifest),
-        manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
             annotation_id=annotation_id,
-            region_ids=(*header_region_ids, line_item_region_id),
+            captured=persisted_manifests,
         ),
         jobs=jobs,
     ).annotate_document(document_id, quality_mode="smart", requested_by="system")
 
+    assert [region.semantic_type for region in persisted_manifests[0].regions] == [
+        "invoice_line_item_table"
+    ]
     assert len(jobs.created) == 1
     payload = jobs.created[0]["payload"]
-    assert payload["semantic_region_id"] == str(line_item_region_id)
     assert payload["semantic_type"] == "invoice_line_item_table"
     assert payload["model_output_schema_name"] == "granite_invoice_line_items.v1"
 
