@@ -105,14 +105,17 @@ def _selected_semantic_region_rows(documents: list[dict[str, Any]]) -> list[dict
             for row in list_value(get_value(document, "semanticRegions"))
             if isinstance(row, dict)
         ]
+        planner_tasks = _planner_task_rows(document)
         selected_region_ids = {
             str(region_id)
-            for task in _planner_task_rows(document)
+            for task in planner_tasks
             if _is_selected_planner_task(task)
             if (region_id := get_value(task, "semantic_region_id", "semanticRegionId"))
             not in (None, "")
         }
         if not selected_region_ids:
+            if planner_tasks:
+                continue
             rows.extend(regions)
             continue
         rows.extend(

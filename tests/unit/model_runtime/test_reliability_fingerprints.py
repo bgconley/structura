@@ -138,6 +138,43 @@ def test_repeatability_fingerprints_ignore_semantic_region_review_bit_noise() ->
     assert first["semanticRegions"] == second["semanticRegions"]
 
 
+def test_repeatability_fingerprints_ignore_unselected_raw_regions() -> None:
+    first_document = _document("doc-1")
+    second_document = deepcopy(first_document)
+    for document in (first_document, second_document):
+        document["plannerTasks"] = [
+            {
+                "id": "task-skipped",
+                "semantic_region_id": document["semanticRegions"][0]["semantic_region_id"],
+                "status": "skipped_budget_exceeded",
+                "semantic_type": "invoice_line_item_table",
+                "extractor_backend": "granite_region",
+                "target_schema": "invoice",
+                "canonical_target_schema": "invoice",
+                "model_output_schema_name": "granite_invoice_line_items.v1",
+                "compatibility_mode": "exact",
+                "page_number": 1,
+            }
+        ]
+    first_document["semanticRegions"] = []
+    second_document["semanticRegions"] = [
+        {
+            "semantic_region_id": "raw-model-proposal",
+            "page_number": 1,
+            "semantic_type": "vehicle_or_asset_block",
+            "granite_task": "kvp",
+            "target_schema": "document_observation",
+            "grounding_kind": "element",
+            "review_required": False,
+        }
+    ]
+
+    first = repeatability_fingerprints([first_document], {"rejectionReasons": {}})
+    second = repeatability_fingerprints([second_document], {"rejectionReasons": {}})
+
+    assert first["semanticRegions"] == second["semanticRegions"]
+
+
 def _document(document_id: str) -> dict[str, Any]:
     suffix = document_id[-1]
     return {
