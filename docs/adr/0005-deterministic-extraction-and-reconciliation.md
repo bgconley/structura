@@ -140,6 +140,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   merchant and transaction facts, while receipt line-item fragments project through
   registry data rather than bespoke receipt code. The receipt line-item projection
   stays within `receipt.v1` instead of importing invoice-only tax fields.
+- 2026-06-05: Unsupported or review-only Claim families now degrade through the
+  resolver to `document_observation` projections. Anchored Claims are conflict-resolved
+  with the same source-precedence decisions, then emitted as review-only observations
+  instead of requiring a new per-family reconciliation function or failing at registry
+  lookup time.
 
 ## Deferred Work
 

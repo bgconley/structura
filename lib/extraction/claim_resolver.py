@@ -41,6 +41,7 @@ class ClaimFamilyProjection:
     family: str
     fields: dict[str, dict[str, Any]] = field(default_factory=dict)
     line_items: list[dict[str, Any]] = field(default_factory=list)
+    observations: list[dict[str, Any]] = field(default_factory=list)
     decisions: list[ClaimResolutionDecision] = field(default_factory=list)
 
 
@@ -114,7 +115,9 @@ def resolve_claims_for_family(
     family: str,
     claims: list[Claim],
 ) -> ClaimFamilyProjection:
-    registry = CLAIM_FAMILY_REGISTRIES[family]
+    registry = CLAIM_FAMILY_REGISTRIES.get(family)
+    if registry is None:
+        return _resolve_document_observations(requested_family=family, claims=claims)
     fields: dict[str, dict[str, Any]] = {}
     decisions: list[ClaimResolutionDecision] = []
     for field_projection in registry.field_projections:
@@ -142,6 +145,36 @@ def resolve_claims_for_family(
         fields=fields,
         line_items=line_items,
         decisions=sorted(decisions, key=lambda decision: decision.canonical_key),
+    )
+
+
+def _resolve_document_observations(
+    *,
+    requested_family: str,
+    claims: list[Claim],
+) -> ClaimFamilyProjection:
+    grouped: dict[str, list[Claim]] = defaultdict(list)
+    for claim in claims:
+        grouped[claim.canonical_key].append(claim)
+
+    observations: list[dict[str, Any]] = []
+    decisions: list[ClaimResolutionDecision] = []
+    for canonical_key in sorted(grouped):
+        selected, decision = _resolve_key(canonical_key, grouped[canonical_key])
+        if decision is not None:
+            decisions.append(decision)
+        if selected is None:
+            continue
+        observations.append(
+            _observation_from_claim(
+                selected,
+                requested_family=requested_family,
+            )
+        )
+    return ClaimFamilyProjection(
+        family="document_observation",
+        observations=observations,
+        decisions=decisions,
     )
 
 
@@ -226,6 +259,67 @@ def _stable_value_key(value: Any) -> str:
     import json
 
     return json.dumps(value, sort_keys=True, separators=(",", ":"))
+
+
+def _observation_from_claim(
+    claim: Claim,
+    *,
+    requested_family: str,
+) -> dict[str, Any]:
+    observation_family, field_name = _observation_family_and_field(
+        canonical_key=claim.canonical_key,
+        requested_family=requested_family,
+    )
+    payload: dict[str, Any] = {
+        "family": observation_family,
+        "field_name": field_name,
+        "value": claim.typed_value,
+        "value_type": _observation_value_type(claim.typed_value),
+        "source_text": _source_text(claim.raw_value),
+        "confidence": claim.confidence,
+        "evidence": _observation_evidence(claim),
+    }
+    return {key: value for key, value in payload.items() if value is not None}
+
+
+def _observation_family_and_field(
+    *,
+    canonical_key: str,
+    requested_family: str,
+) -> tuple[str | None, str]:
+    family, separator, field_name = canonical_key.partition(".")
+    if separator and field_name:
+        return family, field_name
+    if requested_family != "document_observation":
+        return requested_family, canonical_key
+    return None, canonical_key
+
+
+def _observation_value_type(value: Any) -> str:
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, int | float):
+        return "number"
+    if isinstance(value, dict | list):
+        return "json"
+    return "string"
+
+
+def _source_text(raw_value: str) -> str | None:
+    if not raw_value:
+        return None
+    return raw_value[:500]
+
+
+def _observation_evidence(claim: Claim) -> list[dict[str, Any]]:
+    evidence = [_clean_evidence(item) for item in claim.evidence]
+    evidence = [item for item in evidence if item]
+    if evidence:
+        return evidence
+    anchor = _clean_evidence(claim.anchor.as_json())
+    return [anchor] if anchor else []
 
 
 def _anchor_group_id(claim: Claim) -> str:

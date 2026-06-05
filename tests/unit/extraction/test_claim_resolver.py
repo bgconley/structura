@@ -120,6 +120,84 @@ def test_receipt_claim_resolver_projects_registry_fields_and_line_items() -> Non
     }
 
 
+def test_document_observation_claim_resolver_projects_claims_to_observations() -> None:
+    anchor = ClaimAnchor(page_number=3, page_id="page-3", docling_element_ids=("el-9",))
+    docling_address = _claim(
+        canonical_key="real_estate_title.property.address",
+        typed_value="123 Main",
+        source_engine="docling",
+        anchor=anchor,
+    )
+    granite_address = _claim(
+        canonical_key="real_estate_title.property.address",
+        typed_value="123 Main St",
+        source_engine="granite",
+        anchor=anchor,
+    )
+
+    projection = resolve_claims_for_family(
+        family="document_observation",
+        claims=[docling_address, granite_address],
+    )
+
+    assert projection.family == "document_observation"
+    assert projection.observations == [
+        {
+            "family": "real_estate_title",
+            "field_name": "property.address",
+            "value": "123 Main St",
+            "value_type": "string",
+            "source_text": "123 Main St",
+            "confidence": 0.9,
+            "evidence": [
+                {
+                    "page_number": 3,
+                    "page_id": "page-3",
+                    "docling_element_ids": ["el-9"],
+                }
+            ],
+        }
+    ]
+    assert [
+        (decision.canonical_key, decision.decision, decision.reason_code)
+        for decision in projection.decisions
+    ] == [
+        (
+            "real_estate_title.property.address",
+            "needs_review",
+            "source_precedence_conflict",
+        )
+    ]
+
+
+def test_unknown_claim_family_degrades_to_document_observation_projection() -> None:
+    anchor = ClaimAnchor(page_number=1, text_span={"start": 10, "end": 22})
+    claim = _claim(
+        canonical_key="mortgage_escrow_statement.shortage_amount",
+        typed_value={"amount": 84.25, "currency": "USD"},
+        source_engine="granite",
+        anchor=anchor,
+    )
+
+    projection = resolve_claims_for_family(
+        family="mortgage_escrow_statement",
+        claims=[claim],
+    )
+
+    assert projection.family == "document_observation"
+    assert projection.observations == [
+        {
+            "family": "mortgage_escrow_statement",
+            "field_name": "shortage_amount",
+            "value": {"amount": 84.25, "currency": "USD"},
+            "value_type": "json",
+            "source_text": "{'amount': 84.25, 'currency': 'USD'}",
+            "confidence": 0.9,
+            "evidence": [{"page_number": 1, "text_span": {"start": 10, "end": 22}}],
+        }
+    ]
+
+
 def _claim(
     *,
     canonical_key: str,
