@@ -295,6 +295,7 @@ def test_maybe_reconcile_semantic_annotation_persists_medical_eob_claim_aggregat
         "currency": "USD",
     }
     assert aggregate["service_lines"][0]["ordinal"] == 1
+    assert aggregate["metadata"]["quality_outcome"] == "extracted_cleanly"
     assert aggregate["metadata"]["claim_resolution_decisions"]
     assert {candidate.field_path for candidate in field_candidates} >= {
         "medical_eob.payer.display_name",

@@ -94,6 +94,7 @@ def test_document_observation_region_reconciliation_uses_anchored_claims() -> No
     ]
     assert aggregate["metadata"]["source_families"] == ["real_estate_title"]
     assert aggregate["metadata"]["claim_resolution_decisions"][0]["decision"] == "accepted"
+    assert aggregate["metadata"]["quality_outcome"] == "needs_human_review"
 
 
 def test_document_observation_region_reconciliation_requires_claims() -> None:

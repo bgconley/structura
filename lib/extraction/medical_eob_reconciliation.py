@@ -39,6 +39,7 @@ def reconcile_medical_eob_region_extractions(
     projection = resolve_claims_for_family(family="medical_eob", claims=list(claims))
     if projection.family != "medical_eob":
         return None
+    metadata["quality_outcome"] = projection.quality_outcome
     if projection.decisions:
         metadata["claim_resolution_decisions"] = [
             decision.__dict__ for decision in projection.decisions

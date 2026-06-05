@@ -54,6 +54,7 @@ def test_invoice_claim_resolver_projects_claims_with_source_precedence() -> None
         ("invoice.line_item.description", "accepted", "single_source"),
         ("invoice.total_amount", "needs_review", "source_precedence_conflict"),
     ]
+    assert projection.quality_outcome == "needs_human_review"
 
 
 def test_receipt_claim_resolver_projects_registry_fields_and_line_items() -> None:
@@ -118,6 +119,7 @@ def test_receipt_claim_resolver_projects_registry_fields_and_line_items() -> Non
     assert "receipt.line_item.sku" not in {
         decision.canonical_key for decision in projection.decisions
     }
+    assert projection.quality_outcome == "extracted_cleanly"
 
 
 def test_medical_eob_claim_resolver_projects_registry_fields_and_service_lines() -> None:
@@ -222,6 +224,7 @@ def test_medical_eob_claim_resolver_projects_registry_fields_and_service_lines()
             ],
         }
     ]
+    assert projection.quality_outcome == "extracted_cleanly"
 
 
 def test_document_observation_claim_resolver_projects_claims_to_observations() -> None:
@@ -272,6 +275,7 @@ def test_document_observation_claim_resolver_projects_claims_to_observations() -
             "source_precedence_conflict",
         )
     ]
+    assert projection.quality_outcome == "needs_human_review"
 
 
 def test_unknown_claim_family_degrades_to_document_observation_projection() -> None:
@@ -300,6 +304,18 @@ def test_unknown_claim_family_degrades_to_document_observation_projection() -> N
             "evidence": [{"page_number": 1, "text_span": {"start": 10, "end": 22}}],
         }
     ]
+    assert projection.quality_outcome == "needs_human_review"
+
+
+def test_claim_resolver_emits_insufficient_signal_without_usable_claims() -> None:
+    projection = resolve_claims_for_family(
+        family="invoice",
+        claims=[],
+    )
+
+    assert projection.fields == {}
+    assert projection.line_items == []
+    assert projection.quality_outcome == "insufficient_signal"
 
 
 def _claim(

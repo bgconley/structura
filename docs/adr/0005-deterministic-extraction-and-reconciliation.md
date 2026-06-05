@@ -165,6 +165,12 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   instead of full runtime candidate rows. Candidate lineage, model schema names,
   confidence drift, source engine, and candidate fingerprints remain separate runtime
   quality/lineage signals rather than canonical-output identity.
+- 2026-06-05: The Claim resolver now emits first-class Phase 8.5 quality outcomes:
+  `extracted_cleanly`, `needs_human_review`, `insufficient_signal`,
+  `no_extraction_target`, and `pipeline_failed`. Claim-backed invoice, medical EOB,
+  and document-observation aggregates persist the resolver outcome in metadata, so
+  document-quality uncertainty is represented as review/quality state rather than an
+  operational pipeline failure.
 
 ## Deferred Work
 
@@ -173,5 +179,4 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   signal; a fully deterministic plan is out of scope.
 - Remaining migration order (highest leverage first): (1) expand the resolver registry
   beyond invoice, receipt, and medical EOB while retiring raw-payload compatibility
-  paths; (2) refactor schemas into fragments+registry; (3) emit the quality-outcome
-  vocabulary.
+  paths; (2) refactor schemas into fragments+registry.

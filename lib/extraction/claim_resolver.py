@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from lib.extraction.claims import Claim
+from lib.extraction.quality_outcomes import QualityOutcome
 
 
 @dataclass(frozen=True)
@@ -43,6 +44,7 @@ class ClaimFamilyProjection:
     line_items: list[dict[str, Any]] = field(default_factory=list)
     observations: list[dict[str, Any]] = field(default_factory=list)
     decisions: list[ClaimResolutionDecision] = field(default_factory=list)
+    quality_outcome: QualityOutcome = "insufficient_signal"
 
 
 SOURCE_PRECEDENCE: dict[str, int] = {
@@ -187,11 +189,17 @@ def resolve_claims_for_family(
         )
         line_items = resolved_line_items
         decisions.extend(line_decisions)
+    decisions = sorted(decisions, key=lambda decision: decision.canonical_key)
     return ClaimFamilyProjection(
         family=family,
         fields=fields,
         line_items=line_items,
-        decisions=sorted(decisions, key=lambda decision: decision.canonical_key),
+        decisions=decisions,
+        quality_outcome=_quality_outcome(
+            decisions=decisions,
+            has_material_output=bool(fields or line_items),
+            review_only=False,
+        ),
     )
 
 
@@ -222,6 +230,12 @@ def _resolve_document_observations(
         family="document_observation",
         observations=observations,
         decisions=decisions,
+        quality_outcome=_quality_outcome(
+            decisions=decisions,
+            has_material_output=bool(observations),
+            review_only=True,
+            no_extraction_target=requested_family == "no_extraction_target",
+        ),
     )
 
 
@@ -300,6 +314,22 @@ def _claim_sort_key(claim: Claim) -> tuple[int, float, str]:
         -(claim.confidence or 0.0),
         claim.claim_id,
     )
+
+
+def _quality_outcome(
+    *,
+    decisions: list[ClaimResolutionDecision],
+    has_material_output: bool,
+    review_only: bool,
+    no_extraction_target: bool = False,
+) -> QualityOutcome:
+    if no_extraction_target and not has_material_output:
+        return "no_extraction_target"
+    if not has_material_output:
+        return "insufficient_signal"
+    if review_only or any(decision.decision == "needs_review" for decision in decisions):
+        return "needs_human_review"
+    return "extracted_cleanly"
 
 
 def _stable_value_key(value: Any) -> str:

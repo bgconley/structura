@@ -36,6 +36,7 @@ def reconcile_document_observation_region_extractions(
     metadata["claim_resolution_decisions"] = [
         decision.__dict__ for decision in claim_projection.decisions
     ]
+    metadata["quality_outcome"] = claim_projection.quality_outcome
     source_families = sorted(
         {
             str(observation["family"])

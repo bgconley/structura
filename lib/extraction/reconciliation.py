@@ -19,6 +19,7 @@ from lib.extraction.invoice_legacy_reconciliation import (
     legacy_invoice_payment_summary_from_region,
     merge_legacy_money_fields,
 )
+from lib.extraction.quality_outcomes import QualityOutcome, combine_quality_outcomes
 from lib.extraction.region_envelope import (
     EvidenceRef,
     RegionExtractionEnvelope,
@@ -53,6 +54,7 @@ def reconcile_invoice_region_extractions(
     source_families: set[str] = set()
     metadata: dict[str, Any] = {"region_extractions": []}
     reconciled_region_count = 0
+    quality_outcomes: list[QualityOutcome] = []
 
     for region in regions:
         if region.claims:
@@ -76,6 +78,7 @@ def reconcile_invoice_region_extractions(
             )
             line_items.extend(claim_projection.line_items)
             _merge_projection_fields(invoice, totals, claim_projection.fields)
+            quality_outcomes.append(claim_projection.quality_outcome)
             if claim_projection.decisions:
                 metadata.setdefault("claim_resolution_decisions", []).extend(
                     decision.__dict__ for decision in claim_projection.decisions
@@ -157,6 +160,8 @@ def reconcile_invoice_region_extractions(
 
     if source_families:
         metadata["source_families"] = sorted(source_families)
+    if quality_outcomes:
+        metadata["quality_outcome"] = combine_quality_outcomes(quality_outcomes)
     if reconciled_region_count == 0:
         return None
     _merge_document_fallback(invoice, totals, document_fallback or {})

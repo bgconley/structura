@@ -478,3 +478,4 @@ def test_invoice_region_reconciliation_prefers_claims_over_envelope_and_raw_payl
     assert [item["description"] for item in aggregate["line_items"]] == ["Claim service"]
     assert aggregate["line_items"][0]["amount"] == {"amount": 64.0, "currency": "USD"}
     assert aggregate["totals"]["total"] == {"amount": 64.0, "currency": "USD"}
+    assert aggregate["metadata"]["quality_outcome"] == "extracted_cleanly"
