@@ -1094,6 +1094,141 @@ def test_semantic_service_stabilizes_service_record_payment_summary_page() -> No
     ]
 
 
+def test_semantic_service_keeps_service_record_line_items_page_grounded() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    table_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="service_record",
+        title="BMW service record",
+        original_filename="BMW CE-04 600mi run in service and tire service 04-23.pdf",
+        text=(
+            "repair order motorcycle service description labor operation quantity "
+            "line total vehicle parts"
+        ),
+        tables=[
+            ParsedTableText(
+                table_id=table_id,
+                page_number=1,
+                table_index=1,
+                table_markdown="| R/O Number | Status |\n| 6046058/1 | Pre-Invoice |",
+            )
+        ],
+    )
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        document_type="service_record",
+        regions=[
+            SemanticRegionAnnotation(
+                semantic_type="service_record_line_item_table",
+                priority="high",
+                granite_task="tables_json",
+                target_schema="receipt",
+                expected_fields=("service_description", "quantity", "line_total"),
+                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+                review_required=True,
+                confidence=0.98,
+            )
+        ],
+    )
+    jobs = RecordingJobs()
+    persisted_manifests: list[DocumentSemanticManifest] = []
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+            captured=persisted_manifests,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    line_region = next(
+        region
+        for region in persisted_manifests[0].regions
+        if region.semantic_type == "service_record_line_item_table"
+    )
+    assert line_region.grounding.kind == "page"
+    assert line_region.grounding.table_id is None
+    line_job = next(
+        job
+        for job in jobs.created
+        if job["payload"]["semantic_type"] == "service_record_line_item_table"
+    )
+    assert line_job["payload"]["metadata"].get("docling_table_id") is None
+
+
+def test_semantic_service_drops_generic_form_receipt_summary_despite_receipt_anchors() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="generic",
+        title="Receipt-like generic scan",
+        original_filename="Scan Oct 8, 2025 at 21.48.pdf",
+        text="receipt subtotal tax payment amount paid total",
+    )
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        document_type="generic_form",
+        regions=[
+            SemanticRegionAnnotation(
+                semantic_type="receipt_line_item_table",
+                priority="high",
+                granite_task="tables_json",
+                target_schema="receipt",
+                expected_fields=("item_description", "quantity", "line_total"),
+                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+                review_required=True,
+                confidence=0.74,
+            ),
+            SemanticRegionAnnotation(
+                semantic_type="receipt_payment_summary",
+                priority="high",
+                granite_task="kvp",
+                target_schema="receipt",
+                expected_fields=("subtotal", "tax", "total_amount"),
+                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+                review_required=True,
+                confidence=0.72,
+            ),
+        ],
+    )
+    jobs = RecordingJobs()
+    persisted_manifests: list[DocumentSemanticManifest] = []
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+            captured=persisted_manifests,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    assert [region.semantic_type for region in persisted_manifests[0].regions] == [
+        "receipt_line_item_table"
+    ]
+    assert [job["payload"]["semantic_type"] for job in jobs.created] == ["receipt_line_item_table"]
+
+
 def test_semantic_service_drops_unanchored_observation_family_region() -> None:
     document_id = uuid4()
     household_id = uuid4()

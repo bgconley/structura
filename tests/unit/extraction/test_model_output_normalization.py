@@ -76,6 +76,32 @@ def test_generic_kvp_output_maps_to_reviewable_observations() -> None:
     assert observation_dicts_from_payload(normalized)[0]["value"] == "Brennan Conley"
 
 
+def test_review_only_receipt_like_output_defers_broad_observations() -> None:
+    document_id = uuid4()
+
+    normalized, metadata = normalize_granite_region_output(
+        document_id=document_id,
+        schema_name="document_observation",
+        model_output_schema_name="granite_generic_kvp.v1",
+        payload={
+            "fields": [
+                {"name": "total_amount", "value": "$42.00"},
+                {"name": "payment_method", "value": "AMEX CREDIT"},
+            ],
+            "confidence": {"overall": 0.74},
+        },
+        semantic_type="receipt_payment_summary",
+        target_schema="document_observation",
+        resolved_document_type="generic",
+    )
+
+    assert normalized["schema_name"] == "document_observation"
+    assert normalized["observations"] == []
+    assert normalized["metadata"]["deferred_observation_count"] == 2
+    assert metadata["deferred_observation_count"] == 2
+    assert "deferred_review_only_receipt_like_observations" in metadata["repairs"]
+
+
 def test_granite_line_item_evidence_uses_region_grounding_context() -> None:
     document_id = uuid4()
     annotation_id = uuid4()

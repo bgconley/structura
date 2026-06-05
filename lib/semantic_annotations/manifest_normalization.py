@@ -42,6 +42,15 @@ _OBSERVATION_DOCUMENT_TYPES = frozenset(
         "financial_dispute_form",
     }
 )
+_GENERIC_DOCUMENT_TYPES = frozenset(
+    {
+        "document_observation",
+        "generic",
+        "generic_form",
+        "no_extraction_target",
+        "unsupported_document",
+    }
+)
 _OBSERVATION_FAMILY_BY_SEMANTIC_TYPE = {
     "seller_information_block": "real_estate_title",
     "escrow_summary": "mortgage_escrow_statement",
@@ -214,6 +223,8 @@ def _normalize_table_grounding(
         return region
     tables_on_page = _tables_by_page(source).get(page_number, [])
     if len(tables_on_page) != 1:
+        return region
+    if region.semantic_type == "service_record_line_item_table":
         return region
     table = tables_on_page[0]
     metadata = {
@@ -700,12 +711,27 @@ def _dedupe_equivalent_regions(
         and region.grounding.kind == "table"
         and region.grounding.table_id is not None
     }
+    model_service_record_line_item_page_ids = {
+        region.grounding.page_id
+        for region in regions
+        if _is_model_planned_line_item(region)
+        and region.semantic_type == "service_record_line_item_table"
+        and region.grounding.kind == "page"
+        and region.grounding.page_id is not None
+    }
     deduped: list[SemanticRegionAnnotation] = []
     for region in regions:
         if (
             region.metadata.get("region_source") == DOCLING_STRUCTURAL_REGION_SOURCE
             and region.semantic_type in _LINE_ITEM_SEMANTIC_TYPES
             and _region_key(region) in model_line_item_keys
+        ):
+            continue
+        if (
+            region.metadata.get("region_source") == DOCLING_STRUCTURAL_REGION_SOURCE
+            and region.semantic_type == "service_record_line_item_table"
+            and region.grounding.kind == "table"
+            and region.grounding.page_id in model_service_record_line_item_page_ids
         ):
             continue
         deduped.append(region)
@@ -819,6 +845,8 @@ def _is_receipt_source(
         return False
     if document_type == "receipt" or source_family == "receipt":
         return True
+    if document_type in _GENERIC_DOCUMENT_TYPES and source_family in {"", "generic"}:
+        return False
     audit = build_docling_audit(source)
     if any(family in audit.suggested_family_hints for family in _OBSERVATION_DOCUMENT_TYPES):
         return False
@@ -835,6 +863,8 @@ def _supports_receipt_payment_summary(
         return True
     if source_family in _RECEIPT_PAYMENT_SUMMARY_FAMILIES:
         return True
+    if document_type in _GENERIC_DOCUMENT_TYPES and source_family in {"", "generic"}:
+        return False
     audit = build_docling_audit(source)
     return any(
         family in audit.suggested_family_hints for family in _RECEIPT_PAYMENT_SUMMARY_FAMILIES

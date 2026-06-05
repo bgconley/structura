@@ -67,6 +67,16 @@ from lib.extraction.model_output_wrappers import (
 )
 from lib.extraction.region_envelope_projection import finalized_region_output
 
+_REVIEW_ONLY_RECEIPT_LIKE_SEMANTIC_TYPES = frozenset(
+    {
+        "invoice_line_item_table",
+        "receipt_line_item_table",
+        "receipt_payment_summary",
+        "retail_order_line_item_table",
+        "service_record_line_item_table",
+    }
+)
+
 
 def normalize_granite_region_output(
     *,
@@ -161,6 +171,9 @@ def normalize_granite_region_output(
             model_payload,
             model_output_schema_name=model_output_schema_name,
             evidence_context=evidence_context,
+            semantic_type=semantic_type,
+            target_schema=target_schema,
+            resolved_document_type=resolved_document_type,
         )
         return finalize(normalized, metadata)
     if schema_name == "invoice" and _has_flat_invoice_line_items(model_payload):
@@ -515,6 +528,9 @@ def _document_observation_output(
     *,
     model_output_schema_name: str | None,
     evidence_context: EvidenceContext | None,
+    semantic_type: str | None,
+    target_schema: str | None,
+    resolved_document_type: str | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     repairs: list[str] = []
     observations: list[dict[str, Any]] = []
@@ -530,7 +546,22 @@ def _document_observation_output(
             repairs.append("mapped_fields_array_to_observations")
         else:
             repairs.append("mapped_flat_fields_to_observations")
+    if _should_defer_review_only_receipt_like_observations(
+        model_output_schema_name=model_output_schema_name,
+        semantic_type=semantic_type,
+        target_schema=target_schema,
+        resolved_document_type=resolved_document_type,
+    ):
+        deferred_observation_count = len(observations)
+        repairs = ["deferred_review_only_receipt_like_observations"]
+        observations = []
+    else:
+        deferred_observation_count = 0
     confidence = payload.get("confidence") if isinstance(payload.get("confidence"), dict) else {}
+    output_metadata: dict[str, Any] = {"model_output_schema_name": model_output_schema_name}
+    if deferred_observation_count:
+        output_metadata["deferred_observation_count"] = deferred_observation_count
+        output_metadata["deferred_semantic_type"] = semantic_type
     return (
         {
             "schema_name": "document_observation",
@@ -539,17 +570,43 @@ def _document_observation_output(
             "observations": observations,
             "confidence": confidence,
             "created_at": datetime.now(UTC).isoformat(),
-            "metadata": {"model_output_schema_name": model_output_schema_name},
+            "metadata": output_metadata,
         },
         {
             "mapper": model_output_schema_name or "granite_generic_kvp.v1",
             "repairs": repairs,
+            **(
+                {"deferred_observation_count": deferred_observation_count}
+                if deferred_observation_count
+                else {}
+            ),
             "rejected_fields": _rejected_fields(
                 payload,
                 {"fields", "confidence", *{item["field_name"] for item in observations}},
             ),
         },
     )
+
+
+def _should_defer_review_only_receipt_like_observations(
+    *,
+    model_output_schema_name: str | None,
+    semantic_type: str | None,
+    target_schema: str | None,
+    resolved_document_type: str | None,
+) -> bool:
+    if model_output_schema_name != "granite_generic_kvp.v1":
+        return False
+    if (target_schema or "").strip().lower() != "document_observation":
+        return False
+    if (resolved_document_type or "").strip().lower() in {
+        "receipt",
+        "retail_order",
+        "service_record",
+        "invoice",
+    }:
+        return False
+    return (semantic_type or "").strip().lower() in _REVIEW_ONLY_RECEIPT_LIKE_SEMANTIC_TYPES
 
 
 def observation_dicts_from_payload(payload: dict[str, Any]) -> list[dict[str, Any]]:
