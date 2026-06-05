@@ -434,6 +434,64 @@ def test_semantic_service_uses_docling_table_targets_when_qwen_emits_no_regions(
     assert payload["metadata"]["docling_structural_target"]["source"] == "docling_table"
 
 
+def test_semantic_service_suppresses_weak_docling_table_duplicate_when_qwen_has_type() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    table_id = uuid4()
+    annotation_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="generic",
+        title="BH Photo order",
+        original_filename="BH Photo desktop tripod order.pdf",
+        text="BH Photo order number ship to item total",
+        tables=[
+            ParsedTableText(
+                table_id=table_id,
+                page_number=1,
+                table_index=1,
+                table_markdown="| item | total |",
+            )
+        ],
+    )
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        document_type="retail_order",
+        regions=[
+            SemanticRegionAnnotation(
+                semantic_type="retail_order_line_item_table",
+                priority="high",
+                granite_task="tables_json",
+                target_schema="receipt",
+                expected_fields=("item_description", "quantity", "line_total"),
+                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+                confidence=0.9,
+            )
+        ],
+    )
+    jobs = RecordingJobs()
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    payloads = [job["payload"] for job in jobs.created]
+    assert len(payloads) == 1
+    assert payloads[0]["semantic_type"] == "retail_order_line_item_table"
+    assert payloads[0]["metadata"].get("region_source") != "docling_structural"
+
+
 def test_semantic_service_routes_escrow_docling_tables_as_observations_not_receipts() -> None:
     document_id = uuid4()
     household_id = uuid4()

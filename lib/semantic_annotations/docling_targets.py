@@ -198,13 +198,20 @@ def _docling_structural_regions(
             table=table,
             audit=audit,
         )
+        table_signal = table_summary.table_signal if table_summary is not None else "unknown"
         table_region = _table_region(
             table,
             audit=audit,
-            table_signal=table_summary.table_signal if table_summary is not None else "unknown",
+            table_signal=table_signal,
             family=table_family,
         )
         if table_region is None:
+            continue
+        if _is_redundant_weak_table_region(
+            table_region,
+            table_signal=table_signal,
+            existing_semantic_types=existing_semantic_types,
+        ):
             continue
         regions.append(table_region)
 
@@ -315,6 +322,15 @@ def _table_region(
             "requires_full_page_image": True,
         },
     )
+
+
+def _is_redundant_weak_table_region(
+    region: SemanticRegionAnnotation,
+    *,
+    table_signal: str,
+    existing_semantic_types: set[str],
+) -> bool:
+    return table_signal == "weak" and region.semantic_type in existing_semantic_types
 
 
 def _base_metadata(
