@@ -77,7 +77,6 @@ def test_maybe_reconcile_semantic_annotation_persists_document_observation_aggre
             }
         ],
     )
-    monkeypatch.setattr(repo, "_current_document_extraction_json", lambda *args, **kwargs: {})
     monkeypatch.setattr(repo, "load_extraction_source", lambda _: _source(document_id))
     monkeypatch.setattr(
         repo,
@@ -139,7 +138,6 @@ def test_maybe_reconcile_semantic_annotation_rejects_raw_only_invoice_regions(
             }
         ],
     )
-    monkeypatch.setattr(repo, "_current_document_extraction_json", lambda *args, **kwargs: {})
     monkeypatch.setattr(repo, "load_extraction_source", lambda _: _source(document_id))
     monkeypatch.setattr(
         repo,
@@ -263,7 +261,6 @@ def test_maybe_reconcile_semantic_annotation_persists_medical_eob_claim_aggregat
             }
         ],
     )
-    monkeypatch.setattr(repo, "_current_document_extraction_json", lambda *args, **kwargs: {})
     monkeypatch.setattr(repo, "load_extraction_source", lambda _: _source(document_id))
     monkeypatch.setattr(
         repo,
@@ -369,7 +366,6 @@ def test_maybe_reconcile_semantic_annotation_persists_service_record_observation
             }
         ],
     )
-    monkeypatch.setattr(repo, "_current_document_extraction_json", lambda *args, **kwargs: {})
     monkeypatch.setattr(repo, "load_extraction_source", lambda _: _source(document_id))
     monkeypatch.setattr(
         repo,

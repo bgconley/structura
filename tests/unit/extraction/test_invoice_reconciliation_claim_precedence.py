@@ -54,7 +54,6 @@ def test_invoice_region_reconciliation_uses_claims_over_raw_payload() -> None:
                 ],
             ),
         ],
-        document_fallback={"invoice_number": "INV-typed"},
     )
 
     assert aggregate is not None
@@ -110,7 +109,6 @@ def test_invoice_region_reconciliation_ignores_conflicting_raw_payload() -> None
                 ],
             ),
         ],
-        document_fallback={"invoice_number": "INV-claims"},
     )
 
     assert aggregate is not None

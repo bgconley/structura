@@ -24,7 +24,6 @@ def reconcile_invoice_region_extractions(
     seller: dict[str, Any],
     created_at: datetime,
     regions: list[RegionExtraction],
-    document_fallback: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     line_items: list[dict[str, Any]] = []
     invoice: dict[str, Any] = {}
@@ -78,7 +77,6 @@ def reconcile_invoice_region_extractions(
         metadata["quality_outcome"] = combine_quality_outcomes(quality_outcomes)
     if reconciled_region_count == 0:
         return None
-    _merge_document_fallback(invoice, totals, document_fallback or {})
     if not line_items and not invoice and not totals:
         return None
     if not invoice.get("invoice_number"):
@@ -232,38 +230,6 @@ def _region_source_family(region: RegionExtraction) -> str:
         if isinstance(metadata, dict):
             value = metadata.get("source_family") or metadata.get("document_family")
     return normalized_text_key(value)
-
-
-def _merge_document_fallback(
-    invoice: dict[str, Any],
-    totals: dict[str, Any],
-    fallback: dict[str, Any],
-) -> None:
-    if not invoice.get("invoice_number"):
-        invoice_number = fallback.get("invoice_number") or fallback.get("invoice_no")
-        invoice_number = _clean_canonical_scalar(invoice_number)
-        if invoice_number:
-            invoice["invoice_number"] = str(invoice_number)
-    if not invoice.get("issued_on"):
-        issued_on = _local_date(fallback.get("date") or fallback.get("issued_on"))
-        if issued_on:
-            invoice["issued_on"] = issued_on
-    if "total" not in totals:
-        total = fallback.get("total_amount") or fallback.get("amount_due")
-        if isinstance(total, dict) and total.get("amount") is not None:
-            totals["total"] = total
-
-
-def _local_date(value: object) -> str | None:
-    if not isinstance(value, str) or not value.strip():
-        return None
-    text = value.strip()
-    for fmt in ("%Y-%m-%d", "%m/%d/%y", "%m/%d/%Y"):
-        try:
-            return datetime.strptime(text, fmt).date().isoformat()
-        except ValueError:
-            continue
-    return None
 
 
 def _renumber(line_items: list[dict[str, Any]]) -> list[dict[str, Any]]:

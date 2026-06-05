@@ -94,9 +94,6 @@ def test_invoice_region_reconciliation_preserves_line_items_and_payment_summary(
                 },
             ),
         ],
-        document_fallback={
-            "invoice_number": "6046058/1",
-        },
     )
 
     assert aggregate is not None
@@ -122,7 +119,7 @@ def test_invoice_region_reconciliation_preserves_line_items_and_payment_summary(
     ]
 
 
-def test_invoice_region_reconciliation_uses_document_level_invoice_fallback() -> None:
+def test_invoice_region_reconciliation_ignores_document_level_raw_invoice_fallback() -> None:
     document_id = uuid4()
 
     aggregate = reconcile_invoice_region_extractions(
@@ -148,15 +145,11 @@ def test_invoice_region_reconciliation_uses_document_level_invoice_fallback() ->
                 ],
             ),
         ],
-        document_fallback={
-            "invoice_number": "6046058/1",
-            "date": "04/25/23",
-        },
     )
 
     assert aggregate is not None
-    assert aggregate["invoice"]["invoice_number"] == "6046058/1"
-    assert aggregate["invoice"]["issued_on"] == "2023-04-25"
+    assert aggregate["invoice"] == {}
+    assert "invoice.invoice_number" in aggregate["metadata"]["missing_fields"]
 
 
 def test_invoice_region_reconciliation_does_not_fabricate_required_fields() -> None:
@@ -238,7 +231,6 @@ def test_invoice_region_reconciliation_collapses_duplicate_line_items_from_same_
                 ],
             ),
         ],
-        document_fallback={"invoice_number": "6046058/1"},
     )
 
     assert aggregate is not None

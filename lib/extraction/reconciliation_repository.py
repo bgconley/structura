@@ -64,15 +64,6 @@ def maybe_reconcile_semantic_annotation(
                 semantic_annotation_id=semantic_annotation_id,
                 schema_name=schema_name,
             )
-            document_fallback = (
-                _current_document_extraction_json(
-                    cur,
-                    document_id=document_id,
-                    schema_name=schema_name,
-                )
-                if aggregate_schema_name == "invoice"
-                else {}
-            )
     if expected_count == 0 or len(rows) < expected_count:
         return None
 
@@ -105,7 +96,6 @@ def maybe_reconcile_semantic_annotation(
         document_id=document_id,
         source=source,
         regions=regions,
-        document_fallback=document_fallback,
     )
     if aggregate_json is None:
         return None
@@ -179,7 +169,6 @@ def _reconcile_regions(
     document_id: UUID,
     source: ExtractionSourceDocument,
     regions: list[RegionExtraction],
-    document_fallback: dict[str, Any],
 ) -> dict[str, Any] | None:
     created_at = datetime.now(UTC)
     if schema_name == "invoice":
@@ -193,7 +182,6 @@ def _reconcile_regions(
             seller=seller,
             created_at=created_at,
             regions=regions,
-            document_fallback=document_fallback,
         )
     if schema_name == "document_observation":
         return reconcile_document_observation_region_extractions(
@@ -271,33 +259,6 @@ def _current_region_extraction_rows(
         (document_id, semantic_annotation_id, schema_name),
     )
     return list(cur.fetchall())
-
-
-def _current_document_extraction_json(
-    cur: Any,
-    *,
-    document_id: UUID,
-    schema_name: str,
-) -> dict[str, Any]:
-    cur.execute(
-        """
-        SELECT normalized_json
-        FROM document_extractions
-        WHERE document_id = %s
-          AND schema_name = %s
-          AND extraction_scope = 'document'
-          AND source_engine = 'granite_vision_3b'
-          AND is_current
-          AND status = 'completed'
-        ORDER BY created_at DESC
-        LIMIT 1
-        """,
-        (document_id, schema_name),
-    )
-    row = cur.fetchone()
-    if not row or not isinstance(row.get("normalized_json"), dict):
-        return {}
-    return dict(row["normalized_json"])
 
 
 def _force_aggregate_review(validation: ValidationReport) -> ValidationReport:
