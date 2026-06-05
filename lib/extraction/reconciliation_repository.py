@@ -34,6 +34,7 @@ from lib.extraction.repository import load_extraction_source, persist_extraction
 from lib.extraction.validators import validate_extraction_payload
 
 AGGREGATE_RECONCILIATION_SCHEMAS = {"invoice", "medical_eob", "document_observation"}
+OBSERVATION_AGGREGATE_CANONICAL_TARGETS = {"retail_order", "service_record"}
 
 
 def maybe_reconcile_semantic_annotation(
@@ -41,8 +42,13 @@ def maybe_reconcile_semantic_annotation(
     document_id: UUID,
     semantic_annotation_id: UUID | None,
     schema_name: str,
+    canonical_target_schema: str | None = None,
 ) -> PersistedExtraction | None:
-    if semantic_annotation_id is None or schema_name not in AGGREGATE_RECONCILIATION_SCHEMAS:
+    aggregate_schema_name = _aggregate_schema_name(
+        schema_name=schema_name,
+        canonical_target_schema=canonical_target_schema,
+    )
+    if semantic_annotation_id is None or aggregate_schema_name is None:
         return None
     with db_connection() as conn:
         with conn.cursor() as cur:
@@ -64,7 +70,7 @@ def maybe_reconcile_semantic_annotation(
                     document_id=document_id,
                     schema_name=schema_name,
                 )
-                if schema_name == "invoice"
+                if aggregate_schema_name == "invoice"
                 else {}
             )
     if expected_count == 0 or len(rows) < expected_count:
@@ -95,7 +101,7 @@ def maybe_reconcile_semantic_annotation(
 
     source = load_extraction_source(document_id)
     aggregate_json = _reconcile_regions(
-        schema_name=schema_name,
+        schema_name=aggregate_schema_name,
         document_id=document_id,
         source=source,
         regions=regions,
@@ -103,11 +109,16 @@ def maybe_reconcile_semantic_annotation(
     )
     if aggregate_json is None:
         return None
-    validation = validate_extraction_payload(schema_name, aggregate_json)
+    aggregate_json.setdefault("metadata", {})
+    if isinstance(aggregate_json["metadata"], dict) and aggregate_schema_name != schema_name:
+        aggregate_json["metadata"]["source_schema_name"] = schema_name
+        if canonical_target_schema not in (None, ""):
+            aggregate_json["metadata"]["canonical_target_schema"] = canonical_target_schema
+    validation = validate_extraction_payload(aggregate_schema_name, aggregate_json)
     validation = _force_aggregate_review(validation)
     aggregate_json["validation"] = validation.as_json()
     gateway_extraction = GatewayExtraction(
-        schema_name=schema_name,
+        schema_name=aggregate_schema_name,
         schema_version="v1",
         route=ModelRoute(
             source_engine="system",
@@ -122,6 +133,8 @@ def maybe_reconcile_semantic_annotation(
             "source": "phase8_5_region_reconciliation",
             "semanticAnnotationId": str(semantic_annotation_id),
             "regionExtractionIds": [str(region.extraction_id) for region in regions],
+            "sourceSchemaName": schema_name,
+            "canonicalTargetSchema": canonical_target_schema,
         },
         normalization_json={
             "mapper": "phase8_5_region_reconciler.v1",
@@ -133,19 +146,19 @@ def maybe_reconcile_semantic_annotation(
     )
     field_candidates = field_candidates_from_extraction(
         document_id=document_id,
-        schema_name=schema_name,
+        schema_name=aggregate_schema_name,
         payload=aggregate_json,
         validation=validation,
         source_engine=gateway_extraction.route.source_engine,
     )
     line_item_candidates = line_item_candidates_from_extraction(
-        schema_name=schema_name,
+        schema_name=aggregate_schema_name,
         payload=aggregate_json,
         validation=validation,
         source_engine=gateway_extraction.route.source_engine,
     )
     observation_candidates = observation_candidates_from_extraction(
-        schema_name=schema_name,
+        schema_name=aggregate_schema_name,
         payload=aggregate_json,
         validation=validation,
     )
@@ -194,6 +207,18 @@ def _reconcile_regions(
             created_at=created_at,
             regions=regions,
         )
+    return None
+
+
+def _aggregate_schema_name(
+    *,
+    schema_name: str,
+    canonical_target_schema: str | None,
+) -> str | None:
+    if schema_name in AGGREGATE_RECONCILIATION_SCHEMAS:
+        return schema_name
+    if canonical_target_schema in OBSERVATION_AGGREGATE_CANONICAL_TARGETS:
+        return "document_observation"
     return None
 
 

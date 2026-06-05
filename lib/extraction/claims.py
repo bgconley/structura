@@ -111,7 +111,7 @@ def claims_from_region_envelope(envelope: RegionExtractionEnvelope) -> list[Clai
                 document_id=envelope.document_id,
                 method=method,
                 ordinal=ordinal,
-                target_schema=envelope.target_schema or envelope.resolved_document_type,
+                target_schema=_claim_target_schema(envelope),
             )
         )
     for observation in envelope.observations:
@@ -257,6 +257,12 @@ def _line_item_prefix(target_schema: str | None) -> str:
     if target_schema in {"invoice", "receipt", "medical_eob", "service_record", "retail_order"}:
         return f"{target_schema}.line_item"
     return "line_item"
+
+
+def _claim_target_schema(envelope: RegionExtractionEnvelope) -> str | None:
+    if envelope.resolved_document_type in {"service_record", "retail_order"}:
+        return envelope.resolved_document_type
+    return envelope.target_schema or envelope.resolved_document_type
 
 
 def _anchor_from_ref(ref: EvidenceRef) -> ClaimAnchor | None:

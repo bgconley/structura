@@ -306,6 +306,140 @@ def test_maybe_reconcile_semantic_annotation_persists_medical_eob_claim_aggregat
     assert len(line_item_candidates) == 1
 
 
+def test_maybe_reconcile_semantic_annotation_persists_service_record_observation_aggregate(
+    monkeypatch,
+) -> None:
+    document_id = uuid4()
+    semantic_annotation_id = uuid4()
+    region_id = uuid4()
+    extraction_id = uuid4()
+    evidence = EvidenceRef(
+        document_id=str(document_id),
+        semantic_annotation_id=str(semantic_annotation_id),
+        semantic_region_id=str(region_id),
+        page_number=1,
+        table_id="service-table",
+        row_index=2,
+        source_engine="granite_vision_3b",
+    )
+    envelope = RegionExtractionEnvelope(
+        document_id=str(document_id),
+        semantic_annotation_id=str(semantic_annotation_id),
+        semantic_region_id=str(region_id),
+        resolved_document_type="service_record",
+        semantic_type="service_record_line_item_table",
+        target_schema="receipt",
+        model_output_schema_name="granite_service_record_line_items.v1",
+        line_items=[
+            RegionLineItem(
+                description="600 mile running-in check",
+                quantity=1.0,
+                unit_price=185.0,
+                net_amount=185.0,
+                currency_code="USD",
+                category_hint="service",
+                evidence=[evidence],
+                table_id="service-table",
+                row_index=2,
+                page_number=1,
+            )
+        ],
+    )
+    captured: dict[str, Any] = {}
+
+    monkeypatch.setattr(repo, "db_connection", lambda: _FakeConnection())
+    monkeypatch.setattr(repo, "_expected_region_job_count", lambda *args, **kwargs: 1)
+    monkeypatch.setattr(
+        repo,
+        "_current_region_extraction_rows",
+        lambda *args, **kwargs: [
+            {
+                "id": extraction_id,
+                "source_semantic_region_id": region_id,
+                "semantic_type": "service_record_line_item_table",
+                "normalized_json": {
+                    "schema_name": "receipt",
+                    "line_items": [
+                        {"description": "Raw receipt fallback must not drive aggregate"}
+                    ],
+                },
+                "normalization_json": {
+                    "regionEnvelope": envelope.model_dump(mode="json", exclude_none=True)
+                },
+            }
+        ],
+    )
+    monkeypatch.setattr(repo, "_current_document_extraction_json", lambda *args, **kwargs: {})
+    monkeypatch.setattr(repo, "load_extraction_source", lambda _: _source(document_id))
+    monkeypatch.setattr(
+        repo,
+        "persist_extraction_run",
+        lambda *args, **kwargs: _capture_persist(captured, *args, **kwargs),
+    )
+
+    persisted = repo.maybe_reconcile_semantic_annotation(
+        document_id=document_id,
+        semantic_annotation_id=semantic_annotation_id,
+        schema_name="receipt",
+        canonical_target_schema="service_record",
+    )
+
+    assert persisted is not None
+    extraction = cast(GatewayExtraction, captured["extraction"])
+    observation_candidates = cast(
+        list[ObservationCandidateFact],
+        captured["observation_candidates"],
+    )
+    aggregate = extraction.normalized_json
+    assert extraction.schema_name == "document_observation"
+    assert aggregate["schema_name"] == "document_observation"
+    assert aggregate["metadata"]["source_families"] == ["service_record"]
+    assert aggregate["metadata"]["source_schema_name"] == "receipt"
+    evidence_ref = [
+        {
+            "document_id": str(document_id),
+            "semantic_annotation_id": str(semantic_annotation_id),
+            "semantic_region_id": str(region_id),
+            "page_number": 1,
+            "table_id": "service-table",
+            "source_engine": "granite_vision_3b",
+            "row_index": 2,
+        }
+    ]
+    observations_by_field = {item["field_name"]: item for item in aggregate["observations"]}
+    assert set(observations_by_field) == {
+        "line_item.amount",
+        "line_item.category_hint",
+        "line_item.description",
+        "line_item.quantity",
+        "line_item.unit_price",
+    }
+    for observation in observations_by_field.values():
+        assert observation["family"] == "service_record"
+        assert observation["evidence"] == evidence_ref
+        assert "confidence" not in observation
+    assert observations_by_field["line_item.description"]["value"] == "600 mile running-in check"
+    assert observations_by_field["line_item.category_hint"]["source_text"] == "service"
+    assert observations_by_field["line_item.quantity"]["value_type"] == "number"
+    assert observations_by_field["line_item.amount"]["value"] == {
+        "amount": 185.0,
+        "currency": "USD",
+    }
+    assert (
+        observations_by_field["line_item.unit_price"]["source_text"]
+        == '{"amount":185.0,"currency":"USD"}'
+    )
+    assert [candidate.field_name for candidate in observation_candidates] == [
+        "line_item.amount",
+        "line_item.category_hint",
+        "line_item.description",
+        "line_item.quantity",
+        "line_item.unit_price",
+    ]
+    assert captured["field_candidates"] == []
+    assert captured["line_item_candidates"] == []
+
+
 class _FakeConnection:
     def __enter__(self) -> _FakeConnection:
         return self

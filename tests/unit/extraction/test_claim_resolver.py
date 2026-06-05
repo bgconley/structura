@@ -227,6 +227,135 @@ def test_medical_eob_claim_resolver_projects_registry_fields_and_service_lines()
     assert projection.quality_outcome == "extracted_cleanly"
 
 
+def test_service_record_claim_resolver_projects_registry_line_items() -> None:
+    anchor = ClaimAnchor(page_number=1, table_id="service-table", row_index=3)
+    description = _claim(
+        canonical_key="service_record.line_item.description",
+        typed_value="600 mile running-in check",
+        source_engine="granite",
+        anchor=anchor,
+        group_id="service-record-line-1",
+    )
+    quantity = _claim(
+        canonical_key="service_record.line_item.quantity",
+        typed_value=1.0,
+        source_engine="granite",
+        anchor=anchor,
+        group_id="service-record-line-1",
+    )
+    unit_price = _claim(
+        canonical_key="service_record.line_item.unit_price",
+        typed_value={"amount": 185.0, "currency": "USD"},
+        source_engine="granite",
+        anchor=anchor,
+        group_id="service-record-line-1",
+    )
+    amount = _claim(
+        canonical_key="service_record.line_item.amount",
+        typed_value={"amount": 185.0, "currency": "USD"},
+        source_engine="granite",
+        anchor=anchor,
+        group_id="service-record-line-1",
+    )
+    category_hint = _claim(
+        canonical_key="service_record.line_item.category_hint",
+        typed_value="service",
+        source_engine="granite",
+        anchor=anchor,
+        group_id="service-record-line-1",
+    )
+
+    projection = resolve_claims_for_family(
+        family="service_record",
+        claims=[description, quantity, unit_price, amount, category_hint],
+    )
+
+    assert projection.family == "service_record"
+    assert projection.line_items == [
+        {
+            "description": "600 mile running-in check",
+            "quantity": 1.0,
+            "unit_price": {"amount": 185.0, "currency": "USD"},
+            "amount": {"amount": 185.0, "currency": "USD"},
+            "category_hint": "service",
+            "evidence": [{"page_number": 1, "table_id": "service-table", "row_index": 3}],
+        }
+    ]
+    assert projection.quality_outcome == "extracted_cleanly"
+
+
+def test_retail_order_claim_resolver_projects_registry_fields_and_line_items() -> None:
+    anchor = ClaimAnchor(page_number=2, table_id="order-table", row_index=1)
+    merchant = _claim(
+        canonical_key="retail_order.merchant_name",
+        typed_value="Acme Parts",
+        source_engine="granite",
+        anchor=anchor,
+    )
+    order_number = _claim(
+        canonical_key="retail_order.order_number",
+        typed_value="ORDER-123",
+        source_engine="granite",
+        anchor=anchor,
+    )
+    total = _claim(
+        canonical_key="retail_order.total",
+        typed_value={"amount": 25.0, "currency": "USD"},
+        source_engine="granite",
+        anchor=anchor,
+    )
+    description = _claim(
+        canonical_key="retail_order.line_item.description",
+        typed_value="Replacement charging cable",
+        source_engine="granite",
+        anchor=anchor,
+        group_id="retail-order-line-1",
+    )
+    quantity = _claim(
+        canonical_key="retail_order.line_item.quantity",
+        typed_value=2.0,
+        source_engine="granite",
+        anchor=anchor,
+        group_id="retail-order-line-1",
+    )
+    unit_price = _claim(
+        canonical_key="retail_order.line_item.unit_price",
+        typed_value={"amount": 12.5, "currency": "USD"},
+        source_engine="granite",
+        anchor=anchor,
+        group_id="retail-order-line-1",
+    )
+    amount = _claim(
+        canonical_key="retail_order.line_item.amount",
+        typed_value={"amount": 25.0, "currency": "USD"},
+        source_engine="granite",
+        anchor=anchor,
+        group_id="retail-order-line-1",
+    )
+
+    projection = resolve_claims_for_family(
+        family="retail_order",
+        claims=[merchant, order_number, total, description, quantity, unit_price, amount],
+    )
+
+    assert projection.family == "retail_order"
+    assert projection.fields["order"] == {
+        "merchant_name": "Acme Parts",
+        "order_number": "ORDER-123",
+    }
+    assert projection.fields["totals"] == {"total": {"amount": 25.0, "currency": "USD"}}
+    assert projection.line_items == [
+        {
+            "description": "Replacement charging cable",
+            "quantity": 2.0,
+            "unit_price": {"amount": 12.5, "currency": "USD"},
+            "amount": {"amount": 25.0, "currency": "USD"},
+            "evidence": [{"page_number": 2, "table_id": "order-table", "row_index": 1}],
+        }
+    ]
+    assert projection.quality_outcome == "extracted_cleanly"
+
+
 def test_document_observation_claim_resolver_projects_claims_to_observations() -> None:
     anchor = ClaimAnchor(page_number=3, page_id="page-3", docling_element_ids=("el-9",))
     docling_address = _claim(

@@ -119,6 +119,9 @@ def process_next_extraction_job(
                     claimed.payload.get("semantic_annotation_id")
                 ),
                 schema_name=schema_name,
+                canonical_target_schema=_optional_str(
+                    claimed.payload.get("canonical_target_schema")
+                ),
             )
             completed = job_service.complete_job(
                 job_id=claimed.state.job_id,

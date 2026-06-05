@@ -148,3 +148,87 @@ def test_receipt_line_item_claims_use_family_specific_keys() -> None:
         "receipt.line_item.unit_price",
         "receipt.line_item.amount",
     ]
+
+
+def test_receipt_compatible_service_record_claims_preserve_canonical_family() -> None:
+    document_id = uuid4()
+    region_id = uuid4()
+    evidence = EvidenceRef(
+        document_id=str(document_id),
+        semantic_region_id=str(region_id),
+        page_number=1,
+        table_id="service-table",
+        row_index=4,
+        source_engine="granite_vision_3b",
+    )
+    envelope = RegionExtractionEnvelope(
+        document_id=str(document_id),
+        semantic_region_id=str(region_id),
+        resolved_document_type="service_record",
+        semantic_type="service_record_line_item_table",
+        target_schema="receipt",
+        model_output_schema_name="granite_service_record_line_items.v1",
+        line_items=[
+            RegionLineItem(
+                description="600 mile running-in check",
+                quantity=1.0,
+                unit_price=185.0,
+                net_amount=185.0,
+                currency_code="USD",
+                category_hint="service",
+                evidence=[evidence],
+                table_id="service-table",
+                row_index=4,
+                page_number=1,
+            )
+        ],
+    )
+
+    assert [claim.canonical_key for claim in claims_from_region_envelope(envelope)] == [
+        "service_record.line_item.description",
+        "service_record.line_item.quantity",
+        "service_record.line_item.unit_price",
+        "service_record.line_item.amount",
+        "service_record.line_item.category_hint",
+    ]
+
+
+def test_receipt_compatible_retail_order_claims_preserve_canonical_family() -> None:
+    document_id = uuid4()
+    region_id = uuid4()
+    evidence = EvidenceRef(
+        document_id=str(document_id),
+        semantic_region_id=str(region_id),
+        page_number=2,
+        table_id="order-table",
+        row_index=1,
+        source_engine="granite_vision_3b",
+    )
+    envelope = RegionExtractionEnvelope(
+        document_id=str(document_id),
+        semantic_region_id=str(region_id),
+        resolved_document_type="retail_order",
+        semantic_type="retail_order_line_item_table",
+        target_schema="receipt",
+        model_output_schema_name="granite_retail_order.v1",
+        line_items=[
+            RegionLineItem(
+                description="Replacement charging cable",
+                quantity=2.0,
+                unit_price=12.5,
+                net_amount=25.0,
+                currency_code="USD",
+                evidence=[evidence],
+                table_id="order-table",
+                row_index=1,
+                page_number=2,
+            )
+        ],
+    )
+
+    assert [claim.canonical_key for claim in claims_from_region_envelope(envelope)] == [
+        "retail_order.line_item.description",
+        "retail_order.line_item.quantity",
+        "retail_order.line_item.unit_price",
+        "retail_order.line_item.amount",
+    ]

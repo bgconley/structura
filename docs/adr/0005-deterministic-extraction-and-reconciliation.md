@@ -171,12 +171,19 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   and document-observation aggregates persist the resolver outcome in metadata, so
   document-quality uncertainty is represented as review/quality state rather than an
   operational pipeline failure.
+- 2026-06-05: Claim family registry data moved to
+  `lib/extraction/claim_registry.py` and expanded beyond invoice, receipt, and
+  medical EOB to service records and retail orders. Receipt-compatible Granite
+  routes now preserve canonical `service_record.*` and `retail_order.*` Claim keys
+  instead of collapsing them into receipt keys, and service/retail canonical targets
+  without first-class app schemas reconcile into review-only `document_observation`
+  aggregates with source-schema metadata.
 
 ## Deferred Work
 
 - Plan-stage stochasticity (Qwen routing variance) is bounded by greedy/low-temperature
   decoding, Docling-anchored region identity, and treating plan drift as a quality
   signal; a fully deterministic plan is out of scope.
-- Remaining migration order (highest leverage first): (1) expand the resolver registry
-  beyond invoice, receipt, and medical EOB while retiring raw-payload compatibility
-  paths; (2) refactor schemas into fragments+registry.
+- Remaining migration order (highest leverage first): (1) keep expanding the resolver
+  registry while retiring raw-payload compatibility paths; (2) refactor schemas into
+  fragments+registry.
