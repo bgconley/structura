@@ -20,11 +20,10 @@ def test_semantic_annotation_worker_processes_semantic_annotate_job() -> None:
             document_id=document_id,
             household_id=household_id,
             payload={
-                "quality_mode": "high_quality",
+                "quality_mode": "smart",
                 "requested_by": "reviewer",
-                "allow_8b_rescue": True,
                 "requested_by_user_id": str(uuid4()),
-                "user_intent_reason": "User allowed one 8B rescue.",
+                "user_intent_reason": "User requested Smart Parse.",
             },
         )
     )
@@ -43,11 +42,11 @@ def test_semantic_annotation_worker_processes_semantic_annotate_job() -> None:
     assert service.calls == [
         {
             "document_id": document_id,
-            "quality_mode": "high_quality",
+            "quality_mode": "smart",
             "requested_by": "reviewer",
-            "allow_8b_rescue": True,
+            "allow_8b_rescue": False,
             "requested_by_user_id": UUID(job_service.claimed.payload["requested_by_user_id"]),
-            "user_intent_reason": "User allowed one 8B rescue.",
+            "user_intent_reason": "User requested Smart Parse.",
         }
     ]
     assert job_service.completed == [

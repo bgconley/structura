@@ -55,7 +55,7 @@ def test_private_corpus_default_actor_matches_semantic_job_contract(
     assert payload["requested_by"] == args.requested_by
     assert payload["quality_mode"] == "smart"
     assert payload["semantic_quality_mode"] == "smart"
-    assert payload["allow_8b_rescue"] is False
+    assert "allow_8b_rescue" not in payload
 
 
 def test_private_corpus_manifest_argument_is_supported_without_committing_private_paths(

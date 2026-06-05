@@ -11,8 +11,7 @@
     "created_at",
     "document_id",
     "quality_mode",
-    "semantic_quality_mode",
-    "allow_8b_rescue"
+    "semantic_quality_mode"
   ],
   "properties": {
     "schema_name": {
@@ -40,10 +39,6 @@
     "semantic_quality_mode": {
       "type": "string",
       "enum": ["smart"]
-    },
-    "allow_8b_rescue": {
-      "type": "boolean",
-      "default": false
     },
     "requested_by": {
       "type": "string",

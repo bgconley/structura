@@ -142,23 +142,14 @@
     "semantic_quality_mode": {
       "type": "string",
       "enum": [
-        "smart",
-        "high_quality"
+        "smart"
       ]
-    },
-    "allow_8b_rescue": {
-      "type": "boolean",
-      "default": false
     },
     "requested_by_user_id": {
       "$ref": "../schemas/common_defs.schema.json#/$defs/uuid"
     },
     "user_intent_reason": {
       "type": "string"
-    },
-    "semantic_rescue": {
-      "type": "boolean",
-      "default": false
     }
   }
 }

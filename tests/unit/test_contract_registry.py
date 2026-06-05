@@ -312,9 +312,8 @@ def test_all_job_event_schemas_validate_representative_payloads() -> None:
             "semantic_type": "invoice_line_item_table",
             "semantic_expected_fields": ["line_items"],
             "semantic_quality_mode": "smart",
-            "allow_8b_rescue": False,
             "requested_by_user_id": UUID_1,
-            "user_intent_reason": "User allowed one 8B rescue.",
+            "user_intent_reason": "User requested extraction.",
         },
         "semantic_annotate_document_job.v1.schema.json": {
             "schema_name": "semantic_annotate_document_job",
@@ -324,7 +323,6 @@ def test_all_job_event_schemas_validate_representative_payloads() -> None:
             "document_id": UUID_2,
             "quality_mode": "smart",
             "semantic_quality_mode": "smart",
-            "allow_8b_rescue": False,
             "requested_by": "system",
             "requested_by_user_id": UUID_1,
             "user_intent_reason": "Default Smart Parse.",
@@ -374,6 +372,48 @@ def test_semantic_annotation_job_contract_is_smart_only() -> None:
             "semantic_annotate_document_job.v1.schema.json",
             payload,
         )
+
+
+def test_phase8_5_event_contracts_reject_removed_rescue_fields() -> None:
+    registry = ContractRegistry.load("contracts")
+    semantic_payload = {
+        "schema_name": "semantic_annotate_document_job",
+        "schema_version": "v1",
+        "job_id": UUID_1,
+        "created_at": TIMESTAMP,
+        "document_id": UUID_2,
+        "quality_mode": "smart",
+        "semantic_quality_mode": "smart",
+        "allow_8b_rescue": False,
+    }
+    extract_payload = {
+        "schema_name": "extract_document_job",
+        "schema_version": "v1",
+        "job_id": UUID_1,
+        "created_at": TIMESTAMP,
+        "attempt": 1,
+        "priority": 5,
+        "document_id": UUID_2,
+        "target_schema_name": "invoice",
+        "target_schema_version": "invoice.v1",
+        "semantic_quality_mode": "smart",
+        "allow_8b_rescue": False,
+        "semantic_rescue": False,
+    }
+    high_quality_extract = {
+        **extract_payload,
+        "semantic_quality_mode": "high_quality",
+    }
+    high_quality_extract.pop("allow_8b_rescue")
+    high_quality_extract.pop("semantic_rescue")
+
+    for schema_name, payload in (
+        ("semantic_annotate_document_job.v1.schema.json", semantic_payload),
+        ("extract_document_job.v1.schema.json", extract_payload),
+        ("extract_document_job.v1.schema.json", high_quality_extract),
+    ):
+        with pytest.raises(ValidationError):
+            registry.validate_event_instance(schema_name, payload)
 
 
 def test_phase8_5_semantic_annotation_contract_has_qwen2b_and_response_schema() -> None:

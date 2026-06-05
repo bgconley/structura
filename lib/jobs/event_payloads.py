@@ -39,6 +39,8 @@ def build_extract_document_job_payload(
     semantic_rescue: bool = False,
     metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    if semantic_quality_mode not in (None, "smart") or allow_8b_rescue or semantic_rescue:
+        raise ValueError("Removed high-quality/rescue semantic controls cannot be emitted.")
     payload = _without_none(
         {
             "schema_name": "extract_document_job",
@@ -71,10 +73,8 @@ def build_extract_document_job_payload(
             "contract_resolution_reason": contract_resolution_reason,
             "region_envelope_version": region_envelope_version,
             "semantic_quality_mode": semantic_quality_mode,
-            "allow_8b_rescue": allow_8b_rescue,
             "requested_by_user_id": (str(requested_by_user_id) if requested_by_user_id else None),
             "user_intent_reason": user_intent_reason,
-            "semantic_rescue": semantic_rescue or None,
             "metadata": metadata,
         }
     )
@@ -123,6 +123,8 @@ def build_semantic_annotate_document_job_payload(
     source_semantic_region_id: UUID | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    if quality_mode != "smart" or semantic_quality_mode not in (None, "smart") or allow_8b_rescue:
+        raise ValueError("Removed high-quality/rescue semantic controls cannot be emitted.")
     payload = _without_none(
         {
             "schema_name": "semantic_annotate_document_job",
@@ -131,8 +133,7 @@ def build_semantic_annotate_document_job_payload(
             "created_at": _now(),
             "document_id": str(document_id),
             "quality_mode": quality_mode,
-            "semantic_quality_mode": semantic_quality_mode or _semantic_quality_mode(quality_mode),
-            "allow_8b_rescue": allow_8b_rescue,
+            "semantic_quality_mode": semantic_quality_mode or "smart",
             "requested_by": requested_by,
             "requested_by_user_id": (str(requested_by_user_id) if requested_by_user_id else None),
             "user_intent_reason": user_intent_reason,
@@ -152,12 +153,6 @@ def build_semantic_annotate_document_job_payload(
 
 def _contract_priority(pipeline_priority: int) -> int:
     return max(1, min(10, round(pipeline_priority / 10)))
-
-
-def _semantic_quality_mode(quality_mode: str) -> str:
-    if quality_mode == "high_quality":
-        return "high_quality"
-    return "smart"
 
 
 def _now() -> str:

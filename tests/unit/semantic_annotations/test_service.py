@@ -75,7 +75,8 @@ def test_semantic_service_persists_manifest_and_queues_grounded_granite_jobs() -
     assert payload["contract_resolution_reason"] == "exact_contract"
     assert payload["region_envelope_version"] == REGION_ENVELOPE_VERSION
     assert payload["semantic_quality_mode"] == "smart"
-    assert payload["allow_8b_rescue"] is False
+    assert "allow_8b_rescue" not in payload
+    assert "semantic_rescue" not in payload
     assert payload["metadata"]["run_id"] == "phase85-20260604-smoke-001"
 
 
