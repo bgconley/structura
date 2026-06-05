@@ -160,6 +160,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   projected from anchored Claims into payer, patient, claim, financial summary, and
   service-line contract fields while contradictory raw region `normalized_json` remains
   outside the aggregate path.
+- 2026-06-05: Repeatability fingerprinting for `canonicalOutput` now hashes a
+  deterministic canonical projection of field, line-item, and observation values
+  instead of full runtime candidate rows. Candidate lineage, model schema names,
+  confidence drift, source engine, and candidate fingerprints remain separate runtime
+  quality/lineage signals rather than canonical-output identity.
 
 ## Deferred Work
 
@@ -168,5 +173,5 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   signal; a fully deterministic plan is out of scope.
 - Remaining migration order (highest leverage first): (1) expand the resolver registry
   beyond invoice, receipt, and medical EOB while retiring raw-payload compatibility
-  paths; (2) refactor schemas into fragments+registry; (3) re-point repeatability
-  fingerprints; (4) emit the quality-outcome vocabulary.
+  paths; (2) refactor schemas into fragments+registry; (3) emit the quality-outcome
+  vocabulary.

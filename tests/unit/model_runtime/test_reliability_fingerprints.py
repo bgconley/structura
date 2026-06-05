@@ -175,6 +175,70 @@ def test_repeatability_fingerprints_ignore_unselected_raw_regions() -> None:
     assert first["semanticRegions"] == second["semanticRegions"]
 
 
+def test_repeatability_canonical_output_ignores_candidate_lineage_and_confidence_noise() -> None:
+    first_document = _document("doc-1")
+    second_document = deepcopy(first_document)
+    first_document["fields"][0].update(
+        {
+            "confidence": 0.99,
+            "source_engine": "granite_vision_3b",
+            "candidate_fingerprint": "candidate-fp-run-a",
+        }
+    )
+    second_document["fields"][0].update(
+        {
+            "confidence": 0.71,
+            "source_engine": "granite_vision_3b",
+            "candidate_fingerprint": "candidate-fp-run-b",
+        }
+    )
+    first_document["lineItems"][0].update(
+        {
+            "confidence": 0.98,
+            "source_engine": "granite_vision_3b",
+            "candidate_fingerprint": "line-fp-run-a",
+        }
+    )
+    second_document["lineItems"][0].update(
+        {
+            "confidence": 0.64,
+            "source_engine": "granite_vision_3b",
+            "candidate_fingerprint": "line-fp-run-b",
+        }
+    )
+    first_document["observations"] = [
+        {
+            "observation_family": "service_record",
+            "field_name": "odometer",
+            "value": "600 miles",
+            "value_type": "text",
+            "status": "needs_review",
+            "confidence": 0.9,
+            "source_engine": "granite_vision_3b",
+            "model_output_schema_name": "granite_generic_kvp.v1",
+            "candidate_fingerprint": "observation-fp-run-a",
+        }
+    ]
+    second_document["observations"] = [
+        {
+            "observation_family": "service_record",
+            "field_name": "odometer",
+            "value": "600 miles",
+            "value_type": "text",
+            "status": "needs_review",
+            "confidence": 0.75,
+            "source_engine": "granite_vision_3b",
+            "model_output_schema_name": "granite_generic_kvp.v1",
+            "candidate_fingerprint": "observation-fp-run-b",
+        }
+    ]
+
+    first = repeatability_fingerprints([first_document], {"rejectionReasons": {}})
+    second = repeatability_fingerprints([second_document], {"rejectionReasons": {}})
+
+    assert first["canonicalOutput"] == second["canonicalOutput"]
+
+
 def _document(document_id: str) -> dict[str, Any]:
     suffix = document_id[-1]
     return {

@@ -77,9 +77,15 @@ def repeatability_fingerprints(
         "candidateFingerprints": fingerprint(candidate_fingerprints),
         "canonicalOutput": fingerprint(
             {
-                "fields": _stable_rows(all_rows(documents, "fields")),
-                "lineItems": _stable_rows(all_rows(documents, "lineItems")),
-                "observations": _stable_rows(all_rows(documents, "observations")),
+                "fields": _stable_rows(
+                    _canonical_field_row(row) for row in all_rows(documents, "fields")
+                ),
+                "lineItems": _stable_rows(
+                    _canonical_line_item_row(row) for row in all_rows(documents, "lineItems")
+                ),
+                "observations": _stable_rows(
+                    _canonical_observation_row(row) for row in all_rows(documents, "observations")
+                ),
             }
         ),
         "reviewTasks": fingerprint(
@@ -95,6 +101,60 @@ def repeatability_fingerprints(
 
 def _stable_rows(rows: Any) -> list[Any]:
     return sorted((json_safe(row) for row in rows), key=fingerprint)
+
+
+def _canonical_field_row(row: dict[str, Any]) -> dict[str, Any]:
+    payload = select_values(row, ("field_path", "ordinal", "value_type", "status"))
+    value = get_value(row, "value", "value_json", "valueJson")
+    if value is not None:
+        payload["value"] = value
+    currency = get_value(row, "currency_code", "currencyCode", "currency")
+    if currency not in (None, ""):
+        payload["currency_code"] = currency
+    return payload
+
+
+def _canonical_line_item_row(row: dict[str, Any]) -> dict[str, Any]:
+    payload = select_values(
+        row,
+        (
+            "ordinal",
+            "line_item_type",
+            "description",
+            "code",
+            "service_date",
+            "quantity",
+            "unit",
+            "unit_price",
+            "gross_amount",
+            "discount_amount",
+            "tax_amount",
+            "net_amount",
+            "category_hint",
+            "status",
+        ),
+    )
+    currency = get_value(row, "currency_code", "currencyCode", "currency")
+    if currency not in (None, ""):
+        payload["currency_code"] = currency
+    return payload
+
+
+def _canonical_observation_row(row: dict[str, Any]) -> dict[str, Any]:
+    payload = select_values(
+        row,
+        (
+            "observation_family",
+            "field_name",
+            "value_type",
+            "status",
+            "semantic_type",
+        ),
+    )
+    value = get_value(row, "value", "value_json", "valueJson")
+    if value is not None:
+        payload["value"] = value
+    return payload
 
 
 def _selected_semantic_region_rows(documents: list[dict[str, Any]]) -> list[dict[str, Any]]:
