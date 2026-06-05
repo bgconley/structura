@@ -23,6 +23,7 @@ class ClaimArithmeticInvariant:
     target_key: str
     addend_keys: tuple[str, ...]
     reason_code: str
+    currency_reason_code: str = "cross_field_currency_conflict"
 
 
 @dataclass(frozen=True)

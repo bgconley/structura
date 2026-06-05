@@ -234,11 +234,26 @@ def _apply_arithmetic_invariants(
             _claim_money_amount(selected_claims.get(addend_key))
             for addend_key in invariant.addend_keys
         ]
+        currencies = [
+            _claim_money_currency(claim)
+            for claim in (
+                target_claim,
+                *(selected_claims.get(addend_key) for addend_key in invariant.addend_keys),
+            )
+        ]
         if (
             target_claim is None
             or target_amount is None
             or any(amount is None for amount in addend_amounts)
         ):
+            continue
+        if _has_currency_conflict(currencies):
+            updated = _demote_decision(
+                decisions=updated,
+                canonical_key=invariant.target_key,
+                selected_claim_id=target_claim.claim_id,
+                reason_code=invariant.currency_reason_code,
+            )
             continue
         expected = sum((amount for amount in addend_amounts if amount is not None), Decimal("0"))
         if target_amount == expected:
@@ -298,6 +313,20 @@ def _claim_money_amount(claim: Claim | None) -> Decimal | None:
         return Decimal(str(amount)).quantize(Decimal("0.01"))
     except (InvalidOperation, ValueError):
         return None
+
+
+def _claim_money_currency(claim: Claim | None) -> str | None:
+    if claim is None or not isinstance(claim.typed_value, dict):
+        return None
+    currency = claim.typed_value.get("currency")
+    if currency in (None, ""):
+        return None
+    return str(currency).upper()
+
+
+def _has_currency_conflict(currencies: list[str | None]) -> bool:
+    explicit = {currency for currency in currencies if currency is not None}
+    return len(explicit) > 1
 
 
 def _claim_sort_key(claim: Claim) -> tuple[int, float, str]:

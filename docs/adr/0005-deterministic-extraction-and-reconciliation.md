@@ -235,6 +235,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   Invoice `subtotal + tax_total == total_amount` is checked after source
   precedence selection, and a selected inconsistent total is demoted to
   `needs_review` with `cross_field_arithmetic_conflict`.
+- 2026-06-05: Money invariants now also check explicit currency consistency.
+  A numerically balanced invoice total is still demoted to `needs_review` with
+  `cross_field_currency_conflict` when the selected subtotal, tax, and total
+  Claims use conflicting currencies.
 
 ## Deferred Work
 
