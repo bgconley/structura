@@ -1127,7 +1127,18 @@ def test_candidate_fingerprint_ignores_volatile_evidence_ids() -> None:
     first_candidate = CandidateFact(
         field_path="receipt.transaction.total",
         value_type="money",
-        value={"amount": 120.32, "currency": "USD"},
+        value={
+            "amount": 120.32,
+            "currency": "USD",
+            "evidence": [
+                {
+                    "document_id": str(first_context.document_id),
+                    "page_id": str(uuid4()),
+                    "semantic_region_id": str(first_context.semantic_region_id),
+                    "table_id": str(uuid4()),
+                }
+            ],
+        },
         currency="USD",
         evidence=[
             {
@@ -1142,7 +1153,18 @@ def test_candidate_fingerprint_ignores_volatile_evidence_ids() -> None:
     second_candidate = CandidateFact(
         field_path="receipt.transaction.total",
         value_type="money",
-        value={"amount": 120.32, "currency": "USD"},
+        value={
+            "amount": 120.32,
+            "currency": "USD",
+            "evidence": [
+                {
+                    "document_id": str(second_context.document_id),
+                    "page_id": str(uuid4()),
+                    "semantic_region_id": str(second_context.semantic_region_id),
+                    "table_id": str(uuid4()),
+                }
+            ],
+        },
         currency="USD",
         evidence=[
             {

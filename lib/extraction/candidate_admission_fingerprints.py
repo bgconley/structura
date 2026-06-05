@@ -185,6 +185,7 @@ def _normalized_json_value(value: Any) -> Any:
         return {
             str(key): _normalized_json_value(item)
             for key, item in sorted(value.items(), key=lambda pair: str(pair[0]))
+            if _normalized_text(key) != "evidence"
         }
     if isinstance(value, (list, tuple, set)):
         return [_normalized_json_value(item) for item in value]

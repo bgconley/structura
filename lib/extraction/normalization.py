@@ -493,12 +493,13 @@ def _money_candidate(
         evidence = _evidence(value)
     if require_concrete_evidence and not has_concrete_evidence(evidence):
         return []
+    money_value = _money_value(value)
     return [
         CandidateFact(
             field_path=field_path,
             value_type="money",
-            value=value,
-            currency=value.get("currency"),
+            value=money_value,
+            currency=money_value.get("currency"),
             evidence=evidence,
             confidence=confidence,
             authority_weight=AUTHORITY_WEIGHTS.get(source_engine, 0.5),
@@ -506,6 +507,10 @@ def _money_candidate(
             status=status if has_concrete_evidence(evidence) else "needs_review",
         )
     ]
+
+
+def _money_value(value: dict[str, Any]) -> dict[str, Any]:
+    return {"amount": value.get("amount"), "currency": value.get("currency")}
 
 
 def _line_items(

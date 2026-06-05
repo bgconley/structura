@@ -219,6 +219,11 @@ def test_receipt_payment_summary_concretizes_region_evidence_for_candidates() ->
         "receipt.transaction.total",
     ]
     assert all(has_concrete_evidence(candidate.evidence) for candidate in candidates)
+    total = next(
+        candidate for candidate in candidates if candidate.field_path == "receipt.transaction.total"
+    )
+    assert total.value == {"amount": 4.65, "currency": "USD"}
+    assert "evidence" not in total.value
 
 
 def test_receipt_payment_summary_persists_region_envelope_projection() -> None:
