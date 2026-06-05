@@ -239,6 +239,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   A numerically balanced invoice total is still demoted to `needs_review` with
   `cross_field_currency_conflict` when the selected subtotal, tax, and total
   Claims use conflicting currencies.
+- 2026-06-05: Claim invariant evaluation moved into
+  `lib/extraction/claim_invariants.py`, and invoice line-item rollups are now
+  checked deterministically. A selected subtotal is demoted to `needs_review`
+  with `line_item_sum_conflict` when it disagrees with the resolved sum of
+  invoice line-item amounts.
 
 ## Deferred Work
 

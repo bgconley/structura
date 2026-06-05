@@ -27,12 +27,21 @@ class ClaimArithmeticInvariant:
 
 
 @dataclass(frozen=True)
+class ClaimLineItemSumInvariant:
+    target_key: str
+    line_item_field: str
+    reason_code: str
+    currency_reason_code: str = "cross_field_currency_conflict"
+
+
+@dataclass(frozen=True)
 class ClaimFamilyRegistry:
     family: str
     field_projections: tuple[ClaimFieldProjection, ...]
     line_item_projection: ClaimLineItemProjection | None = None
     required_keys: tuple[str, ...] = ()
     arithmetic_invariants: tuple[ClaimArithmeticInvariant, ...] = ()
+    line_item_sum_invariants: tuple[ClaimLineItemSumInvariant, ...] = ()
 
 
 INVOICE_CLAIM_REGISTRY = ClaimFamilyRegistry(
@@ -55,6 +64,13 @@ INVOICE_CLAIM_REGISTRY = ClaimFamilyRegistry(
             target_key="invoice.total_amount",
             addend_keys=("invoice.subtotal", "invoice.tax_total"),
             reason_code="cross_field_arithmetic_conflict",
+        ),
+    ),
+    line_item_sum_invariants=(
+        ClaimLineItemSumInvariant(
+            target_key="invoice.subtotal",
+            line_item_field="amount",
+            reason_code="line_item_sum_conflict",
         ),
     ),
     line_item_projection=ClaimLineItemProjection(

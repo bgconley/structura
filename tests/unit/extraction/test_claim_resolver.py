@@ -209,6 +209,60 @@ def test_invoice_claim_resolver_demotes_currency_conflicts_to_review() -> None:
     assert projection.quality_outcome == "needs_human_review"
 
 
+def test_invoice_claim_resolver_demotes_line_item_sum_conflicts_to_review() -> None:
+    anchor = ClaimAnchor(page_number=1, table_id="invoice-table", row_index=1)
+    invoice_number = _claim(
+        canonical_key="invoice.invoice_number",
+        typed_value="INV-42",
+        source_engine="granite",
+        anchor=anchor,
+    )
+    subtotal = _claim(
+        canonical_key="invoice.subtotal",
+        typed_value={"amount": 100.0, "currency": "USD"},
+        source_engine="granite",
+        anchor=anchor,
+    )
+    first_line = _claim(
+        canonical_key="invoice.line_item.amount",
+        typed_value={"amount": 40.0, "currency": "USD"},
+        source_engine="granite",
+        anchor=ClaimAnchor(page_number=1, table_id="invoice-table", row_index=2),
+        group_id="line-1",
+    )
+    second_line = _claim(
+        canonical_key="invoice.line_item.amount",
+        typed_value={"amount": 30.0, "currency": "USD"},
+        source_engine="granite",
+        anchor=ClaimAnchor(page_number=1, table_id="invoice-table", row_index=3),
+        group_id="line-2",
+    )
+    total = _claim(
+        canonical_key="invoice.total_amount",
+        typed_value={"amount": 100.0, "currency": "USD"},
+        source_engine="granite",
+        anchor=anchor,
+    )
+
+    projection = resolve_claims_for_family(
+        family="invoice",
+        claims=[invoice_number, subtotal, first_line, second_line, total],
+    )
+
+    assert projection.fields["totals"]["subtotal"] == {"amount": 100.0, "currency": "USD"}
+    assert [item["amount"] for item in projection.line_items] == [
+        {"amount": 40.0, "currency": "USD"},
+        {"amount": 30.0, "currency": "USD"},
+    ]
+    assert {
+        (decision.canonical_key, decision.decision, decision.reason_code)
+        for decision in projection.decisions
+    } >= {
+        ("invoice.subtotal", "needs_review", "line_item_sum_conflict"),
+    }
+    assert projection.quality_outcome == "needs_human_review"
+
+
 def test_medical_eob_claim_resolver_projects_registry_fields_and_service_lines() -> None:
     anchor = ClaimAnchor(
         page_number=2, table_id="00000000-0000-0000-0000-000000000001", row_index=4
