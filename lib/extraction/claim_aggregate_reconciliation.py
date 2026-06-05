@@ -37,7 +37,17 @@ def resolve_claim_regions_for_family(
                 }
             )
             continue
-        claims.extend(region_claims)
+        region_families = source_families_from_claims(region_claims)
+        if not _family_is_compatible(requested_family=family, source_families=region_families):
+            metadata.setdefault("skipped_region_extractions", []).append(
+                {
+                    **_region_reference(region),
+                    "reason": "aggregate_incompatible_source_family",
+                    "source_families": sorted(region_families),
+                }
+            )
+            continue
+        claims.extend(_compatible_claims(family=family, claims=region_claims))
         metadata["region_extractions"].append(_region_reference(region))
         region_count += 1
 
@@ -69,6 +79,18 @@ def source_families_from_claims(claims: Iterable[Claim]) -> set[str]:
         if separator and family:
             families.add(family)
     return families
+
+
+def _family_is_compatible(*, requested_family: str, source_families: set[str]) -> bool:
+    if requested_family == "document_observation":
+        return bool(source_families)
+    return bool(source_families) and requested_family in source_families
+
+
+def _compatible_claims(*, family: str, claims: tuple[Claim, ...]) -> tuple[Claim, ...]:
+    if family == "document_observation":
+        return claims
+    return tuple(claim for claim in claims if claim.canonical_key.startswith(f"{family}."))
 
 
 def _region_reference(region: RegionExtraction) -> dict[str, str]:

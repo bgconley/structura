@@ -107,3 +107,76 @@ def test_claim_region_projection_records_unclaimed_regions_with_family_reason() 
         }
     ]
     assert projection.metadata["source_families"] == ["real_estate_title"]
+
+
+def test_claim_region_projection_skips_incompatible_first_class_regions() -> None:
+    document_id = uuid4()
+    invoice_region_id = uuid4()
+    eob_region_id = uuid4()
+    invoice_extraction_id = uuid4()
+
+    projection = resolve_claim_regions_for_family(
+        family="medical_eob",
+        missing_claims_reason="claims_required_for_medical_eob_aggregate",
+        regions=[
+            RegionExtraction(
+                extraction_id=invoice_extraction_id,
+                semantic_region_id=invoice_region_id,
+                semantic_type="invoice_line_item_table",
+                normalized_json={"schema_name": "medical_eob"},
+                claims=(
+                    Claim(
+                        claim_id="claim-invoice-total",
+                        document_id=str(document_id),
+                        source_engine="granite",
+                        anchor=ClaimAnchor(
+                            page_number=1,
+                            semantic_region_id=str(invoice_region_id),
+                        ),
+                        canonical_key="invoice.total_amount",
+                        raw_value='{"amount":42.0,"currency":"USD"}',
+                        typed_value={"amount": 42.0, "currency": "USD"},
+                        value_type="money",
+                        confidence=0.9,
+                        method="granite_invoice_line_items.v1",
+                    ),
+                ),
+            ),
+            RegionExtraction(
+                extraction_id=uuid4(),
+                semantic_region_id=eob_region_id,
+                semantic_type="covered_services_line_item_table",
+                normalized_json={"schema_name": "medical_eob"},
+                claims=(
+                    Claim(
+                        claim_id="claim-eob-payer",
+                        document_id=str(document_id),
+                        source_engine="granite",
+                        anchor=ClaimAnchor(
+                            page_number=1,
+                            semantic_region_id=str(eob_region_id),
+                        ),
+                        canonical_key="medical_eob.payer.display_name",
+                        raw_value="Anthem Blue Cross",
+                        typed_value="Anthem Blue Cross",
+                        value_type="text",
+                        confidence=0.92,
+                        method="granite_medical_service_lines.v1",
+                    ),
+                ),
+            ),
+        ],
+    )
+
+    assert projection is not None
+    assert projection.claim_projection.fields["payer"]["display_name"] == "Anthem Blue Cross"
+    assert projection.metadata["source_families"] == ["medical_eob"]
+    assert projection.metadata["skipped_region_extractions"] == [
+        {
+            "extraction_id": str(invoice_extraction_id),
+            "semantic_region_id": str(invoice_region_id),
+            "semantic_type": "invoice_line_item_table",
+            "reason": "aggregate_incompatible_source_family",
+            "source_families": ["invoice"],
+        }
+    ]

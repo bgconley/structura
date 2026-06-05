@@ -202,6 +202,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   canonical-key families. A misleading raw region `schema_name` can no longer
   reject otherwise valid invoice Claims or mark non-invoice Claims as invoice
   aggregate input.
+- 2026-06-05: Shared Claim-region aggregate assembly now enforces Claim-family
+  compatibility for first-class aggregate projections. Incompatible Claim
+  families are skipped with `aggregate_incompatible_source_family` metadata,
+  while `document_observation` remains the review-only path that can collect
+  arbitrary anchored Claim families.
 
 ## Deferred Work
 
