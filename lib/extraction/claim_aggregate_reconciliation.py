@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
@@ -49,7 +50,7 @@ def resolve_claim_regions_for_family(
             decision.__dict__ for decision in claim_projection.decisions
         ]
     metadata["quality_outcome"] = claim_projection.quality_outcome
-    source_families = sorted(_source_families_from_claims(claims))
+    source_families = sorted(source_families_from_claims(claims))
     if source_families:
         metadata["source_families"] = source_families
 
@@ -61,7 +62,7 @@ def resolve_claim_regions_for_family(
     )
 
 
-def _source_families_from_claims(claims: list[Claim]) -> set[str]:
+def source_families_from_claims(claims: Iterable[Claim]) -> set[str]:
     families: set[str] = set()
     for claim in claims:
         family, separator, _field_name = claim.canonical_key.partition(".")

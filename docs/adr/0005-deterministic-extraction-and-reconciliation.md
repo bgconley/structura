@@ -198,6 +198,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   collection, region audit metadata, resolver decisions, quality outcome, and
   source-family metadata derived from Claim canonical keys instead of raw
   region `normalized_json`.
+- 2026-06-05: Invoice source-family compatibility also moved to Claim-derived
+  canonical-key families. A misleading raw region `schema_name` can no longer
+  reject otherwise valid invoice Claims or mark non-invoice Claims as invoice
+  aggregate input.
 
 ## Deferred Work
 

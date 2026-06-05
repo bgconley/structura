@@ -3,8 +3,10 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from lib.extraction.claims import Claim, ClaimAnchor
 from lib.extraction.reconciliation import reconcile_invoice_region_extractions
 from lib.extraction.region_envelope import RegionFact, RegionLineItem
+from lib.extraction.region_reconciliation import RegionExtraction
 from tests.unit.extraction.invoice_reconciliation_fixtures import evidence, invoice_region
 
 
@@ -116,3 +118,72 @@ def test_invoice_region_reconciliation_ignores_conflicting_raw_payload() -> None
     assert aggregate["line_items"][0]["amount"] == {"amount": 64.0, "currency": "USD"}
     assert aggregate["totals"]["total"] == {"amount": 64.0, "currency": "USD"}
     assert aggregate["metadata"]["quality_outcome"] == "extracted_cleanly"
+
+
+def test_invoice_region_reconciliation_uses_claim_family_over_raw_schema_label() -> None:
+    document_id = uuid4()
+    region_id = uuid4()
+    group_id = "invoice-row-1"
+    anchor = ClaimAnchor(page_number=1, semantic_region_id=str(region_id), row_index=1)
+
+    aggregate = reconcile_invoice_region_extractions(
+        document_id=document_id,
+        seller={"display_name": "MAX BMW", "party_type": "company"},
+        created_at=datetime.now(UTC),
+        regions=[
+            RegionExtraction(
+                extraction_id=uuid4(),
+                semantic_region_id=region_id,
+                semantic_type="invoice_line_item_table",
+                normalized_json={
+                    "schema_name": "medical_eob",
+                    "line_items": [{"description": "Raw medical fallback"}],
+                },
+                claims=(
+                    Claim(
+                        claim_id="claim-invoice-total",
+                        document_id=str(document_id),
+                        source_engine="granite",
+                        anchor=anchor,
+                        canonical_key="invoice.total_amount",
+                        raw_value='{"amount":72.0,"currency":"USD"}',
+                        typed_value={"amount": 72.0, "currency": "USD"},
+                        value_type="money",
+                        confidence=0.9,
+                        method="granite_invoice_line_items.v1",
+                    ),
+                    Claim(
+                        claim_id="claim-invoice-line-description",
+                        document_id=str(document_id),
+                        source_engine="granite",
+                        anchor=anchor,
+                        canonical_key="invoice.line_item.description",
+                        raw_value="Anchored labor",
+                        typed_value="Anchored labor",
+                        value_type="text",
+                        confidence=0.9,
+                        method="granite_invoice_line_items.v1",
+                        group_id=group_id,
+                    ),
+                    Claim(
+                        claim_id="claim-invoice-line-amount",
+                        document_id=str(document_id),
+                        source_engine="granite",
+                        anchor=anchor,
+                        canonical_key="invoice.line_item.amount",
+                        raw_value='{"amount":72.0,"currency":"USD"}',
+                        typed_value={"amount": 72.0, "currency": "USD"},
+                        value_type="money",
+                        confidence=0.9,
+                        method="granite_invoice_line_items.v1",
+                        group_id=group_id,
+                    ),
+                ),
+            ),
+        ],
+    )
+
+    assert aggregate is not None
+    assert aggregate["metadata"]["source_families"] == ["invoice"]
+    assert aggregate["totals"]["total"] == {"amount": 72.0, "currency": "USD"}
+    assert aggregate["line_items"][0]["description"] == "Anchored labor"

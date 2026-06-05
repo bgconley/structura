@@ -12,6 +12,7 @@ from lib.extraction.candidate_value_parsing import (
     normalized_text_key,
     number_value,
 )
+from lib.extraction.claim_aggregate_reconciliation import source_families_from_claims
 from lib.extraction.claim_resolver import resolve_claims_for_family
 from lib.extraction.quality_outcomes import QualityOutcome, combine_quality_outcomes
 from lib.extraction.region_envelope import RegionExtractionEnvelope
@@ -48,13 +49,11 @@ def reconcile_invoice_region_extractions(
                 {
                     **_region_reference(region),
                     "reason": "aggregate_incompatible_source_family",
-                    "source_family": _region_source_family(region),
+                    "source_families": sorted(_region_source_families(region)),
                 }
             )
             continue
-        source_family = _region_source_family(region)
-        if source_family:
-            source_families.add(source_family)
+        source_families.update(_region_source_families(region))
         metadata["region_extractions"].append(_region_reference(region))
         reconciled_region_count += 1
         claim_projection = resolve_claims_for_family(
@@ -213,23 +212,12 @@ def _region_reference(region: RegionExtraction) -> dict[str, str]:
 
 
 def _region_source_family_is_invoice_compatible(region: RegionExtraction) -> bool:
-    source_family = _region_source_family(region)
-    return source_family in {"", "invoice"}
+    source_families = _region_source_families(region)
+    return bool(source_families) and source_families <= {"invoice"}
 
 
-def _region_source_family(region: RegionExtraction) -> str:
-    value = None
-    if region.region_envelope is not None:
-        value = (
-            region.region_envelope.target_schema or region.region_envelope.resolved_document_type
-        )
-    if value in (None, ""):
-        value = region.normalized_json.get("schema_name")
-    if value in (None, ""):
-        metadata = region.normalized_json.get("metadata")
-        if isinstance(metadata, dict):
-            value = metadata.get("source_family") or metadata.get("document_family")
-    return normalized_text_key(value)
+def _region_source_families(region: RegionExtraction) -> set[str]:
+    return {normalized_text_key(family) for family in source_families_from_claims(region.claims)}
 
 
 def _renumber(line_items: list[dict[str, Any]]) -> list[dict[str, Any]]:
