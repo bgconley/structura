@@ -122,13 +122,20 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   `RegionExtractionEnvelope` facts and line items when present, with the legacy raw
   payload path retained only for rows that predate the envelope. This is a compatibility
   bridge toward D3/D6, not the final `Claim` IR or generic resolver.
+- 2026-06-05: The first `Claim` IR module is implemented in `lib/extraction/claims.py`.
+  It emits deterministic claim IDs from `(document_id, anchor, canonical_key,
+  typed_value)`, drops unanchored values, normalizes Granite provenance to `granite`,
+  and converts region-envelope facts and line items into anchored typed claims.
+- 2026-06-05: Invoice semantic-region reconciliation now prefers explicit Claims over
+  both region envelopes and raw normalized payloads. The older envelope/raw paths remain
+  only as compatibility fallbacks while the generic resolver and registry migration are
+  still in progress.
 
 ## Deferred Work
 
 - Plan-stage stochasticity (Qwen routing variance) is bounded by greedy/low-temperature
   decoding, Docling-anchored region identity, and treating plan drift as a quality
   signal; a fully deterministic plan is out of scope.
-- Remaining migration order (highest leverage first): (1) introduce the `Claim` IR with
-  required anchor; (2) replace per-family reconcilers with the resolver; (3) refactor
-  schemas into fragments+registry; (4) re-point repeatability fingerprints; (5) emit the
-  quality-outcome vocabulary.
+- Remaining migration order (highest leverage first): (1) replace per-family reconcilers
+  with the resolver; (2) refactor schemas into fragments+registry; (3) re-point
+  repeatability fingerprints; (4) emit the quality-outcome vocabulary.

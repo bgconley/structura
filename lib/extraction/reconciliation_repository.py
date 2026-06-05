@@ -5,6 +5,7 @@ from typing import Any
 from uuid import UUID
 
 from lib.db.connection import db_connection
+from lib.extraction.claims import claims_from_region_envelope
 from lib.extraction.models import (
     ExtractionRunScope,
     GatewayExtraction,
@@ -57,13 +58,19 @@ def maybe_reconcile_semantic_annotation(
         if not row.get("source_semantic_region_id") or not row.get("semantic_type"):
             continue
         normalization_json = dict(row["normalization_json"] or {})
+        region_envelope = region_envelope_from_normalization_json(normalization_json)
         regions.append(
             RegionExtraction(
                 extraction_id=row["id"],
                 semantic_region_id=row["source_semantic_region_id"],
                 semantic_type=row["semantic_type"],
                 normalized_json=dict(row["normalized_json"] or {}),
-                region_envelope=region_envelope_from_normalization_json(normalization_json),
+                region_envelope=region_envelope,
+                claims=(
+                    tuple(claims_from_region_envelope(region_envelope))
+                    if region_envelope is not None
+                    else ()
+                ),
             )
         )
     if not regions:
