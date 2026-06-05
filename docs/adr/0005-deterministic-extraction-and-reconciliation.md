@@ -130,12 +130,18 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   both region envelopes and raw normalized payloads. The older envelope/raw paths remain
   only as compatibility fallbacks while the generic resolver and registry migration are
   still in progress.
+- 2026-06-05: `lib/extraction/claim_resolver.py` introduces the first registry-driven
+  deterministic resolver seam. Invoice Claims are projected through registry entries for
+  invoice fields and line-item fragments, conflicts use explicit source precedence, and
+  invoice semantic-region reconciliation now consumes this resolver instead of local
+  Claim-key merge branches.
 
 ## Deferred Work
 
 - Plan-stage stochasticity (Qwen routing variance) is bounded by greedy/low-temperature
   decoding, Docling-anchored region identity, and treating plan drift as a quality
   signal; a fully deterministic plan is out of scope.
-- Remaining migration order (highest leverage first): (1) replace per-family reconcilers
-  with the resolver; (2) refactor schemas into fragments+registry; (3) re-point
-  repeatability fingerprints; (4) emit the quality-outcome vocabulary.
+- Remaining migration order (highest leverage first): (1) expand the resolver registry
+  beyond invoice and retire raw-payload compatibility paths; (2) refactor schemas into
+  fragments+registry; (3) re-point repeatability fingerprints; (4) emit the
+  quality-outcome vocabulary.

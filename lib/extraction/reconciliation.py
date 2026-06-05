@@ -15,6 +15,7 @@ from lib.extraction.candidate_value_parsing import (
     normalized_text_key,
     number_value,
 )
+from lib.extraction.claim_resolver import resolve_claims_for_family
 from lib.extraction.claims import Claim
 from lib.extraction.model_output_normalization import (
     invoice_line_item_dicts_from_payload,
@@ -76,8 +77,16 @@ def reconcile_invoice_region_extractions(
             if source_family:
                 source_families.add(source_family)
             metadata["region_extractions"].append(_region_reference(region))
-            line_items.extend(_line_item_dicts_from_claims(region.claims))
-            _merge_invoice_facts_from_claims(invoice, totals, region.claims)
+            claim_projection = resolve_claims_for_family(
+                family="invoice",
+                claims=list(region.claims),
+            )
+            line_items.extend(claim_projection.line_items)
+            _merge_projection_fields(invoice, totals, claim_projection.fields)
+            if claim_projection.decisions:
+                metadata.setdefault("claim_resolution_decisions", []).extend(
+                    decision.__dict__ for decision in claim_projection.decisions
+                )
             if region.region_envelope is not None:
                 _merge_envelope_metadata(metadata, region.region_envelope)
             continue
@@ -190,118 +199,18 @@ def _with_region_evidence(
     return enriched
 
 
-def _line_item_dicts_from_claims(claims: Sequence[Claim]) -> list[dict[str, Any]]:
-    grouped: dict[str, dict[str, Any]] = {}
-    order: list[str] = []
-    for claim in claims:
-        field_name = _invoice_line_item_field_name(claim.canonical_key)
-        if field_name is None:
-            continue
-        group_id = claim.group_id or _json_key(claim.anchor.as_json())
-        if group_id not in grouped:
-            grouped[group_id] = {}
-            order.append(group_id)
-        item = grouped[group_id]
-        _merge_line_item_claim(item, field_name, claim)
-        if claim.evidence and not item.get("evidence"):
-            item["evidence"] = [dict(row) for row in claim.evidence]
-    return [
-        item for group_id in order if (item := grouped[group_id]) and _line_item_has_value(item)
-    ]
-
-
-def _invoice_line_item_field_name(canonical_key: str) -> str | None:
-    prefix = "invoice.line_item."
-    if not canonical_key.startswith(prefix):
-        return None
-    return canonical_key.removeprefix(prefix)
-
-
-def _merge_line_item_claim(
-    item: dict[str, Any],
-    field_name: str,
-    claim: Claim,
-) -> None:
-    if field_name in {
-        "description",
-        "code",
-        "unit",
-        "service_date",
-        "category_hint",
-    }:
-        item[field_name] = claim.typed_value
-        return
-    if field_name == "quantity":
-        item["quantity"] = claim.typed_value
-        return
-    if field_name in {"unit_price", "gross_amount", "tax_amount", "amount"}:
-        if isinstance(claim.typed_value, dict) and claim.typed_value.get("amount") is not None:
-            item[field_name] = deepcopy(claim.typed_value)
-
-
-def _line_item_has_value(item: dict[str, Any]) -> bool:
-    return any(
-        item.get(key) not in (None, "")
-        for key in (
-            "description",
-            "code",
-            "quantity",
-            "unit_price",
-            "gross_amount",
-            "tax_amount",
-            "amount",
-        )
-    )
-
-
-def _merge_invoice_facts_from_claims(
+def _merge_projection_fields(
     invoice: dict[str, Any],
     totals: dict[str, Any],
-    claims: Sequence[Claim],
+    fields: dict[str, dict[str, Any]],
 ) -> None:
-    for claim in claims:
-        invoice_key = _invoice_key_for_claim(claim)
-        if invoice_key:
-            value = _clean_canonical_scalar(claim.typed_value)
-            if value not in (None, ""):
-                invoice[invoice_key] = deepcopy(value)
-            continue
-        totals_key = _totals_key_for_claim(claim)
-        if totals_key and isinstance(claim.typed_value, dict):
-            money_value = _money_value_from_claim(claim)
-            if money_value is not None:
-                totals[totals_key] = money_value
-
-
-def _invoice_key_for_claim(claim: Claim) -> str | None:
-    return {
-        "invoice.invoice_number": "invoice_number",
-        "invoice.issue_date": "issued_on",
-        "invoice.due_date": "due_on",
-    }.get(claim.canonical_key)
-
-
-def _totals_key_for_claim(claim: Claim) -> str | None:
-    return {
-        "invoice.subtotal": "subtotal",
-        "invoice.tax_total": "tax_total",
-        "invoice.total_amount": "total",
-        "invoice.balance_due": "balance_due",
-        "invoice.amount_paid": "amount_paid",
-    }.get(claim.canonical_key)
-
-
-def _money_value_from_claim(claim: Claim) -> dict[str, Any] | None:
-    if claim.value_type != "money" or not isinstance(claim.typed_value, dict):
-        return None
-    amount = claim.typed_value.get("amount")
-    if amount is None:
-        return None
-    payload = {"amount": amount}
-    currency = claim.typed_value.get("currency")
-    if currency not in (None, ""):
-        payload["currency"] = currency
-    return payload
+    for key, value in fields.get("invoice", {}).items():
+        cleaned = _clean_canonical_scalar(value)
+        if cleaned not in (None, ""):
+            invoice[key] = deepcopy(cleaned)
+    for key, value in fields.get("totals", {}).items():
+        if isinstance(value, dict) and value.get("amount") is not None:
+            totals[key] = deepcopy(value)
 
 
 def _line_item_dicts_from_envelope(region: RegionExtraction) -> list[dict[str, Any]]:
