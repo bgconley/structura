@@ -130,6 +130,7 @@ def test_live_model_profiles_have_concrete_blackwell_commands() -> None:
     assert visual_embed["environment"]["STRUCTURA_VLLM_MODEL_ID"] == ("Qwen/Qwen3-VL-Embedding-2B")
     assert visual_embed["environment"]["STRUCTURA_VLLM_MAX_MODEL_LEN"] == "2048"
     assert visual_embed["environment"]["STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION"] == "0.45"
+    assert visual_embed["environment"]["STRUCTURA_VLLM_MAX_NUM_SEQS"] == "1"
 
 
 def test_phase8_5_smoke_supports_managed_model_validation() -> None:
