@@ -110,6 +110,21 @@ def test_cancel_text_embedding_jobs_cancels_claimed_worker_race(monkeypatch) -> 
     assert params[-1] == ["failed", "leased", "queued", "running"]
 
 
+def test_active_job_preflight_scopes_to_phase85_target_queues(monkeypatch) -> None:
+    runner = _load_resident_runner()
+    cursor = _RecordingCursor(rows=[])
+    connection = _RecordingConnection(cursor)
+
+    monkeypatch.setattr(runner, "db_connection", lambda: connection)
+
+    assert runner._active_job_counts() == []
+
+    sql, params = cursor.calls[0]
+    assert "queue_name = ANY(%s)" in sql
+    assert params[1] == sorted(runner.TARGET_FAILURE_QUEUES)
+    assert "relationships" not in params[1]
+
+
 def test_planner_task_report_query_derives_missing_page_number() -> None:
     runner = _load_resident_runner()
 

@@ -17,6 +17,7 @@ from lib.model_runtime.reliability_job_scope import TARGET_FAILURE_QUEUES
 from lib.model_runtime.reliability_report import build_phase85_reliability_report
 
 ACTIVE_JOB_STATUSES = ("queued", "leased", "running", "failed")
+PREFLIGHT_TARGET_QUEUES = tuple(sorted(TARGET_FAILURE_QUEUES))
 SKIPPED_TEXT_EMBEDDING_STATUSES = ("failed", "leased", "queued", "running")
 
 
@@ -318,10 +319,11 @@ def _active_job_counts() -> list[dict[str, Any]]:
                   count(*) AS count
                 FROM pipeline_jobs
                 WHERE status::text = ANY(%s)
+                  AND queue_name = ANY(%s)
                 GROUP BY queue_name, job_type, status::text
                 ORDER BY queue_name, job_type, status::text
                 """,
-                (list(ACTIVE_JOB_STATUSES),),
+                (list(ACTIVE_JOB_STATUSES), list(PREFLIGHT_TARGET_QUEUES)),
             )
             return [dict(row) for row in cur.fetchall()]
 
