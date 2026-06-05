@@ -17,6 +17,7 @@ from lib.extraction.normalization import (
     line_item_candidates_from_extraction,
 )
 from lib.extraction.reconciliation import RegionExtraction, reconcile_invoice_region_extractions
+from lib.extraction.region_envelope import region_envelope_from_normalization_json
 from lib.extraction.repository import load_extraction_source, persist_extraction_run
 from lib.extraction.validators import validate_extraction_payload
 
@@ -51,16 +52,20 @@ def maybe_reconcile_semantic_annotation(
     if expected_count == 0 or len(rows) < expected_count:
         return None
 
-    regions = [
-        RegionExtraction(
-            extraction_id=row["id"],
-            semantic_region_id=row["source_semantic_region_id"],
-            semantic_type=row["semantic_type"],
-            normalized_json=dict(row["normalized_json"] or {}),
+    regions: list[RegionExtraction] = []
+    for row in rows:
+        if not row.get("source_semantic_region_id") or not row.get("semantic_type"):
+            continue
+        normalization_json = dict(row["normalization_json"] or {})
+        regions.append(
+            RegionExtraction(
+                extraction_id=row["id"],
+                semantic_region_id=row["source_semantic_region_id"],
+                semantic_type=row["semantic_type"],
+                normalized_json=dict(row["normalized_json"] or {}),
+                region_envelope=region_envelope_from_normalization_json(normalization_json),
+            )
         )
-        for row in rows
-        if row.get("source_semantic_region_id") and row.get("semantic_type")
-    ]
     if not regions:
         return None
 
@@ -165,7 +170,8 @@ def _current_region_extraction_rows(
           id,
           source_semantic_region_id,
           semantic_type,
-          normalized_json
+          normalized_json,
+          normalization_json
         FROM document_extractions
         WHERE document_id = %s
           AND semantic_annotation_id = %s

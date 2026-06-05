@@ -33,34 +33,16 @@ class OpenAIVisionGenerateClient:
         start = time.monotonic()
         input_hashes = _validated_input_hashes(request, profile=self.profile)
         structured_output_requested = request.response_json_schema is not None
-        structured_output_used = structured_output_requested
-        fallback_reason: str | None = None
         payload = _openai_payload(
             request=request,
             profile=self.profile,
             use_structured_output=structured_output_requested,
         )
-        try:
-            response = self._http.post_json(
-                "/v1/chat/completions",
-                payload,
-                timeout_seconds=request.timeout_seconds,
-            )
-        except ModelProtocolError as exc:
-            if not structured_output_requested or not request.allow_structured_output_fallback:
-                raise
-            fallback_reason = str(exc)
-            structured_output_used = False
-            payload = _openai_payload(
-                request=request,
-                profile=self.profile,
-                use_structured_output=False,
-            )
-            response = self._http.post_json(
-                "/v1/chat/completions",
-                payload,
-                timeout_seconds=request.timeout_seconds,
-            )
+        response = self._http.post_json(
+            "/v1/chat/completions",
+            payload,
+            timeout_seconds=request.timeout_seconds,
+        )
         raw_text, finish_reason = _raw_message_content(response)
         normalized, confidence = _structured_content(raw_text)
         return VisionGenerateResponse(
@@ -78,8 +60,7 @@ class OpenAIVisionGenerateClient:
             latency_ms=max(0, int((time.monotonic() - start) * 1000)),
             finish_reason=finish_reason,
             usage_json=_usage_json(response),
-            structured_output_used=structured_output_used,
-            structured_output_fallback_reason=fallback_reason,
+            structured_output_used=structured_output_requested,
         )
 
 

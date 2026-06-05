@@ -4,19 +4,20 @@ Date: 2026-06-05
 
 ## Status
 
-Proposed
+Accepted - incremental implementation in progress
 
 ## Context
 
 The Phase 8.5 extraction pipeline (Docling -> Qwen3-VL-8B-FP8 -> Granite 4.0 3B Vision)
-cannot reach reliable, repeatable typed output. Root cause: the determinism boundary
-is misplaced. Generation is only *requested* to be schema-constrained and silently
-falls back to free-form JSON (`_openai_vision.py` `allow_structured_output_fallback`),
-so schema-echo, prose, stray keys, and malformed JSON reach normalization and are met
-with an unbounded, ever-growing reject/normalize rule set. Reconciliation is bespoke
-per document family over untyped `dict[str, Any]` payloads (`reconcile_invoice_region_extractions`
-and siblings; `FORBIDDEN_CANONICAL_PLACEHOLDERS`), and repeatability is fingerprinted
-on stochastic model output. The model cannot be made deterministic; everything after it can.
+cannot reach reliable, repeatable typed output unless the determinism boundary is in
+the right place. A previous implementation only *requested* schema-constrained
+generation and silently fell back to free-form JSON (`_openai_vision.py`
+`allow_structured_output_fallback`), so schema-echo, prose, stray keys, and malformed
+JSON reached normalization and were met with an unbounded, ever-growing reject/normalize
+rule set. Reconciliation was bespoke per document family over untyped `dict[str, Any]`
+payloads (`reconcile_invoice_region_extractions` and siblings;
+`FORBIDDEN_CANONICAL_PLACEHOLDERS`), and repeatability was fingerprinted on stochastic
+model output. The model cannot be made deterministic; everything after it can.
 
 ## Decisions
 
@@ -111,12 +112,23 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   `schema_registry` host fragments+families; `reliability_fingerprints` targets the
   canonical projection.
 
+## Implementation Progress
+
+- 2026-06-05: D2 is implemented for the shared OpenAI-compatible vision adapter.
+  `VisionGenerateRequest.allow_structured_output_fallback` and the free-form
+  `json_object` retry path were removed; structured-output failures now fail closed as
+  model protocol/runtime errors for the job layer to retry or dead-letter.
+- 2026-06-05: Invoice semantic-region reconciliation now prefers persisted
+  `RegionExtractionEnvelope` facts and line items when present, with the legacy raw
+  payload path retained only for rows that predate the envelope. This is a compatibility
+  bridge toward D3/D6, not the final `Claim` IR or generic resolver.
+
 ## Deferred Work
 
 - Plan-stage stochasticity (Qwen routing variance) is bounded by greedy/low-temperature
   decoding, Docling-anchored region identity, and treating plan drift as a quality
   signal; a fully deterministic plan is out of scope.
-- Migration order (highest leverage first): (1) make constrained decoding mandatory and
-  delete the fallback; (2) introduce the `Claim` IR with required anchor; (3) replace
-  per-family reconcilers with the resolver; (4) refactor schemas into fragments+registry;
-  (5) re-point repeatability fingerprints; (6) emit the quality-outcome vocabulary.
+- Remaining migration order (highest leverage first): (1) introduce the `Claim` IR with
+  required anchor; (2) replace per-family reconcilers with the resolver; (3) refactor
+  schemas into fragments+registry; (4) re-point repeatability fingerprints; (5) emit the
+  quality-outcome vocabulary.

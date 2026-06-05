@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -16,6 +17,12 @@ from lib.extraction.candidate_value_parsing import (
 from lib.extraction.model_output_normalization import (
     invoice_line_item_dicts_from_payload,
     invoice_payment_summary_from_payload,
+)
+from lib.extraction.region_envelope import (
+    EvidenceRef,
+    RegionExtractionEnvelope,
+    RegionFact,
+    RegionLineItem,
 )
 
 FORBIDDEN_CANONICAL_PLACEHOLDERS = {
@@ -34,6 +41,7 @@ class RegionExtraction:
     semantic_region_id: UUID
     semantic_type: str
     normalized_json: dict[str, Any]
+    region_envelope: RegionExtractionEnvelope | None = None
 
 
 def reconcile_invoice_region_extractions(
@@ -51,6 +59,29 @@ def reconcile_invoice_region_extractions(
     metadata: dict[str, Any] = {"region_extractions": []}
 
     for region in regions:
+        if region.region_envelope is not None:
+            if not _region_source_family_is_invoice_compatible(region):
+                metadata.setdefault("skipped_region_extractions", []).append(
+                    {
+                        **_region_reference(region),
+                        "reason": "aggregate_incompatible_source_family",
+                        "source_family": _region_source_family(region),
+                    }
+                )
+                continue
+            source_family = _region_source_family(region)
+            if source_family:
+                source_families.add(source_family)
+            metadata["region_extractions"].append(_region_reference(region))
+            line_items.extend(_line_item_dicts_from_envelope(region))
+            _merge_invoice_facts_from_envelope(
+                invoice,
+                totals,
+                region.region_envelope,
+            )
+            _merge_envelope_metadata(metadata, region.region_envelope)
+            continue
+
         payload = region.normalized_json
         if not _region_source_family_is_invoice_compatible(region):
             metadata.setdefault("skipped_region_extractions", []).append(
@@ -134,6 +165,143 @@ def _with_region_evidence(
         copied["evidence"] = evidence
         enriched.append(copied)
     return enriched
+
+
+def _line_item_dicts_from_envelope(region: RegionExtraction) -> list[dict[str, Any]]:
+    envelope = region.region_envelope
+    if envelope is None:
+        return []
+    line_items: list[dict[str, Any]] = []
+    for item in envelope.line_items:
+        payload = _line_item_dict_from_envelope_item(item, region)
+        if payload:
+            line_items.append(payload)
+    return line_items
+
+
+def _line_item_dict_from_envelope_item(
+    item: RegionLineItem,
+    region: RegionExtraction,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+    for target_key, value in (
+        ("description", item.description),
+        ("code", item.code),
+        ("quantity", item.quantity),
+        ("unit", item.unit),
+        ("service_date", item.service_date),
+        ("category_hint", item.category_hint),
+        ("table_id", item.table_id),
+        ("row_index", item.row_index),
+        ("page_number", item.page_number),
+    ):
+        if value not in (None, ""):
+            payload[target_key] = value
+    if item.unit_price is not None:
+        payload["unit_price"] = _money_payload(item.unit_price, item.currency_code)
+    if item.gross_amount is not None:
+        payload["gross_amount"] = _money_payload(item.gross_amount, item.currency_code)
+    if item.tax_amount is not None:
+        payload["tax_amount"] = _money_payload(item.tax_amount, item.currency_code)
+    if item.net_amount is not None:
+        payload["amount"] = _money_payload(item.net_amount, item.currency_code)
+    evidence = _envelope_evidence(item.evidence, region)
+    if evidence:
+        payload["evidence"] = evidence
+    has_value = any(
+        payload.get(key) not in (None, "")
+        for key in (
+            "description",
+            "code",
+            "quantity",
+            "unit_price",
+            "gross_amount",
+            "tax_amount",
+            "amount",
+        )
+    )
+    return payload if has_value else {}
+
+
+def _merge_invoice_facts_from_envelope(
+    invoice: dict[str, Any],
+    totals: dict[str, Any],
+    envelope: RegionExtractionEnvelope,
+) -> None:
+    for fact in envelope.facts:
+        invoice_key = _invoice_key_for_fact(fact)
+        if invoice_key:
+            value = _clean_canonical_scalar(fact.value)
+            if value not in (None, ""):
+                invoice[invoice_key] = deepcopy(value)
+            continue
+        totals_key = _totals_key_for_fact(fact)
+        if totals_key:
+            money_value = _money_value_from_fact(fact)
+            if money_value is not None:
+                totals[totals_key] = money_value
+
+
+def _invoice_key_for_fact(fact: RegionFact) -> str | None:
+    return {
+        "invoice.invoice_number": "invoice_number",
+        "invoice.issue_date": "issued_on",
+        "invoice.due_date": "due_on",
+    }.get(fact.name)
+
+
+def _totals_key_for_fact(fact: RegionFact) -> str | None:
+    return {
+        "invoice.subtotal": "subtotal",
+        "invoice.tax_total": "tax_total",
+        "invoice.total_amount": "total",
+        "invoice.balance_due": "balance_due",
+        "invoice.amount_paid": "amount_paid",
+    }.get(fact.name)
+
+
+def _money_value_from_fact(fact: RegionFact) -> dict[str, Any] | None:
+    if fact.value_type != "money" or not isinstance(fact.value, dict):
+        return None
+    amount = fact.value.get("amount")
+    if amount is None:
+        return None
+    payload = {"amount": amount}
+    currency = fact.value.get("currency") or fact.value.get("currency_code")
+    if currency not in (None, ""):
+        payload["currency"] = currency
+    return payload
+
+
+def _money_payload(amount: float, currency_code: str | None) -> dict[str, Any]:
+    payload: dict[str, Any] = {"amount": amount}
+    if currency_code not in (None, ""):
+        payload["currency"] = currency_code
+    return payload
+
+
+def _envelope_evidence(
+    refs: list[EvidenceRef],
+    region: RegionExtraction,
+) -> list[dict[str, Any]]:
+    evidence: list[dict[str, Any]] = []
+    for ref in refs:
+        payload = ref.model_dump(mode="json", exclude_none=True)
+        payload.setdefault("semantic_region_id", str(region.semantic_region_id))
+        evidence.append(payload)
+    return evidence
+
+
+def _merge_envelope_metadata(
+    metadata: dict[str, Any],
+    envelope: RegionExtractionEnvelope,
+) -> None:
+    coverage_metadata = envelope.coverage.get("metadata")
+    if not isinstance(coverage_metadata, dict):
+        return
+    payment_summary = coverage_metadata.get("payment_summary")
+    if isinstance(payment_summary, dict):
+        metadata["payment_summary"] = deepcopy(payment_summary)
 
 
 def _dedupe_line_item_dicts(line_items: list[dict[str, Any]]) -> list[dict[str, Any]]:

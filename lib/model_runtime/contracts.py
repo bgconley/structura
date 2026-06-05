@@ -29,7 +29,6 @@ class VisionGenerateRequest:
     temperature: float
     timeout_seconds: int
     response_json_schema: dict[str, Any] | None = None
-    allow_structured_output_fallback: bool = True
     structured_output_mode: str = "response_format_json_schema"
     seed: int | None = 0
 
@@ -49,7 +48,6 @@ class VisionGenerateResponse:
     finish_reason: str | None = None
     usage_json: dict[str, object] = field(default_factory=dict)
     structured_output_used: bool = False
-    structured_output_fallback_reason: str | None = None
 
 
 @dataclass(frozen=True)

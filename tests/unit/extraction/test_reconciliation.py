@@ -7,6 +7,12 @@ from lib.extraction.reconciliation import (
     RegionExtraction,
     reconcile_invoice_region_extractions,
 )
+from lib.extraction.region_envelope import (
+    EvidenceRef,
+    RegionExtractionEnvelope,
+    RegionFact,
+    RegionLineItem,
+)
 
 
 def test_invoice_region_reconciliation_preserves_line_items_and_payment_summary() -> None:
@@ -294,3 +300,75 @@ def test_invoice_region_reconciliation_skips_non_invoice_observation_regions() -
     )
 
     assert aggregate is None
+
+
+def test_invoice_region_reconciliation_prefers_typed_envelope_over_raw_payload() -> None:
+    document_id = uuid4()
+    region_id = uuid4()
+    extraction_id = uuid4()
+    evidence = EvidenceRef(
+        document_id=str(document_id),
+        semantic_region_id=str(region_id),
+        page_number=1,
+        table_id="table-7",
+        row_index=4,
+        source_engine="granite_vision_3b",
+    )
+
+    aggregate = reconcile_invoice_region_extractions(
+        document_id=document_id,
+        seller={"display_name": "MAX BMW", "party_type": "company"},
+        created_at=datetime.now(UTC),
+        regions=[
+            RegionExtraction(
+                extraction_id=extraction_id,
+                semantic_region_id=region_id,
+                semantic_type="invoice_line_item_table",
+                normalized_json={
+                    "schema_name": "invoice",
+                    "line_items": [
+                        {
+                            "description": "Prompt schema artifact",
+                            "amount": {"amount": 999.99, "currency": "USD"},
+                        }
+                    ],
+                    "totals": {"total": {"amount": 999.99, "currency": "USD"}},
+                },
+                region_envelope=RegionExtractionEnvelope(
+                    document_id=str(document_id),
+                    semantic_region_id=str(region_id),
+                    resolved_document_type="invoice",
+                    semantic_type="invoice_line_item_table",
+                    target_schema="invoice",
+                    model_output_schema_name="granite_invoice_line_items.v1",
+                    coverage={"schema_name": "invoice"},
+                    facts=[
+                        RegionFact(
+                            name="invoice.total_amount",
+                            value={"amount": 125.0, "currency": "USD"},
+                            value_type="money",
+                            evidence=[evidence],
+                        )
+                    ],
+                    line_items=[
+                        RegionLineItem(
+                            description="Anchored service",
+                            net_amount=125.0,
+                            currency_code="USD",
+                            evidence=[evidence],
+                            table_id="table-7",
+                            row_index=4,
+                            page_number=1,
+                        )
+                    ],
+                ),
+            ),
+        ],
+        document_fallback={"invoice_number": "INV-typed"},
+    )
+
+    assert aggregate is not None
+    assert [item["description"] for item in aggregate["line_items"]] == ["Anchored service"]
+    assert aggregate["line_items"][0]["amount"] == {"amount": 125.0, "currency": "USD"}
+    assert aggregate["line_items"][0]["evidence"][0]["table_id"] == "table-7"
+    assert aggregate["totals"]["total"] == {"amount": 125.0, "currency": "USD"}

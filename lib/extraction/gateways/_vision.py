@@ -195,7 +195,6 @@ class VisionExtractionGateway:
             "finishReason": response.finish_reason,
             "usage": response.usage_json,
             "structuredOutputUsed": response.structured_output_used,
-            "structuredOutputFallbackReason": response.structured_output_fallback_reason,
             "confidence": response.confidence_json,
             "rawText": response.raw_text,
             "semanticTask": _semantic_task_json(semantic_task),
