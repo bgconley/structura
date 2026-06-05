@@ -856,6 +856,169 @@ def test_semantic_service_normalizes_medical_eob_generic_appeal_regions() -> Non
     assert jobs.created[0]["payload"]["semantic_type"] == "denial_or_coverage_decision"
 
 
+def test_semantic_service_adds_medical_eob_docling_decision_pages_for_stable_coverage() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_ids = {page_number: uuid4() for page_number in (1, 2, 3, 5, 6, 7, 8)}
+    table_id = uuid4()
+    annotation_id = uuid4()
+    source = _source_with_pages(
+        document_id=document_id,
+        household_id=household_id,
+        family="medical_eob",
+        title="Anthem denial",
+        original_filename="MRI Anthem Denial 01-26.pdf",
+        page_texts={
+            1: "Anthem claim denied coverage decision appeal rights member details",
+            2: "Denial reason clinical guideline medical necessity criteria",
+            3: "Care details service date billed amount patient responsibility",
+            5: "Rights Available to Members grievance appeal process",
+            6: "Can I get diagnosis and treatment codes for this denial",
+            7: "If we deny your grievance dispute resolution options",
+            8: "Member notices continuation page",
+        },
+        page_ids=page_ids,
+        tables=[
+            ParsedTableText(
+                table_id=table_id,
+                page_number=3,
+                table_index=1,
+                table_markdown=(
+                    "| Service | Billed | Responsibility |\n| MRI | $1200.00 | $0.00 |"
+                ),
+            )
+        ],
+    )
+    manifest = _manifest_with_regions_for_pages(
+        document_id=document_id,
+        household_id=household_id,
+        page_ids=page_ids,
+        document_type="medical_eob",
+        regions=[
+            SemanticRegionAnnotation(
+                semantic_type="denial_or_coverage_decision",
+                priority="high",
+                granite_task="kvp",
+                target_schema="medical_eob",
+                expected_fields=("request_status", "appeal_deadline"),
+                grounding=SemanticGroundingRef(kind="page", page_id=page_ids[1]),
+                review_required=True,
+                confidence=0.76,
+            ),
+            SemanticRegionAnnotation(
+                semantic_type="covered_services_line_item_table",
+                priority="critical",
+                granite_task="tables_json",
+                target_schema="medical_eob",
+                expected_fields=("service_date", "billed_amount", "patient_responsibility"),
+                grounding=SemanticGroundingRef(
+                    kind="table",
+                    page_id=page_ids[3],
+                    table_id=table_id,
+                ),
+                review_required=True,
+                confidence=0.81,
+            ),
+            SemanticRegionAnnotation(
+                semantic_type="denial_or_coverage_decision",
+                priority="high",
+                granite_task="kvp",
+                target_schema="medical_eob",
+                expected_fields=("grievance_rights",),
+                grounding=SemanticGroundingRef(kind="page", page_id=page_ids[5]),
+                review_required=True,
+                confidence=0.7,
+            ),
+        ],
+    )
+    jobs = RecordingJobs()
+    persisted_manifests: list[DocumentSemanticManifest] = []
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+            captured=persisted_manifests,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    page_number_by_id = {page_id: page_number for page_number, page_id in page_ids.items()}
+    decision_pages = {
+        page_number_by_id[region.grounding.page_id]
+        for region in persisted_manifests[0].regions
+        if region.semantic_type == "denial_or_coverage_decision"
+        and region.grounding.page_id is not None
+    }
+    assert decision_pages == {1, 2, 5, 6, 7}
+    assert len(persisted_manifests[0].regions) == 6
+    assert len(jobs.created) == 6
+
+
+def test_semantic_service_drops_unsupported_generic_receipt_payment_summary() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="generic",
+        title="Low context scan",
+        original_filename="Scan Sep 10, 2025 at 19.57.pdf",
+        text="menu item quantity price total scanned page",
+    )
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        document_type="generic_form",
+        regions=[
+            SemanticRegionAnnotation(
+                semantic_type="receipt_line_item_table",
+                priority="high",
+                granite_task="tables_json",
+                target_schema="receipt",
+                expected_fields=("item_description", "quantity", "line_total"),
+                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+                review_required=True,
+                confidence=0.74,
+            ),
+            SemanticRegionAnnotation(
+                semantic_type="receipt_payment_summary",
+                priority="high",
+                granite_task="kvp",
+                target_schema="receipt",
+                expected_fields=("subtotal", "tax", "total_amount"),
+                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+                review_required=True,
+                confidence=0.72,
+            ),
+        ],
+    )
+    jobs = RecordingJobs()
+    persisted_manifests: list[DocumentSemanticManifest] = []
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+            captured=persisted_manifests,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    assert [region.semantic_type for region in persisted_manifests[0].regions] == [
+        "receipt_line_item_table"
+    ]
+    assert [job["payload"]["semantic_type"] for job in jobs.created] == ["receipt_line_item_table"]
+
+
 def test_semantic_service_drops_unanchored_observation_family_region() -> None:
     document_id = uuid4()
     household_id = uuid4()
@@ -1812,6 +1975,47 @@ def _source(
     )
 
 
+def _source_with_pages(
+    *,
+    document_id: UUID,
+    household_id: UUID,
+    family: str,
+    title: str,
+    original_filename: str | None,
+    page_texts: dict[int, str],
+    page_ids: dict[int, UUID],
+    metadata: dict[str, Any] | None = None,
+    tables: list[ParsedTableText] | None = None,
+) -> ExtractionSourceDocument:
+    return ExtractionSourceDocument(
+        document_id=document_id,
+        household_id=household_id,
+        title=title,
+        original_filename=original_filename,
+        mime_type="application/pdf",
+        family=family,
+        subtype=None,
+        sensitivity="standard",
+        document_date=None,
+        counterparty_display=None,
+        primary_folder_id=None,
+        metadata=metadata or {},
+        pages=[
+            ParsedPageText(
+                page_id=page_ids[page_number],
+                page_number=page_number,
+                text=text,
+                image_bytes=b"fake-image",
+                image_mime_type="image/png",
+                image_sha256=f"{page_number:064x}"[-64:],
+            )
+            for page_number, text in sorted(page_texts.items())
+        ],
+        elements=[],
+        tables=list(tables or []),
+    )
+
+
 def _manifest(
     *,
     document_id: UUID,
@@ -1866,6 +2070,44 @@ def _manifest(
             regions=regions,
         ),
         input_page_hashes=("c" * 64,),
+    )
+
+
+def _manifest_with_regions_for_pages(
+    *,
+    document_id: UUID,
+    household_id: UUID,
+    page_ids: dict[int, UUID],
+    regions: list[SemanticRegionAnnotation],
+    document_type: str,
+) -> DocumentSemanticManifest:
+    pages = [
+        PageSemanticAnnotation(
+            page_id=page_id,
+            page_number=page_number,
+            page_role="evidence",
+            has_structured_targets=True,
+        )
+        for page_number, page_id in sorted(page_ids.items())
+    ]
+    return DocumentSemanticManifest(
+        document_id=document_id,
+        household_id=household_id,
+        quality_mode="smart",
+        profile_name="qwen3-vl-8b-fp8-semantic:v1",
+        source_engine="qwen3_vl_8b",
+        model_name="Qwen/Qwen3-VL-8B-Instruct-FP8",
+        model_version="v1",
+        prompt_version="phase8_5-semantic-smart-v3",
+        pages=pages,
+        regions=regions,
+        confidence={"overall": 0.9},
+        manifest=_semantic_manifest_payload_for_pages(
+            document_type=document_type,
+            pages=pages,
+            regions=regions,
+        ),
+        input_page_hashes=tuple("c" * 64 for _page in pages),
     )
 
 
@@ -1944,6 +2186,42 @@ def _semantic_manifest_payload(
                 "reason": None,
                 "confidence": None,
             }
+        ],
+        "regions": [_region_payload(region) for region in regions],
+        "quality_flags": {
+            "needs_high_quality_pass": False,
+            "visual_degradation": False,
+        },
+        "confidence": {"overall": 0.9},
+    }
+
+
+def _semantic_manifest_payload_for_pages(
+    *,
+    document_type: str,
+    pages: list[PageSemanticAnnotation],
+    regions: list[SemanticRegionAnnotation],
+) -> dict[str, Any]:
+    return {
+        "schema_name": "semantic_annotation_manifest",
+        "schema_version": "v1",
+        "document_type": document_type,
+        "pages": [
+            {
+                "page_id": str(page.page_id),
+                "page_number": page.page_number,
+                "page_role": page.page_role,
+                "document_type_hint": None,
+                "extraction_usefulness": "unknown",
+                "is_boilerplate": False,
+                "has_structured_targets": page.has_structured_targets,
+                "ambiguous": False,
+                "escalation_required": False,
+                "escalation_reasons": [],
+                "reason": None,
+                "confidence": None,
+            }
+            for page in pages
         ],
         "regions": [_region_payload(region) for region in regions],
         "quality_flags": {

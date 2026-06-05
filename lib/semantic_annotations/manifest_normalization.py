@@ -84,6 +84,26 @@ _MEDICAL_EOB_DECISION_FIELDS = (
     "grievance_rights",
     "request_status",
 )
+_MEDICAL_EOB_DECISION_PAGE_TERMS = (
+    "appeal",
+    "clinical guideline",
+    "coverage decision",
+    "diagnosis and treatment codes",
+    "denial",
+    "denied",
+    "dispute resolution",
+    "grievance",
+    "medical necessity",
+    "rights available to members",
+)
+_MEDICAL_EOB_MAX_DECISION_REGIONS = 5
+_RECEIPT_PAYMENT_SUMMARY_FAMILIES = frozenset(
+    {
+        "receipt",
+        "retail_order",
+        "service_record",
+    }
+)
 
 
 def normalize_result_for_planning(
@@ -104,6 +124,8 @@ def normalize_manifest_for_planning(
     regions = _drop_low_value_regions(regions)
     regions = _drop_unanchored_observation_family_regions(source, manifest, regions)
     regions = _normalize_retail_order_regions(source, manifest, regions)
+    regions = _drop_unsupported_model_payment_summaries(source, manifest, regions)
+    regions = _with_medical_eob_decision_pages(source, manifest, regions)
     regions = _dedupe_page_kvp_regions(regions)
     regions = _dedupe_equivalent_regions(regions)
     if regions == manifest.regions:
@@ -349,6 +371,83 @@ def _normalize_retail_order_regions(
                 continue
         normalized.append(region)
     return _with_retail_order_payment_summary(source, manifest, normalized)
+
+
+def _drop_unsupported_model_payment_summaries(
+    source: ExtractionSourceDocument,
+    manifest: DocumentSemanticManifest,
+    regions: list[SemanticRegionAnnotation],
+) -> list[SemanticRegionAnnotation]:
+    if _supports_receipt_payment_summary(source, manifest):
+        return regions
+    return [
+        region
+        for region in regions
+        if not (
+            region.semantic_type == "receipt_payment_summary"
+            and region.metadata.get("region_source") != DOCLING_STRUCTURAL_REGION_SOURCE
+        )
+    ]
+
+
+def _with_medical_eob_decision_pages(
+    source: ExtractionSourceDocument,
+    manifest: DocumentSemanticManifest,
+    regions: list[SemanticRegionAnnotation],
+) -> list[SemanticRegionAnnotation]:
+    if not _is_medical_eob_source(source, manifest):
+        return regions
+
+    existing_decision_pages = {
+        page_number
+        for region in regions
+        if region.semantic_type == "denial_or_coverage_decision"
+        and (page_number := _region_page_number(source, region)) is not None
+    }
+    line_item_pages = {
+        page_number
+        for region in regions
+        if region.semantic_type == "covered_services_line_item_table"
+        and (page_number := _region_page_number(source, region)) is not None
+    }
+    if len(existing_decision_pages) >= _MEDICAL_EOB_MAX_DECISION_REGIONS:
+        return regions
+
+    added: list[SemanticRegionAnnotation] = []
+    for page in sorted(source.pages, key=lambda item: item.page_number):
+        if len(existing_decision_pages) + len(added) >= _MEDICAL_EOB_MAX_DECISION_REGIONS:
+            break
+        if page.page_number in existing_decision_pages or page.page_number in line_item_pages:
+            continue
+        page_text = _normalized_text(page.text)
+        if not any(term in page_text for term in _MEDICAL_EOB_DECISION_PAGE_TERMS):
+            continue
+        added.append(
+            SemanticRegionAnnotation(
+                semantic_type="denial_or_coverage_decision",
+                priority="high",
+                granite_task="kvp",
+                target_schema="medical_eob",
+                expected_fields=_MEDICAL_EOB_DECISION_FIELDS,
+                grounding=SemanticGroundingRef(kind="page", page_id=page.page_id),
+                review_required=True,
+                reason="Docling text anchors indicate a medical EOB decision or appeal page.",
+                confidence=0.68,
+                metadata={
+                    "region_source": DOCLING_STRUCTURAL_REGION_SOURCE,
+                    "source_signal": "text",
+                    "coverage_role": "supporting",
+                    "extraction_scope": "page",
+                    "must_extract_reason": "medical_eob_decision_or_appeal_context",
+                    "semantic_planner_normalization": {
+                        "reason": "medical_eob_docling_decision_page_coverage",
+                    },
+                },
+            )
+        )
+    if not added:
+        return regions
+    return [*regions, *added]
 
 
 def _drop_unanchored_observation_family_regions(
@@ -652,6 +751,22 @@ def _is_receipt_source(
     if any(family in audit.suggested_family_hints for family in _OBSERVATION_DOCUMENT_TYPES):
         return False
     return "receipt" in audit.suggested_family_hints
+
+
+def _supports_receipt_payment_summary(
+    source: ExtractionSourceDocument,
+    manifest: DocumentSemanticManifest,
+) -> bool:
+    document_type = _document_type(manifest)
+    source_family = source.family.strip().lower()
+    if document_type in _RECEIPT_PAYMENT_SUMMARY_FAMILIES:
+        return True
+    if source_family in _RECEIPT_PAYMENT_SUMMARY_FAMILIES:
+        return True
+    audit = build_docling_audit(source)
+    return any(
+        family in audit.suggested_family_hints for family in _RECEIPT_PAYMENT_SUMMARY_FAMILIES
+    )
 
 
 def _is_medical_eob_source(
