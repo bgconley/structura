@@ -5,8 +5,9 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from lib.extraction.claim_resolver import resolve_claims_for_family
-from lib.extraction.claims import Claim
+from lib.extraction.claim_aggregate_reconciliation import (
+    resolve_claim_regions_for_family,
+)
 from lib.extraction.region_reconciliation import RegionExtraction
 
 
@@ -16,36 +17,17 @@ def reconcile_medical_eob_region_extractions(
     created_at: datetime,
     regions: list[RegionExtraction],
 ) -> dict[str, Any] | None:
-    claims: list[Claim] = []
-    metadata: dict[str, Any] = {"region_extractions": []}
-    source_families: set[str] = set()
-    for region in regions:
-        if not region.claims:
-            metadata.setdefault("skipped_region_extractions", []).append(
-                {
-                    **_region_reference(region),
-                    "reason": "claims_required_for_medical_eob_aggregate",
-                }
-            )
-            continue
-        claims.extend(region.claims)
-        metadata["region_extractions"].append(_region_reference(region))
-        source_family = _region_source_family(region)
-        if source_family:
-            source_families.add(source_family)
-
-    if not claims:
+    claim_regions = resolve_claim_regions_for_family(
+        family="medical_eob",
+        missing_claims_reason="claims_required_for_medical_eob_aggregate",
+        regions=regions,
+    )
+    if claim_regions is None:
         return None
-    projection = resolve_claims_for_family(family="medical_eob", claims=list(claims))
+    projection = claim_regions.claim_projection
     if projection.family != "medical_eob":
         return None
-    metadata["quality_outcome"] = projection.quality_outcome
-    if projection.decisions:
-        metadata["claim_resolution_decisions"] = [
-            decision.__dict__ for decision in projection.decisions
-        ]
-    if source_families:
-        metadata["source_families"] = sorted(source_families)
+    metadata = claim_regions.metadata
 
     payer = _party_fields(projection.fields.get("payer"))
     patient = _party_fields(projection.fields.get("patient"))
@@ -98,22 +80,3 @@ def _renumber_service_lines(items: list[dict[str, Any]]) -> list[dict[str, Any]]
         service_line["ordinal"] = ordinal
         service_lines.append(service_line)
     return service_lines
-
-
-def _region_reference(region: RegionExtraction) -> dict[str, str]:
-    return {
-        "extraction_id": str(region.extraction_id),
-        "semantic_region_id": str(region.semantic_region_id),
-        "semantic_type": region.semantic_type,
-    }
-
-
-def _region_source_family(region: RegionExtraction) -> str | None:
-    if region.region_envelope is not None:
-        return (
-            region.region_envelope.target_schema
-            or region.region_envelope.resolved_document_type
-            or None
-        )
-    schema_name = region.normalized_json.get("schema_name")
-    return str(schema_name) if schema_name not in (None, "") else None

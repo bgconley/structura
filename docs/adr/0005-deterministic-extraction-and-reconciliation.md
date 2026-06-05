@@ -192,6 +192,12 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   `reconcile_invoice_region_extractions` now derives invoice identifiers,
   dates, totals, and line items only from anchored Claims plus deterministic
   metadata.
+- 2026-06-05: Shared Claim-region aggregate assembly now lives in
+  `lib/extraction/claim_aggregate_reconciliation.py`. Medical EOB and
+  document-observation aggregate wrappers use this shared path for Claim
+  collection, region audit metadata, resolver decisions, quality outcome, and
+  source-family metadata derived from Claim canonical keys instead of raw
+  region `normalized_json`.
 
 ## Deferred Work
 

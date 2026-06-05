@@ -4,9 +4,10 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from lib.extraction.claim_resolver import resolve_claims_for_family
-from lib.extraction.claims import Claim
-from lib.extraction.reconciliation import RegionExtraction
+from lib.extraction.claim_aggregate_reconciliation import (
+    resolve_claim_regions_for_family,
+)
+from lib.extraction.region_reconciliation import RegionExtraction
 
 
 def reconcile_document_observation_region_extractions(
@@ -15,37 +16,19 @@ def reconcile_document_observation_region_extractions(
     created_at: datetime,
     regions: list[RegionExtraction],
 ) -> dict[str, Any] | None:
-    claims: list[Claim] = []
-    metadata: dict[str, Any] = {"region_extractions": []}
-    for region in regions:
-        if not region.claims:
-            continue
-        claims.extend(region.claims)
-        metadata["region_extractions"].append(_region_reference(region))
-
-    if not claims:
+    claim_regions = resolve_claim_regions_for_family(
+        family="document_observation",
+        missing_claims_reason="claims_required_for_document_observation_aggregate",
+        regions=regions,
+    )
+    if claim_regions is None:
         return None
 
-    claim_projection = resolve_claims_for_family(
-        family="document_observation",
-        claims=claims,
-    )
+    claim_projection = claim_regions.claim_projection
     if not claim_projection.observations:
         return None
 
-    metadata["claim_resolution_decisions"] = [
-        decision.__dict__ for decision in claim_projection.decisions
-    ]
-    metadata["quality_outcome"] = claim_projection.quality_outcome
-    source_families = sorted(
-        {
-            str(observation["family"])
-            for observation in claim_projection.observations
-            if observation.get("family") not in (None, "")
-        }
-    )
-    if source_families:
-        metadata["source_families"] = source_families
+    metadata = claim_regions.metadata
 
     return {
         "schema_name": "document_observation",
@@ -56,12 +39,4 @@ def reconcile_document_observation_region_extractions(
         "created_at": created_at.isoformat(),
         "validation": {"needs_review": True, "checks": []},
         "metadata": metadata,
-    }
-
-
-def _region_reference(region: RegionExtraction) -> dict[str, str]:
-    return {
-        "extraction_id": str(region.extraction_id),
-        "semantic_region_id": str(region.semantic_region_id),
-        "semantic_type": region.semantic_type,
     }
