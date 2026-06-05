@@ -53,6 +53,7 @@ def build_phase85_run_manifest(
         "decoding": {
             "temperature": 0,
             "top_p": None,
+            "seed": 0,
         },
     }
     if overrides:

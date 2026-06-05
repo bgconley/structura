@@ -125,6 +125,8 @@ def _openai_payload(
             "response_schema_name": request.response_schema_name,
         },
     }
+    if request.seed is not None:
+        payload["seed"] = request.seed
     if use_structured_output and request.response_json_schema is not None:
         schema_name = request.response_schema_name or "structured_response"
         if request.structured_output_mode == "response_format_json_schema":

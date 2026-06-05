@@ -45,6 +45,7 @@ EXPECTED_TASK12_MANIFEST_VALUES = {
 EXPECTED_DECODING = {
     "temperature": 0,
     "top_p": None,
+    "seed": 0,
 }
 
 __all__ = ["report_lineage_check"]

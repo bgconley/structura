@@ -677,5 +677,5 @@ def _task12_manifest_lineage() -> dict[str, object]:
         "candidate_gate_version": CANDIDATE_GATE_VERSION,
         "reconciler_version": RECONCILER_VERSION,
         "visual_input_plan_version": VISUAL_INPUT_PLAN_VERSION,
-        "decoding": {"temperature": 0, "top_p": None},
+        "decoding": {"temperature": 0, "top_p": None, "seed": 0},
     }

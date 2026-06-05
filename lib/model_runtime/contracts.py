@@ -31,6 +31,7 @@ class VisionGenerateRequest:
     response_json_schema: dict[str, Any] | None = None
     allow_structured_output_fallback: bool = True
     structured_output_mode: str = "response_format_json_schema"
+    seed: int | None = 0
 
 
 @dataclass(frozen=True)

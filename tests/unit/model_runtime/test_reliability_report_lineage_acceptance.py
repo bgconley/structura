@@ -105,7 +105,7 @@ def test_report_lineage_fails_for_stale_task12_manifest_lineage() -> None:
             "candidate_gate_version": "phase8_5-old-gates",
             "reconciler_version": "phase8_5-old-reconciler",
             "visual_input_plan_version": "phase8_5-old-visual-plan",
-            "decoding": {"temperature": 0.4, "top_p": 0.9},
+            "decoding": {"temperature": 0.4, "top_p": 0.9, "seed": 99},
         }
     )
 
@@ -129,6 +129,7 @@ def test_report_lineage_fails_for_stale_task12_manifest_lineage() -> None:
                 "runManifest.visual_input_plan_version",
                 "runManifest.decoding.temperature",
                 "runManifest.decoding.top_p",
+                "runManifest.decoding.seed",
             ],
         }
     ]
@@ -235,5 +236,5 @@ def _task12_manifest_lineage() -> dict[str, object]:
         "candidate_gate_version": CANDIDATE_GATE_VERSION,
         "reconciler_version": RECONCILER_VERSION,
         "visual_input_plan_version": VISUAL_INPUT_PLAN_VERSION,
-        "decoding": {"temperature": 0, "top_p": None},
+        "decoding": {"temperature": 0, "top_p": None, "seed": 0},
     }
