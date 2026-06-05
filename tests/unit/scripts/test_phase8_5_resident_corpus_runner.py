@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import subprocess
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 from uuid import uuid4
@@ -44,6 +46,22 @@ def test_resident_corpus_acceptance_exit_code_fails_failed_report() -> None:
     report = _report(hard_status="failed")
 
     assert runner._acceptance_exit_code(report) == 1
+
+
+def test_resident_corpus_runner_cli_imports_from_repo_root() -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/gpu/run_phase8_5_resident_corpus.py",
+            "--help",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Run PDFs through the resident Phase 8.5 live pipeline" in result.stdout
 
 
 def test_resident_corpus_acceptance_exit_code_allows_passing_resident_report_without_gold() -> None:

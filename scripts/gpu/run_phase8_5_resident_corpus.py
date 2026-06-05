@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import time
 from datetime import UTC, date, datetime
 from decimal import Decimal
@@ -10,18 +11,24 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-from lib.db.connection import db_connection
-from lib.documents.ingestion import DocumentIngestionRequest, ingest_document_path
-from lib.model_runtime.reliability_acceptance import evaluate_phase85_report_acceptance
-from lib.model_runtime.reliability_job_scope import TARGET_FAILURE_QUEUES
-from lib.model_runtime.reliability_report import build_phase85_reliability_report
-from scripts.gpu.phase8_5_resident_manifest import (
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from lib.db.connection import db_connection  # noqa: E402
+from lib.documents.ingestion import DocumentIngestionRequest, ingest_document_path  # noqa: E402
+from lib.model_runtime.reliability_acceptance import (  # noqa: E402
+    evaluate_phase85_report_acceptance,
+)
+from lib.model_runtime.reliability_job_scope import TARGET_FAILURE_QUEUES  # noqa: E402
+from lib.model_runtime.reliability_report import build_phase85_reliability_report  # noqa: E402
+from scripts.gpu.phase8_5_resident_manifest import (  # noqa: E402
     ResidentCorpusEntry,
 )
-from scripts.gpu.phase8_5_resident_manifest import (
+from scripts.gpu.phase8_5_resident_manifest import (  # noqa: E402
     gold_metadata_by_document_id as _gold_metadata_by_document_id,
 )
-from scripts.gpu.phase8_5_resident_manifest import (
+from scripts.gpu.phase8_5_resident_manifest import (  # noqa: E402
     resolve_corpus_entries as _resolve_corpus_entries,
 )
 
