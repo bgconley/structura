@@ -117,7 +117,17 @@ def test_invoice_region_reconciliation_ignores_conflicting_raw_payload() -> None
     assert [item["description"] for item in aggregate["line_items"]] == ["Claim service"]
     assert aggregate["line_items"][0]["amount"] == {"amount": 64.0, "currency": "USD"}
     assert aggregate["totals"]["total"] == {"amount": 64.0, "currency": "USD"}
-    assert aggregate["metadata"]["quality_outcome"] == "extracted_cleanly"
+    assert aggregate["metadata"]["quality_outcome"] == "needs_human_review"
+    assert {
+        (
+            decision["canonical_key"],
+            decision["decision"],
+            decision["reason_code"],
+        )
+        for decision in aggregate["metadata"]["claim_resolution_decisions"]
+    } >= {
+        ("invoice.invoice_number", "absent", "required_claim_absent"),
+    }
 
 
 def test_invoice_region_reconciliation_uses_claim_family_over_raw_schema_label() -> None:

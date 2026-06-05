@@ -65,6 +65,12 @@ def resolve_claims_for_family(
         )
         line_items = resolved_line_items
         decisions.extend(line_decisions)
+    decisions.extend(
+        _absent_required_decisions(
+            required_keys=registry.required_keys,
+            existing_decisions=decisions,
+        )
+    )
     decisions = sorted(decisions, key=lambda decision: decision.canonical_key)
     return ClaimFamilyProjection(
         family=family,
@@ -184,6 +190,24 @@ def _resolve_key(
     )
 
 
+def _absent_required_decisions(
+    *,
+    required_keys: tuple[str, ...],
+    existing_decisions: list[ClaimResolutionDecision],
+) -> list[ClaimResolutionDecision]:
+    decided_keys = {decision.canonical_key for decision in existing_decisions}
+    return [
+        ClaimResolutionDecision(
+            canonical_key=canonical_key,
+            decision="absent",
+            reason_code="required_claim_absent",
+            selected_claim_id=None,
+        )
+        for canonical_key in required_keys
+        if canonical_key not in decided_keys
+    ]
+
+
 def _claim_sort_key(claim: Claim) -> tuple[int, float, str]:
     return (
         -SOURCE_PRECEDENCE.get(claim.source_engine, 0),
@@ -207,7 +231,9 @@ def _quality_outcome(
         return "no_extraction_target"
     if not has_material_output:
         return "insufficient_signal"
-    if review_only or any(decision.decision == "needs_review" for decision in decisions):
+    if review_only or any(
+        decision.decision in {"needs_review", "absent"} for decision in decisions
+    ):
         return "needs_human_review"
     return "extracted_cleanly"
 

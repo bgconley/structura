@@ -217,6 +217,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   Claims. Qwen remains the semantic planner/router, while value Claims must
   come from Docling or Granite evidence so Qwen annotations cannot become
   canonical facts by provenance drift.
+- 2026-06-05: Claim family registries now declare required value keys and the
+  resolver emits explicit `absent` decisions with `required_claim_absent`
+  reasons when no usable Docling/Granite Claim exists. Partial first-class
+  projections with required Claim gaps are marked `needs_human_review` instead
+  of `extracted_cleanly`, while empty projections remain `insufficient_signal`.
 
 ## Deferred Work
 

@@ -21,6 +21,7 @@ class ClaimFamilyRegistry:
     family: str
     field_projections: tuple[ClaimFieldProjection, ...]
     line_item_projection: ClaimLineItemProjection | None = None
+    required_keys: tuple[str, ...] = ()
 
 
 INVOICE_CLAIM_REGISTRY = ClaimFamilyRegistry(
@@ -35,6 +36,7 @@ INVOICE_CLAIM_REGISTRY = ClaimFamilyRegistry(
         ClaimFieldProjection("invoice.balance_due", "totals", "balance_due"),
         ClaimFieldProjection("invoice.amount_paid", "totals", "amount_paid"),
     ),
+    required_keys=("invoice.invoice_number", "invoice.total_amount"),
     line_item_projection=ClaimLineItemProjection(
         canonical_prefix="invoice.line_item.",
         field_map={

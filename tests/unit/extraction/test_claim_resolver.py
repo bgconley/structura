@@ -52,6 +52,7 @@ def test_invoice_claim_resolver_projects_claims_with_source_precedence() -> None
         (decision.canonical_key, decision.decision, decision.reason_code)
         for decision in projection.decisions
     ] == [
+        ("invoice.invoice_number", "absent", "required_claim_absent"),
         ("invoice.line_item.amount", "accepted", "single_source"),
         ("invoice.line_item.description", "accepted", "single_source"),
         ("invoice.total_amount", "needs_review", "source_precedence_conflict"),
@@ -449,6 +450,36 @@ def test_claim_resolver_emits_insufficient_signal_without_usable_claims() -> Non
     assert projection.quality_outcome == "insufficient_signal"
 
 
+def test_claim_resolver_records_absent_required_invoice_keys() -> None:
+    line_description = _claim(
+        canonical_key="invoice.line_item.description",
+        typed_value="Anchored labor",
+        source_engine="granite",
+        anchor=ClaimAnchor(page_number=1, table_id="table-1", row_index=1),
+        group_id="line-1",
+    )
+
+    projection = resolve_claims_for_family(
+        family="invoice",
+        claims=[line_description],
+    )
+
+    assert projection.line_items == [
+        {
+            "description": "Anchored labor",
+            "evidence": [{"page_number": 1, "table_id": "table-1", "row_index": 1}],
+        }
+    ]
+    assert {
+        (decision.canonical_key, decision.decision, decision.reason_code)
+        for decision in projection.decisions
+    } >= {
+        ("invoice.invoice_number", "absent", "required_claim_absent"),
+        ("invoice.total_amount", "absent", "required_claim_absent"),
+    }
+    assert projection.quality_outcome == "needs_human_review"
+
+
 def test_claim_resolver_ignores_qwen_value_claims() -> None:
     qwen_total = _claim(
         canonical_key="invoice.total_amount",
@@ -463,7 +494,13 @@ def test_claim_resolver_ignores_qwen_value_claims() -> None:
     )
 
     assert projection.fields == {}
-    assert projection.decisions == []
+    assert [
+        (decision.canonical_key, decision.decision, decision.reason_code)
+        for decision in projection.decisions
+    ] == [
+        ("invoice.invoice_number", "absent", "required_claim_absent"),
+        ("invoice.total_amount", "absent", "required_claim_absent"),
+    ]
     assert projection.quality_outcome == "insufficient_signal"
 
 
