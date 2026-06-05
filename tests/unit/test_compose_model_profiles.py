@@ -122,6 +122,7 @@ def test_live_model_profiles_have_concrete_blackwell_commands() -> None:
     assert "text-embeddings-inference:cuda-1.9" in text_embed["image"]
     assert "start_text_embed.sh" in " ".join(text_embed["command"])
     assert text_embed["environment"]["MODEL_ID"] == "Qwen/Qwen3-Embedding-4B"
+    assert text_embed["environment"]["HF_HUB_DISABLE_XET"] == "1"
 
     visual_embed = services["model-vl-embed"]
     assert "voipmonitor/vllm:cu130" in visual_embed["image"]

@@ -458,6 +458,7 @@ services:
       SERVED_MODEL_NAME: Qwen/Qwen3-Embedding-4B
       PORT: "8102"
       DTYPE: float16
+      HF_HUB_DISABLE_XET: "1"
     deploy:
       resources:
         reservations:
