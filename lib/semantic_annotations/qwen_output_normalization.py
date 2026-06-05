@@ -5,6 +5,7 @@ from jsonschema import Draft202012Validator, ValidationError
 from lib.extraction.models import ExtractionSourceDocument
 from lib.model_runtime.contracts import VisionGenerateResponse
 from lib.model_runtime.http_client import ModelProtocolError
+from lib.semantic_annotations.docling_references import payload_with_resolved_docling_refs
 from lib.semantic_annotations.qwen_output_scope import (
     canonical_payload_filtered_to_source as _canonical_payload_filtered_to_source,
 )
@@ -98,6 +99,10 @@ def _normalized_model_output_payload(
     *,
     source: ExtractionSourceDocument,
 ) -> ValidatedModelOutputPayload:
+    payload, reference_normalization = payload_with_resolved_docling_refs(
+        payload,
+        source=source,
+    )
     pages = payload.get("pages")
     regions = payload.get("regions")
     if (
@@ -105,22 +110,50 @@ def _normalized_model_output_payload(
         and isinstance(pages, list)
         and isinstance(regions, list)
     ):
-        return _canonical_payload_normalized_for_source(payload, pages=pages, source=source)
+        normalized = _canonical_payload_normalized_for_source(payload, pages=pages, source=source)
+        return ValidatedModelOutputPayload(
+            payload=normalized.payload,
+            normalization=_merged_normalization(
+                reference_normalization,
+                normalized.normalization,
+            ),
+        )
     if isinstance(pages, list):
-        return _payload_from_page_annotations(
+        normalized = _payload_from_page_annotations(
             {"page_annotations": [_page_annotation_from_page_wrapper(page) for page in pages]},
             source=source,
         )
+        return ValidatedModelOutputPayload(
+            payload=normalized.payload,
+            normalization=_merged_normalization(
+                reference_normalization,
+                normalized.normalization,
+            ),
+        )
     page_annotations = payload.get("page_annotations")
     if isinstance(page_annotations, list):
-        return _payload_from_page_annotations(payload, source=source)
+        normalized = _payload_from_page_annotations(payload, source=source)
+        return ValidatedModelOutputPayload(
+            payload=normalized.payload,
+            normalization=_merged_normalization(
+                reference_normalization,
+                normalized.normalization,
+            ),
+        )
     page = payload.get("page")
     if isinstance(page, dict):
-        return _payload_from_page_annotations(
+        normalized = _payload_from_page_annotations(
             {"page_annotations": [_page_annotation_from_page_wrapper(page)]},
             source=source,
         )
-    return ValidatedModelOutputPayload(payload=payload, normalization={})
+        return ValidatedModelOutputPayload(
+            payload=normalized.payload,
+            normalization=_merged_normalization(
+                reference_normalization,
+                normalized.normalization,
+            ),
+        )
+    return ValidatedModelOutputPayload(payload=payload, normalization=reference_normalization)
 
 
 def _canonical_payload_normalized_for_source(

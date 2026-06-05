@@ -9,6 +9,7 @@ from lib.extraction.models import (
     ParsedTableText,
 )
 from lib.semantic_annotations.docling_audit import TableAuditSummary, build_docling_audit
+from lib.semantic_annotations.docling_references import element_ref, page_ref, table_ref
 
 PAGE_SNIPPET_CHARS = 320
 ELEMENT_SNIPPET_CHARS = 160
@@ -23,6 +24,7 @@ def build_docling_context(
     include_pages_alias: bool = True,
     include_page_image_hashes: bool = True,
     include_element_bboxes: bool = True,
+    stable_references: bool = False,
 ) -> dict[str, Any]:
     elements_by_page = _group_elements_by_page(source.elements)
     tables_by_page = _group_tables_by_page(source.tables)
@@ -40,11 +42,12 @@ def build_docling_context(
             tables=tables_by_page.get(page.page_number, []),
             include_page_image_hash=include_page_image_hashes,
             include_element_bboxes=include_element_bboxes,
+            stable_references=stable_references,
         )
         for page in focus_pages
     ]
     document_context: dict[str, Any] = {
-        "documentId": str(source.document_id),
+        "documentId": "document" if stable_references else str(source.document_id),
         "family": source.family,
         "subtype": source.subtype,
         "title": source.title,
@@ -66,7 +69,7 @@ def build_docling_context(
         else "",
         "pageOutline": [
             {
-                "pageId": str(page.page_id),
+                "pageId": _page_id(page, stable_references=stable_references),
                 "pageNumber": page.page_number,
                 "outlineRole": _outline_role(
                     page.page_number,
@@ -80,10 +83,18 @@ def build_docling_context(
             for page in source.pages
         ],
         "tableInventory": [
-            _table_inventory_context(table, table_audit_by_id.get(str(table.table_id)))
+            _table_inventory_context(
+                table,
+                table_audit_by_id.get(str(table.table_id)),
+                stable_references=stable_references,
+            )
             for table in source.tables
         ],
-        "focusPageContract": _focus_page_contract(focus_pages, focus_page_numbers),
+        "focusPageContract": _focus_page_contract(
+            focus_pages,
+            focus_page_numbers,
+            stable_references=stable_references,
+        ),
     }
     context: dict[str, Any] = {
         "document": document_context,
@@ -101,28 +112,38 @@ def _page_context(
     tables: list[ParsedTableText],
     include_page_image_hash: bool,
     include_element_bboxes: bool,
+    stable_references: bool,
 ) -> dict[str, Any]:
     bounded_elements = sorted(elements, key=lambda element: element.ordinal)[:MAX_ELEMENTS_PER_PAGE]
     context = {
-        "pageId": str(page.page_id),
+        "pageId": _page_id(page, stable_references=stable_references),
         "pageNumber": page.page_number,
         "textSnippet": _snippet(page.text, PAGE_SNIPPET_CHARS),
         "elementCount": len(elements),
         "elementsTruncated": max(0, len(elements) - len(bounded_elements)),
         "elements": [
-            _element_context(element, include_bbox=include_element_bboxes)
+            _element_context(
+                element,
+                include_bbox=include_element_bboxes,
+                stable_references=stable_references,
+            )
             for element in bounded_elements
         ],
-        "tables": [_table_context(table) for table in tables],
+        "tables": [_table_context(table, stable_references=stable_references) for table in tables],
     }
     if include_page_image_hash:
         context["imageSha256"] = page.image_sha256
     return context
 
 
-def _element_context(element: ParsedElementText, *, include_bbox: bool) -> dict[str, Any]:
+def _element_context(
+    element: ParsedElementText,
+    *,
+    include_bbox: bool,
+    stable_references: bool,
+) -> dict[str, Any]:
     context = {
-        "elementId": str(element.element_id),
+        "elementId": _element_id(element, stable_references=stable_references),
         "pageNumber": element.page_number,
         "ordinal": element.ordinal,
         "textSnippet": _snippet(element.text, ELEMENT_SNIPPET_CHARS),
@@ -132,10 +153,10 @@ def _element_context(element: ParsedElementText, *, include_bbox: bool) -> dict[
     return context
 
 
-def _table_context(table: ParsedTableText) -> dict[str, Any]:
+def _table_context(table: ParsedTableText, *, stable_references: bool) -> dict[str, Any]:
     table_signal = _table_signal(table)
     return {
-        "tableId": str(table.table_id),
+        "tableId": _table_id(table, stable_references=stable_references),
         "pageNumber": table.page_number,
         "tableIndex": table.table_index,
         "markdownSnippet": _snippet(table.table_markdown or "", TABLE_SNIPPET_CHARS),
@@ -148,9 +169,11 @@ def _table_context(table: ParsedTableText) -> dict[str, Any]:
 def _table_inventory_context(
     table: ParsedTableText,
     audit_summary: TableAuditSummary | None,
+    *,
+    stable_references: bool,
 ) -> dict[str, Any]:
     return {
-        "tableId": str(table.table_id),
+        "tableId": _table_id(table, stable_references=stable_references),
         "pageNumber": table.page_number,
         "tableIndex": table.table_index,
         "markdownSnippet": _snippet(table.table_markdown or "", TABLE_SNIPPET_CHARS),
@@ -163,9 +186,13 @@ def _table_inventory_context(
 def _focus_page_contract(
     focus_pages: list[ParsedPageText],
     focus_page_numbers: set[int] | None,
+    *,
+    stable_references: bool,
 ) -> dict[str, Any]:
     return {
-        "allowedPageIds": [str(page.page_id) for page in focus_pages],
+        "allowedPageIds": [
+            _page_id(page, stable_references=stable_references) for page in focus_pages
+        ],
         "allowedPageNumbers": [page.page_number for page in focus_pages],
         "pagesArrayMustMatchFocusPages": focus_page_numbers is not None,
         "pageOutlineIsContextOnly": focus_page_numbers is not None,
@@ -233,6 +260,18 @@ def _group_tables_by_page(tables: list[ParsedTableText]) -> dict[int, list[Parse
     for table in tables:
         grouped.setdefault(table.page_number, []).append(table)
     return grouped
+
+
+def _page_id(page: ParsedPageText, *, stable_references: bool) -> str:
+    return page_ref(page) if stable_references else str(page.page_id)
+
+
+def _element_id(element: ParsedElementText, *, stable_references: bool) -> str:
+    return element_ref(element) if stable_references else str(element.element_id)
+
+
+def _table_id(table: ParsedTableText, *, stable_references: bool) -> str:
+    return table_ref(table) if stable_references else str(table.table_id)
 
 
 def _snippet(value: str, limit: int) -> str:

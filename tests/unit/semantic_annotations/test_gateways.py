@@ -226,6 +226,74 @@ def test_live_qwen_high_quality_gateway_normalizes_page_annotations_shape() -> N
     assert region.expected_fields == ("request_status",)
 
 
+def test_live_qwen_gateway_resolves_stable_docling_refs_to_persisted_ids() -> None:
+    source = _source_with_page_image_and_element()
+    page = source.pages[0]
+    element = source.elements[0]
+    client = FakeSemanticVisionClient(
+        profile_name=QWEN_SEMANTIC_PROFILE,
+        source_engine="qwen3_vl_8b",
+        normalized_json={
+            "schema_name": "semantic_annotation_model_output",
+            "schema_version": "v1",
+            "document_type": "medical_eob",
+            "pages": [
+                {
+                    "page_id": "page-1",
+                    "page_number": 1,
+                    "page_role": "denial_or_decision",
+                    "document_type_hint": "medical_eob",
+                    "extraction_usefulness": "high",
+                    "is_boilerplate": False,
+                    "has_structured_targets": True,
+                    "ambiguous": False,
+                    "escalation_required": False,
+                    "escalation_reasons": [],
+                    "reason": "Contains denial status.",
+                    "confidence": 0.9,
+                }
+            ],
+            "regions": [
+                {
+                    "semantic_type": "denial_or_coverage_decision",
+                    "priority": "high",
+                    "granite_task": "kvp",
+                    "target_schema": "medical_eob",
+                    "expected_fields": ["request_status"],
+                    "grounding": {
+                        "kind": "element",
+                        "page_id": "page-1",
+                        "element_id": "page-1-element-1",
+                        "table_id": None,
+                    },
+                    "review_required": False,
+                    "reason": "This block identifies the denial decision.",
+                    "confidence": 0.95,
+                }
+            ],
+            "quality_flags": {
+                "needs_high_quality_pass": False,
+                "visual_degradation": False,
+                "poor_ocr": False,
+                "ambiguous_document_type": False,
+                "reason": None,
+            },
+        },
+    )
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
+
+    assert result.manifest.pages[0].page_id == page.page_id
+    region = result.manifest.regions[0]
+    assert region.grounding.page_id == page.page_id
+    assert region.grounding.element_id == element.element_id
+    assert result.manifest.manifest["pages"][0]["page_id"] == str(page.page_id)
+    assert result.manifest.manifest["regions"][0]["grounding"]["element_id"] == str(
+        element.element_id
+    )
+    assert result.manifest.confidence["normalization"]["stable_docling_refs_resolved"] == 3
+
+
 def test_live_qwen_high_quality_gateway_caps_alternate_page_annotation_regions() -> None:
     source = _source_with_page_image_and_element()
     page = source.pages[0]

@@ -21,6 +21,7 @@ def build_semantic_planner_prompt(
         include_pages_alias=False,
         include_page_image_hashes=False,
         include_element_bboxes=False,
+        stable_references=True,
     )
     context_json = json.dumps(context, sort_keys=True, separators=(",", ":"))
     return (
@@ -30,9 +31,11 @@ def build_semantic_planner_prompt(
         "the provided JSON Schema. This is semantic inventory and extraction intent, "
         "not canonical extraction: do not output field values, money amounts, dates, "
         "names, addresses, or canonical facts. "
-        "Use Docling page_id, element_id, and table_id from the context instead of "
-        "inventing coordinates; visual_bbox_hint is advisory only and never replaces "
-        "Docling grounding. First inventory every input page image. When focusPages is "
+        "Use stable Docling page_id, element_id, and table_id refs from the context "
+        "(such as page-1, page-1-element-3, and page-1-table-2) instead of inventing "
+        "coordinates; copy these refs exactly into output grounding fields. "
+        "visual_bbox_hint is advisory only and never replaces Docling grounding. "
+        "First inventory every input page image. When focusPages is "
         "present, document.pageOutline is context-only; pages[] must contain exactly "
         "the focusPages/input image pages from document.focusPageContract and must "
         "not copy or summarize pageOutline-only pages. Regions must also be grounded "
