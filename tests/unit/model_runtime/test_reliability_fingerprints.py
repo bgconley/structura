@@ -53,6 +53,78 @@ def test_repeatability_fingerprints_ignore_relationship_suggestions() -> None:
     assert first["reviewTasks"] == second["reviewTasks"]
 
 
+def test_repeatability_fingerprints_ignore_budget_skipped_raw_planner_regions() -> None:
+    first_document = _document("doc-1")
+    second_document = deepcopy(first_document)
+    second_document["semanticRegions"].append(
+        {
+            "semantic_region_id": "region-1-budget-extra",
+            "page_number": 8,
+            "semantic_type": "generic_form_kvp",
+            "granite_task": "kvp",
+            "target_schema": "medical_eob",
+            "grounding_kind": "page",
+            "review_required": True,
+        }
+    )
+    second_document["plannerTasks"].append(
+        {
+            "id": "task-1-budget-extra",
+            "semantic_region_id": "region-1-budget-extra",
+            "status": "skipped_budget_exceeded",
+            "semantic_type": "generic_form_kvp",
+            "extractor_backend": "granite_region",
+            "target_schema": "medical_eob",
+            "canonical_target_schema": "medical_eob",
+            "model_output_schema_name": "granite_generic_kvp.v1",
+            "compatibility_mode": "generic_review_only",
+            "page_number": 8,
+        }
+    )
+
+    first = repeatability_fingerprints([first_document], {"rejectionReasons": {}})
+    second = repeatability_fingerprints([second_document], {"rejectionReasons": {}})
+
+    assert first["semanticRegions"] == second["semanticRegions"]
+    assert first["plannerTasks"] == second["plannerTasks"]
+
+
+def test_repeatability_fingerprints_change_when_selected_targets_change() -> None:
+    first_document = _document("doc-1")
+    second_document = deepcopy(first_document)
+    second_document["semanticRegions"].append(
+        {
+            "semantic_region_id": "region-1-selected-extra",
+            "page_number": 8,
+            "semantic_type": "generic_form_kvp",
+            "granite_task": "kvp",
+            "target_schema": "medical_eob",
+            "grounding_kind": "page",
+            "review_required": True,
+        }
+    )
+    second_document["plannerTasks"].append(
+        {
+            "id": "task-1-selected-extra",
+            "semantic_region_id": "region-1-selected-extra",
+            "status": "selected",
+            "semantic_type": "generic_form_kvp",
+            "extractor_backend": "granite_region",
+            "target_schema": "medical_eob",
+            "canonical_target_schema": "medical_eob",
+            "model_output_schema_name": "granite_generic_kvp.v1",
+            "compatibility_mode": "generic_review_only",
+            "page_number": 8,
+        }
+    )
+
+    first = repeatability_fingerprints([first_document], {"rejectionReasons": {}})
+    second = repeatability_fingerprints([second_document], {"rejectionReasons": {}})
+
+    assert first["semanticRegions"] != second["semanticRegions"]
+    assert first["plannerTasks"] != second["plannerTasks"]
+
+
 def _document(document_id: str) -> dict[str, Any]:
     suffix = document_id[-1]
     return {
@@ -84,6 +156,7 @@ def _document(document_id: str) -> dict[str, Any]:
         "plannerTasks": [
             {
                 "id": f"task-{suffix}-a",
+                "semantic_region_id": f"region-{suffix}-a",
                 "status": "selected",
                 "semantic_type": "invoice_line_item_table",
                 "extractor_backend": "granite_region",
@@ -95,6 +168,7 @@ def _document(document_id: str) -> dict[str, Any]:
             },
             {
                 "id": f"task-{suffix}-b",
+                "semantic_region_id": f"region-{suffix}-b",
                 "status": "skipped_budget_exceeded",
                 "semantic_type": "payment_summary",
                 "extractor_backend": "granite_region",

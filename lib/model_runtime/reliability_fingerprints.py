@@ -8,6 +8,8 @@ from lib.model_runtime.reliability_report_normalization import (
     fingerprint,
     get_value,
     json_safe,
+    list_value,
+    normalized_token,
     select_values,
 )
 
@@ -52,7 +54,7 @@ def repeatability_fingerprints(
                         "review_required",
                     ),
                 )
-                for row in all_rows(documents, "semanticRegions")
+                for row in _selected_semantic_region_rows(documents)
             )
         ),
         "plannerTasks": fingerprint(
@@ -70,7 +72,7 @@ def repeatability_fingerprints(
                         "page_number",
                     ),
                 )
-                for row in all_rows(documents, "plannerTasks")
+                for row in _selected_planner_task_rows(documents)
             )
         ),
         "candidateFingerprints": fingerprint(candidate_fingerprints),
@@ -94,6 +96,50 @@ def repeatability_fingerprints(
 
 def _stable_rows(rows: Any) -> list[Any]:
     return sorted((json_safe(row) for row in rows), key=fingerprint)
+
+
+def _selected_semantic_region_rows(documents: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for document in documents:
+        regions = [
+            row
+            for row in list_value(get_value(document, "semanticRegions"))
+            if isinstance(row, dict)
+        ]
+        selected_region_ids = {
+            str(region_id)
+            for task in _planner_task_rows(document)
+            if _is_selected_planner_task(task)
+            if (region_id := get_value(task, "semantic_region_id", "semanticRegionId"))
+            not in (None, "")
+        }
+        if not selected_region_ids:
+            rows.extend(regions)
+            continue
+        rows.extend(
+            row
+            for row in regions
+            if str(get_value(row, "semantic_region_id", "semanticRegionId") or "")
+            in selected_region_ids
+        )
+    return rows
+
+
+def _selected_planner_task_rows(documents: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        row
+        for document in documents
+        for row in _planner_task_rows(document)
+        if _is_selected_planner_task(row)
+    ]
+
+
+def _planner_task_rows(document: dict[str, Any]) -> list[dict[str, Any]]:
+    return [row for row in list_value(get_value(document, "plannerTasks")) if isinstance(row, dict)]
+
+
+def _is_selected_planner_task(row: dict[str, Any]) -> bool:
+    return normalized_token(get_value(row, "status")) == "selected"
 
 
 def _is_model_runtime_review_task(row: dict[str, Any]) -> bool:
