@@ -61,15 +61,16 @@ def test_phase8_5_live_runtime_preflight_checks_container_modes() -> None:
     assert "HTTPConnection" in script
 
 
-def test_phase8_5_model_smoke_fails_before_gpu_probe_when_manifest_is_missing(
+def test_phase8_5_model_smoke_probes_models_before_manifest_gate_when_manifest_is_missing(
     tmp_path: Path,
 ) -> None:
-    marker = tmp_path / "nvidia-smi-was-called"
+    nvidia_marker = tmp_path / "nvidia-smi-was-called"
+    python_marker = tmp_path / "python-probe-was-called"
     _write_executable(
         tmp_path / "nvidia-smi",
         f"""\
         #!/usr/bin/env bash
-        touch {marker}
+        touch {nvidia_marker}
         echo "0, NVIDIA Test GPU, 24564 MiB, 999.0"
         """,
     )
@@ -77,11 +78,28 @@ def test_phase8_5_model_smoke_fails_before_gpu_probe_when_manifest_is_missing(
         tmp_path / "curl",
         """\
         #!/usr/bin/env bash
-        exit 1
+        exit 0
+        """,
+    )
+    _write_executable(
+        tmp_path / "python-probe",
+        f"""\
+        #!/usr/bin/env bash
+        touch {python_marker}
+        case "$1" in
+          scripts/gpu/probe_phase8_5_live_models.py)
+            exit 0
+            ;;
+          *)
+            echo "unexpected python command: $*" >&2
+            exit 2
+            ;;
+        esac
         """,
     )
     env = os.environ.copy()
     env["PATH"] = f"{tmp_path}{os.pathsep}{env.get('PATH', '')}"
+    env["PYTHON"] = str(tmp_path / "python-probe")
     env["STRUCTURA_MODEL_CORPUS_MANIFEST"] = str(tmp_path / "missing-model-manifest.json")
     env["STRUCTURA_MODEL_SMOKE_HEALTH_TIMEOUT_SECONDS"] = "1"
     env["STRUCTURA_MODEL_SMOKE_HEALTH_POLL_SECONDS"] = "0"
@@ -100,4 +118,5 @@ def test_phase8_5_model_smoke_fails_before_gpu_probe_when_manifest_is_missing(
     output = result.stdout + result.stderr
     assert "Phase 8.5 model corpus manifest not found" in output
     assert "STRUCTURA_MODEL_CORPUS_MANIFEST" in output
-    assert not marker.exists()
+    assert nvidia_marker.exists()
+    assert python_marker.exists()

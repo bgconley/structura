@@ -35,12 +35,6 @@ BLACKWELL_COMPANION_SERVICES=(
 
 echo "Phase 8.5 GPU model smoke"
 
-if [[ ! -f "$MODEL_CORPUS_MANIFEST" ]]; then
-  echo "Phase 8.5 model corpus manifest not found: ${MODEL_CORPUS_MANIFEST}" >&2
-  echo "Set STRUCTURA_MODEL_CORPUS_MANIFEST to a private model-backed phase8_5_model_manifest.json." >&2
-  exit 1
-fi
-
 if command -v nvidia-smi >/dev/null 2>&1; then
   nvidia-smi --query-gpu=index,name,memory.total,driver_version --format=csv,noheader
 else
@@ -129,6 +123,12 @@ else
   probe_health "model-embed" "${TEXT_EMBED_URL}"
   probe_health "model-vl-embed" "${VISUAL_EMBED_URL}"
   probe_live_models
+fi
+
+if [[ ! -f "$MODEL_CORPUS_MANIFEST" ]]; then
+  echo "Phase 8.5 model corpus manifest not found: ${MODEL_CORPUS_MANIFEST}" >&2
+  echo "Set STRUCTURA_MODEL_CORPUS_MANIFEST to a private model-backed phase8_5_model_manifest.json." >&2
+  exit 1
 fi
 
 "${PYTHON:-python3}" scripts/run_model_corpus.py \
