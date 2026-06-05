@@ -231,6 +231,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   acceptable typed primitives in the family registry. Claim admission rejects
   wrong-type values such as text emitted for `invoice.total_amount`, preserving
   the typed-or-dropped boundary before resolver projection.
+- 2026-06-05: The Claim resolver now applies registered arithmetic invariants.
+  Invoice `subtotal + tax_total == total_amount` is checked after source
+  precedence selection, and a selected inconsistent total is demoted to
+  `needs_review` with `cross_field_arithmetic_conflict`.
 
 ## Deferred Work
 

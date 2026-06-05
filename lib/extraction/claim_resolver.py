@@ -2,9 +2,14 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from lib.extraction.claim_registry import CLAIM_FAMILY_REGISTRIES, ClaimLineItemProjection
+from lib.extraction.claim_registry import (
+    CLAIM_FAMILY_REGISTRIES,
+    ClaimArithmeticInvariant,
+    ClaimLineItemProjection,
+)
 from lib.extraction.claims import Claim
 from lib.extraction.quality_outcomes import QualityOutcome
 
@@ -45,6 +50,7 @@ def resolve_claims_for_family(
         return _resolve_document_observations(requested_family=family, claims=claims)
     fields: dict[str, dict[str, Any]] = {}
     decisions: list[ClaimResolutionDecision] = []
+    selected_claims: dict[str, Claim] = {}
     for field_projection in registry.field_projections:
         selected, decision = _resolve_key(
             field_projection.canonical_key,
@@ -54,6 +60,7 @@ def resolve_claims_for_family(
             decisions.append(decision)
         if selected is None:
             continue
+        selected_claims[field_projection.canonical_key] = selected
         fields.setdefault(field_projection.container, {})[field_projection.field_name] = (
             selected.typed_value
         )
@@ -65,6 +72,11 @@ def resolve_claims_for_family(
         )
         line_items = resolved_line_items
         decisions.extend(line_decisions)
+    decisions = _apply_arithmetic_invariants(
+        invariants=registry.arithmetic_invariants,
+        selected_claims=selected_claims,
+        decisions=decisions,
+    )
     decisions.extend(
         _absent_required_decisions(
             required_keys=registry.required_keys,
@@ -206,6 +218,86 @@ def _absent_required_decisions(
         for canonical_key in required_keys
         if canonical_key not in decided_keys
     ]
+
+
+def _apply_arithmetic_invariants(
+    *,
+    invariants: tuple[ClaimArithmeticInvariant, ...],
+    selected_claims: dict[str, Claim],
+    decisions: list[ClaimResolutionDecision],
+) -> list[ClaimResolutionDecision]:
+    updated = decisions
+    for invariant in invariants:
+        target_claim = selected_claims.get(invariant.target_key)
+        target_amount = _claim_money_amount(target_claim)
+        addend_amounts = [
+            _claim_money_amount(selected_claims.get(addend_key))
+            for addend_key in invariant.addend_keys
+        ]
+        if (
+            target_claim is None
+            or target_amount is None
+            or any(amount is None for amount in addend_amounts)
+        ):
+            continue
+        expected = sum((amount for amount in addend_amounts if amount is not None), Decimal("0"))
+        if target_amount == expected:
+            continue
+        updated = _demote_decision(
+            decisions=updated,
+            canonical_key=invariant.target_key,
+            selected_claim_id=target_claim.claim_id,
+            reason_code=invariant.reason_code,
+        )
+    return updated
+
+
+def _demote_decision(
+    *,
+    decisions: list[ClaimResolutionDecision],
+    canonical_key: str,
+    selected_claim_id: str,
+    reason_code: str,
+) -> list[ClaimResolutionDecision]:
+    replaced = False
+    updated: list[ClaimResolutionDecision] = []
+    for decision in decisions:
+        if decision.canonical_key != canonical_key:
+            updated.append(decision)
+            continue
+        replaced = True
+        updated.append(
+            ClaimResolutionDecision(
+                canonical_key=canonical_key,
+                decision="needs_review",
+                reason_code=reason_code,
+                selected_claim_id=decision.selected_claim_id or selected_claim_id,
+                rejected_claim_ids=decision.rejected_claim_ids,
+            )
+        )
+    if replaced:
+        return updated
+    return [
+        *updated,
+        ClaimResolutionDecision(
+            canonical_key=canonical_key,
+            decision="needs_review",
+            reason_code=reason_code,
+            selected_claim_id=selected_claim_id,
+        ),
+    ]
+
+
+def _claim_money_amount(claim: Claim | None) -> Decimal | None:
+    if claim is None or not isinstance(claim.typed_value, dict):
+        return None
+    amount = claim.typed_value.get("amount")
+    if amount is None:
+        return None
+    try:
+        return Decimal(str(amount)).quantize(Decimal("0.01"))
+    except (InvalidOperation, ValueError):
+        return None
 
 
 def _claim_sort_key(claim: Claim) -> tuple[int, float, str]:

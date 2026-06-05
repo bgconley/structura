@@ -19,11 +19,19 @@ class ClaimLineItemProjection:
 
 
 @dataclass(frozen=True)
+class ClaimArithmeticInvariant:
+    target_key: str
+    addend_keys: tuple[str, ...]
+    reason_code: str
+
+
+@dataclass(frozen=True)
 class ClaimFamilyRegistry:
     family: str
     field_projections: tuple[ClaimFieldProjection, ...]
     line_item_projection: ClaimLineItemProjection | None = None
     required_keys: tuple[str, ...] = ()
+    arithmetic_invariants: tuple[ClaimArithmeticInvariant, ...] = ()
 
 
 INVOICE_CLAIM_REGISTRY = ClaimFamilyRegistry(
@@ -41,6 +49,13 @@ INVOICE_CLAIM_REGISTRY = ClaimFamilyRegistry(
         ClaimFieldProjection("invoice.amount_paid", "totals", "amount_paid", ("money",)),
     ),
     required_keys=("invoice.invoice_number", "invoice.total_amount"),
+    arithmetic_invariants=(
+        ClaimArithmeticInvariant(
+            target_key="invoice.total_amount",
+            addend_keys=("invoice.subtotal", "invoice.tax_total"),
+            reason_code="cross_field_arithmetic_conflict",
+        ),
+    ),
     line_item_projection=ClaimLineItemProjection(
         canonical_prefix="invoice.line_item.",
         field_map={

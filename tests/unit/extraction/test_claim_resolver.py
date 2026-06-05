@@ -125,6 +125,48 @@ def test_receipt_claim_resolver_projects_registry_fields_and_line_items() -> Non
     assert projection.quality_outcome == "extracted_cleanly"
 
 
+def test_invoice_claim_resolver_demotes_arithmetic_conflicts_to_review() -> None:
+    anchor = ClaimAnchor(page_number=1, table_id="totals-table", row_index=1)
+    invoice_number = _claim(
+        canonical_key="invoice.invoice_number",
+        typed_value="INV-42",
+        source_engine="granite",
+        anchor=anchor,
+    )
+    subtotal = _claim(
+        canonical_key="invoice.subtotal",
+        typed_value={"amount": 10.0, "currency": "USD"},
+        source_engine="granite",
+        anchor=anchor,
+    )
+    tax_total = _claim(
+        canonical_key="invoice.tax_total",
+        typed_value={"amount": 2.0, "currency": "USD"},
+        source_engine="granite",
+        anchor=anchor,
+    )
+    total = _claim(
+        canonical_key="invoice.total_amount",
+        typed_value={"amount": 20.0, "currency": "USD"},
+        source_engine="granite",
+        anchor=anchor,
+    )
+
+    projection = resolve_claims_for_family(
+        family="invoice",
+        claims=[invoice_number, subtotal, tax_total, total],
+    )
+
+    assert projection.fields["totals"]["total"] == {"amount": 20.0, "currency": "USD"}
+    assert {
+        (decision.canonical_key, decision.decision, decision.reason_code)
+        for decision in projection.decisions
+    } >= {
+        ("invoice.total_amount", "needs_review", "cross_field_arithmetic_conflict"),
+    }
+    assert projection.quality_outcome == "needs_human_review"
+
+
 def test_medical_eob_claim_resolver_projects_registry_fields_and_service_lines() -> None:
     anchor = ClaimAnchor(
         page_number=2, table_id="00000000-0000-0000-0000-000000000001", row_index=4
