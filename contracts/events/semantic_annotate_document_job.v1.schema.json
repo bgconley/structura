@@ -35,11 +35,11 @@
     },
     "quality_mode": {
       "type": "string",
-      "enum": ["smart", "high_quality", "rescue"]
+      "enum": ["smart"]
     },
     "semantic_quality_mode": {
       "type": "string",
-      "enum": ["smart", "high_quality"]
+      "enum": ["smart"]
     },
     "allow_8b_rescue": {
       "type": "boolean",

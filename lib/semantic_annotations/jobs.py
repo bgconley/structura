@@ -34,49 +34,6 @@ def enqueue_semantic_annotation_job(
         row = cur.fetchone()
         household_id = row["household_id"] if row else None
     if dedupe_existing:
-        if quality_mode == "rescue" and source_semantic_region_id is not None:
-            cur.execute(
-                """
-                SELECT id
-                FROM pipeline_jobs
-                WHERE document_id = %s
-                  AND job_type = 'semantic_annotate'
-                  AND queue_name = 'semantic-annotations'
-                  AND status IN ('queued', 'running', 'succeeded')
-                  AND payload_json ->> 'quality_mode' = 'rescue'
-                  AND payload_json ->> 'source_semantic_region_id' = %s
-                  AND COALESCE(payload_json #>> '{metadata,failure_class}', '') = %s
-                ORDER BY created_at ASC
-                LIMIT 1
-                """,
-                (
-                    document_id,
-                    str(source_semantic_region_id),
-                    rescue_failure_class or "",
-                ),
-            )
-            existing = cur.fetchone()
-            if existing:
-                existing_id = existing["id"]
-                return existing_id if isinstance(existing_id, UUID) else UUID(str(existing_id))
-            cur.execute(
-                """
-                SELECT id
-                FROM pipeline_jobs
-                WHERE document_id = %s
-                  AND job_type = 'semantic_annotate'
-                  AND queue_name = 'semantic-annotations'
-                  AND status = 'succeeded'
-                  AND payload_json ->> 'quality_mode' = 'rescue'
-                ORDER BY created_at ASC
-                LIMIT 1
-                """,
-                (document_id,),
-            )
-            existing = cur.fetchone()
-            if existing:
-                existing_id = existing["id"]
-                return existing_id if isinstance(existing_id, UUID) else UUID(str(existing_id))
         cur.execute(
             """
             SELECT id

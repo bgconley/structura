@@ -356,6 +356,26 @@ def test_all_job_event_schemas_validate_representative_payloads() -> None:
         registry.validate_event_instance(schema_name, payload)
 
 
+def test_semantic_annotation_job_contract_is_smart_only() -> None:
+    registry = ContractRegistry.load("contracts")
+    payload = {
+        "schema_name": "semantic_annotate_document_job",
+        "schema_version": "v1",
+        "job_id": UUID_1,
+        "created_at": TIMESTAMP,
+        "document_id": UUID_2,
+        "quality_mode": "high_quality",
+        "semantic_quality_mode": "high_quality",
+        "allow_8b_rescue": False,
+    }
+
+    with pytest.raises(ValidationError):
+        registry.validate_event_instance(
+            "semantic_annotate_document_job.v1.schema.json",
+            payload,
+        )
+
+
 def test_phase8_5_semantic_annotation_contract_has_qwen2b_and_response_schema() -> None:
     registry = ContractRegistry.load("contracts")
     common_defs = registry.schemas["common_defs.schema.json"]
