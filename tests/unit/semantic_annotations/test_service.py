@@ -530,7 +530,27 @@ def test_semantic_service_stabilizes_retail_order_regions_for_repeatability() ->
                 grounding=SemanticGroundingRef(kind="page", page_id=page_id),
                 review_required=False,
                 confidence=0.2,
-            )
+            ),
+            SemanticRegionAnnotation(
+                semantic_type="retail_order_line_item_table",
+                priority="high",
+                granite_task="tables_json",
+                target_schema="receipt",
+                expected_fields=("item_description", "quantity", "line_total"),
+                grounding=SemanticGroundingRef(kind="table", page_id=page_id, table_id=table_id),
+                review_required=False,
+                confidence=0.98,
+            ),
+            SemanticRegionAnnotation(
+                semantic_type="receipt_payment_summary",
+                priority="high",
+                granite_task="kvp",
+                target_schema="receipt",
+                expected_fields=("subtotal", "tax", "shipping", "total_amount"),
+                grounding=SemanticGroundingRef(kind="table", page_id=page_id, table_id=table_id),
+                review_required=False,
+                confidence=0.98,
+            ),
         ],
     )
     jobs = RecordingJobs()

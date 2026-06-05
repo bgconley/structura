@@ -50,7 +50,7 @@ def normalize_manifest_for_planning(
     manifest: DocumentSemanticManifest,
 ) -> DocumentSemanticManifest:
     regions = [_normalize_region(source, region) for region in manifest.regions]
-    regions = _with_retail_order_payment_summary(source, manifest, regions)
+    regions = _normalize_retail_order_regions(source, manifest, regions)
     regions = _dedupe_equivalent_regions(regions)
     if regions == manifest.regions:
         return manifest
@@ -172,6 +172,70 @@ def _with_retail_order_payment_summary(
     ]
 
 
+def _normalize_retail_order_regions(
+    source: ExtractionSourceDocument,
+    manifest: DocumentSemanticManifest,
+    regions: list[SemanticRegionAnnotation],
+) -> list[SemanticRegionAnnotation]:
+    if _document_type(manifest) != "retail_order":
+        return _with_retail_order_payment_summary(source, manifest, regions)
+
+    line_item_ids_to_keep = _retail_order_line_item_ids_to_keep(source, regions)
+    normalized: list[SemanticRegionAnnotation] = []
+    for region in regions:
+        if region.semantic_type == "receipt_payment_summary":
+            continue
+        if region.semantic_type == "retail_order_line_item_table":
+            if id(region) not in line_item_ids_to_keep:
+                continue
+        normalized.append(region)
+    return _with_retail_order_payment_summary(source, manifest, normalized)
+
+
+def _retail_order_line_item_ids_to_keep(
+    source: ExtractionSourceDocument,
+    regions: list[SemanticRegionAnnotation],
+) -> set[int]:
+    best_by_page: dict[int, tuple[tuple[object, ...], SemanticRegionAnnotation]] = {}
+    for region in regions:
+        if region.semantic_type != "retail_order_line_item_table":
+            continue
+        page_number = _region_page_number(source, region)
+        if page_number is None:
+            continue
+        key = _retail_order_line_item_key(source, region)
+        current = best_by_page.get(page_number)
+        if current is None or key < current[0]:
+            best_by_page[page_number] = (key, region)
+    return {id(region) for _key, region in best_by_page.values()}
+
+
+def _retail_order_line_item_key(
+    source: ExtractionSourceDocument,
+    region: SemanticRegionAnnotation,
+) -> tuple[object, ...]:
+    grounding = region.grounding
+    page_number = _region_page_number(source, region)
+    return (
+        page_number if page_number is not None else 999_999,
+        _table_index_for_id(source, grounding.table_id) if grounding.table_id else 999_999,
+        0 if grounding.kind == "table" else 1,
+        str(grounding.table_id or ""),
+    )
+
+
+def _region_page_number(
+    source: ExtractionSourceDocument,
+    region: SemanticRegionAnnotation,
+) -> int | None:
+    grounding = region.grounding
+    if grounding.page_id is not None:
+        return _page_number_for_id(source, grounding.page_id)
+    if grounding.table_id is not None:
+        return _page_number_for_table(source, grounding.table_id)
+    return None
+
+
 def _is_model_planned_line_item(region: SemanticRegionAnnotation) -> bool:
     return (
         region.semantic_type in _LINE_ITEM_SEMANTIC_TYPES
@@ -241,6 +305,22 @@ def _page_id_for_table(source: ExtractionSourceDocument, table_id: UUID) -> UUID
     for table in source.tables:
         if table.table_id == table_id:
             return page_by_number.get(table.page_number)
+    return None
+
+
+def _page_number_for_table(source: ExtractionSourceDocument, table_id: UUID) -> int | None:
+    for table in source.tables:
+        if table.table_id == table_id:
+            return table.page_number
+    return None
+
+
+def _table_index_for_id(source: ExtractionSourceDocument, table_id: UUID | None) -> int | None:
+    if table_id is None:
+        return None
+    for table in source.tables:
+        if table.table_id == table_id:
+            return table.table_index
     return None
 
 
