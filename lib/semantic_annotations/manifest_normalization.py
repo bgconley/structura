@@ -34,6 +34,32 @@ _RETAIL_ORDER_TOTAL_TERMS = (
     "subtotal",
 )
 _RETAIL_ORDER_PAYMENT_FIELDS = ("subtotal", "tax", "shipping", "total_amount")
+_RECEIPT_PAYMENT_FIELDS = ("subtotal", "tax", "payment_method", "total_amount")
+_OBSERVATION_DOCUMENT_TYPES = frozenset(
+    {
+        "real_estate_title",
+        "mortgage_escrow_statement",
+        "financial_dispute_form",
+    }
+)
+_OBSERVATION_FAMILY_BY_SEMANTIC_TYPE = {
+    "seller_information_block": "real_estate_title",
+    "escrow_summary": "mortgage_escrow_statement",
+    "mortgage_payment_summary": "mortgage_escrow_statement",
+    "dispute_reason_block": "financial_dispute_form",
+}
+_PAGE_KVP_DEDUPE_TYPES = frozenset(
+    {
+        "denial_or_coverage_decision",
+        "receipt_payment_summary",
+        "escrow_summary",
+        "mortgage_payment_summary",
+        "dispute_reason_block",
+        "seller_information_block",
+        "generic_form_kvp",
+    }
+)
+_PRIORITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 
 
 def normalize_result_for_planning(
@@ -51,7 +77,9 @@ def normalize_manifest_for_planning(
     manifest: DocumentSemanticManifest,
 ) -> DocumentSemanticManifest:
     regions = [_normalize_region(source, region) for region in manifest.regions]
+    regions = _drop_unanchored_observation_family_regions(source, manifest, regions)
     regions = _normalize_retail_order_regions(source, manifest, regions)
+    regions = _dedupe_page_kvp_regions(regions)
     regions = _dedupe_equivalent_regions(regions)
     if regions == manifest.regions:
         return manifest
@@ -173,13 +201,48 @@ def _with_retail_order_payment_summary(
     ]
 
 
+def _with_receipt_payment_summary(
+    source: ExtractionSourceDocument,
+    manifest: DocumentSemanticManifest,
+    regions: list[SemanticRegionAnnotation],
+) -> list[SemanticRegionAnnotation]:
+    if not _is_receipt_source(source, manifest):
+        return regions
+    if any(region.semantic_type == "receipt_payment_summary" for region in regions):
+        return regions
+    page_id = _receipt_payment_summary_page(source)
+    if page_id is None:
+        return regions
+    return [
+        *regions,
+        SemanticRegionAnnotation(
+            semantic_type="receipt_payment_summary",
+            priority="high",
+            granite_task="kvp",
+            target_schema="receipt",
+            expected_fields=_RECEIPT_PAYMENT_FIELDS,
+            grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+            review_required=True,
+            reason="Docling text anchors indicate a receipt payment summary.",
+            confidence=0.68,
+            metadata={
+                "region_source": DOCLING_STRUCTURAL_REGION_SOURCE,
+                "source_signal": "text",
+                "coverage_role": "summary",
+                "extraction_scope": "page",
+                "must_extract_reason": "payment_summary",
+            },
+        ),
+    ]
+
+
 def _normalize_retail_order_regions(
     source: ExtractionSourceDocument,
     manifest: DocumentSemanticManifest,
     regions: list[SemanticRegionAnnotation],
 ) -> list[SemanticRegionAnnotation]:
     if not _is_retail_order_source(source, manifest):
-        return _with_retail_order_payment_summary(source, manifest, regions)
+        return _with_receipt_payment_summary(source, manifest, regions)
 
     line_item_ids_to_keep = _retail_order_line_item_ids_to_keep(source, regions)
     normalized: list[SemanticRegionAnnotation] = []
@@ -191,6 +254,105 @@ def _normalize_retail_order_regions(
                 continue
         normalized.append(region)
     return _with_retail_order_payment_summary(source, manifest, normalized)
+
+
+def _drop_unanchored_observation_family_regions(
+    source: ExtractionSourceDocument,
+    manifest: DocumentSemanticManifest,
+    regions: list[SemanticRegionAnnotation],
+) -> list[SemanticRegionAnnotation]:
+    audit = build_docling_audit(source)
+    document_type = _document_type(manifest)
+    source_family = source.family.strip().lower()
+    filtered: list[SemanticRegionAnnotation] = []
+    for region in regions:
+        family = _OBSERVATION_FAMILY_BY_SEMANTIC_TYPE.get(region.semantic_type)
+        if family is None:
+            filtered.append(region)
+            continue
+        if region.metadata.get("region_source") == DOCLING_STRUCTURAL_REGION_SOURCE:
+            filtered.append(region)
+            continue
+        if region.grounding.kind == "table":
+            continue
+        if audit.anchor_counts.get(family, 0) > 0:
+            filtered.append(region)
+            continue
+        if family in {document_type, source_family}:
+            filtered.append(region)
+            continue
+        continue
+    return filtered
+
+
+def _dedupe_page_kvp_regions(
+    regions: list[SemanticRegionAnnotation],
+) -> list[SemanticRegionAnnotation]:
+    grouped: dict[tuple[object, ...], SemanticRegionAnnotation] = {}
+    order: list[tuple[object, ...]] = []
+    for region in regions:
+        key = _page_kvp_region_key(region)
+        if key is None:
+            passthrough_key = ("passthrough", id(region))
+            grouped[passthrough_key] = region
+            order.append(passthrough_key)
+            continue
+        existing = grouped.get(key)
+        if existing is None:
+            grouped[key] = region
+            order.append(key)
+            continue
+        grouped[key] = _merge_page_kvp_regions(existing, region)
+    return [grouped[key] for key in order]
+
+
+def _page_kvp_region_key(region: SemanticRegionAnnotation) -> tuple[object, ...] | None:
+    grounding = region.grounding
+    if grounding.kind != "page" or grounding.page_id is None:
+        return None
+    if region.semantic_type not in _PAGE_KVP_DEDUPE_TYPES:
+        return None
+    if region.granite_task not in {"kvp", "tables_json", "tables_html", "tables_otsl"}:
+        return None
+    return (
+        region.semantic_type,
+        region.granite_task,
+        region.target_schema,
+        grounding.kind,
+        grounding.page_id,
+    )
+
+
+def _merge_page_kvp_regions(
+    first: SemanticRegionAnnotation,
+    second: SemanticRegionAnnotation,
+) -> SemanticRegionAnnotation:
+    preferred = min((first, second), key=_region_preference_key)
+    merged_fields = tuple(dict.fromkeys(sorted((*first.expected_fields, *second.expected_fields))))
+    metadata = {
+        **preferred.metadata,
+        "semantic_planner_normalization": {
+            "reason": "duplicate_page_region_intent",
+            "merged_semantic_type": preferred.semantic_type,
+        },
+    }
+    return replace(
+        preferred,
+        expected_fields=merged_fields,
+        review_required=first.review_required or second.review_required,
+        confidence=max(
+            value for value in (first.confidence, second.confidence, 0.0) if value is not None
+        ),
+        metadata=metadata,
+    )
+
+
+def _region_preference_key(region: SemanticRegionAnnotation) -> tuple[object, ...]:
+    return (
+        _PRIORITY_RANK.get(region.priority, 4),
+        0 if region.metadata.get("region_source") == DOCLING_STRUCTURAL_REGION_SOURCE else 1,
+        -(region.confidence or 0.0),
+    )
 
 
 def _retail_order_line_item_ids_to_keep(
@@ -294,6 +456,17 @@ def _retail_order_payment_summary_page(source: ExtractionSourceDocument) -> UUID
     return None
 
 
+def _receipt_payment_summary_page(source: ExtractionSourceDocument) -> UUID | None:
+    audit = build_docling_audit(source)
+    if "receipt" not in audit.suggested_family_hints:
+        return None
+    for page in source.pages:
+        page_text = _normalized_text(page.text)
+        if "receipt" in page_text and any(term in page_text for term in _RETAIL_ORDER_TOTAL_TERMS):
+            return page.page_id
+    return _retail_order_payment_summary_page(source)
+
+
 def _page_number_for_id(source: ExtractionSourceDocument, page_id: UUID) -> int | None:
     for page in source.pages:
         if page.page_id == page_id:
@@ -349,6 +522,22 @@ def _is_retail_order_source(
     if source.family.strip().lower() == "retail_order":
         return True
     return "retail_order" in build_docling_audit(source).suggested_family_hints
+
+
+def _is_receipt_source(
+    source: ExtractionSourceDocument,
+    manifest: DocumentSemanticManifest,
+) -> bool:
+    document_type = _document_type(manifest)
+    source_family = source.family.strip().lower()
+    if document_type in _OBSERVATION_DOCUMENT_TYPES or source_family in _OBSERVATION_DOCUMENT_TYPES:
+        return False
+    if document_type == "receipt" or source_family == "receipt":
+        return True
+    audit = build_docling_audit(source)
+    if any(family in audit.suggested_family_hints for family in _OBSERVATION_DOCUMENT_TYPES):
+        return False
+    return "receipt" in audit.suggested_family_hints
 
 
 def _normalized_text(value: Any) -> str:

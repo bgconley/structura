@@ -114,6 +114,9 @@ _OBSERVATION_TARGETS = {
         ("transaction_date", "merchant", "amount", "dispute_reason"),
     ),
 }
+_OBSERVATION_SEMANTIC_TYPES = frozenset(
+    semantic_type for semantic_type, _expected_fields in _OBSERVATION_TARGETS.values()
+)
 
 
 def augment_result_with_docling_structural_targets(
@@ -180,11 +183,14 @@ def _docling_structural_regions(
         if region.grounding.table_id is not None
         and region.granite_task is not None
         and region.granite_task != "ignore"
+        and not _is_table_grounded_observation_summary(region)
     }
     existing_semantic_types = {
         region.semantic_type
         for region in manifest.regions
-        if region.granite_task is not None and region.granite_task != "ignore"
+        if region.granite_task is not None
+        and region.granite_task != "ignore"
+        and not _is_table_grounded_observation_summary(region)
     }
     table_audit_by_id = {summary.table_id: summary for summary in audit.table_summaries}
     page_id_by_number = {page.page_number: page.page_id for page in source.pages}
@@ -334,6 +340,10 @@ def _is_redundant_weak_table_region(
     existing_semantic_types: set[str],
 ) -> bool:
     return table_signal == "weak" and region.semantic_type in existing_semantic_types
+
+
+def _is_table_grounded_observation_summary(region: SemanticRegionAnnotation) -> bool:
+    return region.grounding.kind == "table" and region.semantic_type in _OBSERVATION_SEMANTIC_TYPES
 
 
 def _base_metadata(

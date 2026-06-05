@@ -599,6 +599,179 @@ def test_semantic_service_stabilizes_retail_order_regions_for_repeatability() ->
     assert summary_payload["compatibility_mode"] == "compatible_alias"
 
 
+def test_semantic_service_stabilizes_plain_receipt_payment_summary() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="receipt",
+        title="Amtrak receipt",
+        original_filename="Scan Sep 9, 2025 at 18.57.pdf",
+        text="Amtrak rail receipt subtotal tax total amount paid card payment",
+    )
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        document_type="receipt",
+        regions=[
+            SemanticRegionAnnotation(
+                semantic_type="receipt_line_item_table",
+                priority="high",
+                granite_task="tables_json",
+                target_schema="receipt",
+                expected_fields=("item_description", "line_total"),
+                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+                review_required=False,
+                confidence=0.86,
+            )
+        ],
+    )
+    jobs = RecordingJobs()
+    persisted_manifests: list[DocumentSemanticManifest] = []
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+            captured=persisted_manifests,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    persisted_types = [region.semantic_type for region in persisted_manifests[0].regions]
+    assert persisted_types == ["receipt_line_item_table", "receipt_payment_summary"]
+    assert persisted_manifests[0].regions[1].metadata["region_source"] == "docling_structural"
+    payloads = [job["payload"] for job in jobs.created]
+    assert [payload["semantic_type"] for payload in payloads] == [
+        "receipt_line_item_table",
+        "receipt_payment_summary",
+    ]
+    assert payloads[1]["model_output_schema_name"] == "granite_receipt_payment_summary.v1"
+
+
+def test_semantic_service_dedupes_duplicate_page_kvp_regions_before_persistence() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="medical_eob",
+        title="Anthem denial",
+        text="Explanation of benefits claim patient responsibility denial appeal",
+    )
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        document_type="medical_eob",
+        regions=[
+            SemanticRegionAnnotation(
+                semantic_type="denial_or_coverage_decision",
+                priority="high",
+                granite_task="kvp",
+                target_schema="medical_eob",
+                expected_fields=("request_status", "denial_reason"),
+                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+                review_required=True,
+                confidence=0.72,
+            ),
+            SemanticRegionAnnotation(
+                semantic_type="denial_or_coverage_decision",
+                priority="high",
+                granite_task="kvp",
+                target_schema="medical_eob",
+                expected_fields=("appeal_deadline", "denial_reason"),
+                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+                review_required=True,
+                confidence=0.66,
+            ),
+        ],
+    )
+    jobs = RecordingJobs()
+    persisted_manifests: list[DocumentSemanticManifest] = []
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+            captured=persisted_manifests,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    persisted_regions = persisted_manifests[0].regions
+    assert len(persisted_regions) == 1
+    assert persisted_regions[0].semantic_type == "denial_or_coverage_decision"
+    assert persisted_regions[0].expected_fields == (
+        "appeal_deadline",
+        "denial_reason",
+        "request_status",
+    )
+    assert len(jobs.created) == 1
+
+
+def test_semantic_service_drops_unanchored_observation_family_region() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="generic",
+        title="Low text scan",
+        original_filename="Scan Apr 8, 2024 at 14.11.pdf",
+        text="m xm",
+    )
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        document_type="generic_form",
+        regions=[
+            SemanticRegionAnnotation(
+                semantic_type="escrow_summary",
+                priority="high",
+                granite_task="kvp",
+                target_schema="document_observation",
+                expected_fields=("loan_number", "escrow_shortage"),
+                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+                review_required=True,
+                confidence=0.61,
+            )
+        ],
+    )
+    jobs = RecordingJobs()
+    persisted_manifests: list[DocumentSemanticManifest] = []
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+            captured=persisted_manifests,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    assert persisted_manifests[0].regions == []
+    assert jobs.created == []
+
+
 def test_semantic_service_routes_escrow_docling_tables_as_observations_not_receipts() -> None:
     document_id = uuid4()
     household_id = uuid4()
@@ -659,6 +832,91 @@ def test_semantic_service_routes_escrow_docling_tables_as_observations_not_recei
     assert observation_payload["semantic_type"] == "escrow_summary"
     assert observation_payload["metadata"]["docling_structural_target"]["source"] == (
         "docling_page_anchors"
+    )
+
+
+def test_semantic_service_replaces_qwen_table_escrow_summary_with_docling_targets() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    table_id = uuid4()
+    annotation_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="mortgage_escrow_statement",
+        title="UWM Final Escrow Statement",
+        original_filename="UWM Final Escrow Statement 4-29-24.pdf",
+        text="UWM mortgage escrow shortage surplus paid payment tax statement",
+        tables=[
+            ParsedTableText(
+                table_id=table_id,
+                page_number=1,
+                table_index=1,
+                table_markdown=(
+                    "| Date | Projected payment | Actual payment | Balance |\n"
+                    "| 04/29/2024 | $175.73 | $175.73 | $0.04 |"
+                ),
+            )
+        ],
+    )
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        regions=[
+            SemanticRegionAnnotation(
+                semantic_type="escrow_summary",
+                priority="high",
+                granite_task="tables_json",
+                target_schema="document_observation",
+                expected_fields=(
+                    "date",
+                    "projected_payment",
+                    "actual_payment",
+                    "actual_balance",
+                ),
+                grounding=SemanticGroundingRef(kind="table", page_id=page_id, table_id=table_id),
+                review_required=False,
+                confidence=0.98,
+            )
+        ],
+        document_type="mortgage_escrow_statement",
+    )
+    jobs = RecordingJobs()
+    persisted_manifests: list[DocumentSemanticManifest] = []
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+            captured=persisted_manifests,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    persisted_signatures = [
+        (region.semantic_type, region.granite_task, region.grounding.kind)
+        for region in persisted_manifests[0].regions
+    ]
+    assert persisted_signatures == [
+        ("generic_form_kvp", "tables_json", "table"),
+        ("escrow_summary", "kvp", "page"),
+    ]
+    payloads = [job["payload"] for job in jobs.created]
+    assert sorted(payload["semantic_type"] for payload in payloads) == [
+        "escrow_summary",
+        "generic_form_kvp",
+    ]
+    assert all(
+        not (
+            payload["semantic_type"] == "escrow_summary"
+            and payload["semantic_granite_task"] == "tables_json"
+        )
+        for payload in payloads
     )
 
 
@@ -766,7 +1024,9 @@ def test_semantic_service_drops_incompatible_docling_structural_target() -> None
         jobs=jobs,
     ).annotate_document(document_id, quality_mode="smart", requested_by="system")
 
-    assert jobs.created == []
+    payloads = [job["payload"] for job in jobs.created]
+    assert all(payload["semantic_type"] != "invoice_line_item_table" for payload in payloads)
+    assert [payload["semantic_type"] for payload in payloads] == ["receipt_payment_summary"]
 
 
 def test_semantic_service_uses_docling_observation_targets_when_qwen_emits_no_regions() -> None:
