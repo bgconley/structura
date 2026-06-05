@@ -1579,6 +1579,104 @@ def test_semantic_service_dedupes_supported_observation_family_by_page() -> None
     assert len(jobs.created) == 1
 
 
+def test_semantic_service_stabilizes_real_estate_seller_info_from_docling_pages() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_ids = {page_number: uuid4() for page_number in range(1, 5)}
+    annotation_id = uuid4()
+    source = _source_with_pages(
+        document_id=document_id,
+        household_id=household_id,
+        family="real_estate_title",
+        title="Phenix Title Seller Info",
+        original_filename="Phenix Title Seller Info 032924.pdf",
+        page_ids=page_ids,
+        page_texts={
+            1: "Phenix Title Services title company opening package",
+            2: (
+                "Seller Information Seller 1 name social security number phone "
+                "mailing address property address"
+            ),
+            3: (
+                "Seller questions marital status citizenship attendance at closing "
+                "forwarding address"
+            ),
+            4: (
+                "Closing disclosure file number property address title company lender "
+                "United Wholesale Mortgage payoff"
+            ),
+        },
+    )
+    manifest = _manifest_with_regions_for_pages(
+        document_id=document_id,
+        household_id=household_id,
+        page_ids=page_ids,
+        document_type="real_estate_title",
+        regions=[
+            SemanticRegionAnnotation(
+                semantic_type="seller_information_block",
+                priority="high",
+                granite_task="kvp",
+                target_schema="document_observation",
+                expected_fields=("seller_name", "property_address"),
+                grounding=SemanticGroundingRef(kind="page", page_id=page_ids[2]),
+                review_required=True,
+                confidence=0.97,
+            ),
+            SemanticRegionAnnotation(
+                semantic_type="seller_information_block",
+                priority="high",
+                granite_task="kvp",
+                target_schema="document_observation",
+                expected_fields=("seller_name", "file_number"),
+                grounding=SemanticGroundingRef(kind="page", page_id=page_ids[3]),
+                review_required=True,
+                confidence=0.95,
+            ),
+            SemanticRegionAnnotation(
+                semantic_type="seller_information_block",
+                priority="high",
+                granite_task="kvp",
+                target_schema="document_observation",
+                expected_fields=("seller_name", "closing_date"),
+                grounding=SemanticGroundingRef(kind="page", page_id=page_ids[4]),
+                review_required=True,
+                confidence=0.96,
+            ),
+        ],
+    )
+    jobs = RecordingJobs()
+    persisted_manifests: list[DocumentSemanticManifest] = []
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+            captured=persisted_manifests,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    persisted_regions = persisted_manifests[0].regions
+    page_number_by_id = {page_id: number for number, page_id in page_ids.items()}
+    assert [
+        page_number_by_id[region.grounding.page_id]
+        for region in persisted_regions
+        if region.semantic_type == "seller_information_block"
+    ] == [2, 3]
+    assert all(
+        region.metadata.get("region_source") == DOCLING_STRUCTURAL_REGION_SOURCE
+        for region in persisted_regions
+        if region.semantic_type == "seller_information_block"
+    )
+    assert [job["payload"]["semantic_type"] for job in jobs.created] == [
+        "seller_information_block",
+        "seller_information_block",
+    ]
+
+
 def test_semantic_service_routes_escrow_docling_tables_as_observations_not_receipts() -> None:
     document_id = uuid4()
     household_id = uuid4()
@@ -2101,7 +2199,7 @@ def test_semantic_service_dedupes_repeated_regions_before_enqueue() -> None:
     page_id = uuid4()
     element_id = uuid4()
     annotation_id = uuid4()
-    region_ids = tuple(uuid4() for _ in range(3))
+    persisted_region_ids: list[UUID] = []
     source = _source(
         document_id=document_id,
         household_id=household_id,
@@ -2132,18 +2230,23 @@ def test_semantic_service_dedupes_repeated_regions_before_enqueue() -> None:
     )
     jobs = RecordingJobs()
 
+    def persist_manifest(persisted_manifest: DocumentSemanticManifest) -> PersistedSemanticManifest:
+        persisted = _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+        )
+        persisted_region_ids.extend(persisted.region_ids)
+        return persisted
+
     SemanticAnnotationService(
         source_loader=lambda loaded_document_id: source,
         gateway=StaticGateway(manifest),
-        manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
-            annotation_id=annotation_id,
-            region_ids=region_ids,
-        ),
+        manifest_persister=persist_manifest,
         jobs=jobs,
     ).annotate_document(document_id, quality_mode="smart", requested_by="system")
 
     assert len(jobs.created) == 1
-    assert jobs.created[0]["payload"]["semantic_region_id"] == str(region_ids[2])
+    assert UUID(jobs.created[0]["payload"]["semantic_region_id"]) in persisted_region_ids
 
 
 def test_semantic_service_does_not_queue_ignored_or_unmatched_regions() -> None:

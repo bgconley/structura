@@ -15,6 +15,9 @@ from lib.semantic_annotations.models import (
     SemanticGroundingRef,
     SemanticRegionAnnotation,
 )
+from lib.semantic_annotations.real_estate_title_normalization import (
+    normalize_real_estate_title_regions,
+)
 from lib.semantic_annotations.service_record_normalization import normalize_service_record_regions
 
 _LINE_ITEM_SEMANTIC_TYPES = frozenset(
@@ -133,6 +136,7 @@ def normalize_manifest_for_planning(
     regions = [_normalize_region(source, manifest, region) for region in manifest.regions]
     regions = _drop_low_value_regions(regions)
     regions = _drop_unanchored_observation_family_regions(source, regions)
+    regions = normalize_real_estate_title_regions(source, manifest, regions)
     regions = _normalize_retail_order_regions(source, manifest, regions)
     regions = normalize_service_record_regions(source, manifest, regions)
     regions = _drop_unsupported_model_payment_summaries(source, manifest, regions)

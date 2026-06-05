@@ -458,7 +458,8 @@ def _receipt_payment_output(
     deferred_fields: list[str] = []
     deferred_identity_fields: list[str] = []
     defer_money_fields = _is_page_scoped_model_summary(evidence_context)
-    defer_identity_fields = defer_money_fields and not _receipt_payment_amount_signal(payload)
+    amount_signal_present = _receipt_payment_amount_signal(payload)
+    defer_identity_fields = defer_money_fields
     for source_key, target_key in (
         ("transaction_date", "date_local"),
         ("subtotal", "subtotal"),
@@ -511,7 +512,11 @@ def _receipt_payment_output(
         normalized["metadata"] = metadata
     repairs = ["mapped_model_output_to_canonical_receipt_payment_summary"]
     if deferred_identity_fields:
-        repairs.append("deferred_payment_summary_identity_without_amount_signal")
+        repairs.append(
+            "deferred_payment_summary_identity_for_page_summary"
+            if amount_signal_present
+            else "deferred_payment_summary_identity_without_amount_signal"
+        )
     return normalized, {
         "mapper": "granite_receipt_payment_summary.v1",
         "repairs": repairs,

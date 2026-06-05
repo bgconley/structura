@@ -125,6 +125,19 @@ def test_repeatability_fingerprints_change_when_selected_targets_change() -> Non
     assert first["plannerTasks"] != second["plannerTasks"]
 
 
+def test_repeatability_fingerprints_ignore_semantic_region_review_bit_noise() -> None:
+    first_document = _document("doc-1")
+    second_document = deepcopy(first_document)
+    second_document["semanticRegions"][0]["review_required"] = not first_document[
+        "semanticRegions"
+    ][0]["review_required"]
+
+    first = repeatability_fingerprints([first_document], {"rejectionReasons": {}})
+    second = repeatability_fingerprints([second_document], {"rejectionReasons": {}})
+
+    assert first["semanticRegions"] == second["semanticRegions"]
+
+
 def _document(document_id: str) -> dict[str, Any]:
     suffix = document_id[-1]
     return {

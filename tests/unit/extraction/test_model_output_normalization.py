@@ -254,7 +254,7 @@ def test_receipt_payment_summary_concretizes_region_evidence_and_defers_page_mon
     )
 
     assert "attached_region_evidence_context" in metadata["repairs"]
-    assert has_concrete_evidence(normalized["transaction"]["evidence"]) is True
+    assert has_concrete_evidence(normalized["evidence"]) is True
 
     candidates = field_candidates_from_extraction(
         document_id=document_id,
@@ -265,12 +265,12 @@ def test_receipt_payment_summary_concretizes_region_evidence_and_defers_page_mon
         require_concrete_evidence=True,
     )
 
-    assert [candidate.field_path for candidate in candidates] == [
-        "receipt.merchant.display_name",
-        "receipt.transaction.date_local",
-    ]
-    assert all(has_concrete_evidence(candidate.evidence) for candidate in candidates)
+    assert candidates == []
     assert metadata["deferred_payment_summary_fields"] == ["subtotal", "tax", "total"]
+    assert metadata["deferred_payment_summary_identity_fields"] == [
+        "merchant_name",
+        "transaction_date",
+    ]
 
 
 def test_receipt_payment_summary_defers_unanchored_money_candidates_for_repeatability() -> None:
@@ -310,11 +310,58 @@ def test_receipt_payment_summary_defers_unanchored_money_candidates_for_repeatab
         require_concrete_evidence=True,
     )
 
-    assert [candidate.field_path for candidate in candidates] == [
-        "receipt.merchant.display_name",
-        "receipt.transaction.date_local",
-    ]
+    assert candidates == []
     assert metadata["deferred_payment_summary_fields"] == ["subtotal", "tax", "total"]
+    assert metadata["deferred_payment_summary_identity_fields"] == [
+        "merchant_name",
+        "transaction_date",
+    ]
+
+
+def test_receipt_payment_summary_defers_page_identity_when_money_is_deferred() -> None:
+    document_id = uuid4()
+
+    normalized, metadata = normalize_granite_region_output(
+        document_id=document_id,
+        schema_name="receipt",
+        model_output_schema_name="granite_receipt_payment_summary.v1",
+        payload={
+            "merchant_name": "Amtra",
+            "transaction_date": "2025-09-09",
+            "subtotal": "$12.00",
+            "tip": "$2.00",
+            "total": "$14.00",
+            "confidence": {},
+        },
+        evidence_context=EvidenceContext(
+            source_engine="granite_vision_3b",
+            document_id=document_id,
+            semantic_annotation_id=uuid4(),
+            semantic_region_id=uuid4(),
+            page_id=uuid4(),
+            page_number=1,
+        ),
+        semantic_type="receipt_payment_summary",
+        target_schema="receipt",
+        resolved_document_type="receipt",
+    )
+
+    candidates = field_candidates_from_extraction(
+        document_id=document_id,
+        schema_name="receipt",
+        payload=normalized,
+        validation=ValidationReport(needs_review=True, checks=[]),
+        source_engine="granite_vision_3b",
+        require_concrete_evidence=True,
+    )
+
+    assert candidates == []
+    assert metadata["deferred_payment_summary_fields"] == ["subtotal", "tip", "total"]
+    assert metadata["deferred_payment_summary_identity_fields"] == [
+        "merchant_name",
+        "transaction_date",
+    ]
+    assert "deferred_payment_summary_identity_for_page_summary" in metadata["repairs"]
 
 
 def test_receipt_payment_summary_defers_page_identity_without_amount_signal() -> None:
@@ -399,11 +446,12 @@ def test_receipt_payment_summary_persists_region_envelope_projection() -> None:
     assert envelope["semantic_type"] == "receipt_payment_summary"
     assert envelope["model_output_schema_name"] == "granite_receipt_payment_summary.v1"
     assert envelope["coverage"]["normalized_projection"] == normalized
-    assert {fact["name"] for fact in envelope["facts"]} >= {
-        "receipt.merchant.display_name",
-        "receipt.transaction.date_local",
-    }
+    assert envelope["facts"] == []
     assert metadata["deferred_payment_summary_fields"] == ["subtotal", "tax", "total"]
+    assert metadata["deferred_payment_summary_identity_fields"] == [
+        "merchant_name",
+        "transaction_date",
+    ]
 
 
 def test_receipt_payment_summary_parses_model_datetime_before_candidate_insert() -> None:
@@ -426,6 +474,8 @@ def test_receipt_payment_summary_parses_model_datetime_before_candidate_insert()
             semantic_region_id=uuid4(),
             page_id=uuid4(),
             page_number=1,
+            bbox=[10, 20, 200, 80],
+            bbox_basis="model_region",
         ),
     )
 

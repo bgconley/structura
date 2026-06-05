@@ -51,7 +51,6 @@ def repeatability_fingerprints(
                         "granite_task",
                         "target_schema",
                         "grounding_kind",
-                        "review_required",
                     ),
                 )
                 for row in _selected_semantic_region_rows(documents)
