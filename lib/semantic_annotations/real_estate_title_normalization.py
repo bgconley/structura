@@ -27,28 +27,59 @@ _SELLER_INFO_FIELDS = (
     "citizenship",
     "closing_attendance",
 )
-_SELLER_STRONG_TERMS = (
+_SELLER_ENTRY_HEADING_TERMS = (
     "seller information",
-    "seller questionnaire",
-    "seller questions",
     "seller 1",
     "seller 2",
-    "seller name",
 )
-_SELLER_DETAIL_TERMS = (
+_SELLER_ENTRY_SECONDARY_HEADING_TERMS = ("seller questionnaire",)
+_SELLER_ENTRY_DETAIL_TERMS = (
     "social security",
-    "ssn",
     "ss#",
     "ss #",
+    "ssn",
+    "tax id",
     "marital status",
-    "citizenship",
-    "attendance at closing",
-    "attend closing",
+    "current mailing address",
+    "email address",
     "forwarding address",
+    "future mailing address",
     "mailing address",
-    "telephone",
-    "phone",
-    "email",
+    "phone number",
+    "state of residency",
+)
+_SELLER_QUESTION_HEADING_TERMS = (
+    "seller questions",
+    "important seller questions",
+)
+_SELLER_QUESTION_DETAIL_TERMS = (
+    "attending the closing",
+    "bankruptcy",
+    "citizenship",
+    "driver's license",
+    "drivers license",
+    "marital status",
+    "power of attorney",
+    "u.s. citizens",
+    "us citizens",
+    "vested in title",
+)
+_COVER_LETTER_TERMS = (
+    "dear",
+    "forwarding the attached questionnaire",
+    "opportunity to be of service",
+    "redfin",
+    "your key contact person",
+)
+_MORTGAGE_PAYOFF_TERMS = (
+    "account #",
+    "lender name",
+    "mortgage information",
+    "payoff",
+    "payoff figures",
+    "release information",
+    "seller signature",
+    "type of loan",
 )
 _MAX_SELLER_INFO_PAGES = 4
 
@@ -146,14 +177,42 @@ def _seller_info_page_candidates(source: ExtractionSourceDocument) -> list[tuple
     candidates: list[tuple[int, UUID, int]] = []
     for page in source.pages:
         text = _normalized_text(" ".join([page.text, *elements_by_page.get(page.page_number, [])]))
-        strong_score = sum(1 for term in _SELLER_STRONG_TERMS if term in text)
-        detail_score = sum(1 for term in _SELLER_DETAIL_TERMS if term in text)
-        if not (
-            (strong_score >= 1 and detail_score >= 1) or ("seller" in text and detail_score >= 2)
-        ):
+        score = _seller_information_page_score(text)
+        if score <= 0:
             continue
-        candidates.append((page.page_number, page.page_id, strong_score + detail_score))
+        candidates.append((page.page_number, page.page_id, score))
     return sorted(candidates, key=lambda item: item[0])
+
+
+def _seller_information_page_score(text: str) -> int:
+    compact = _compact_text(text)
+    entry_heading_score = _term_score(text, compact, _SELLER_ENTRY_HEADING_TERMS)
+    entry_secondary_score = _term_score(text, compact, _SELLER_ENTRY_SECONDARY_HEADING_TERMS)
+    entry_detail_score = _term_score(text, compact, _SELLER_ENTRY_DETAIL_TERMS)
+    question_heading_score = _term_score(text, compact, _SELLER_QUESTION_HEADING_TERMS)
+    question_detail_score = _term_score(text, compact, _SELLER_QUESTION_DETAIL_TERMS)
+    cover_letter_score = _term_score(text, compact, _COVER_LETTER_TERMS)
+    mortgage_payoff_score = _term_score(text, compact, _MORTGAGE_PAYOFF_TERMS)
+
+    entry_page = (entry_heading_score >= 1 and entry_detail_score >= 2) or (
+        entry_secondary_score >= 1 and entry_detail_score >= 3
+    )
+    question_page = question_heading_score >= 1 and question_detail_score >= 2
+    if not entry_page and not question_page:
+        return 0
+
+    if cover_letter_score >= 2 and entry_heading_score == 0:
+        return 0
+    if mortgage_payoff_score >= 2 and not question_page:
+        return 0
+
+    return (
+        entry_heading_score
+        + entry_secondary_score
+        + entry_detail_score
+        + question_heading_score
+        + question_detail_score
+    )
 
 
 def _fallback_seller_info_regions(
@@ -263,3 +322,16 @@ def _document_type(manifest: DocumentSemanticManifest) -> str | None:
 
 def _normalized_text(value: Any) -> str:
     return " ".join(str(value or "").lower().split())
+
+
+def _compact_text(value: str) -> str:
+    return value.replace(" ", "")
+
+
+def _term_score(text: str, compact: str, terms: tuple[str, ...]) -> int:
+    score = 0
+    for term in terms:
+        normalized = _normalized_text(term)
+        if normalized in text or _compact_text(normalized) in compact:
+            score += 1
+    return score

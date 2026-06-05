@@ -1592,18 +1592,26 @@ def test_semantic_service_stabilizes_real_estate_seller_info_from_docling_pages(
         original_filename="Phenix Title Seller Info 032924.pdf",
         page_ids=page_ids,
         page_texts={
-            1: "Phenix Title Services title company opening package",
+            1: (
+                "Dear Briana Burke Redfin we are forwarding the attached seller questionnaire. "
+                "Seller(s) must provide wiring instructions for proceeds before closing. "
+                "Your key contact person is Jessi Punska phone number email address "
+                "mailing address file number."
+            ),
             2: (
-                "Seller Information Seller 1 name social security number phone "
-                "mailing address property address"
+                "Please complete this questionnaire. Seller Information Seller 1 name "
+                "SS#/Tax ID marital status email address phone number current mailing "
+                "address property address"
             ),
             3: (
-                "Seller questions marital status citizenship attendance at closing "
-                "forwarding address"
+                "Requires the following important seller questions be answered. "
+                "Marital status bankruptcy vested in title U.S. citizens attending "
+                "the closing power of attorney driver's license forwarding address"
             ),
             4: (
-                "Closing disclosure file number property address title company lender "
-                "United Wholesale Mortgage payoff"
+                "Seller Signature Mortgage Information payoff authorization lender name "
+                "United Wholesale Mortgage type of loan account # release information "
+                "payoff figures file number property address title company"
             ),
         },
     )
