@@ -200,7 +200,7 @@ def test_live_qwen_high_quality_gateway_normalizes_page_annotations_shape() -> N
                             "expected_fields": ["request_status"],
                             "reason": "This block identifies the denial decision.",
                             "confidence": 0.95,
-                            "needs_high_quality_pass": False,
+                            "needs_human_review": False,
                         }
                     ],
                 }
@@ -224,6 +224,47 @@ def test_live_qwen_high_quality_gateway_normalizes_page_annotations_shape() -> N
     assert region.granite_task == "kvp"
     assert region.target_schema == "medical_eob"
     assert region.expected_fields == ("request_status",)
+
+
+def test_live_qwen_gateway_maps_legacy_hq_flag_to_review_without_manifest_leak() -> None:
+    source = _source_with_page_image_and_element()
+    page = source.pages[0]
+    element = source.elements[0]
+    client = FakeSemanticVisionClient(
+        profile_name=QWEN_SEMANTIC_PROFILE,
+        source_engine="qwen3_vl_8b",
+        normalized_json={
+            "page_annotations": [
+                {
+                    "page_id": str(page.page_id),
+                    "regions": [
+                        {
+                            "element_id": str(element.element_id),
+                            "granite_task": "kvp",
+                            "target_schema": "medical_eob",
+                            "expected_fields": ["request_status"],
+                            "reason": "This block identifies the denial decision.",
+                            "confidence": 0.61,
+                            "needs_high_quality_pass": True,
+                        }
+                    ],
+                }
+            ]
+        },
+    )
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
+
+    quality_flags = result.manifest.manifest["quality_flags"]
+    assert quality_flags["needs_human_review"] is True
+    assert "needs_high_quality_pass" not in quality_flags
+    assert result.manifest.regions[0].review_required is True
+    assert (
+        result.manifest.confidence["normalization"][
+            "legacy_needs_high_quality_pass_mapped_to_review"
+        ]
+        == 1
+    )
 
 
 def test_live_qwen_gateway_resolves_stable_docling_refs_to_persisted_ids() -> None:
@@ -272,7 +313,7 @@ def test_live_qwen_gateway_resolves_stable_docling_refs_to_persisted_ids() -> No
                 }
             ],
             "quality_flags": {
-                "needs_high_quality_pass": False,
+                "needs_human_review": False,
                 "visual_degradation": False,
                 "poor_ocr": False,
                 "ambiguous_document_type": False,
@@ -458,7 +499,7 @@ def test_live_qwen_high_quality_gateway_normalizes_nested_pages_shape() -> None:
                             "expected_fields": [],
                             "confidence": 0.1,
                             "reason": "low_text_density, no OCR text, no visible fields",
-                            "needs_high_quality_pass": True,
+                            "needs_human_review": True,
                             "review_required": True,
                             "unmatched_region": True,
                         }
@@ -1330,7 +1371,7 @@ def _semantic_payload_for_pages(page_ids) -> dict[str, object]:
         "document_type": "invoice",
         "pages": pages,
         "regions": regions,
-        "quality_flags": {"needs_high_quality_pass": False, "visual_degradation": False},
+        "quality_flags": {"needs_human_review": False, "visual_degradation": False},
     }
 
 

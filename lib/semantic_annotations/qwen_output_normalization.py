@@ -169,9 +169,31 @@ def _canonical_payload_normalized_for_source(
     )
     normalized_payload = dict(payload)
     normalized_payload["pages"] = merged_pages
+    quality_flags = normalized_payload.get("quality_flags")
+    if isinstance(quality_flags, dict):
+        normalized_quality_flags, quality_normalization = _normalized_quality_flags(quality_flags)
+        normalized_payload["quality_flags"] = normalized_quality_flags
+        normalization = _merged_normalization(normalization, quality_normalization)
     filtered = _canonical_payload_filtered_to_source(normalized_payload, source=source)
     normalization = _merged_normalization(normalization, filtered.normalization)
     return ValidatedModelOutputPayload(payload=filtered.payload, normalization=normalization)
+
+
+def _normalized_quality_flags(
+    quality_flags: dict[str, object],
+) -> tuple[dict[str, object], dict[str, object]]:
+    legacy_high_quality = bool(quality_flags.get("needs_high_quality_pass"))
+    normalized: dict[str, object] = {
+        "needs_human_review": bool(quality_flags.get("needs_human_review")) or legacy_high_quality,
+        "visual_degradation": bool(quality_flags.get("visual_degradation", False)),
+        "poor_ocr": bool(quality_flags.get("poor_ocr", False)),
+        "ambiguous_document_type": bool(quality_flags.get("ambiguous_document_type", False)),
+        "reason": _optional_string(quality_flags.get("reason")),
+    }
+    normalization: dict[str, object] = {}
+    if "needs_high_quality_pass" in quality_flags:
+        normalization["legacy_needs_high_quality_pass_mapped_to_review"] = 1
+    return normalized, normalization
 
 
 def _merged_normalization(*parts: dict[str, object]) -> dict[str, object]:
@@ -248,7 +270,8 @@ def _payload_from_page_annotations(
     page_by_id = {str(page.page_id): page for page in source.pages}
     pages: list[dict[str, object]] = []
     regions: list[dict[str, object]] = []
-    needs_high_quality_pass = False
+    needs_human_review = False
+    legacy_high_quality_flags = 0
     page_annotations = payload.get("page_annotations")
     if not isinstance(page_annotations, list):
         return ValidatedModelOutputPayload(payload=payload, normalization={})
@@ -268,15 +291,20 @@ def _payload_from_page_annotations(
             page_grounding_repaired = True
         raw_regions = item.get("regions")
         page_regions = raw_regions if isinstance(raw_regions, list) else []
-        page_needs_high_quality = any(
-            bool(region.get("needs_high_quality_pass"))
+        page_needs_human_review = any(
+            _region_needs_human_review(region)
             for region in page_regions
             if isinstance(region, dict)
+        )
+        legacy_high_quality_flags += sum(
+            1
+            for region in page_regions
+            if isinstance(region, dict) and bool(region.get("needs_high_quality_pass"))
         )
         normalized_regions = [
             _normalized_alternate_region(region, page_id=page_id) for region in page_regions
         ]
-        needs_high_quality_pass = needs_high_quality_pass or page_needs_high_quality
+        needs_human_review = needs_human_review or page_needs_human_review
         pages.append(
             _normalized_alternate_page(
                 item,
@@ -284,12 +312,17 @@ def _payload_from_page_annotations(
                 page_number=page.page_number,
                 source=source,
                 page_regions=normalized_regions,
-                page_needs_high_quality=page_needs_high_quality,
+                page_needs_human_review=page_needs_human_review,
                 page_grounding_repaired=page_grounding_repaired,
             )
         )
         regions.extend(normalized_regions)
     pages, normalization = _merge_duplicate_pages_with_summary(pages)
+    if legacy_high_quality_flags:
+        normalization = {
+            **normalization,
+            "legacy_needs_high_quality_pass_mapped_to_review": legacy_high_quality_flags,
+        }
     regions = _select_regions_for_contract(regions)
     normalized_payload: dict[str, object] = {
         "schema_name": "semantic_annotation_model_output",
@@ -298,7 +331,7 @@ def _payload_from_page_annotations(
         "pages": pages,
         "regions": regions,
         "quality_flags": {
-            "needs_high_quality_pass": needs_high_quality_pass,
+            "needs_human_review": needs_human_review,
             "visual_degradation": bool(payload.get("visual_degradation", False)),
             "poor_ocr": bool(payload.get("poor_ocr", False)),
             "ambiguous_document_type": False,
@@ -384,7 +417,7 @@ def _normalized_alternate_page(
     page_number: int,
     source: ExtractionSourceDocument,
     page_regions: list[dict[str, object]],
-    page_needs_high_quality: bool,
+    page_needs_human_review: bool,
     page_grounding_repaired: bool,
 ) -> dict[str, object]:
     del source
@@ -392,7 +425,7 @@ def _normalized_alternate_page(
         region.get("granite_task") not in {None, "ignore"} for region in page_regions
     )
     escalation_reasons = _normalized_escalation_reasons(item.get("escalation_reasons"))
-    if page_needs_high_quality:
+    if page_needs_human_review:
         escalation_reasons = _append_unique(escalation_reasons, "validation_sensitive")
     if page_grounding_repaired:
         escalation_reasons = _append_unique(escalation_reasons, "missing_docling_grounding")
@@ -457,12 +490,18 @@ def _normalized_alternate_region(
         "expected_fields": list(expected_fields),
         "grounding": _grounding_from_alternate_region(item, page_id=page_id),
         "review_required": bool(item.get("review_required", False))
-        or bool(item.get("needs_high_quality_pass", False)),
+        or _region_needs_human_review(item),
         "reason": _optional_string(item.get("reason")),
         "confidence": confidence,
     }
     region_payload.update(_normalized_region_planner_fields(item))
     return region_payload
+
+
+def _region_needs_human_review(item: dict[str, object]) -> bool:
+    return bool(item.get("needs_human_review", False)) or bool(
+        item.get("needs_high_quality_pass", False)
+    )
 
 
 def _ignored_unmatched_region(*, page_id: str, reason: str) -> dict[str, object]:

@@ -16,7 +16,7 @@ from lib.semantic_annotations.models import (
 from lib.semantic_annotations.policy import (
     ALLOWED_SEMANTIC_TYPES,
     SemanticAnnotationValidationError,
-    high_quality_required,
+    review_required_by_policy,
     validate_manifest,
 )
 
@@ -67,7 +67,7 @@ def test_semantic_annotation_schema_accepts_minimal_valid_manifest() -> None:
                 }
             ],
             "quality_flags": {
-                "needs_high_quality_pass": False,
+                "needs_human_review": False,
                 "visual_degradation": False,
             },
             "confidence": {"overall": 0.89},
@@ -155,6 +155,22 @@ def test_semantic_annotation_model_output_schema_bounds_model_generated_arrays()
         "high",
         "critical",
     ]
+
+
+def test_semantic_annotation_schemas_use_review_quality_flag_not_hq_escalation() -> None:
+    from lib.semantic_annotations.schema import (
+        semantic_annotation_manifest_schema,
+        semantic_annotation_model_output_schema,
+    )
+
+    for schema in (
+        semantic_annotation_manifest_schema(),
+        semantic_annotation_model_output_schema(),
+    ):
+        quality_flag_properties = schema["properties"]["quality_flags"]["properties"]
+
+        assert "needs_human_review" in quality_flag_properties
+        assert "needs_high_quality_pass" not in quality_flag_properties
 
 
 def test_semantic_annotation_schemas_include_expanded_qwen3_vl_8b_routing_vocabulary() -> None:
@@ -440,39 +456,46 @@ def test_validate_manifest_requires_unmatched_regions_to_be_review_required() ->
         )
 
 
-def test_high_quality_policy_triggers_for_failure_low_confidence_and_sensitive_domains() -> None:
-    assert high_quality_required(
+def test_review_policy_triggers_for_failure_low_confidence_and_sensitive_domains() -> None:
+    assert review_required_by_policy(
         validation_failed=True,
         confidence=0.9,
         document_family="invoice",
         quality_flags={},
         user_marked_important=False,
     )
-    assert high_quality_required(
+    assert review_required_by_policy(
         validation_failed=False,
         confidence=0.55,
         document_family="invoice",
         quality_flags={},
         user_marked_important=False,
     )
-    assert high_quality_required(
+    assert review_required_by_policy(
         validation_failed=False,
         confidence=0.88,
         document_family="medical_eob",
         quality_flags={},
         user_marked_important=False,
     )
-    assert high_quality_required(
+    assert review_required_by_policy(
         validation_failed=False,
         confidence=0.88,
         document_family="generic",
         quality_flags={"ocr_quality": "poor"},
         user_marked_important=False,
     )
+    assert review_required_by_policy(
+        validation_failed=False,
+        confidence=0.88,
+        document_family="generic",
+        quality_flags={"needs_human_review": True},
+        user_marked_important=False,
+    )
 
 
-def test_high_quality_policy_does_not_trigger_for_clean_low_risk_document() -> None:
-    assert not high_quality_required(
+def test_review_policy_does_not_trigger_for_clean_low_risk_document() -> None:
+    assert not review_required_by_policy(
         validation_failed=False,
         confidence=0.9,
         document_family="generic",

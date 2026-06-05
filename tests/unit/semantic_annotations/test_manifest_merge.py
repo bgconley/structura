@@ -132,7 +132,7 @@ def _partial(
             "schema_name": "semantic_annotation_manifest",
             "schema_version": "v1",
             "document_type": document_type,
-            "quality_flags": {"needs_high_quality_pass": False, "visual_degradation": False},
+            "quality_flags": {"needs_human_review": False, "visual_degradation": False},
         },
         input_page_hashes=(),
     )

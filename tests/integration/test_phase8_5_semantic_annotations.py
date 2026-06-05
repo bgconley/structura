@@ -252,7 +252,7 @@ def _manifest(
             "document_type": "medical_eob",
             "pages": [],
             "regions": [],
-            "quality_flags": {"needs_high_quality_pass": False, "visual_degradation": False},
+            "quality_flags": {"needs_human_review": False, "visual_degradation": False},
             "confidence": {"overall": 0.86},
         },
         input_page_hashes=("a" * 64,),

@@ -54,7 +54,7 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "needs_high_quality_pass": { "type": "boolean" },
+        "needs_human_review": { "type": "boolean" },
         "visual_degradation": { "type": "boolean" },
         "poor_ocr": { "type": "boolean" },
         "ambiguous_document_type": { "type": "boolean" },

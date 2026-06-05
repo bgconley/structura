@@ -2788,7 +2788,7 @@ def _semantic_manifest_payload(
         ],
         "regions": [_region_payload(region) for region in regions],
         "quality_flags": {
-            "needs_high_quality_pass": False,
+            "needs_human_review": False,
             "visual_degradation": False,
         },
         "confidence": {"overall": 0.9},
@@ -2824,7 +2824,7 @@ def _semantic_manifest_payload_for_pages(
         ],
         "regions": [_region_payload(region) for region in regions],
         "quality_flags": {
-            "needs_high_quality_pass": False,
+            "needs_human_review": False,
             "visual_degradation": False,
         },
         "confidence": {"overall": 0.9},

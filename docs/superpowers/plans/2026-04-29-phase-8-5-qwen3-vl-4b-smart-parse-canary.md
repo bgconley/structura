@@ -158,8 +158,8 @@ implementation.
 - [ ] Update Qwen prompt wording so unfamiliar documents route to generic
       observations or unsupported/no-target states instead of forced invoice,
       receipt, or EOB families.
-- [ ] Preserve `needs_high_quality_pass` only as a diagnostic/review signal
-      while Qwen8 is disabled; it must not trigger HQ/rescue automatically.
+- [ ] Preserve `needs_human_review` as the diagnostic/review signal while
+      separate HQ/rescue paths are disabled; it must not trigger automatic model escalation.
 - [ ] Keep structured-output schema shape vLLM-friendly and bounded.
 
 ## Task 5: Harden Granite Structured Output And Telemetry

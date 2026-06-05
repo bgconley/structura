@@ -92,7 +92,7 @@ def validate_manifest(
         seen_region_intents.add(region_intent_key)
 
 
-def high_quality_required(
+def review_required_by_policy(
     *,
     validation_failed: bool,
     confidence: float,
@@ -110,7 +110,7 @@ def high_quality_required(
         return True
     if quality_flags.get("document_type") == "ambiguous":
         return True
-    return bool(quality_flags.get("needs_high_quality_pass"))
+    return bool(quality_flags.get("needs_human_review"))
 
 
 def _validate_region(

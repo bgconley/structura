@@ -49,7 +49,7 @@ def test_qwen_output_scope_filters_model_payload_to_requested_docling_pages() ->
                     "grounding": {"kind": "page", "page_id": str(outside_page_id)},
                 },
             ],
-            "quality_flags": {"needs_high_quality_pass": False},
+            "quality_flags": {"needs_human_review": False},
         },
         source=source,
     )

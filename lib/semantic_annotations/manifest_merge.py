@@ -121,8 +121,8 @@ def merge_partial_manifests(
         "pages": [page_manifest_json(page) for page in pages],
         "regions": [region_manifest_json(region) for region in regions],
         "quality_flags": {
-            "needs_high_quality_pass": any(
-                bool(partial.manifest.get("quality_flags", {}).get("needs_high_quality_pass"))
+            "needs_human_review": any(
+                bool(partial.manifest.get("quality_flags", {}).get("needs_human_review"))
                 for partial in partials
                 if isinstance(partial.manifest.get("quality_flags"), dict)
             ),
