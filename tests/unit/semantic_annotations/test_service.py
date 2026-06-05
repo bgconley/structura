@@ -8,6 +8,7 @@ import pytest
 
 from lib.contracts.registry import ContractRegistry
 from lib.extraction.models import ExtractionSourceDocument, ParsedPageText, ParsedTableText
+from lib.model_runtime.reliability_versions import REGION_ENVELOPE_VERSION
 from lib.semantic_annotations.docling_targets import DOCLING_STRUCTURAL_REGION_SOURCE
 from lib.semantic_annotations.models import (
     DocumentSemanticManifest,
@@ -72,6 +73,7 @@ def test_semantic_service_persists_manifest_and_queues_grounded_granite_jobs() -
     assert payload["compatibility_mode"] == "exact"
     assert payload["extractor_backend"] == "granite_region"
     assert payload["contract_resolution_reason"] == "exact_contract"
+    assert payload["region_envelope_version"] == REGION_ENVELOPE_VERSION
     assert payload["semantic_quality_mode"] == "smart"
     assert payload["allow_8b_rescue"] is False
     assert payload["metadata"]["run_id"] == "phase85-20260604-smoke-001"

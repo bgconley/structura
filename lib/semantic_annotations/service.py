@@ -16,6 +16,7 @@ from lib.extraction.models import ExtractionSourceDocument
 from lib.extraction.repository import load_extraction_source
 from lib.jobs import JobService, create_job_with_cursor
 from lib.jobs.event_payloads import build_extract_document_job_payload
+from lib.model_runtime.reliability_versions import REGION_ENVELOPE_VERSION
 from lib.semantic_annotations.docling_targets import (
     augment_result_with_docling_structural_targets,
 )
@@ -245,6 +246,7 @@ class SemanticAnnotationService:
                     compatibility_mode=spec.compatibility_mode,
                     extractor_backend=spec.extractor_backend,
                     contract_resolution_reason=spec.contract_resolution_reason,
+                    region_envelope_version=REGION_ENVELOPE_VERSION,
                     semantic_quality_mode=_semantic_quality_mode(
                         manifest_result.manifest.quality_mode
                     ),
@@ -323,6 +325,7 @@ class SemanticAnnotationService:
                     compatibility_mode=spec.compatibility_mode,
                     extractor_backend=spec.extractor_backend,
                     contract_resolution_reason=spec.contract_resolution_reason,
+                    region_envelope_version=REGION_ENVELOPE_VERSION,
                     semantic_quality_mode=_semantic_quality_mode(
                         manifest_result.manifest.quality_mode
                     ),
