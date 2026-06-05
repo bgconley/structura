@@ -79,16 +79,14 @@ class VisionExtractionGateway:
             page_image_loader=self._page_image_bytes,
             mode=visual_mode,
         )
-        response = self.client.generate(
-            self._request(
-                source=source,
-                schema_name=schema_name,
-                route_profile=route_profile,
-                semantic_task=semantic_task,
-                model_output_schema=model_output_schema,
-                decision=decision,
-                budget=budget,
-            )
+        response, response_budget, model_request_attempts = self._generate_with_budget(
+            source=source,
+            schema_name=schema_name,
+            route_profile=route_profile,
+            semantic_task=semantic_task,
+            model_output_schema=model_output_schema,
+            decision=decision,
+            budget=budget,
         )
         model_output_payload = dict(response.normalized_json)
         normalized_json, normalization_json = normalize_granite_region_output(
@@ -129,16 +127,18 @@ class VisionExtractionGateway:
                 mode=visual_mode,
                 retry_scope="full_page_retry",
             )
-            retry_response = self.client.generate(
-                self._request(
-                    source=source,
-                    schema_name=schema_name,
-                    route_profile=route_profile,
-                    semantic_task=semantic_task,
-                    model_output_schema=model_output_schema,
-                    decision=retry_decision,
-                    budget=budget,
-                )
+            (
+                retry_response,
+                retry_response_budget,
+                retry_model_request_attempts,
+            ) = self._generate_with_budget(
+                source=source,
+                schema_name=schema_name,
+                route_profile=route_profile,
+                semantic_task=semantic_task,
+                model_output_schema=model_output_schema,
+                decision=retry_decision,
+                budget=budget,
             )
             retry_model_output_payload = dict(retry_response.normalized_json)
             retry_normalized_json, retry_normalization_json = normalize_granite_region_output(
@@ -171,6 +171,8 @@ class VisionExtractionGateway:
                 )
             )
             response = retry_response
+            response_budget = retry_response_budget
+            model_request_attempts = retry_model_request_attempts
             model_output_payload = retry_model_output_payload
             normalized_json = retry_normalized_json
             normalization_json = {
@@ -181,6 +183,36 @@ class VisionExtractionGateway:
             }
             decision = retry_decision
         visual_input_plan = decision.primary_plan.as_json() if decision.primary_plan else None
+        raw_output_json = {
+            "modelInvoked": True,
+            "profileName": response.profile_name,
+            "modelName": response.model_name,
+            "modelVersion": response.model_version,
+            "sourceEngine": response.source_engine,
+            "promptVersion": response.prompt_version,
+            "inputSha256": list(response.input_sha256),
+            "latencyMs": response.latency_ms,
+            "finishReason": response.finish_reason,
+            "usage": response.usage_json,
+            "structuredOutputUsed": response.structured_output_used,
+            "structuredOutputFallbackReason": response.structured_output_fallback_reason,
+            "confidence": response.confidence_json,
+            "rawText": response.raw_text,
+            "semanticTask": _semantic_task_json(semantic_task),
+            "visualInputPlan": visual_input_plan,
+            "visualInputAttempts": attempts,
+            "requestBudget": {
+                "maxOutputTokens": response_budget.max_output_tokens,
+                "timeoutSeconds": response_budget.timeout_seconds,
+                "maxAttempts": response_budget.max_attempts,
+            },
+            "modelOutputSchema": (
+                model_output_schema.name if model_output_schema is not None else None
+            ),
+            "modelOutputPayload": model_output_payload,
+        }
+        if model_request_attempts is not None:
+            raw_output_json["modelRequestAttempts"] = model_request_attempts
         return GatewayExtraction(
             schema_name=schema_name,
             schema_version="v1",
@@ -192,34 +224,7 @@ class VisionExtractionGateway:
                 route_profile=route_profile,
             ),
             normalized_json=normalized_json,
-            raw_output_json={
-                "modelInvoked": True,
-                "profileName": response.profile_name,
-                "modelName": response.model_name,
-                "modelVersion": response.model_version,
-                "sourceEngine": response.source_engine,
-                "promptVersion": response.prompt_version,
-                "inputSha256": list(response.input_sha256),
-                "latencyMs": response.latency_ms,
-                "finishReason": response.finish_reason,
-                "usage": response.usage_json,
-                "structuredOutputUsed": response.structured_output_used,
-                "structuredOutputFallbackReason": response.structured_output_fallback_reason,
-                "confidence": response.confidence_json,
-                "rawText": response.raw_text,
-                "semanticTask": _semantic_task_json(semantic_task),
-                "visualInputPlan": visual_input_plan,
-                "visualInputAttempts": attempts,
-                "requestBudget": {
-                    "maxOutputTokens": budget.max_output_tokens,
-                    "timeoutSeconds": budget.timeout_seconds,
-                    "maxAttempts": budget.max_attempts,
-                },
-                "modelOutputSchema": (
-                    model_output_schema.name if model_output_schema is not None else None
-                ),
-                "modelOutputPayload": model_output_payload,
-            },
+            raw_output_json=raw_output_json,
             model_output_schema_name=(
                 model_output_schema.name if model_output_schema is not None else None
             ),
@@ -232,6 +237,75 @@ class VisionExtractionGateway:
                 "visualInputAttempts": attempts,
             },
         )
+
+    def _generate_with_budget(
+        self,
+        *,
+        source: ExtractionSourceDocument,
+        schema_name: str,
+        route_profile: str,
+        semantic_task: SemanticExtractionTask | None,
+        model_output_schema: ModelOutputSchema | None,
+        decision: VisualInputDecision,
+        budget: GraniteTaskBudget,
+    ) -> tuple[VisionGenerateResponse, GraniteTaskBudget, list[dict[str, object]] | None]:
+        request = self._request(
+            source=source,
+            schema_name=schema_name,
+            route_profile=route_profile,
+            semantic_task=semantic_task,
+            model_output_schema=model_output_schema,
+            decision=decision,
+            budget=budget,
+        )
+        try:
+            return self.client.generate(request), budget, None
+        except ModelProtocolError as exc:
+            retry_budget = self._retry_budget_after_protocol_error(exc, budget)
+            if retry_budget is None:
+                raise
+            attempts = [
+                _model_request_attempt_json(
+                    attempt=1,
+                    status="failed",
+                    reason="length_truncated",
+                    budget=budget,
+                )
+            ]
+            retry_request = self._request(
+                source=source,
+                schema_name=schema_name,
+                route_profile=route_profile,
+                semantic_task=semantic_task,
+                model_output_schema=model_output_schema,
+                decision=decision,
+                budget=retry_budget,
+            )
+            try:
+                response = self.client.generate(retry_request)
+            except ModelProtocolError as retry_exc:
+                retry_exc.details.setdefault(
+                    "model_request_attempts",
+                    attempts
+                    + [
+                        _model_request_attempt_json(
+                            attempt=2,
+                            status="failed",
+                            reason="length_truncated_retry",
+                            budget=retry_budget,
+                        )
+                    ],
+                )
+                raise
+            attempts.append(
+                _model_request_attempt_json(
+                    attempt=2,
+                    status="succeeded",
+                    reason="length_truncated_retry",
+                    budget=retry_budget,
+                )
+            )
+            return response, retry_budget, attempts
 
     def _request(
         self,
@@ -285,6 +359,13 @@ class VisionExtractionGateway:
             max_attempts=1,
         )
 
+    def _retry_budget_after_protocol_error(
+        self,
+        _exc: ModelProtocolError,
+        _budget: GraniteTaskBudget,
+    ) -> GraniteTaskBudget | None:
+        return None
+
 
 def _prompt(
     *,
@@ -332,6 +413,21 @@ def _semantic_task_json(task: SemanticExtractionTask | None) -> dict[str, object
         },
         "confidence": task.confidence,
         "reason": task.reason,
+    }
+
+
+def _model_request_attempt_json(
+    *,
+    attempt: int,
+    status: str,
+    reason: str,
+    budget: GraniteTaskBudget,
+) -> dict[str, object]:
+    return {
+        "attempt": attempt,
+        "status": status,
+        "reason": reason,
+        "maxOutputTokens": budget.max_output_tokens,
     }
 
 

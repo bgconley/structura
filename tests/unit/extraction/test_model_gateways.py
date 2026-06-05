@@ -13,6 +13,7 @@ from lib.extraction.models import (
     ParsedTableText,
 )
 from lib.model_runtime.contracts import VisionGenerateRequest, VisionGenerateResponse
+from lib.model_runtime.http_client import ModelProtocolError
 from lib.model_runtime.profiles import GRANITE_VISION_PROFILE, QWEN_VL_PROFILE
 from lib.semantic_annotations.models import SemanticExtractionTask, SemanticGroundingRef
 
@@ -523,6 +524,85 @@ def test_granite_gateway_uses_larger_retail_order_line_item_budget() -> None:
     assert client.request.response_schema_name == "granite_retail_order.v1"
     assert client.request.max_output_tokens == 4096
     assert client.request.timeout_seconds == 120
+
+
+def test_granite_gateway_retries_length_truncated_output_with_escalated_budget() -> None:
+    source = _source_with_page_image()
+    task = SemanticExtractionTask(
+        region_id=uuid4(),
+        annotation_id=uuid4(),
+        document_id=source.document_id,
+        semantic_type="retail_order_line_item_table",
+        granite_task="tables_json",
+        target_schema="receipt",
+        expected_fields=("description", "quantity", "amount"),
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+        metadata={"resolved_document_type": "retail_order"},
+    )
+
+    class TruncatingRetailClient:
+        def __init__(self) -> None:
+            self.requests: list[VisionGenerateRequest] = []
+
+        def generate(self, request: VisionGenerateRequest) -> VisionGenerateResponse:
+            self.requests.append(request)
+            if len(self.requests) == 1:
+                raise ModelProtocolError(
+                    "Vision model response was truncated before valid JSON completed.",
+                    details={"finish_reason": "length"},
+                )
+            return VisionGenerateResponse(
+                profile_name=GRANITE_VISION_PROFILE,
+                model_name="fake-granite",
+                model_version="test",
+                source_engine="granite_vision_3b",
+                prompt_version=request.prompt_version,
+                raw_text="{}",
+                normalized_json={
+                    "line_items": [
+                        {
+                            "ordinal": 1,
+                            "description": "Tripod",
+                            "quantity": "1",
+                            "amount": "10.00",
+                        }
+                    ],
+                    "totals": {},
+                    "confidence": {},
+                },
+                confidence_json={},
+                input_sha256=tuple(image.validated_sha256() for image in request.image_inputs),
+                latency_ms=1,
+            )
+
+    client = TruncatingRetailClient()
+
+    result = GraniteVisionExtractionGateway(client=client).extract(
+        source,
+        schema_name="receipt",
+        route_profile="docling_plus_granite_structured",
+        semantic_task=task,
+    )
+
+    assert len(client.requests) == 2
+    assert client.requests[0].max_output_tokens == 4096
+    assert client.requests[1].max_output_tokens == 8192
+    assert client.requests[1].timeout_seconds == 150
+    assert result.raw_output_json["requestBudget"]["maxOutputTokens"] == 8192
+    assert result.raw_output_json["modelRequestAttempts"] == [
+        {
+            "attempt": 1,
+            "status": "failed",
+            "reason": "length_truncated",
+            "maxOutputTokens": 4096,
+        },
+        {
+            "attempt": 2,
+            "status": "succeeded",
+            "reason": "length_truncated_retry",
+            "maxOutputTokens": 8192,
+        },
+    ]
 
 
 def test_granite_gateway_uses_schema_backed_observation_budget() -> None:

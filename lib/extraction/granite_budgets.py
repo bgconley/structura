@@ -48,6 +48,9 @@ SCHEMA_BACKED_OBSERVATION_BUDGET = GraniteTaskBudget(
     max_attempts=2,
 )
 
+LENGTH_RETRY_MAX_OUTPUT_TOKENS = 8192
+LENGTH_RETRY_TIMEOUT_HEADROOM_SECONDS = 30
+
 LINE_ITEM_SEMANTIC_TYPES = frozenset(
     {
         "invoice_line_item_table",
@@ -106,3 +109,16 @@ def granite_budget_for_task(
     if semantic_task.granite_task == "kvp":
         return SUMMARY_KVP_BUDGET
     return DEFAULT_GRANITE_BUDGET
+
+
+def granite_length_retry_budget(budget: GraniteTaskBudget) -> GraniteTaskBudget | None:
+    if budget.max_attempts <= 1:
+        return None
+    retry_tokens = min(LENGTH_RETRY_MAX_OUTPUT_TOKENS, budget.max_output_tokens * 2)
+    if retry_tokens <= budget.max_output_tokens:
+        return None
+    return GraniteTaskBudget(
+        max_output_tokens=retry_tokens,
+        timeout_seconds=budget.timeout_seconds + LENGTH_RETRY_TIMEOUT_HEADROOM_SECONDS,
+        max_attempts=budget.max_attempts,
+    )
