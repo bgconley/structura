@@ -6,6 +6,7 @@ from typing import Any
 from uuid import UUID
 
 from lib.extraction.models import ExtractionSourceDocument, ParsedTableText
+from lib.semantic_annotations.docling_audit import build_docling_audit
 from lib.semantic_annotations.docling_targets import DOCLING_STRUCTURAL_REGION_SOURCE
 from lib.semantic_annotations.manifest_merge import page_manifest_json, region_manifest_json
 from lib.semantic_annotations.models import (
@@ -142,7 +143,7 @@ def _with_retail_order_payment_summary(
     manifest: DocumentSemanticManifest,
     regions: list[SemanticRegionAnnotation],
 ) -> list[SemanticRegionAnnotation]:
-    if _document_type(manifest) != "retail_order":
+    if not _is_retail_order_source(source, manifest):
         return regions
     if any(region.semantic_type == "receipt_payment_summary" for region in regions):
         return regions
@@ -177,7 +178,7 @@ def _normalize_retail_order_regions(
     manifest: DocumentSemanticManifest,
     regions: list[SemanticRegionAnnotation],
 ) -> list[SemanticRegionAnnotation]:
-    if _document_type(manifest) != "retail_order":
+    if not _is_retail_order_source(source, manifest):
         return _with_retail_order_payment_summary(source, manifest, regions)
 
     line_item_ids_to_keep = _retail_order_line_item_ids_to_keep(source, regions)
@@ -337,6 +338,17 @@ def _document_type(manifest: DocumentSemanticManifest) -> str | None:
         return None
     normalized = value.strip().lower()
     return normalized or None
+
+
+def _is_retail_order_source(
+    source: ExtractionSourceDocument,
+    manifest: DocumentSemanticManifest,
+) -> bool:
+    if _document_type(manifest) == "retail_order":
+        return True
+    if source.family.strip().lower() == "retail_order":
+        return True
+    return "retail_order" in build_docling_audit(source).suggested_family_hints
 
 
 def _normalized_text(value: Any) -> str:

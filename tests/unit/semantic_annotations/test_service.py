@@ -461,7 +461,7 @@ def test_semantic_service_suppresses_weak_docling_table_duplicate_when_qwen_has_
         document_id=document_id,
         household_id=household_id,
         page_id=page_id,
-        document_type="retail_order",
+        document_type="generic_form",
         regions=[
             SemanticRegionAnnotation(
                 semantic_type="retail_order_line_item_table",
@@ -519,7 +519,7 @@ def test_semantic_service_stabilizes_retail_order_regions_for_repeatability() ->
         document_id=document_id,
         household_id=household_id,
         page_id=page_id,
-        document_type="retail_order",
+        document_type="generic_form",
         regions=[
             SemanticRegionAnnotation(
                 semantic_type="retail_order_line_item_table",
