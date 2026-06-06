@@ -312,6 +312,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   `RegionExtractionEnvelope`. Claim-backed semantic-region candidates are the
   admission input; normalized projections remain debug/lineage data instead of
   a second reject-list surface.
+- 2026-06-05: Semantic-region validation evidence checks now read from
+  admissible typed Claims in the `RegionExtractionEnvelope` instead of the
+  stored normalized projection. This keeps evidence health aligned with the
+  same Claim-backed path used for candidate creation and admission while
+  preserving normalized projections as debug/lineage data only.
 
 ## Deferred Work
 

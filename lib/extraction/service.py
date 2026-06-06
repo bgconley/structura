@@ -28,6 +28,7 @@ from lib.extraction.region_envelope_candidates import (
     line_item_candidates_from_region_envelope,
     observation_candidates_from_region_envelope,
 )
+from lib.extraction.region_envelope_validation import claim_evidence_validation_payload
 from lib.extraction.repository import (
     load_extraction_source,
     persist_classification,
@@ -182,9 +183,14 @@ class ExtractionService:
                 gateway_result,
                 normalized_json=to_normalization_projection(region_envelope),
             )
+        semantic_region_validation_payload = (
+            claim_evidence_validation_payload(region_envelope)
+            if region_envelope is not None
+            else gateway_result.normalized_json
+        )
         validation = (
             validate_semantic_region_payload(
-                gateway_result.normalized_json,
+                semantic_region_validation_payload,
                 model_output_schema_name=gateway_result.model_output_schema_name,
                 model_output_payload=model_output_payload,
             )
