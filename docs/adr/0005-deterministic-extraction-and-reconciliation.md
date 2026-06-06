@@ -458,6 +458,12 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   recorded as lineage metadata. Live adapters already fail these payloads before
   normalization, so this closes the compatibility/direct-call path without adding
   corpus-specific repairs.
+- 2026-06-06: Granite structured-output failures now retry once without changing
+  the selected JSON Schema contract. Length truncation keeps the existing larger
+  budget retry, while schema-invalid JSON, non-object JSON, invalid JSON, or empty
+  structured content retries with the same schema and budget before surfacing as a
+  model protocol/runtime failure for the job layer. This implements the fail-closed
+  `retry once -> pipeline_failed` policy without any `json_object` fallback.
 
 ## Deferred Work
 

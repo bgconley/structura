@@ -261,13 +261,19 @@ class VisionExtractionGateway:
             return self.client.generate(request), budget, None
         except ModelProtocolError as exc:
             retry_budget = self._retry_budget_after_protocol_error(exc, budget)
+            first_reason = "length_truncated"
+            retry_reason = "length_truncated_retry"
             if retry_budget is None:
-                raise
+                if not _is_structured_output_generation_error(exc) or budget.max_attempts <= 1:
+                    raise
+                retry_budget = budget
+                first_reason = "structured_output_invalid"
+                retry_reason = "structured_output_retry"
             attempts = [
                 _model_request_attempt_json(
                     attempt=1,
                     status="failed",
-                    reason="length_truncated",
+                    reason=first_reason,
                     budget=budget,
                 )
             ]
@@ -290,7 +296,7 @@ class VisionExtractionGateway:
                         _model_request_attempt_json(
                             attempt=2,
                             status="failed",
-                            reason="length_truncated_retry",
+                            reason=retry_reason,
                             budget=retry_budget,
                         )
                     ],
@@ -300,7 +306,7 @@ class VisionExtractionGateway:
                 _model_request_attempt_json(
                     attempt=2,
                     status="succeeded",
-                    reason="length_truncated_retry",
+                    reason=retry_reason,
                     budget=retry_budget,
                 )
             )
@@ -428,6 +434,18 @@ def _model_request_attempt_json(
         "reason": reason,
         "maxOutputTokens": budget.max_output_tokens,
     }
+
+
+def _is_structured_output_generation_error(exc: ModelProtocolError) -> bool:
+    message = str(exc).lower()
+    if message in {
+        "vision model content is not valid json.",
+        "vision model json content must be an object.",
+        "vision model json content does not match response schema.",
+        "vision model response message content is empty.",
+    }:
+        return True
+    return "validator" in exc.details and "path" in exc.details
 
 
 def _resolved_document_type(
