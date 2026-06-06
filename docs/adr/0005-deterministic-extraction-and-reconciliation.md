@@ -302,6 +302,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   normalization-envelope lineage, and `RegionExtraction` now exposes only
   optional region envelopes plus typed Claims, keeping raw model payloads out
   of deterministic reconciliation.
+- 2026-06-05: Semantic-region candidate creation now derives field,
+  line-item, and observation candidates from typed Claims instead of
+  round-tripping `RegionExtractionEnvelope` data through legacy normalized
+  target-schema payload parsing. Stored normalized projections remain lineage
+  data, while candidate creation uses the Claim registry and resolver path.
 
 ## Deferred Work
 

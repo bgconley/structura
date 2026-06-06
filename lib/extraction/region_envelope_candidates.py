@@ -1,20 +1,21 @@
 from __future__ import annotations
 
-from typing import Any
 from uuid import UUID
 
+from lib.extraction.claim_candidates import (
+    field_candidates_from_claims,
+    line_item_candidates_from_claims,
+    observation_candidates_from_claims,
+)
+from lib.extraction.claim_registry import CLAIM_FAMILY_REGISTRIES
+from lib.extraction.claims import claims_from_region_envelope
 from lib.extraction.models import (
     CandidateFact,
     LineItemCandidateFact,
     ObservationCandidateFact,
     ValidationReport,
 )
-from lib.extraction.normalization import (
-    field_candidates_from_extraction,
-    line_item_candidates_from_extraction,
-    observation_candidates_from_extraction,
-)
-from lib.extraction.region_envelope import RegionExtractionEnvelope, to_normalization_projection
+from lib.extraction.region_envelope import RegionExtractionEnvelope
 
 
 def field_candidates_from_region_envelope(
@@ -25,11 +26,10 @@ def field_candidates_from_region_envelope(
     source_engine: str,
     require_concrete_evidence: bool = False,
 ) -> list[CandidateFact]:
-    projection = to_normalization_projection(envelope)
-    return field_candidates_from_extraction(
+    return field_candidates_from_claims(
         document_id=document_id,
-        schema_name=_schema_name(projection, envelope),
-        payload=projection,
+        family=_claim_family(envelope),
+        claims=claims_from_region_envelope(envelope),
         validation=validation,
         source_engine=source_engine,
         require_concrete_evidence=require_concrete_evidence,
@@ -43,10 +43,9 @@ def line_item_candidates_from_region_envelope(
     source_engine: str,
     require_concrete_evidence: bool = False,
 ) -> list[LineItemCandidateFact]:
-    projection = to_normalization_projection(envelope)
-    return line_item_candidates_from_extraction(
-        schema_name=_schema_name(projection, envelope),
-        payload=projection,
+    return line_item_candidates_from_claims(
+        family=_claim_family(envelope),
+        claims=claims_from_region_envelope(envelope),
         validation=validation,
         source_engine=source_engine,
         require_concrete_evidence=require_concrete_evidence,
@@ -59,16 +58,17 @@ def observation_candidates_from_region_envelope(
     validation: ValidationReport,
     require_concrete_evidence: bool = False,
 ) -> list[ObservationCandidateFact]:
-    projection = to_normalization_projection(envelope)
-    return observation_candidates_from_extraction(
-        schema_name=_schema_name(projection, envelope),
-        payload=projection,
+    return observation_candidates_from_claims(
+        family=_claim_family(envelope),
+        claims=claims_from_region_envelope(envelope),
         validation=validation,
         require_concrete_evidence=require_concrete_evidence,
     )
 
 
-def _schema_name(projection: dict[str, Any], envelope: RegionExtractionEnvelope) -> str:
-    return str(
-        projection.get("schema_name") or envelope.target_schema or envelope.resolved_document_type
-    )
+def _claim_family(envelope: RegionExtractionEnvelope) -> str:
+    resolved = envelope.resolved_document_type.strip()
+    if resolved in CLAIM_FAMILY_REGISTRIES:
+        return resolved
+    target = (envelope.target_schema or "").strip()
+    return target or resolved or "document_observation"

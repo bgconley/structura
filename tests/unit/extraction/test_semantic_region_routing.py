@@ -546,6 +546,7 @@ class EnvelopeOnlyGateway:
             "page_id": str(self.page_id),
             "page_number": 1,
             "source_text": "$4.65",
+            "text_span": {"start": 0, "end": 5, "basis": "page_text"},
             "confidence": 0.83,
         }
         return GatewayExtraction(
