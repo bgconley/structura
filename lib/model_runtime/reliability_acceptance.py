@@ -57,6 +57,14 @@ REPEATABILITY_KEYS = (
     "reviewTasks",
     "rejectionDistribution",
 )
+REPEATABILITY_DRIFT_KEYS = (
+    "documentFamily",
+    "semanticRegions",
+    "plannerTasks",
+    "candidateFingerprints",
+    "canonicalOutput",
+    "reviewTasks",
+)
 OPERATIONAL_SLO_GATE_KEYS = (
     "targetQueueDeadLetters",
     "classifiedOperationalFailures",
@@ -69,6 +77,7 @@ OPERATIONAL_SLO_GATE_KEYS = (
 __all__ = [
     "REPORT_SUMMARY_ACCEPTANCE_COVERAGE",
     "REQUIRED_REPORT_SUMMARIES",
+    "REPEATABILITY_DRIFT_KEYS",
     "REPEATABILITY_KEYS",
     "assert_phase85_report_acceptance",
     "evaluate_phase85_report_acceptance",
@@ -346,7 +355,7 @@ def _repeatability_check(reports: list[dict[str, Any]]) -> dict[str, Any]:
     baseline = dict_value(get_value(reports[0], "repeatabilityFingerprints"))
     drift: list[str] = []
     comparisons: list[dict[str, Any]] = []
-    for key in REPEATABILITY_KEYS:
+    for key in REPEATABILITY_DRIFT_KEYS:
         baseline_value = get_value(baseline, key)
         values = [
             get_value(dict_value(get_value(report, "repeatabilityFingerprints")), key)

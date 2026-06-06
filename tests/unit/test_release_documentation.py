@@ -209,6 +209,16 @@ def test_gpu_validation_docs_require_full_repeatability_fingerprint_set() -> Non
     ) in normalized
 
 
+def test_gpu_validation_docs_keep_rejection_distribution_out_of_drift_keys() -> None:
+    content = Path("docs/model-runtime/phase8_5_gpu_validation.md").read_text(encoding="utf-8")
+    normalized = re.sub(r"\s+", " ", content)
+
+    assert (
+        "`rejectionDistribution` is recomputed per report as rejected "
+        "noise telemetry but is not a canonical-output drift key"
+    ) in normalized
+
+
 def test_gpu_validation_docs_require_distinct_repeatability_run_ids() -> None:
     content = Path("docs/model-runtime/phase8_5_gpu_validation.md").read_text(encoding="utf-8")
     normalized = re.sub(r"\s+", " ", content)

@@ -106,6 +106,10 @@ required reports must include current
 Report acceptance requires the full repeatability fingerprint set:
 `documentFamily`, `semanticRegions`, `plannerTasks`, `candidateFingerprints`,
 `canonicalOutput`, `reviewTasks`, and `rejectionDistribution`.
+Cross-run repeatability drift compares deterministic document family, selected
+semantic region, planner task, admitted candidate, canonical output, and review
+task fingerprints; `rejectionDistribution` is recomputed per report as rejected
+noise telemetry but is not a canonical-output drift key.
 Repeatability comparisons require distinct `runId` values so the same report
 cannot be submitted twice as two-pass evidence.
 Two-pass repeatability evidence must include non-empty report `documents` rows

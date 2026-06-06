@@ -521,6 +521,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   `lib/extraction/evidence_locator.py` and is shared by candidate fingerprints,
   candidate deduplication, and invoice aggregate line-item dedupe. Canonical
   invoice aggregates no longer depend on provider evidence-array order.
+- 2026-06-06: Cross-run repeatability drift no longer compares
+  `rejectionDistribution`. The fingerprint is still required and recomputed per
+  report as rejected-noise telemetry through `candidateAdmissionSummary`, but
+  deterministic repeatability drift is limited to document-family, selected
+  region/task, admitted candidate, canonical output, and review-task identity.
 - 2026-06-06: Granite visual crop retry usefulness now prefers the normalized
   region envelope and typed Claims when available. A crop response with
   line-item-shaped JSON but no anchored Claims is treated as not useful and may

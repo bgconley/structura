@@ -565,7 +565,7 @@ def test_report_acceptance_recomputes_repeatability_fingerprints_from_document_r
     ]
 
 
-def test_report_acceptance_compares_all_repeatability_fingerprints() -> None:
+def test_report_acceptance_compares_canonical_repeatability_fingerprints() -> None:
     first = _resident_report()
     second = deepcopy(first)
     second["runId"] = "phase85-pass-2"
