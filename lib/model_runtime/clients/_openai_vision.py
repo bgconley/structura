@@ -209,11 +209,7 @@ def _structured_content(
     normalized = parsed.get("normalized")
     if isinstance(normalized, dict):
         return normalized, confidence
-    direct_payload = dict(parsed)
-    direct_payload.pop("confidence", None)
-    if direct_payload:
-        return direct_payload, confidence
-    return {}, confidence
+    return dict(parsed), confidence
 
 
 def _validate_structured_content(

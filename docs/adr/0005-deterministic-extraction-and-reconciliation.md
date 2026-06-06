@@ -526,6 +526,12 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   report as rejected-noise telemetry through `candidateAdmissionSummary`, but
   deterministic repeatability drift is limited to document-family, selected
   region/task, admitted candidate, canonical output, and review-task identity.
+- 2026-06-06: The shared OpenAI-compatible vision adapter now preserves the
+  complete schema-validated direct model-output payload, including required
+  `confidence`, when passing data to Granite/Qwen normalization. Confidence is
+  still exposed separately as transport telemetry, but downstream contract
+  validation and Claim/envelope construction no longer have to synthesize null
+  confidence after the adapter strips a required field.
 - 2026-06-06: Granite visual crop retry usefulness now prefers the normalized
   region envelope and typed Claims when available. A crop response with
   line-item-shaped JSON but no anchored Claims is treated as not useful and may
