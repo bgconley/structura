@@ -165,6 +165,7 @@ def _check_structured_output_schema(
                 f"Model-output structured schema {name} has open object at {path}; "
                 "set additionalProperties to false."
             )
+        _check_structured_output_object_required_keys(name=name, path=path, node=node)
 
 
 def _check_structured_output_root(*, name: str, schema: dict[str, Any]) -> None:
@@ -183,6 +184,38 @@ def _check_structured_output_root(*, name: str, schema: dict[str, Any]) -> None:
     if unknown:
         raise ValueError(
             f"Model-output structured schema {name} requires unknown root keys: {unknown}."
+        )
+
+
+def _check_structured_output_object_required_keys(
+    *,
+    name: str,
+    path: str,
+    node: dict[str, Any],
+) -> None:
+    properties = node.get("properties")
+    required = node.get("required")
+    if not isinstance(properties, dict):
+        raise ValueError(
+            f"Model-output structured schema {name} object at {path} must declare properties."
+        )
+    if not isinstance(required, list):
+        raise ValueError(
+            f"Model-output structured schema {name} object at {path} must declare required keys."
+        )
+    property_names = set(properties)
+    required_names = set(required)
+    missing = sorted(property_names - required_names)
+    if missing:
+        raise ValueError(
+            f"Model-output structured schema {name} object at {path} must require every "
+            f"declared object property; missing: {missing}."
+        )
+    unknown = sorted(required_names - property_names)
+    if unknown:
+        raise ValueError(
+            f"Model-output structured schema {name} object at {path} requires unknown keys: "
+            f"{unknown}."
         )
 
 

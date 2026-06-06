@@ -11,19 +11,91 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["service_description"],
+        "required": [
+          "ordinal",
+          "service_description",
+          "service_date",
+          "procedure_code",
+          "billed_amount",
+          "allowed_amount",
+          "paid_amount",
+          "patient_responsibility",
+          "row_index",
+          "table_id",
+          "page_number"
+        ],
         "properties": {
-          "ordinal": {"type": "integer", "minimum": 1},
-          "service_description": {"type": "string", "minLength": 1},
-          "service_date": {"type": ["string", "null"]},
-          "procedure_code": {"type": ["string", "null"]},
-          "billed_amount": {"type": ["number", "string", "null"]},
-          "allowed_amount": {"type": ["number", "string", "null"]},
-          "paid_amount": {"type": ["number", "string", "null"]},
-          "patient_responsibility": {"type": ["number", "string", "null"]},
-          "row_index": {"type": ["integer", "string", "null"]},
-          "table_id": {"type": ["string", "null"]},
-          "page_number": {"type": ["integer", "string", "null"]}
+          "ordinal": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "service_description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "service_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "procedure_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "billed_amount": {
+            "type": [
+              "number",
+              "string",
+              "null"
+            ]
+          },
+          "allowed_amount": {
+            "type": [
+              "number",
+              "string",
+              "null"
+            ]
+          },
+          "paid_amount": {
+            "type": [
+              "number",
+              "string",
+              "null"
+            ]
+          },
+          "patient_responsibility": {
+            "type": [
+              "number",
+              "string",
+              "null"
+            ]
+          },
+          "row_index": {
+            "type": [
+              "integer",
+              "string",
+              "null"
+            ]
+          },
+          "table_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "page_number": {
+            "type": [
+              "integer",
+              "string",
+              "null"
+            ]
+          }
         }
       }
     },
@@ -31,11 +103,40 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "overall": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
-        "schema_fit": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
-        "table_structure": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
-      }
+        "overall": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "schema_fit": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "table_structure": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "overall",
+        "schema_fit",
+        "table_structure"
+      ]
     }
   },
-  "required": ["service_lines"]
+  "required": [
+    "service_lines",
+    "confidence"
+  ]
 }

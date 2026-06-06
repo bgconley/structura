@@ -73,6 +73,32 @@ def test_model_output_schema_checker_rejects_empty_root_contracts() -> None:
         )
 
 
+def test_model_output_schema_checker_rejects_optional_object_properties() -> None:
+    with pytest.raises(ValueError, match="must require every declared object property"):
+        _check_structured_output_schema(
+            name="optional_model_output.schema.json",
+            schema={
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["items"],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "required": ["description"],
+                            "properties": {
+                                "description": {"type": "string"},
+                                "amount": {"type": ["number", "null"]},
+                            },
+                        },
+                    }
+                },
+            },
+        )
+
+
 def test_model_output_schemas_reject_empty_root_objects() -> None:
     registry = ContractRegistry.load("contracts")
 

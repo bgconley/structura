@@ -471,6 +471,13 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   model protocol failure. Context-length and invalid local schema/configuration
   errors remain non-retryable, and there is still no one-page, high-quality, rescue,
   or `json_object` fallback.
+- 2026-06-06: Model-output schemas now enforce OpenAI/vLLM strict structured-output
+  object shape recursively: every declared object property is listed in `required`,
+  and optional fragment fields use explicit `null` values instead of disappearing
+  from the payload shape. The normalizer's direct/fixture compatibility boundary can
+  complete schema-declared nullable fields to `null` before validation, but it still
+  fails closed when extraction-bearing roots such as `line_items`, `fields`, or
+  `service_lines` are absent and it does not mine off-contract keys.
 
 ## Deferred Work
 

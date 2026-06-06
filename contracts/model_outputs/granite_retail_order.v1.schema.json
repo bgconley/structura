@@ -4,35 +4,118 @@
   "title": "Granite Retail Order v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["line_items"],
+  "required": [
+    "merchant_name",
+    "order_number",
+    "order_date",
+    "line_items",
+    "total",
+    "confidence"
+  ],
   "properties": {
-    "merchant_name": {"type": ["string", "null"], "maxLength": 200},
-    "order_number": {"type": ["string", "null"], "maxLength": 120},
-    "order_date": {"type": ["string", "null"], "maxLength": 40},
+    "merchant_name": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 200
+    },
+    "order_number": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 120
+    },
+    "order_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 40
+    },
     "line_items": {
       "type": "array",
       "maxItems": 40,
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["description"],
+        "required": [
+          "description",
+          "quantity",
+          "unit_price",
+          "amount",
+          "source_text"
+        ],
         "properties": {
-          "description": {"type": "string", "minLength": 1, "maxLength": 240},
-          "quantity": {"type": ["number", "string", "null"]},
-          "unit_price": {"type": ["number", "string", "null"]},
-          "amount": {"type": ["number", "string", "null"]},
-          "source_text": {"type": ["string", "null"], "maxLength": 500}
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240
+          },
+          "quantity": {
+            "type": [
+              "number",
+              "string",
+              "null"
+            ]
+          },
+          "unit_price": {
+            "type": [
+              "number",
+              "string",
+              "null"
+            ]
+          },
+          "amount": {
+            "type": [
+              "number",
+              "string",
+              "null"
+            ]
+          },
+          "source_text": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 500
+          }
         }
       }
     },
-    "total": {"type": ["number", "string", "null"]},
+    "total": {
+      "type": [
+        "number",
+        "string",
+        "null"
+      ]
+    },
     "confidence": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "overall": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
-        "schema_fit": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
-      }
+        "overall": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "schema_fit": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "overall",
+        "schema_fit"
+      ]
     }
   }
 }

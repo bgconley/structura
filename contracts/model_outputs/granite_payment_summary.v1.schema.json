@@ -4,34 +4,119 @@
   "title": "Granite Payment Summary v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["payments"],
+  "required": [
+    "invoice_no",
+    "amount",
+    "payments",
+    "confidence"
+  ],
   "properties": {
-    "invoice_no": {"type": ["string", "null"]},
-    "amount": {"type": ["number", "string", "null"]},
+    "invoice_no": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "amount": {
+      "type": [
+        "number",
+        "string",
+        "null"
+      ]
+    },
     "payments": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "amount": {"type": ["number", "string", "null"]},
-          "card_number": {"type": ["string", "null"]},
-          "merchant_id": {"type": ["string", "null"]},
-          "terminal_id": {"type": ["string", "null"]},
-          "auth_code": {"type": ["string", "null"]},
-          "auth_mode": {"type": ["string", "null"]},
-          "application_name": {"type": ["string", "null"]},
-          "source_text": {"type": ["string", "null"]}
-        }
+          "amount": {
+            "type": [
+              "number",
+              "string",
+              "null"
+            ]
+          },
+          "card_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "merchant_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "terminal_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "auth_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "auth_mode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "application_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source_text": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "amount",
+          "card_number",
+          "merchant_id",
+          "terminal_id",
+          "auth_code",
+          "auth_mode",
+          "application_name",
+          "source_text"
+        ]
       }
     },
     "confidence": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "overall": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
-        "schema_fit": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
-      }
+        "overall": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "schema_fit": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "overall",
+        "schema_fit"
+      ]
     }
   }
 }

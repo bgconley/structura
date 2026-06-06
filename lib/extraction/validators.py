@@ -4,10 +4,8 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from jsonschema import Draft202012Validator
-from jsonschema.exceptions import ValidationError as JsonSchemaValidationError
-
 from lib.extraction.evidence import has_concrete_evidence
+from lib.extraction.model_output_contract_boundary import contract_root_payload
 from lib.extraction.model_output_schemas import load_model_output_schema
 from lib.extraction.models import ValidationReport
 from lib.extraction.schema_registry import ExtractionSchemaError, ExtractionSchemaRegistry
@@ -101,19 +99,30 @@ def _model_output_contract_check(
             "model-output contract validation.",
         )
     try:
-        model_output_schema = load_model_output_schema(model_output_schema_name)
-        Draft202012Validator(model_output_schema.schema).validate(model_output_payload)
-    except JsonSchemaValidationError as exc:
-        return _check(
-            "region_scope.model_output_contract",
-            "failed",
-            f"Model output did not conform to {model_output_schema_name}: {exc.message}",
+        load_model_output_schema(model_output_schema_name)
+        _shaped_payload, rejected_fields, contract_errors = contract_root_payload(
+            model_output_payload,
+            model_output_schema_name=model_output_schema_name,
         )
     except (OSError, ValueError) as exc:
         return _check(
             "region_scope.model_output_contract",
             "failed",
             f"Could not load model-output contract {model_output_schema_name}: {exc}",
+        )
+    if rejected_fields:
+        return _check(
+            "region_scope.model_output_contract",
+            "failed",
+            f"Model output included off-contract fields for {model_output_schema_name}: "
+            f"{', '.join(rejected_fields)}",
+        )
+    if contract_errors:
+        return _check(
+            "region_scope.model_output_contract",
+            "failed",
+            f"Model output did not conform to {model_output_schema_name}: "
+            f"{'; '.join(contract_errors)}",
         )
     return _check(
         "region_scope.model_output_contract",

@@ -4,22 +4,91 @@
   "title": "Granite Mortgage Escrow Statement v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["servicer_name"],
+  "required": [
+    "loan_number",
+    "servicer_name",
+    "statement_date",
+    "escrow_balance",
+    "payment_amount",
+    "tax_amount",
+    "insurance_amount",
+    "confidence"
+  ],
   "properties": {
-    "loan_number": {"type": ["string", "null"], "maxLength": 120},
-    "servicer_name": {"type": ["string", "null"], "maxLength": 240},
-    "statement_date": {"type": ["string", "null"], "maxLength": 40},
-    "escrow_balance": {"type": ["number", "string", "null"]},
-    "payment_amount": {"type": ["number", "string", "null"]},
-    "tax_amount": {"type": ["number", "string", "null"]},
-    "insurance_amount": {"type": ["number", "string", "null"]},
+    "loan_number": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 120
+    },
+    "servicer_name": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 240
+    },
+    "statement_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 40
+    },
+    "escrow_balance": {
+      "type": [
+        "number",
+        "string",
+        "null"
+      ]
+    },
+    "payment_amount": {
+      "type": [
+        "number",
+        "string",
+        "null"
+      ]
+    },
+    "tax_amount": {
+      "type": [
+        "number",
+        "string",
+        "null"
+      ]
+    },
+    "insurance_amount": {
+      "type": [
+        "number",
+        "string",
+        "null"
+      ]
+    },
     "confidence": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "overall": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
-        "schema_fit": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
-      }
+        "overall": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "schema_fit": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "overall",
+        "schema_fit"
+      ]
     }
   }
 }

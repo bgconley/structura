@@ -790,4 +790,16 @@ def _merge_evidence_context(
 
 
 def _rejected_fields(payload: dict[str, Any], accepted: set[str]) -> list[str]:
-    return sorted(key for key in payload if key not in accepted)
+    return sorted(
+        key
+        for key, value in payload.items()
+        if key not in accepted and not _empty_contract_value(value)
+    )
+
+
+def _empty_contract_value(value: Any) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, dict):
+        return all(_empty_contract_value(item) for item in value.values())
+    return False

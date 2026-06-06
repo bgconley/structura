@@ -11,12 +11,41 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["name"],
+        "required": [
+          "name",
+          "value",
+          "confidence",
+          "source_text"
+        ],
         "properties": {
-          "name": {"type": "string", "minLength": 1, "maxLength": 120},
-          "value": {"type": ["string", "number", "boolean", "null"]},
-          "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
-          "source_text": {"type": ["string", "null"], "maxLength": 500}
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "value": {
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
+          },
+          "confidence": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+          },
+          "source_text": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 500
+          }
         }
       }
     },
@@ -27,16 +56,75 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "contact_type": {"type": ["string", "null"]},
-          "name": {"type": ["string", "null"]},
-          "phone": {"type": ["string", "null"]},
-          "fax": {"type": ["string", "null"]},
-          "address": {"type": ["string", "null"]},
-          "url": {"type": ["string", "null"]},
-          "deadline": {"type": ["string", "null"]},
-          "source_text": {"type": ["string", "null"], "maxLength": 500},
-          "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
-        }
+          "contact_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fax": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "deadline": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source_text": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 500
+          },
+          "confidence": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "contact_type",
+          "name",
+          "phone",
+          "fax",
+          "address",
+          "url",
+          "deadline",
+          "source_text",
+          "confidence"
+        ]
       }
     },
     "service_lines": {
@@ -46,28 +134,96 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "service_date": {"type": ["string", "null"]},
-          "description": {"type": ["string", "null"]},
-          "code": {"type": ["string", "null"]},
-          "decision": {"type": ["string", "null"]},
-          "source_text": {"type": ["string", "null"], "maxLength": 500},
-          "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
-        }
+          "service_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decision": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source_text": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 500
+          },
+          "confidence": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "service_date",
+          "description",
+          "code",
+          "decision",
+          "source_text",
+          "confidence"
+        ]
       }
     },
     "warnings": {
       "type": "array",
       "maxItems": 20,
-      "items": {"type": "string", "maxLength": 300}
+      "items": {
+        "type": "string",
+        "maxLength": 300
+      }
     },
     "confidence": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "overall": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
-        "schema_fit": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
-      }
+        "overall": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "schema_fit": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "overall",
+        "schema_fit"
+      ]
     }
   },
-  "required": ["facts", "contacts", "service_lines", "warnings"]
+  "required": [
+    "facts",
+    "contacts",
+    "service_lines",
+    "warnings",
+    "confidence"
+  ]
 }

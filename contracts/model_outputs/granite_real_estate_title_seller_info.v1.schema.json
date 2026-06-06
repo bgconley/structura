@@ -4,20 +4,75 @@
   "title": "Granite Real Estate Title Seller Info v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["seller_name"],
+  "required": [
+    "seller_name",
+    "property_address",
+    "title_company",
+    "file_number",
+    "closing_date",
+    "confidence"
+  ],
   "properties": {
-    "seller_name": {"type": ["string", "null"], "maxLength": 240},
-    "property_address": {"type": ["string", "null"], "maxLength": 400},
-    "title_company": {"type": ["string", "null"], "maxLength": 240},
-    "file_number": {"type": ["string", "null"], "maxLength": 120},
-    "closing_date": {"type": ["string", "null"], "maxLength": 40},
+    "seller_name": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 240
+    },
+    "property_address": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 400
+    },
+    "title_company": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 240
+    },
+    "file_number": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 120
+    },
+    "closing_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 40
+    },
     "confidence": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "overall": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
-        "schema_fit": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
-      }
+        "overall": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "schema_fit": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "overall",
+        "schema_fit"
+      ]
     }
   }
 }

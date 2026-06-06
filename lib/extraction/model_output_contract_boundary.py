@@ -7,6 +7,8 @@ from jsonschema.exceptions import SchemaError
 
 from lib.extraction.model_output_schemas import load_model_output_schema
 
+_MISSING = object()
+
 
 def contract_root_payload(
     payload: dict[str, Any],
@@ -94,7 +96,31 @@ def _shape_object(
         )
         shaped[str(key)] = shaped_value
         rejected.extend(child_rejected)
+    for key, child_schema in properties.items():
+        if key in shaped or not isinstance(child_schema, dict):
+            continue
+        missing_value = _missing_value_for_schema(child_schema)
+        if missing_value is not _MISSING:
+            shaped[str(key)] = missing_value
     return shaped, rejected
+
+
+def _missing_value_for_schema(schema: dict[str, Any]) -> Any:
+    schema_type = schema.get("type")
+    schema_types = set(schema_type) if isinstance(schema_type, list) else {schema_type}
+    if "null" in schema_types:
+        return None
+    if "object" in schema_types and isinstance(schema.get("properties"), dict):
+        value: dict[str, Any] = {}
+        for key, child_schema in schema["properties"].items():
+            if not isinstance(child_schema, dict):
+                return _MISSING
+            child_value = _missing_value_for_schema(child_schema)
+            if child_value is _MISSING:
+                return _MISSING
+            value[str(key)] = child_value
+        return value
+    return _MISSING
 
 
 def _contract_validation_errors(payload: dict[str, Any], *, schema: dict[str, Any]) -> list[str]:

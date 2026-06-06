@@ -4,13 +4,51 @@
   "title": "Granite Dispute Form v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["transactions"],
+  "required": [
+    "account_holder",
+    "merchant_name",
+    "transaction_date",
+    "transaction_amount",
+    "dispute_reason",
+    "transactions",
+    "confidence"
+  ],
   "properties": {
-    "account_holder": {"type": ["string", "null"], "maxLength": 240},
-    "merchant_name": {"type": ["string", "null"], "maxLength": 240},
-    "transaction_date": {"type": ["string", "null"], "maxLength": 40},
-    "transaction_amount": {"type": ["number", "string", "null"]},
-    "dispute_reason": {"type": ["string", "null"], "maxLength": 500},
+    "account_holder": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 240
+    },
+    "merchant_name": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 240
+    },
+    "transaction_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 40
+    },
+    "transaction_amount": {
+      "type": [
+        "number",
+        "string",
+        "null"
+      ]
+    },
+    "dispute_reason": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 500
+    },
     "transactions": {
       "type": "array",
       "maxItems": 20,
@@ -18,20 +56,68 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "merchant_name": {"type": ["string", "null"], "maxLength": 240},
-          "transaction_date": {"type": ["string", "null"], "maxLength": 40},
-          "amount": {"type": ["number", "string", "null"]},
-          "source_text": {"type": ["string", "null"], "maxLength": 500}
-        }
+          "merchant_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 240
+          },
+          "transaction_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 40
+          },
+          "amount": {
+            "type": [
+              "number",
+              "string",
+              "null"
+            ]
+          },
+          "source_text": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "merchant_name",
+          "transaction_date",
+          "amount",
+          "source_text"
+        ]
       }
     },
     "confidence": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "overall": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
-        "schema_fit": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
-      }
+        "overall": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "schema_fit": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "overall",
+        "schema_fit"
+      ]
     }
   }
 }

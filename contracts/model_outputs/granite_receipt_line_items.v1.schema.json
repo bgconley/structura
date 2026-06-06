@@ -11,21 +11,110 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["description"],
+        "required": [
+          "ordinal",
+          "description",
+          "quantity",
+          "unit",
+          "unit_price",
+          "discount",
+          "amount",
+          "sku",
+          "tax_category_hint",
+          "category_hint",
+          "row_index",
+          "table_id",
+          "page_number"
+        ],
         "properties": {
-          "ordinal": {"type": ["integer", "null"], "minimum": 1},
-          "description": {"type": "string", "minLength": 1, "maxLength": 240},
-          "quantity": {"type": ["number", "string", "null"]},
-          "unit": {"type": ["string", "null"], "maxLength": 40},
-          "unit_price": {"type": ["number", "string", "null"]},
-          "discount": {"type": ["number", "string", "null"]},
-          "amount": {"type": ["number", "string", "null"]},
-          "sku": {"type": ["string", "null"], "maxLength": 80},
-          "tax_category_hint": {"type": ["string", "null"], "maxLength": 80},
-          "category_hint": {"type": ["string", "null"], "maxLength": 80},
-          "row_index": {"type": ["integer", "string", "null"]},
-          "table_id": {"type": ["string", "null"]},
-          "page_number": {"type": ["integer", "string", "null"]}
+          "ordinal": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240
+          },
+          "quantity": {
+            "type": [
+              "number",
+              "string",
+              "null"
+            ]
+          },
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 40
+          },
+          "unit_price": {
+            "type": [
+              "number",
+              "string",
+              "null"
+            ]
+          },
+          "discount": {
+            "type": [
+              "number",
+              "string",
+              "null"
+            ]
+          },
+          "amount": {
+            "type": [
+              "number",
+              "string",
+              "null"
+            ]
+          },
+          "sku": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 80
+          },
+          "tax_category_hint": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 80
+          },
+          "category_hint": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 80
+          },
+          "row_index": {
+            "type": [
+              "integer",
+              "string",
+              "null"
+            ]
+          },
+          "table_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "page_number": {
+            "type": [
+              "integer",
+              "string",
+              "null"
+            ]
+          }
         }
       }
     },
@@ -33,20 +122,73 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "subtotal": {"type": ["number", "string", "null"]},
-        "tax": {"type": ["number", "string", "null"]},
-        "total": {"type": ["number", "string", "null"]}
-      }
+        "subtotal": {
+          "type": [
+            "number",
+            "string",
+            "null"
+          ]
+        },
+        "tax": {
+          "type": [
+            "number",
+            "string",
+            "null"
+          ]
+        },
+        "total": {
+          "type": [
+            "number",
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "subtotal",
+        "tax",
+        "total"
+      ]
     },
     "confidence": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "overall": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
-        "schema_fit": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
-        "table_structure": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
-      }
+        "overall": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "schema_fit": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "table_structure": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "overall",
+        "schema_fit",
+        "table_structure"
+      ]
     }
   },
-  "required": ["line_items"]
+  "required": [
+    "line_items",
+    "totals",
+    "confidence"
+  ]
 }

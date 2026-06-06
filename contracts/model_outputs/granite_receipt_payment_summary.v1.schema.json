@@ -4,23 +4,99 @@
   "title": "Granite Receipt Payment Summary v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["total"],
+  "required": [
+    "merchant_name",
+    "transaction_date",
+    "subtotal",
+    "tax",
+    "tip",
+    "discount_total",
+    "total",
+    "payment_method",
+    "confidence"
+  ],
   "properties": {
-    "merchant_name": {"type": ["string", "null"], "maxLength": 200},
-    "transaction_date": {"type": ["string", "null"], "maxLength": 40},
-    "subtotal": {"type": ["number", "string", "null"]},
-    "tax": {"type": ["number", "string", "null"]},
-    "tip": {"type": ["number", "string", "null"]},
-    "discount_total": {"type": ["number", "string", "null"]},
-    "total": {"type": ["number", "string", "null"]},
-    "payment_method": {"type": ["string", "null"], "maxLength": 120},
+    "merchant_name": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 200
+    },
+    "transaction_date": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 40
+    },
+    "subtotal": {
+      "type": [
+        "number",
+        "string",
+        "null"
+      ]
+    },
+    "tax": {
+      "type": [
+        "number",
+        "string",
+        "null"
+      ]
+    },
+    "tip": {
+      "type": [
+        "number",
+        "string",
+        "null"
+      ]
+    },
+    "discount_total": {
+      "type": [
+        "number",
+        "string",
+        "null"
+      ]
+    },
+    "total": {
+      "type": [
+        "number",
+        "string",
+        "null"
+      ]
+    },
+    "payment_method": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 120
+    },
     "confidence": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "overall": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
-        "schema_fit": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
-      }
+        "overall": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "schema_fit": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "overall",
+        "schema_fit"
+      ]
     }
   }
 }

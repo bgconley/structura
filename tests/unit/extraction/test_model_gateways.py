@@ -335,7 +335,11 @@ def test_granite_gateway_routes_service_record_tables_to_service_record_schema()
     assert "Do not include source_text" in client.request.prompt
     assert client.request.response_schema_name == "granite_service_record_line_items.v1"
     assert client.request.response_json_schema is not None
-    assert client.request.response_json_schema["required"] == ["line_items"]
+    assert client.request.response_json_schema["required"] == [
+        "line_items",
+        "totals",
+        "confidence",
+    ]
     item_properties = client.request.response_json_schema["properties"]["line_items"]["items"][
         "properties"
     ]
