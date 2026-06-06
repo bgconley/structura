@@ -10,6 +10,40 @@ from lib.extraction.model_output_observations import (
 )
 
 
+def test_direct_observation_fields_are_derived_from_model_output_schema(monkeypatch) -> None:
+    class FakeModelOutputSchema:
+        schema = {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "declared_test_field": {"type": ["string", "null"]},
+                "confidence": {"type": "object"},
+            },
+        }
+
+    import lib.extraction.model_output_observations as observations
+
+    monkeypatch.setattr(
+        observations,
+        "load_model_output_schema",
+        lambda _schema_name: FakeModelOutputSchema(),
+        raising=False,
+    )
+
+    projected = observations_from_model_payload(
+        {
+            "declared_test_field": "kept because the contract declares it",
+            "seller_name": "dropped because the fake contract does not declare it",
+        },
+        "granite_real_estate_title_seller_info.v1",
+        evidence_context=None,
+    )
+
+    assert [(item["field_name"], item["value"]) for item in projected] == [
+        ("declared_test_field", "kept because the contract declares it")
+    ]
+
+
 def test_model_output_observations_filter_schema_and_prompt_echoes() -> None:
     document_id = uuid4()
     region_id = uuid4()

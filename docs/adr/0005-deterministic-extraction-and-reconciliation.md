@@ -381,6 +381,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   top-level fields. Unknown keys in seller-info, mortgage-escrow, or dispute
   model outputs are rejected as off-contract input instead of passing through
   a prompt/schema echo deny list.
+- 2026-06-06: Direct-field observation admission now derives those declared
+  top-level fields from the selected model-output schema contract instead of a
+  second hard-coded allow-list. Generic KVP remains a separate contracted
+  `fields`-array shape.
 
 ## Deferred Work
 

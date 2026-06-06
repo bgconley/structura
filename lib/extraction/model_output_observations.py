@@ -4,12 +4,14 @@ from typing import Any
 
 from lib.extraction.evidence_concretizer import evidence_ref_from_context
 from lib.extraction.evidence_context import EvidenceContext
+from lib.extraction.model_output_schemas import load_model_output_schema
 from lib.extraction.model_output_value_parsing import (
     bounded_text,
     number_value,
     value_type,
 )
 
+DIRECT_OBSERVATION_METADATA_KEYS = frozenset({"confidence"})
 DROP_FLAT_OBSERVATION_KEYS = {
     "$schema",
     "$defs",
@@ -40,38 +42,6 @@ ECHO_PHRASES = (
     "additionalproperties",
 )
 GENERIC_KVP_SCHEMA_NAME = "granite_generic_kvp.v1"
-DIRECT_OBSERVATION_FIELD_KEYS = {
-    "granite_real_estate_title_seller_info.v1": frozenset(
-        {
-            "seller_name",
-            "property_address",
-            "title_company",
-            "file_number",
-            "closing_date",
-        }
-    ),
-    "granite_mortgage_escrow_statement.v1": frozenset(
-        {
-            "loan_number",
-            "servicer_name",
-            "statement_date",
-            "escrow_balance",
-            "payment_amount",
-            "tax_amount",
-            "insurance_amount",
-        }
-    ),
-    "granite_dispute_form.v1": frozenset(
-        {
-            "account_holder",
-            "merchant_name",
-            "transaction_date",
-            "transaction_amount",
-            "dispute_reason",
-            "transactions",
-        }
-    ),
-}
 
 
 def looks_like_schema_echo(payload: dict[str, Any]) -> bool:
@@ -124,11 +94,7 @@ def observations_from_model_payload(
         return observations
     if model_output_schema_name == GENERIC_KVP_SCHEMA_NAME:
         return observations
-    allowed_keys = (
-        DIRECT_OBSERVATION_FIELD_KEYS.get(model_output_schema_name)
-        if model_output_schema_name is not None
-        else None
-    )
+    allowed_keys = direct_observation_field_keys(model_output_schema_name)
     for key, value in payload.items():
         if allowed_keys is not None and key not in allowed_keys:
             continue
@@ -145,6 +111,21 @@ def observations_from_model_payload(
             )
         )
     return observations
+
+
+def direct_observation_field_keys(
+    model_output_schema_name: str | None,
+) -> frozenset[str] | None:
+    if model_output_schema_name is None or model_output_schema_name == GENERIC_KVP_SCHEMA_NAME:
+        return None
+    try:
+        schema = load_model_output_schema(model_output_schema_name).schema
+    except (OSError, ValueError, KeyError):
+        return None
+    properties = schema.get("properties")
+    if not isinstance(properties, dict):
+        return None
+    return frozenset(str(key) for key in properties if key not in DIRECT_OBSERVATION_METADATA_KEYS)
 
 
 def observation_dicts_from_payload(payload: dict[str, Any]) -> list[dict[str, Any]]:
