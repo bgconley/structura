@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from uuid import uuid4
 
 from lib.extraction.gateways.granite_vision import GraniteVisionExtractionGateway
-from lib.extraction.gateways.qwen_vl import QwenVLExtractionGateway
 from lib.extraction.models import (
     ExtractionSourceDocument,
     ParsedElementText,
@@ -14,7 +13,7 @@ from lib.extraction.models import (
 )
 from lib.model_runtime.contracts import VisionGenerateRequest, VisionGenerateResponse
 from lib.model_runtime.http_client import ModelProtocolError
-from lib.model_runtime.profiles import GRANITE_VISION_PROFILE, QWEN_VL_PROFILE
+from lib.model_runtime.profiles import GRANITE_VISION_PROFILE
 from lib.semantic_annotations.models import SemanticExtractionTask, SemanticGroundingRef
 
 
@@ -38,23 +37,6 @@ class FakeVisionClient:
             input_sha256=tuple(image.validated_sha256() for image in request.image_inputs),
             latency_ms=1,
         )
-
-
-def test_qwen_extraction_gateway_truthfully_sets_qwen_provenance() -> None:
-    client = FakeVisionClient(source_engine="qwen3_vl_8b", profile_name=QWEN_VL_PROFILE)
-    source = _source_with_page_image()
-
-    result = QwenVLExtractionGateway(client=client).extract(
-        source,
-        schema_name="invoice",
-        route_profile="qwen_primary_review_required",
-    )
-
-    assert result.route.source_engine == "qwen3_vl_8b"
-    assert result.route.model_name == "fake-model"
-    assert result.raw_output_json["modelInvoked"] is True
-    assert client.request is not None
-    assert client.request.image_inputs[0].content == b"page-image"
 
 
 def test_granite_extraction_gateway_truthfully_sets_granite_provenance() -> None:

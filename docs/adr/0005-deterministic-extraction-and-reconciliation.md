@@ -391,6 +391,9 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
 - 2026-06-06: Observation rejected-field metadata now treats `fields` as accepted
   only for `granite_generic_kvp.v1`; direct-field observation contracts report
   a stray `fields` array as rejected instead of silently dropping it.
+- 2026-06-06: The live extraction routing gateway no longer imports, accepts,
+  constructs, or branches to a Qwen extraction gateway. Qwen remains a semantic
+  planner only; disabled Qwen extraction routes fail closed before model use.
 
 ## Deferred Work
 

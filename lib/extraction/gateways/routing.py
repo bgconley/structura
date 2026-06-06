@@ -3,15 +3,12 @@ from __future__ import annotations
 from lib.config import get_settings
 from lib.extraction.gateway import DoclingHeuristicGateway, ExtractionGateway
 from lib.extraction.gateways.granite_vision import GraniteVisionExtractionGateway
-from lib.extraction.gateways.qwen_vl import QwenVLExtractionGateway
 from lib.extraction.models import ExtractionSourceDocument, GatewayExtraction
 from lib.model_runtime.clients.granite_vision import GraniteVisionClient
-from lib.model_runtime.clients.qwen_vl import QwenVLClient
 from lib.model_runtime.http_client import ModelProtocolError
 from lib.model_runtime.profiles import get_model_profile
 from lib.semantic_annotations.models import SemanticExtractionTask
 
-QWEN_ROUTE_PROFILES = {"qwen_primary_review_required"}
 DISABLED_ROUTE_PROFILES = {
     "granite_then_qwen_fallback_review_required",
     "qwen_primary_review_required",
@@ -29,11 +26,9 @@ class ModelRoutingExtractionGateway:
         self,
         *,
         deterministic: ExtractionGateway,
-        qwen: ExtractionGateway,
         granite: ExtractionGateway,
     ) -> None:
         self.deterministic = deterministic
-        self.qwen = qwen
         self.granite = granite
 
     def extract(
@@ -48,13 +43,6 @@ class ModelRoutingExtractionGateway:
             raise ModelProtocolError(
                 f"Route profile {route_profile} is disabled in Phase 8.5 production. "
                 "Qwen is semantic-only; extraction must be Granite or deterministic fixture."
-            )
-        if route_profile in QWEN_ROUTE_PROFILES:
-            return self.qwen.extract(
-                source,
-                schema_name=schema_name,
-                route_profile=route_profile,
-                semantic_task=semantic_task,
             )
         if route_profile in GRANITE_ROUTE_PROFILES or schema_name in STRUCTURED_SCHEMAS:
             return self.granite.extract(
@@ -76,16 +64,9 @@ def default_extraction_gateway() -> ExtractionGateway:
     deterministic = DoclingHeuristicGateway()
     if settings.model_mode == "fixture":
         return deterministic
-    qwen_profile = get_model_profile(settings.qwen_semantic_profile)
     granite_profile = get_model_profile(settings.granite_profile)
     return ModelRoutingExtractionGateway(
         deterministic=deterministic,
-        qwen=QwenVLExtractionGateway(
-            client=QwenVLClient(
-                profile=qwen_profile,
-                http_client_base_url=settings.model_qwen_semantic_url,
-            )
-        ),
         granite=GraniteVisionExtractionGateway(
             client=GraniteVisionClient(
                 profile=granite_profile,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from dataclasses import dataclass
 
 import pytest
@@ -7,7 +8,6 @@ import pytest
 from lib.config import get_settings
 from lib.extraction.gateway import DoclingHeuristicGateway
 from lib.extraction.gateways.granite_vision import GraniteVisionExtractionGateway
-from lib.extraction.gateways.qwen_vl import QwenVLExtractionGateway
 from lib.extraction.gateways.routing import (
     ModelRoutingExtractionGateway,
     default_extraction_gateway,
@@ -25,13 +25,19 @@ class RecordingDeterministicGateway(DoclingHeuristicGateway):
         return super().extract(*args, **kwargs)
 
 
+def test_live_routing_gateway_has_no_qwen_extraction_dependency() -> None:
+    constructor = inspect.signature(ModelRoutingExtractionGateway)
+    routing_source = inspect.getsource(ModelRoutingExtractionGateway)
+
+    assert "qwen" not in constructor.parameters
+    assert "QwenVLExtractionGateway" not in routing_source
+
+
 def test_routing_gateway_rejects_live_qwen_extraction_route() -> None:
-    qwen_client = FakeVisionClient(source_engine="qwen3_vl_8b", profile_name="qwen")
     granite_client = FakeVisionClient(source_engine="granite_vision_3b", profile_name="granite")
     deterministic = RecordingDeterministicGateway()
     gateway = ModelRoutingExtractionGateway(
         deterministic=deterministic,
-        qwen=QwenVLExtractionGateway(client=qwen_client),
         granite=GraniteVisionExtractionGateway(client=granite_client),
     )
 
@@ -42,17 +48,14 @@ def test_routing_gateway_rejects_live_qwen_extraction_route() -> None:
             route_profile="qwen_primary_review_required",
         )
 
-    assert qwen_client.request is None
     assert granite_client.request is None
     assert deterministic.called is False
 
 
 def test_routing_gateway_uses_granite_for_structured_route() -> None:
-    qwen_client = FakeVisionClient(source_engine="qwen3_vl_8b", profile_name="qwen")
     granite_client = FakeVisionClient(source_engine="granite_vision_3b", profile_name="granite")
     gateway = ModelRoutingExtractionGateway(
         deterministic=RecordingDeterministicGateway(),
-        qwen=QwenVLExtractionGateway(client=qwen_client),
         granite=GraniteVisionExtractionGateway(client=granite_client),
     )
 
@@ -64,7 +67,6 @@ def test_routing_gateway_uses_granite_for_structured_route() -> None:
 
     assert result.route.source_engine == "granite_vision_3b"
     assert granite_client.request is not None
-    assert qwen_client.request is None
 
 
 def test_default_extraction_gateway_remains_fixture_when_model_mode_is_fixture(monkeypatch) -> None:
