@@ -423,6 +423,12 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   extractions, including missing-envelope cases. Semantic-region model output
   is therefore accepted only through typed envelope/Claim-backed candidates;
   raw `normalized_json` remains debug lineage rather than a cleanup surface.
+- 2026-06-06: The shared OpenAI-compatible vision adapter now validates the
+  returned JSON object against the exact requested response schema before
+  returning `structured_output_used=True`. If a model server ignores or weakens
+  structured decoding and returns schema-invalid JSON, the adapter fails closed
+  with a redacted `ModelProtocolError` instead of handing malformed shape to
+  downstream normalizers.
 
 ## Deferred Work
 

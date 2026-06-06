@@ -8,6 +8,8 @@ import time
 from typing import Any
 
 import httpx
+from jsonschema import Draft202012Validator
+from jsonschema.exceptions import SchemaError, ValidationError
 
 from lib.model_runtime.contracts import VisionGenerateRequest, VisionGenerateResponse
 from lib.model_runtime.http_client import ModelHttpClient, ModelProtocolError
@@ -52,7 +54,11 @@ class OpenAIVisionGenerateClient:
             timeout_seconds=request.timeout_seconds,
         )
         raw_text, finish_reason = _raw_message_content(response)
-        normalized, confidence = _structured_content(raw_text)
+        normalized, confidence = _structured_content(
+            raw_text,
+            response_schema=request.response_json_schema,
+            response_schema_name=request.response_schema_name,
+        )
         return VisionGenerateResponse(
             profile_name=self.profile.name,
             model_name=str(response.get("model") or self.profile.base_model),
@@ -180,13 +186,23 @@ def _usage_json(response: dict[str, Any]) -> dict[str, object]:
     return dict(usage) if isinstance(usage, dict) else {}
 
 
-def _structured_content(raw_text: str) -> tuple[dict[str, object], dict[str, object]]:
+def _structured_content(
+    raw_text: str,
+    *,
+    response_schema: dict[str, Any],
+    response_schema_name: str | None,
+) -> tuple[dict[str, object], dict[str, object]]:
     try:
         parsed = json.loads(raw_text)
     except json.JSONDecodeError as exc:
         raise ModelProtocolError("Vision model content is not valid JSON.") from exc
     if not isinstance(parsed, dict):
         raise ModelProtocolError("Vision model JSON content must be an object.")
+    _validate_structured_content(
+        parsed,
+        response_schema=response_schema,
+        response_schema_name=response_schema_name,
+    )
     confidence = parsed.get("confidence")
     if not isinstance(confidence, dict):
         confidence = {}
@@ -198,3 +214,30 @@ def _structured_content(raw_text: str) -> tuple[dict[str, object], dict[str, obj
     if direct_payload:
         return direct_payload, confidence
     return {}, confidence
+
+
+def _validate_structured_content(
+    parsed: dict[str, Any],
+    *,
+    response_schema: dict[str, Any],
+    response_schema_name: str | None,
+) -> None:
+    try:
+        Draft202012Validator.check_schema(response_schema)
+        Draft202012Validator(response_schema).validate(parsed)
+    except SchemaError:
+        raise ModelProtocolError(
+            "Vision response schema is not a valid JSON Schema.",
+            details={"schema_name": response_schema_name},
+        ) from None
+    except ValidationError as exc:
+        validator = exc.validator
+        path = list(exc.path)
+        raise ModelProtocolError(
+            "Vision model JSON content does not match response schema.",
+            details={
+                "schema_name": response_schema_name,
+                "validator": validator,
+                "path": path,
+            },
+        ) from None

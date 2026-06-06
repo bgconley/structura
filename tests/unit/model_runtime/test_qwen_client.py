@@ -147,6 +147,56 @@ def test_qwen_client_rejects_malformed_model_content() -> None:
         client.generate(_request())
 
 
+def test_qwen_client_rejects_json_that_does_not_match_response_schema() -> None:
+    client = QwenVLClient(
+        profile=get_model_profile(QWEN_VL_PROFILE),
+        http_client_base_url="http://model-qwen-semantic:8104",
+        transport=httpx.MockTransport(
+            lambda _request: httpx.Response(
+                200,
+                json={
+                    "model": "Qwen/Qwen3-VL-8B-Instruct",
+                    "choices": [
+                        {
+                            "message": {
+                                "content": json.dumps(
+                                    {"unexpected": "free-form json despite schema request"}
+                                )
+                            }
+                        }
+                    ],
+                },
+            )
+        ),
+    )
+
+    with pytest.raises(ModelProtocolError, match="response schema") as excinfo:
+        client.generate(
+            replace(
+                _request(),
+                response_schema_name="granite_invoice_line_items.v1",
+                response_json_schema={
+                    "type": "object",
+                    "required": ["line_items"],
+                    "properties": {
+                        "line_items": {
+                            "type": "array",
+                            "items": {"type": "object"},
+                        }
+                    },
+                    "additionalProperties": False,
+                },
+            )
+        )
+
+    assert excinfo.value.details == {
+        "schema_name": "granite_invoice_line_items.v1",
+        "validator": "required",
+        "path": [],
+    }
+    assert excinfo.value.__cause__ is None
+
+
 def test_qwen_client_rejects_images_above_profile_byte_limit_before_base64() -> None:
     profile = replace(get_model_profile(QWEN_VL_PROFILE), max_image_bytes=4)
     client = QwenVLClient(
