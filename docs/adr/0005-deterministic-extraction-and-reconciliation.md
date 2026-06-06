@@ -345,6 +345,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   `additionalProperties: false`, bound confidence to finite numeric keys, and
   keep generic KVP/fact values scalar instead of allowing arbitrary object or
   array payloads from the model.
+- 2026-06-06: Repeatability `candidateFingerprints` now hashes admitted
+  candidates only, while preserving legacy undecided report rows. Explicitly
+  rejected prompt/schema/placeholder noise is represented by the rejection
+  distribution gate instead of causing canonical repeatability drift.
 
 ## Deferred Work
 

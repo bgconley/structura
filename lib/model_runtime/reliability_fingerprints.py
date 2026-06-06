@@ -22,6 +22,7 @@ def repeatability_fingerprints(
         str(get_value(event, "candidate_fingerprint", "candidateFingerprint"))
         for event in all_rows(documents, "admissionEvents")
         if get_value(event, "candidate_fingerprint", "candidateFingerprint")
+        and _is_repeatability_candidate_event(event)
     )
     return {
         "documentFamily": fingerprint(
@@ -202,6 +203,13 @@ def _planner_task_rows(document: dict[str, Any]) -> list[dict[str, Any]]:
 
 def _is_selected_planner_task(row: dict[str, Any]) -> bool:
     return normalized_token(get_value(row, "status")) == "selected"
+
+
+def _is_repeatability_candidate_event(row: dict[str, Any]) -> bool:
+    decision = get_value(row, "decision")
+    if decision in (None, ""):
+        return True
+    return normalized_token(decision).startswith("admitted")
 
 
 def _is_model_runtime_review_task(row: dict[str, Any]) -> bool:

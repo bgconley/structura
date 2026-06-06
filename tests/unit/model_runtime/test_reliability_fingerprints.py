@@ -239,6 +239,33 @@ def test_repeatability_canonical_output_ignores_candidate_lineage_and_confidence
     assert first["canonicalOutput"] == second["canonicalOutput"]
 
 
+def test_repeatability_candidate_fingerprints_ignore_rejected_candidate_noise() -> None:
+    first_document = _document("doc-1")
+    second_document = deepcopy(first_document)
+    first_document["admissionEvents"] = [
+        {
+            "candidate_fingerprint": "stable-admitted-field",
+            "decision": "admitted_review_required",
+        }
+    ]
+    second_document["admissionEvents"] = [
+        {
+            "candidate_fingerprint": "stable-admitted-field",
+            "decision": "admitted_review_required",
+        },
+        {
+            "candidate_fingerprint": "prompt-echo-rejected-field",
+            "decision": "rejected_quality_placeholder",
+            "reasons": ["prompt_or_schema_artifact"],
+        },
+    ]
+
+    first = repeatability_fingerprints([first_document], {"rejectionReasons": {}})
+    second = repeatability_fingerprints([second_document], {"rejectionReasons": {}})
+
+    assert first["candidateFingerprints"] == second["candidateFingerprints"]
+
+
 def _document(document_id: str) -> dict[str, Any]:
     suffix = document_id[-1]
     return {
