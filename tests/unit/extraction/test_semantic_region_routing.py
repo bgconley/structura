@@ -14,8 +14,13 @@ from lib.extraction.models import (
     ParsedPageText,
     PersistedExtraction,
 )
-from lib.extraction.service import CreatedJob as ServiceCreatedJob
-from lib.extraction.service import ExtractionService
+from lib.extraction.service import (
+    CreatedJob as ServiceCreatedJob,
+)
+from lib.extraction.service import (
+    ExtractionService,
+    ExtractionServiceError,
+)
 from lib.semantic_annotations.models import SemanticExtractionTask, SemanticGroundingRef
 
 
@@ -264,7 +269,7 @@ def test_extraction_service_does_not_rescue_needs_review_without_user_permission
     assert jobs.created == []
 
 
-def test_extraction_service_does_not_queue_removed_rescue_path_even_with_permission() -> None:
+def test_extraction_service_rejects_removed_rescue_path_even_with_permission() -> None:
     document_id = uuid4()
     household_id = uuid4()
     region_id = uuid4()
@@ -282,22 +287,23 @@ def test_extraction_service_does_not_queue_removed_rescue_path_even_with_permiss
     jobs = RecordingJobs()
     user_id = uuid4()
 
-    ExtractionService(
-        gateway=RecordingGateway(needs_review=True),
-        source_loader=lambda loaded_document_id: source,
-        semantic_task_loader=lambda loaded_region_id: task,
-        persister=lambda *args, **kwargs: _persisted(),
-        jobs=jobs,
-    ).extract_document(
-        document_id,
-        schema_name="invoice",
-        route_profile="docling_plus_granite_structured",
-        semantic_region_id=region_id,
-        allow_8b_rescue=True,
-        requested_by="user",
-        requested_by_user_id=user_id,
-        user_intent_reason="User allowed one 8B rescue.",
-    )
+    with pytest.raises(ExtractionServiceError, match="removed"):
+        ExtractionService(
+            gateway=RecordingGateway(needs_review=True),
+            source_loader=lambda loaded_document_id: source,
+            semantic_task_loader=lambda loaded_region_id: task,
+            persister=lambda *args, **kwargs: _persisted(),
+            jobs=jobs,
+        ).extract_document(
+            document_id,
+            schema_name="invoice",
+            route_profile="docling_plus_granite_structured",
+            semantic_region_id=region_id,
+            allow_8b_rescue=True,
+            requested_by="user",
+            requested_by_user_id=user_id,
+            user_intent_reason="User allowed one 8B rescue.",
+        )
 
     assert jobs.created == []
 

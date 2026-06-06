@@ -24,7 +24,7 @@ def enqueue_semantic_annotation_job(
     rescue_failure_class: str | None = None,
     dedupe_existing: bool = False,
 ) -> UUID:
-    if quality_mode in {"high_quality", "rescue"} or allow_8b_rescue:
+    if quality_mode in {"high_quality", "rescue"} or allow_8b_rescue or rescue_failure_class:
         raise ValueError(
             "Separate high-quality/rescue semantic passes have been removed from "
             "the active runtime. Smart Parse already uses Qwen3-VL-8B FP8."
@@ -53,7 +53,6 @@ def enqueue_semantic_annotation_job(
             existing_id = existing["id"]
             return existing_id if isinstance(existing_id, UUID) else UUID(str(existing_id))
     job_id = uuid4()
-    metadata = {"failure_class": rescue_failure_class} if rescue_failure_class else None
     create_job_with_cursor(
         cur,
         job_id=job_id,
@@ -65,13 +64,11 @@ def enqueue_semantic_annotation_job(
             document_id=document_id,
             quality_mode=quality_mode,
             semantic_quality_mode=semantic_quality_mode,
-            allow_8b_rescue=allow_8b_rescue,
             requested_by=requested_by,
             requested_by_user_id=requested_by_user_id,
             user_intent_reason=user_intent_reason,
             reason=reason,
             source_semantic_region_id=source_semantic_region_id,
-            metadata=metadata,
         ),
         priority=priority,
         queue_name="semantic-annotations",

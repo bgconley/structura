@@ -49,6 +49,16 @@ def test_rescue_semantic_enqueue_requires_persisted_user_permission() -> None:
         )
 
 
+def test_semantic_annotation_enqueue_rejects_removed_rescue_metadata() -> None:
+    with pytest.raises(ValueError, match="removed"):
+        semantic_jobs.enqueue_semantic_annotation_job(
+            NoExistingJobCursor(),
+            document_id=uuid4(),
+            household_id=uuid4(),
+            rescue_failure_class="missing_required_field",
+        )
+
+
 def test_high_quality_semantic_enqueue_requires_explicit_user_or_agent_intent() -> None:
     with pytest.raises(ValueError, match="removed"):
         semantic_jobs.enqueue_semantic_annotation_job(

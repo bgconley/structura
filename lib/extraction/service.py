@@ -146,7 +146,7 @@ class ExtractionService:
         requested_by_user_id: UUID | None = None,
         user_intent_reason: str | None = None,
     ) -> PersistedExtraction:
-        if allow_8b_rescue and requested_by == "system":
+        if allow_8b_rescue:
             raise ExtractionServiceError(
                 "Separate semantic rescue has been removed from the active runtime."
             )

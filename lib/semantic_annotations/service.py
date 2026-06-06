@@ -162,7 +162,6 @@ class SemanticAnnotationService:
                 manifest_result,
                 family_decision,
                 requested_by=requested_by,
-                allow_8b_rescue=allow_8b_rescue,
                 requested_by_user_id=requested_by_user_id,
                 user_intent_reason=user_intent_reason,
             )
@@ -172,7 +171,6 @@ class SemanticAnnotationService:
             manifest_result,
             persisted,
             requested_by=requested_by,
-            allow_8b_rescue=allow_8b_rescue,
             requested_by_user_id=requested_by_user_id,
             user_intent_reason=user_intent_reason,
         )
@@ -190,7 +188,6 @@ class SemanticAnnotationService:
         family_decision: SemanticDocumentFamilyDecision,
         *,
         requested_by: str,
-        allow_8b_rescue: bool,
         requested_by_user_id: UUID | None,
         user_intent_reason: str | None,
     ) -> SemanticAnnotationRunResult:
@@ -211,7 +208,6 @@ class SemanticAnnotationService:
                     manifest_result,
                     persisted,
                     requested_by=requested_by,
-                    allow_8b_rescue=allow_8b_rescue,
                     requested_by_user_id=requested_by_user_id,
                     user_intent_reason=user_intent_reason,
                 )
@@ -229,7 +225,6 @@ class SemanticAnnotationService:
         persisted: PersistedSemanticManifest,
         *,
         requested_by: str,
-        allow_8b_rescue: bool,
         requested_by_user_id: UUID | None,
         user_intent_reason: str | None,
     ) -> list[UUID]:
@@ -263,10 +258,8 @@ class SemanticAnnotationService:
                     contract_resolution_reason=spec.contract_resolution_reason,
                     region_envelope_version=REGION_ENVELOPE_VERSION,
                     semantic_quality_mode="smart",
-                    allow_8b_rescue=allow_8b_rescue,
                     requested_by_user_id=requested_by_user_id,
                     user_intent_reason=user_intent_reason,
-                    semantic_rescue=False,
                     metadata={
                         "schema_fit": spec.schema_fit.to_json(),
                         **spec.metadata,
@@ -294,7 +287,6 @@ class SemanticAnnotationService:
         persisted: PersistedSemanticManifest,
         *,
         requested_by: str,
-        allow_8b_rescue: bool,
         requested_by_user_id: UUID | None,
         user_intent_reason: str | None,
     ) -> list[UUID]:
@@ -340,10 +332,8 @@ class SemanticAnnotationService:
                     contract_resolution_reason=spec.contract_resolution_reason,
                     region_envelope_version=REGION_ENVELOPE_VERSION,
                     semantic_quality_mode="smart",
-                    allow_8b_rescue=allow_8b_rescue,
                     requested_by_user_id=requested_by_user_id,
                     user_intent_reason=user_intent_reason,
-                    semantic_rescue=False,
                     metadata={
                         "schema_fit": spec.schema_fit.to_json(),
                         **spec.metadata,
