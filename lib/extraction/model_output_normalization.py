@@ -597,6 +597,9 @@ def _document_observation_output(
     if deferred_observation_count:
         output_metadata["deferred_observation_count"] = deferred_observation_count
         output_metadata["deferred_semantic_type"] = semantic_type
+    accepted_observation_keys = {"confidence", *{item["field_name"] for item in observations}}
+    if model_output_schema_name == "granite_generic_kvp.v1":
+        accepted_observation_keys.add("fields")
     return (
         {
             "schema_name": "document_observation",
@@ -617,7 +620,7 @@ def _document_observation_output(
             ),
             "rejected_fields": _rejected_fields(
                 payload,
-                {"fields", "confidence", *{item["field_name"] for item in observations}},
+                accepted_observation_keys,
             ),
         },
     )

@@ -388,6 +388,9 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
 - 2026-06-06: Uncontracted document-observation model payloads now fail closed
   at normalization: arbitrary flat fields are rejected, and generic fallback
   must be represented by the explicit `granite_generic_kvp.v1` `fields` array.
+- 2026-06-06: Observation rejected-field metadata now treats `fields` as accepted
+  only for `granite_generic_kvp.v1`; direct-field observation contracts report
+  a stray `fields` array as rejected instead of silently dropping it.
 
 ## Deferred Work
 

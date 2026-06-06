@@ -95,6 +95,23 @@ def test_direct_observation_contract_rejects_unknown_top_level_fields() -> None:
     assert metadata["rejected_fields"] == ["notary_name"]
 
 
+def test_direct_observation_contract_reports_fields_array_as_rejected() -> None:
+    document_id = uuid4()
+
+    normalized, metadata = normalize_granite_region_output(
+        document_id=document_id,
+        schema_name="document_observation",
+        model_output_schema_name="granite_real_estate_title_seller_info.v1",
+        payload={
+            "fields": [{"name": "seller_name", "value": "Jane Seller"}],
+            "confidence": {"overall": 0.74},
+        },
+    )
+
+    assert normalized["observations"] == []
+    assert metadata["rejected_fields"] == ["fields"]
+
+
 def test_generic_kvp_contract_rejects_flat_top_level_fields() -> None:
     document_id = uuid4()
 
