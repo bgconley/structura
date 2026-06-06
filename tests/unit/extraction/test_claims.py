@@ -237,6 +237,37 @@ def test_claims_reject_qwen_sourced_values() -> None:
     assert claims_from_region_envelope(envelope) == []
 
 
+def test_claims_reject_qwen_planner_method_with_docling_evidence() -> None:
+    document_id = uuid4()
+    region_id = uuid4()
+    evidence = EvidenceRef(
+        document_id=str(document_id),
+        semantic_region_id=str(region_id),
+        page_number=1,
+        table_id="table-1",
+        row_index=3,
+        source_engine="docling",
+    )
+    envelope = RegionExtractionEnvelope(
+        document_id=str(document_id),
+        semantic_region_id=str(region_id),
+        resolved_document_type="invoice",
+        semantic_type="payment_summary",
+        target_schema="invoice",
+        model_output_schema_name="qwen_semantic_manifest.v1",
+        facts=[
+            RegionFact(
+                name="invoice.total_amount",
+                value={"amount": 42.5, "currency": "USD"},
+                value_type="money",
+                evidence=[evidence],
+            )
+        ],
+    )
+
+    assert claims_from_region_envelope(envelope) == []
+
+
 def test_claims_drop_unknown_registered_family_keys() -> None:
     document_id = uuid4()
     region_id = uuid4()

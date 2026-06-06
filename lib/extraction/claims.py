@@ -97,6 +97,8 @@ class Claim:
 
 
 def claims_from_region_envelope(envelope: RegionExtractionEnvelope) -> list[Claim]:
+    if _planner_only_method(envelope.model_output_schema_name):
+        return []
     claims: list[Claim] = []
     method = envelope.model_output_schema_name
     for fact in envelope.facts:
@@ -278,6 +280,11 @@ def _claim_target_schema(envelope: RegionExtractionEnvelope) -> str | None:
     if envelope.resolved_document_type in {"service_record", "retail_order"}:
         return envelope.resolved_document_type
     return envelope.target_schema or envelope.resolved_document_type
+
+
+def _planner_only_method(method: str) -> bool:
+    normalized = method.strip().lower().replace("-", "_")
+    return normalized.startswith("qwen")
 
 
 def _anchor_from_ref(ref: EvidenceRef) -> ClaimAnchor | None:

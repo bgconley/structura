@@ -499,6 +499,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
 - 2026-06-06: Claim anchors now canonicalize comma-separated Docling element IDs
   before identity hashing. Equivalent Docling anchor sets therefore produce the
   same Claim ID even when provider evidence strings arrive in a different order.
+- 2026-06-06: Claim construction now rejects planner-only Qwen semantic methods
+  before inspecting facts, line items, or observations. Qwen output therefore
+  cannot become value Claims even if a replayed envelope carries concrete-looking
+  Docling evidence refs.
 
 ## Deferred Work
 
