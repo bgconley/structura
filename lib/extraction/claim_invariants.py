@@ -4,20 +4,32 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from lib.extraction.claim_decisions import ClaimResolutionDecision
-from lib.extraction.claim_registry import ClaimArithmeticInvariant, ClaimLineItemSumInvariant
+from lib.extraction.claim_registry import (
+    ClaimArithmeticInvariant,
+    ClaimLineItemSumInvariant,
+    ClaimMoneyUpperBoundInvariant,
+)
 from lib.extraction.claims import Claim
+
+MONEY_TOLERANCE = Decimal("0.02")
 
 
 def apply_claim_invariants(
     *,
     arithmetic_invariants: tuple[ClaimArithmeticInvariant, ...],
     line_item_sum_invariants: tuple[ClaimLineItemSumInvariant, ...],
+    money_upper_bound_invariants: tuple[ClaimMoneyUpperBoundInvariant, ...],
     selected_claims: dict[str, Claim],
     line_items: list[dict[str, Any]],
     decisions: list[ClaimResolutionDecision],
 ) -> list[ClaimResolutionDecision]:
     decisions = _apply_arithmetic_invariants(
         invariants=arithmetic_invariants,
+        selected_claims=selected_claims,
+        decisions=decisions,
+    )
+    decisions = _apply_money_upper_bound_invariants(
+        invariants=money_upper_bound_invariants,
         selected_claims=selected_claims,
         decisions=decisions,
     )
@@ -66,6 +78,53 @@ def _apply_arithmetic_invariants(
             continue
         expected = sum((amount for amount in addend_amounts if amount is not None), Decimal("0"))
         if target_amount == expected:
+            continue
+        updated = _demote_decision(
+            decisions=updated,
+            canonical_key=invariant.target_key,
+            selected_claim_id=target_claim.claim_id,
+            reason_code=invariant.reason_code,
+        )
+    return updated
+
+
+def _apply_money_upper_bound_invariants(
+    *,
+    invariants: tuple[ClaimMoneyUpperBoundInvariant, ...],
+    selected_claims: dict[str, Claim],
+    decisions: list[ClaimResolutionDecision],
+) -> list[ClaimResolutionDecision]:
+    updated = decisions
+    for invariant in invariants:
+        target_claim = selected_claims.get(invariant.target_key)
+        target_amount = _claim_money_amount(target_claim)
+        addend_amounts = [
+            _claim_money_amount(selected_claims.get(addend_key))
+            for addend_key in invariant.addend_keys
+        ]
+        currencies = [
+            _claim_money_currency(claim)
+            for claim in (
+                target_claim,
+                *(selected_claims.get(addend_key) for addend_key in invariant.addend_keys),
+            )
+        ]
+        if (
+            target_claim is None
+            or target_amount is None
+            or any(amount is None for amount in addend_amounts)
+        ):
+            continue
+        if _has_currency_conflict(currencies):
+            updated = _demote_decision(
+                decisions=updated,
+                canonical_key=invariant.target_key,
+                selected_claim_id=target_claim.claim_id,
+                reason_code=invariant.currency_reason_code,
+            )
+            continue
+        measured = sum((amount for amount in addend_amounts if amount is not None), Decimal("0"))
+        if measured - target_amount <= MONEY_TOLERANCE:
             continue
         updated = _demote_decision(
             decisions=updated,

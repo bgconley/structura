@@ -104,6 +104,115 @@ def test_medical_eob_claim_resolver_projects_service_line_allowed_and_plan_paid(
     assert projection.quality_outcome == "extracted_cleanly"
 
 
+def test_medical_eob_claim_resolver_demotes_summary_plausibility_conflicts() -> None:
+    anchor = ClaimAnchor(page_number=2, table_id="eob-summary", row_index=1)
+
+    projection = resolve_claims_for_family(
+        family="medical_eob",
+        claims=[
+            _claim(
+                canonical_key="medical_eob.payer.display_name",
+                typed_value="Anthem Blue Cross",
+                source_engine="granite",
+                anchor=anchor,
+            ),
+            _claim(
+                canonical_key="medical_eob.patient.display_name",
+                typed_value="Jane Patient",
+                source_engine="granite",
+                anchor=anchor,
+            ),
+            _claim(
+                canonical_key="medical_eob.total_allowed",
+                typed_value={"amount": 80.0, "currency": "USD"},
+                source_engine="granite",
+                anchor=anchor,
+            ),
+            _claim(
+                canonical_key="medical_eob.total_plan_paid",
+                typed_value={"amount": 75.0, "currency": "USD"},
+                source_engine="granite",
+                anchor=anchor,
+            ),
+            _claim(
+                canonical_key="medical_eob.total_patient_responsibility",
+                typed_value={"amount": 30.0, "currency": "USD"},
+                source_engine="granite",
+                anchor=anchor,
+            ),
+        ],
+    )
+
+    assert projection.fields["financial_summary"] == {
+        "total_allowed": {"amount": 80.0, "currency": "USD"},
+        "total_plan_paid": {"amount": 75.0, "currency": "USD"},
+        "total_patient_responsibility": {"amount": 30.0, "currency": "USD"},
+    }
+    assert {
+        (decision.canonical_key, decision.decision, decision.reason_code)
+        for decision in projection.decisions
+    } >= {
+        (
+            "medical_eob.total_allowed",
+            "needs_review",
+            "cross_field_plausibility_conflict",
+        )
+    }
+    assert projection.quality_outcome == "needs_human_review"
+
+
+def test_medical_eob_claim_resolver_allows_summary_rounding_tolerance() -> None:
+    anchor = ClaimAnchor(page_number=2, table_id="eob-summary", row_index=1)
+
+    projection = resolve_claims_for_family(
+        family="medical_eob",
+        claims=[
+            _claim(
+                canonical_key="medical_eob.payer.display_name",
+                typed_value="Anthem Blue Cross",
+                source_engine="granite",
+                anchor=anchor,
+            ),
+            _claim(
+                canonical_key="medical_eob.patient.display_name",
+                typed_value="Jane Patient",
+                source_engine="granite",
+                anchor=anchor,
+            ),
+            _claim(
+                canonical_key="medical_eob.total_allowed",
+                typed_value={"amount": 100.0, "currency": "USD"},
+                source_engine="granite",
+                anchor=anchor,
+            ),
+            _claim(
+                canonical_key="medical_eob.total_plan_paid",
+                typed_value={"amount": 80.01, "currency": "USD"},
+                source_engine="granite",
+                anchor=anchor,
+            ),
+            _claim(
+                canonical_key="medical_eob.total_patient_responsibility",
+                typed_value={"amount": 20.01, "currency": "USD"},
+                source_engine="granite",
+                anchor=anchor,
+            ),
+        ],
+    )
+
+    assert {
+        (decision.canonical_key, decision.decision, decision.reason_code)
+        for decision in projection.decisions
+    } == {
+        ("medical_eob.patient.display_name", "accepted", "single_source"),
+        ("medical_eob.payer.display_name", "accepted", "single_source"),
+        ("medical_eob.total_allowed", "accepted", "single_source"),
+        ("medical_eob.total_patient_responsibility", "accepted", "single_source"),
+        ("medical_eob.total_plan_paid", "accepted", "single_source"),
+    }
+    assert projection.quality_outcome == "extracted_cleanly"
+
+
 def _claim(
     *,
     canonical_key: str,

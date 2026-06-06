@@ -66,6 +66,7 @@ def resolve_claims_for_family(
     decisions = apply_claim_invariants(
         arithmetic_invariants=registry.arithmetic_invariants,
         line_item_sum_invariants=registry.line_item_sum_invariants,
+        money_upper_bound_invariants=registry.money_upper_bound_invariants,
         selected_claims=selected_claims,
         line_items=line_items,
         decisions=decisions,

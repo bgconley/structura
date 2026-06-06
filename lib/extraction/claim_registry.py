@@ -35,6 +35,14 @@ class ClaimLineItemSumInvariant:
 
 
 @dataclass(frozen=True)
+class ClaimMoneyUpperBoundInvariant:
+    target_key: str
+    addend_keys: tuple[str, ...]
+    reason_code: str
+    currency_reason_code: str = "cross_field_currency_conflict"
+
+
+@dataclass(frozen=True)
 class ClaimFamilyRegistry:
     family: str
     field_projections: tuple[ClaimFieldProjection, ...]
@@ -42,6 +50,7 @@ class ClaimFamilyRegistry:
     required_keys: tuple[str, ...] = ()
     arithmetic_invariants: tuple[ClaimArithmeticInvariant, ...] = ()
     line_item_sum_invariants: tuple[ClaimLineItemSumInvariant, ...] = ()
+    money_upper_bound_invariants: tuple[ClaimMoneyUpperBoundInvariant, ...] = ()
 
 
 INVOICE_CLAIM_REGISTRY = ClaimFamilyRegistry(
@@ -208,6 +217,16 @@ MEDICAL_EOB_CLAIM_REGISTRY = ClaimFamilyRegistry(
         ),
     ),
     required_keys=("medical_eob.payer.display_name", "medical_eob.patient.display_name"),
+    money_upper_bound_invariants=(
+        ClaimMoneyUpperBoundInvariant(
+            target_key="medical_eob.total_allowed",
+            addend_keys=(
+                "medical_eob.total_plan_paid",
+                "medical_eob.total_patient_responsibility",
+            ),
+            reason_code="cross_field_plausibility_conflict",
+        ),
+    ),
     line_item_projection=ClaimLineItemProjection(
         canonical_prefix="medical_eob.line_item.",
         field_map={

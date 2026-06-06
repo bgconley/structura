@@ -264,6 +264,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   normalized payload, region envelope, Claim IR, and resolver registry all
   carry these anchored values into `medical_eob.v1` line-item projection
   instead of dropping them before reconciliation.
+- 2026-06-05: Medical EOB financial-summary plausibility now runs through
+  the shared Claim invariant evaluator. When total plan paid plus total
+  patient responsibility exceeds total allowed beyond the two-cent validator
+  tolerance, `medical_eob.total_allowed` is demoted to `needs_review` with
+  `cross_field_plausibility_conflict`.
 
 ## Deferred Work
 
