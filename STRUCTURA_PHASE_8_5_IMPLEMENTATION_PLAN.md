@@ -1296,7 +1296,8 @@ Phase 8.5 is complete only when all of the following are true:
 - No hidden second-pass Qwen escalation runs from validation/review policy.
 - Document-quality ambiguity routes to review states, not job failure.
 - Runtime/system failures are the only `pipeline_failed` cases.
-- Rescue is user-permitted, bounded, deduped, and never loops.
+- Uncertainty remains on review, skip, or abstention paths; separate Qwen
+  rescue/escalation is not part of the active runtime.
 - Private corpus standard mode does not secretly run High Quality.
 - Qwen3-VL-8B FP8, historical/canary Qwen profiles, and Granite live adapters persist truthful provenance only when invoked.
 - Granite 4.0 3B Vision live adapter is implemented, invoked, and persists truthful Granite provenance.

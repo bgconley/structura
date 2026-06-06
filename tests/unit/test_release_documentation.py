@@ -67,6 +67,7 @@ def test_phase85_plan_does_not_list_legacy_qwen_rescue_runtime_intents() -> None
         "blackwell-0-high-quality",
         "Replace placeholder `model-qwen`",
         "always-on `model-qwen`",
+        "Rescue is user-permitted",
     )
     for phrase in forbidden:
         assert phrase not in content
