@@ -259,6 +259,31 @@ def test_receipt_claim_resolver_demotes_line_item_sum_conflicts_to_review() -> N
     assert projection.quality_outcome == "needs_human_review"
 
 
+def test_claim_resolver_orders_line_items_by_structural_anchor_not_model_order() -> None:
+    row_two = _claim(
+        canonical_key="invoice.line_item.description",
+        typed_value="Second row",
+        source_engine="granite",
+        anchor=ClaimAnchor(page_number=1, table_id="invoice-table", row_index=2),
+    )
+    row_one = _claim(
+        canonical_key="invoice.line_item.description",
+        typed_value="First row",
+        source_engine="granite",
+        anchor=ClaimAnchor(page_number=1, table_id="invoice-table", row_index=1),
+    )
+
+    projection = resolve_claims_for_family(
+        family="invoice",
+        claims=[row_two, row_one],
+    )
+
+    assert [item["description"] for item in projection.line_items] == [
+        "First row",
+        "Second row",
+    ]
+
+
 def test_invoice_claim_resolver_demotes_arithmetic_conflicts_to_review() -> None:
     anchor = ClaimAnchor(page_number=1, table_id="totals-table", row_index=1)
     invoice_number = _claim(

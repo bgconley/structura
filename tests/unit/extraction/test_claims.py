@@ -316,6 +316,58 @@ def test_receipt_line_item_claims_use_family_specific_keys() -> None:
     ]
 
 
+def test_line_item_group_id_uses_structural_row_anchor_before_model_ordinal() -> None:
+    document_id = uuid4()
+    region_id = uuid4()
+    evidence = EvidenceRef(
+        document_id=str(document_id),
+        semantic_region_id=str(region_id),
+        page_number=1,
+        table_id="invoice-table",
+        row_index=3,
+        source_engine="granite_vision_3b",
+    )
+    envelope = RegionExtractionEnvelope(
+        document_id=str(document_id),
+        semantic_region_id=str(region_id),
+        resolved_document_type="invoice",
+        semantic_type="invoice_line_item_table",
+        target_schema="invoice",
+        model_output_schema_name="granite_invoice_line_items.v1",
+        line_items=[
+            RegionLineItem(
+                description="PERFORM 600 MILE RUNNING-IN CHECK",
+                net_amount=250.0,
+                currency_code="USD",
+                evidence=[evidence],
+                table_id="invoice-table",
+                row_index=3,
+                page_number=1,
+            ),
+            RegionLineItem(
+                description="perform 600 mile running-in check",
+                net_amount=250.0,
+                currency_code="USD",
+                evidence=[evidence],
+                table_id="invoice-table",
+                row_index=3,
+                page_number=1,
+            ),
+        ],
+    )
+
+    line_description_claims = [
+        claim
+        for claim in claims_from_region_envelope(envelope)
+        if claim.canonical_key == "invoice.line_item.description"
+    ]
+
+    assert len(line_description_claims) == 2
+    assert {claim.group_id for claim in line_description_claims} == {
+        line_description_claims[0].group_id
+    }
+
+
 def test_receipt_compatible_service_record_claims_preserve_canonical_family() -> None:
     document_id = uuid4()
     region_id = uuid4()

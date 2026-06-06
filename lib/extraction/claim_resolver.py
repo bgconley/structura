@@ -132,7 +132,7 @@ def _resolve_line_items(
     claims: list[Claim],
 ) -> tuple[list[dict[str, Any]], list[ClaimResolutionDecision]]:
     grouped: dict[str, dict[str, list[Claim]]] = defaultdict(lambda: defaultdict(list))
-    group_order: list[str] = []
+    group_sort_keys: dict[str, str] = {}
     for claim in claims:
         if not claim.canonical_key.startswith(projection.canonical_prefix):
             continue
@@ -141,13 +141,18 @@ def _resolve_line_items(
         if field_name is None:
             continue
         group_id = claim.group_id or _anchor_group_id(claim)
-        if group_id not in grouped:
-            group_order.append(group_id)
+        anchor_key = _stable_value_key(claim.anchor.as_json())
+        existing_anchor_key = group_sort_keys.get(group_id)
+        if existing_anchor_key is None or anchor_key < existing_anchor_key:
+            group_sort_keys[group_id] = anchor_key
         grouped[group_id][field_name].append(claim)
 
     line_items: list[dict[str, Any]] = []
     decisions: list[ClaimResolutionDecision] = []
-    for group_id in group_order:
+    for group_id in sorted(
+        grouped,
+        key=lambda item: (group_sort_keys.get(item, ""), item),
+    ):
         line_item: dict[str, Any] = {}
         evidence: list[dict[str, Any]] = []
         for field_name, field_claims in sorted(grouped[group_id].items()):
@@ -214,9 +219,10 @@ def _absent_required_decisions(
     ]
 
 
-def _claim_sort_key(claim: Claim) -> tuple[int, str]:
+def _claim_sort_key(claim: Claim) -> tuple[int, str, str]:
     return (
         -SOURCE_PRECEDENCE.get(claim.source_engine, 0),
+        _stable_value_key(claim.typed_value),
         claim.claim_id,
     )
 

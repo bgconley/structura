@@ -488,6 +488,14 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   same-source conflicts now select by stable Claim identity and remain
   `needs_review`, preventing stochastic confidence jitter from changing the
   projected review payload.
+- 2026-06-06: Claim resolver line-item projection now orders groups by stable
+  structural anchor identity instead of model/envelope row order. The same
+  Docling-anchored rows therefore project in physical row order even when
+  Granite returns line-item fragments in a different sequence.
+- 2026-06-06: Line-item Claim group IDs now prefer structural row identity over
+  model ordinal when a row-level anchor exists. Duplicate model rows with the
+  same Docling table row, element, bbox, or text span collapse into one
+  deterministic group, while ordinal remains only a fallback for weaker anchors.
 
 ## Deferred Work
 

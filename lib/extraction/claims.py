@@ -378,12 +378,21 @@ def _source_engine(refs: list[EvidenceRef]) -> ClaimSourceEngine | None:
 
 
 def _group_id(document_id: str, anchor: ClaimAnchor, ordinal: int) -> str:
-    return _sha256(
-        {
-            "document_id": document_id,
-            "anchor": anchor.as_json(),
-            "ordinal": ordinal,
-        }
+    payload: dict[str, Any] = {
+        "document_id": document_id,
+        "anchor": anchor.as_json(),
+    }
+    if not _anchor_has_row_identity(anchor):
+        payload["ordinal"] = ordinal
+    return _sha256(payload)
+
+
+def _anchor_has_row_identity(anchor: ClaimAnchor) -> bool:
+    return (
+        anchor.row_index is not None
+        or bool(anchor.docling_element_ids)
+        or anchor.bbox is not None
+        or anchor.text_span is not None
     )
 
 
