@@ -23,6 +23,22 @@ def test_source_text_only_evidence_is_not_concrete() -> None:
     assert has_concrete_locator(ref) is False
 
 
+def test_model_source_text_only_evidence_is_not_concrete_for_any_model_alias() -> None:
+    for source_engine in ("granite", "model_runtime", "qwen3_vl_4b", "Granite Vision 3B"):
+        assert (
+            has_concrete_evidence(
+                [
+                    {
+                        "page_number": 1,
+                        "source_engine": source_engine,
+                        "source_text": "Total $4.65",
+                    }
+                ]
+            )
+            is False
+        )
+
+
 def test_semantic_region_and_page_number_is_concrete() -> None:
     ref = EvidenceRef(
         document_id=str(uuid4()),

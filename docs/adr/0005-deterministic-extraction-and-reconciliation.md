@@ -410,6 +410,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   document-observation candidates. Qwen remains a semantic planner/router only
   even if a compatibility caller returns target-shaped `normalized_json` or
   manually constructed candidates with Qwen provenance.
+- 2026-06-06: Concrete evidence checks now treat all normalized model source
+  engines as requiring structural anchors. Page-number plus source-text-only
+  evidence is no longer concrete for model aliases such as `granite`,
+  `model_runtime`, `granite_vision_*`, or historical Qwen profiles.
 
 ## Deferred Work
 

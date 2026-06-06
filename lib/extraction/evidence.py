@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from lib.extraction.models import Evidence, ExtractionSourceDocument, ParsedElementText
+from lib.model_runtime.source_engines import is_model_source_engine
 
 
 @dataclass(frozen=True)
@@ -88,10 +89,7 @@ def is_concrete_evidence_ref(item: Evidence) -> bool:
         return True
     if _evidence_value(item, "text_span", "textSpan") is not None:
         return True
-    if _evidence_value(item, "source_engine", "sourceEngine") in {
-        "granite_vision_3b",
-        "qwen3_vl_8b",
-    }:
+    if is_model_source_engine(_evidence_value(item, "source_engine", "sourceEngine")):
         return False
     return bool(_evidence_value(item, "source_text", "sourceText"))
 

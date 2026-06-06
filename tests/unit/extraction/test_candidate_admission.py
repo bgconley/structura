@@ -316,6 +316,36 @@ def test_model_source_engine_alias_requires_concrete_evidence() -> None:
     assert admission.events[0].reasons == ("missing_concrete_evidence",)
 
 
+def test_model_source_text_only_evidence_is_rejected() -> None:
+    context = _context(source_engine="granite")
+    candidate = CandidateFact(
+        field_path="receipt.transaction.total",
+        value_type="money",
+        value={"amount": 4.65, "currency": "USD"},
+        currency="USD",
+        evidence=[
+            {
+                "document_id": str(context.document_id),
+                "page_number": 1,
+                "source_engine": "granite",
+                "source_text": "Coffee Shop total $4.65",
+            }
+        ],
+        status="proposed",
+    )
+
+    admission = admit_extraction_candidates(
+        context=context,
+        field_candidates=[candidate],
+        line_item_candidates=[],
+        observation_candidates=[],
+    )
+
+    assert admission.field_candidates == []
+    assert admission.events[0].decision == "rejected_missing_evidence"
+    assert admission.events[0].reasons == ("missing_concrete_evidence",)
+
+
 def test_qwen_source_engine_candidates_are_rejected_even_with_concrete_evidence() -> None:
     context = _context(source_engine="qwen3_vl_8b")
     field_candidate = CandidateFact(
