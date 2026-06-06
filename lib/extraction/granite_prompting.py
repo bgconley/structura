@@ -246,6 +246,15 @@ def _line_item_shape(model_output_schema: ModelOutputSchema) -> str:
             '"procedure_code":null,"billed_amount":null,"allowed_amount":null,'
             '"paid_amount":null,"patient_responsibility":null}],"confidence":{}}.'
         )
+    if model_output_schema.name == "granite_receipt_line_items.v1":
+        return (
+            'Use shape {"line_items":[{"ordinal":1,"description":"visible row",'
+            '"quantity":null,"unit":null,"unit_price":null,"discount":null,'
+            '"amount":null,"sku":null,"tax_category_hint":null,'
+            '"category_hint":null}],'
+            '"totals":{"subtotal":null,"tax":null,"total":null},'
+            '"confidence":{}}.'
+        )
     return (
         'Use shape {"line_items":[{"ordinal":1,"description":"visible row",'
         '"quantity":null,"unit_price":null,"amount":null}],'

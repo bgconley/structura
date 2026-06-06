@@ -33,8 +33,11 @@ def line_item_fingerprint(
             "quantity": _float_key(candidate.quantity),
             "unit_price": _float_key(candidate.unit_price),
             "gross_amount": _float_key(candidate.gross_amount),
+            "discount_amount": _float_key(candidate.discount_amount),
+            "tax_amount": _float_key(candidate.tax_amount),
             "net_amount": _float_key(candidate.net_amount),
             "currency": _normalized_text(candidate.currency),
+            "category_hint": _normalized_text(candidate.category_hint),
             "region": _region_key(context, candidate.evidence),
             "table": _table_key(candidate.evidence),
         }
@@ -78,8 +81,15 @@ def raw_payload_fingerprint(
             "quantity": _float_key(_number_value(payload.get("quantity"))),
             "unit_price": _money_key(payload.get("unit_price")),
             "gross_amount": _money_key(payload.get("gross_amount") or payload.get("amount")),
+            "discount_amount": _money_key(
+                payload.get("discount_amount") or payload.get("discount")
+            ),
+            "tax_amount": _money_key(payload.get("tax_amount")),
             "net_amount": _money_key(payload.get("net_amount") or payload.get("amount")),
             "currency": _normalized_text(payload.get("currency") or payload.get("currency_code")),
+            "category_hint": _normalized_text(
+                payload.get("category_hint") or payload.get("tax_category_hint")
+            ),
             "region": _region_key(context, _evidence(payload)),
             "table": _table_key(_evidence(payload)),
         }

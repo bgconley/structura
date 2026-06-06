@@ -199,9 +199,11 @@ def _claims_from_line_item(
         ("gross_amount", _money(item.gross_amount, item.currency_code), "money"),
         ("allowed_amount", _money(item.allowed_amount, item.currency_code), "money"),
         ("plan_paid", _money(item.plan_paid_amount, item.currency_code), "money"),
+        ("discount", _money(item.discount_amount, item.currency_code), "money"),
         ("tax_amount", _money(item.tax_amount, item.currency_code), "money"),
         ("amount", _money(item.net_amount, item.currency_code), "money"),
         ("service_date", item.service_date, "date"),
+        ("tax_category_hint", item.tax_category_hint, "text"),
         ("category_hint", item.category_hint, "text"),
     )
     claims: list[Claim] = []

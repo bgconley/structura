@@ -74,9 +74,11 @@ class RegionLineItem(BaseModel):
     allowed_amount: float | None = None
     plan_paid_amount: float | None = None
     net_amount: float | None = None
+    discount_amount: float | None = None
     tax_amount: float | None = None
     currency_code: str | None = None
     service_date: str | None = None
+    tax_category_hint: str | None = None
     category_hint: str | None = None
     confidence: float | None = None
     evidence: list[EvidenceRef] = Field(default_factory=list)
@@ -364,6 +366,7 @@ def _line_item(
 ) -> RegionLineItem:
     amount = _dict_or_empty(item.get("amount"))
     unit_price = _dict_or_empty(item.get("unit_price"))
+    discount = item.get("discount") or item.get("discount_amount")
     return RegionLineItem(
         ordinal=_int_or_none(item.get("ordinal")),
         line_item_type="service_line" if schema_name == "medical_eob" else None,
@@ -376,16 +379,19 @@ def _line_item(
         allowed_amount=_money_amount(item.get("allowed_amount")),
         plan_paid_amount=_money_amount(item.get("plan_paid") or item.get("paid_amount")),
         net_amount=_money_amount(item.get("patient_responsibility") or item.get("amount")),
+        discount_amount=_money_amount(discount),
         tax_amount=_money_amount(item.get("tax_amount")),
         currency_code=(
             item.get("currency_code")
             or amount.get("currency")
             or unit_price.get("currency")
+            or _money_currency(discount)
             or _money_currency(item.get("allowed_amount"))
             or _money_currency(item.get("plan_paid") or item.get("paid_amount"))
             or _money_currency(item.get("patient_responsibility"))
         ),
         service_date=item.get("service_date"),
+        tax_category_hint=item.get("tax_category_hint"),
         category_hint=item.get("category_hint") or item.get("gl_hint"),
         confidence=_confidence(item),
         evidence=_evidence_refs(
@@ -437,9 +443,12 @@ def _line_item_payload(item: RegionLineItem) -> dict[str, Any]:
         "quantity": item.quantity,
         "unit": item.unit,
         "service_date": item.service_date,
+        "tax_category_hint": item.tax_category_hint,
         "category_hint": item.category_hint,
         "evidence": [ref.model_dump(mode="json", exclude_none=True) for ref in item.evidence],
     }
+    if item.discount_amount is not None:
+        payload["discount"] = {"amount": item.discount_amount, "currency": item.currency_code}
     if item.net_amount is not None:
         payload["amount"] = {"amount": item.net_amount, "currency": item.currency_code}
     return {key: value for key, value in payload.items() if value not in (None, "")}

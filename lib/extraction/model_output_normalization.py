@@ -706,9 +706,17 @@ def _canonical_receipt_line_items(
             "description": description,
             **line_item_provenance(item, evidence_context),
             **({"quantity": _number(item.get("quantity"))} if item.get("quantity") else {}),
+            **({"unit": item.get("unit")} if item.get("unit") else {}),
             **({"unit_price": _money(item.get("unit_price"))} if item.get("unit_price") else {}),
+            **({"discount": _money(item.get("discount"))} if item.get("discount") else {}),
             **({"amount": amount} if amount else {}),
             **({"sku": item.get("sku")} if item.get("sku") else {}),
+            **(
+                {"tax_category_hint": item.get("tax_category_hint")}
+                if item.get("tax_category_hint")
+                else {}
+            ),
+            **({"category_hint": item.get("category_hint")} if item.get("category_hint") else {}),
             "evidence": [canonical_line_item_evidence(item, description, evidence_context)],
         }
         normalized.append(normalized_item)

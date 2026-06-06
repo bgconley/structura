@@ -12,7 +12,10 @@ from lib.extraction.candidate_admission import (
     persist_candidate_admission_events,
     rejected_candidates_from_payload,
 )
-from lib.extraction.candidate_admission_fingerprints import observation_fingerprint
+from lib.extraction.candidate_admission_fingerprints import (
+    line_item_fingerprint,
+    observation_fingerprint,
+)
 from lib.extraction.contract_registry import CONTRACT_REGISTRY_VERSION
 from lib.extraction.models import (
     CandidateFact,
@@ -1191,6 +1194,27 @@ def test_candidate_fingerprint_ignores_volatile_evidence_ids() -> None:
     )
 
     assert first.events[0].candidate_fingerprint == second.events[0].candidate_fingerprint
+
+
+def test_line_item_admission_fingerprint_includes_discount() -> None:
+    context = _context(semantic_type="receipt_line_item_table")
+    base = {
+        "line_item_type": "receipt_item",
+        "ordinal": 1,
+        "description": "Coffee beans",
+        "quantity": 2.0,
+        "unit": "bag",
+        "unit_price": 12.0,
+        "net_amount": 21.0,
+        "currency": "USD",
+        "category_hint": "grocery",
+        "evidence": [_evidence(context)],
+    }
+
+    no_discount = LineItemCandidateFact(**base)
+    discounted = LineItemCandidateFact(**base, discount_amount=3.0)
+
+    assert line_item_fingerprint(no_discount, context) != line_item_fingerprint(discounted, context)
 
 
 def test_missing_evidence_rejections_are_recorded_when_no_candidates_are_admitted() -> None:

@@ -16,9 +16,13 @@
           "ordinal": {"type": ["integer", "null"], "minimum": 1},
           "description": {"type": "string", "minLength": 1, "maxLength": 240},
           "quantity": {"type": ["number", "string", "null"]},
+          "unit": {"type": ["string", "null"], "maxLength": 40},
           "unit_price": {"type": ["number", "string", "null"]},
+          "discount": {"type": ["number", "string", "null"]},
           "amount": {"type": ["number", "string", "null"]},
           "sku": {"type": ["string", "null"], "maxLength": 80},
+          "tax_category_hint": {"type": ["string", "null"], "maxLength": 80},
+          "category_hint": {"type": ["string", "null"], "maxLength": 80},
           "row_index": {"type": ["integer", "string", "null"]},
           "table_id": {"type": ["string", "null"]},
           "page_number": {"type": ["integer", "string", "null"]}

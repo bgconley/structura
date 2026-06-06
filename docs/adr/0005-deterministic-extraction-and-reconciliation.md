@@ -279,6 +279,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   admission, and resolver registry. `receipt.transaction.discount_total` is
   projected into `receipt.v1` and receipt total arithmetic now subtracts the
   discount from subtotal plus tax plus tip.
+- 2026-06-05: Receipt line-item fragments now preserve unit-level discount and
+  tax/category hints through the constrained Granite line-item schema,
+  normalization, region envelope facts, Claim IR, candidate identity, and
+  resolver registry.
 
 ## Deferred Work
 
