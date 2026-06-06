@@ -14,7 +14,11 @@ from lib.extraction.models import (
     ParsedPageText,
     ParsedTableText,
 )
-from lib.extraction.visual_input_planning import plan_granite_visual_inputs
+from lib.extraction.region_envelope import RegionExtractionEnvelope
+from lib.extraction.visual_input_planning import (
+    is_useful_granite_output,
+    plan_granite_visual_inputs,
+)
 from lib.model_runtime.contracts import VisionGenerateRequest, VisionGenerateResponse
 from lib.model_runtime.profiles import GRANITE_VISION_PROFILE
 from lib.semantic_annotations.models import SemanticExtractionTask, SemanticGroundingRef
@@ -325,6 +329,37 @@ def test_crop_output_empty_line_items_retries_full_page(monkeypatch) -> None:
     assert attempts[1]["useful"] is True
     assert result.metadata["visualInputPlan"]["scope"] == "full_page_retry"
     assert result.metadata["visualInputAttempts"] == attempts
+
+
+def test_usefulness_requires_claims_when_region_envelope_is_present() -> None:
+    source, element_id = _source_with_geometry()
+    task = _line_item_task(source, element_id=element_id)
+    envelope = RegionExtractionEnvelope(
+        document_id=str(source.document_id),
+        semantic_region_id=str(task.region_id),
+        resolved_document_type="invoice",
+        semantic_type="invoice_line_item_table",
+        target_schema="invoice",
+        model_output_schema_name="granite_invoice_line_items.v1",
+    )
+
+    assert (
+        is_useful_granite_output(
+            normalized_json={
+                "line_items": [
+                    {
+                        "description": "Looks like a row but has no anchored Claim",
+                        "amount": {"amount": 250.0, "currency": "USD"},
+                    }
+                ]
+            },
+            normalization_json={
+                "regionEnvelope": envelope.model_dump(mode="json", exclude_none=True)
+            },
+            semantic_task=task,
+        )
+        is False
+    )
 
 
 def test_planned_crop_evidence_records_visual_bbox(monkeypatch) -> None:

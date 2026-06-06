@@ -7,7 +7,12 @@ from io import BytesIO
 from typing import Any
 from uuid import UUID
 
+from lib.extraction.claims import claims_from_region_envelope
 from lib.extraction.models import ExtractionSourceDocument, ParsedElementText, ParsedPageText
+from lib.extraction.region_envelope import (
+    RegionExtractionEnvelope,
+    region_envelope_from_normalization_json,
+)
 from lib.extraction.visual_input_geometry import (
     basis_from_bbox,
     basis_from_metadata,
@@ -133,8 +138,13 @@ def crop_retry_allowed(decision: VisualInputDecision) -> bool:
 def is_useful_granite_output(
     *,
     normalized_json: dict[str, Any],
+    normalization_json: dict[str, Any] | None = None,
     semantic_task: SemanticExtractionTask | None,
 ) -> bool:
+    if normalization_json is not None:
+        envelope = region_envelope_from_normalization_json(normalization_json)
+        if envelope is not None:
+            return _is_useful_region_envelope(envelope, semantic_task)
     if _contains_echo(normalized_json):
         return False
     if _is_all_null_or_empty(normalized_json):
@@ -148,6 +158,19 @@ def is_useful_granite_output(
     observations = normalized_json.get("observations")
     if isinstance(observations, list) and semantic_task and semantic_task.expected_fields:
         return any(not _is_all_null_or_empty(item) for item in observations)
+    return True
+
+
+def _is_useful_region_envelope(
+    envelope: RegionExtractionEnvelope,
+    semantic_task: SemanticExtractionTask | None,
+) -> bool:
+    claims = claims_from_region_envelope(envelope)
+    if not claims:
+        return False
+    semantic_type = semantic_task.semantic_type if semantic_task else envelope.semantic_type
+    if semantic_type in _CROP_FIRST_TYPES:
+        return any(".line_item." in claim.canonical_key for claim in claims)
     return True
 
 

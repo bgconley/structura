@@ -109,6 +109,7 @@ class VisionExtractionGateway:
         )
         useful = is_useful_granite_output(
             normalized_json=normalized_json,
+            normalization_json=normalization_json,
             semantic_task=semantic_task,
         )
         attempts = [
@@ -161,6 +162,7 @@ class VisionExtractionGateway:
             )
             retry_useful = is_useful_granite_output(
                 normalized_json=retry_normalized_json,
+                normalization_json=retry_normalization_json,
                 semantic_task=semantic_task,
             )
             attempts.append(
