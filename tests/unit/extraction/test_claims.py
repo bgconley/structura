@@ -149,6 +149,40 @@ def test_claim_id_canonicalizes_docling_element_id_order() -> None:
     assert second.anchor.docling_element_ids == ("cell-a", "cell-b")
 
 
+def test_claim_source_uses_granite_method_for_docling_anchor_evidence() -> None:
+    document_id = uuid4()
+    region_id = uuid4()
+    evidence = EvidenceRef(
+        document_id=str(document_id),
+        semantic_region_id=str(region_id),
+        page_number=1,
+        table_id="table-1",
+        row_index=3,
+        source_engine="docling",
+    )
+    envelope = RegionExtractionEnvelope(
+        document_id=str(document_id),
+        semantic_region_id=str(region_id),
+        resolved_document_type="invoice",
+        semantic_type="payment_summary",
+        target_schema="invoice",
+        model_output_schema_name="granite_payment_summary.v1",
+        facts=[
+            RegionFact(
+                name="invoice.total_amount",
+                value={"amount": 42.5, "currency": "USD"},
+                value_type="money",
+                evidence=[evidence],
+            )
+        ],
+    )
+
+    claims = claims_from_region_envelope(envelope)
+
+    assert len(claims) == 1
+    assert claims[0].source_engine == "granite"
+
+
 def test_invoice_total_adjustment_claims_are_admissible() -> None:
     document_id = uuid4()
     region_id = uuid4()

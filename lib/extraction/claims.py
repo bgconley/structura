@@ -157,7 +157,7 @@ def _claim_from_fact(
         return None
     if not claim_value_type_is_admissible(fact.name, typed[0]):
         return None
-    source_engine = _source_engine(fact.evidence)
+    source_engine = _source_engine(method, fact.evidence)
     if source_engine is None:
         return None
     return _claim(
@@ -187,7 +187,7 @@ def _claims_from_line_item(
     if anchor is None:
         return []
     group_id = _group_id(document_id, anchor, ordinal)
-    source_engine = _source_engine(item.evidence)
+    source_engine = _source_engine(method, item.evidence)
     if source_engine is None:
         return []
     evidence = tuple(ref.model_dump(mode="json", exclude_none=True) for ref in item.evidence)
@@ -380,9 +380,20 @@ def _raw_value(fact: RegionFact) -> str:
     return _stable_json(fact.value)
 
 
-def _source_engine(refs: list[EvidenceRef]) -> ClaimSourceEngine | None:
-    source_engine = refs[0].source_engine if refs else ""
-    normalized = source_engine.strip().lower()
+def _source_engine(method: str, refs: list[EvidenceRef]) -> ClaimSourceEngine | None:
+    method_source = _source_engine_label(method)
+    if method_source is not None:
+        return method_source
+    evidence_sources = {_source_engine_label(ref.source_engine) for ref in refs}
+    if "granite" in evidence_sources:
+        return "granite"
+    if "docling" in evidence_sources:
+        return "docling"
+    return None
+
+
+def _source_engine_label(value: str) -> ClaimSourceEngine | None:
+    normalized = value.strip().lower()
     if normalized.startswith("granite"):
         return "granite"
     if normalized.startswith("docling"):

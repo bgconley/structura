@@ -503,6 +503,9 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   before inspecting facts, line items, or observations. Qwen output therefore
   cannot become value Claims even if a replayed envelope carries concrete-looking
   Docling evidence refs.
+- 2026-06-06: Claim source provenance is now method-first. Granite fragment
+  methods produce Granite value Claims even when evidence refs describe Docling
+  anchor structure, and fallback evidence-source resolution is order-insensitive.
 
 ## Deferred Work
 
