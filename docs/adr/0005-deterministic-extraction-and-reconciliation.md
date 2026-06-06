@@ -259,6 +259,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   required Claim keys, mirroring the existing validator presence checks. EOB
   service-line-only projections retain useful service evidence but stay
   `needs_human_review` with explicit required-party absence decisions.
+- 2026-06-05: Medical EOB service-line Claims now preserve allowed and
+  plan-paid amounts from Granite's constrained service-line contract. The
+  normalized payload, region envelope, Claim IR, and resolver registry all
+  carry these anchored values into `medical_eob.v1` line-item projection
+  instead of dropping them before reconciliation.
 
 ## Deferred Work
 

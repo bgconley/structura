@@ -197,6 +197,8 @@ def _claims_from_line_item(
         ("unit", item.unit, "text"),
         ("unit_price", _money(item.unit_price, item.currency_code), "money"),
         ("gross_amount", _money(item.gross_amount, item.currency_code), "money"),
+        ("allowed_amount", _money(item.allowed_amount, item.currency_code), "money"),
+        ("plan_paid", _money(item.plan_paid_amount, item.currency_code), "money"),
         ("tax_amount", _money(item.tax_amount, item.currency_code), "money"),
         ("amount", _money(item.net_amount, item.currency_code), "money"),
         ("service_date", item.service_date, "date"),

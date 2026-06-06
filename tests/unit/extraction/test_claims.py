@@ -313,6 +313,61 @@ def test_receipt_compatible_service_record_claims_preserve_canonical_family() ->
     ]
 
 
+def test_medical_eob_line_item_claims_preserve_allowed_and_plan_paid_amounts() -> None:
+    document_id = uuid4()
+    region_id = uuid4()
+    evidence = EvidenceRef(
+        document_id=str(document_id),
+        semantic_region_id=str(region_id),
+        page_number=2,
+        table_id="eob-table",
+        row_index=4,
+        source_engine="granite_vision_3b",
+    )
+    envelope = RegionExtractionEnvelope(
+        document_id=str(document_id),
+        semantic_region_id=str(region_id),
+        resolved_document_type="medical_eob",
+        semantic_type="covered_services_line_item_table",
+        target_schema="medical_eob",
+        model_output_schema_name="granite_medical_service_lines.v1",
+        line_items=[
+            RegionLineItem(
+                description="Office visit",
+                code="99213",
+                gross_amount=120.0,
+                allowed_amount=80.0,
+                plan_paid_amount=50.0,
+                net_amount=30.0,
+                currency_code="USD",
+                evidence=[evidence],
+                table_id="eob-table",
+                row_index=4,
+                page_number=2,
+            )
+        ],
+    )
+
+    claims = claims_from_region_envelope(envelope)
+
+    assert [claim.canonical_key for claim in claims] == [
+        "medical_eob.line_item.description",
+        "medical_eob.line_item.code",
+        "medical_eob.line_item.gross_amount",
+        "medical_eob.line_item.allowed_amount",
+        "medical_eob.line_item.plan_paid",
+        "medical_eob.line_item.amount",
+    ]
+    assert {claim.canonical_key: claim.typed_value for claim in claims} == {
+        "medical_eob.line_item.description": "Office visit",
+        "medical_eob.line_item.code": "99213",
+        "medical_eob.line_item.gross_amount": {"amount": 120.0, "currency": "USD"},
+        "medical_eob.line_item.allowed_amount": {"amount": 80.0, "currency": "USD"},
+        "medical_eob.line_item.plan_paid": {"amount": 50.0, "currency": "USD"},
+        "medical_eob.line_item.amount": {"amount": 30.0, "currency": "USD"},
+    }
+
+
 def test_receipt_compatible_retail_order_claims_preserve_canonical_family() -> None:
     document_id = uuid4()
     region_id = uuid4()

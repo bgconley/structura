@@ -9,6 +9,7 @@ from lib.extraction.region_envelope import (
     EvidenceRef,
     RegionExtractionEnvelope,
     RegionFact,
+    envelope_from_normalization_projection,
 )
 
 
@@ -112,3 +113,44 @@ def test_attach_evidence_to_envelope_uses_structura_context() -> None:
     assert ref.semantic_region_id == str(region_id)
     assert ref.page_number == 1
     assert has_concrete_locator(ref) is True
+
+
+def test_medical_eob_envelope_preserves_allowed_and_paid_line_amounts() -> None:
+    document_id = str(uuid4())
+    envelope = envelope_from_normalization_projection(
+        projection={
+            "schema_name": "medical_eob",
+            "schema_version": "v1",
+            "document_id": document_id,
+            "service_lines": [
+                {
+                    "service_description": "Office visit",
+                    "billed_amount": {"amount": 120.0, "currency": "USD"},
+                    "allowed_amount": {"amount": 80.0, "currency": "USD"},
+                    "paid_amount": {"amount": 50.0, "currency": "USD"},
+                    "patient_responsibility": {"amount": 30.0, "currency": "USD"},
+                    "evidence": [
+                        {
+                            "document_id": document_id,
+                            "page_number": 2,
+                            "table_id": "eob-table",
+                            "row_index": 4,
+                            "source_engine": "granite_vision_3b",
+                        }
+                    ],
+                }
+            ],
+        },
+        model_output_schema_name="granite_medical_service_lines.v1",
+        semantic_type="covered_services_line_item_table",
+        target_schema="medical_eob",
+        resolved_document_type="medical_eob",
+        source_engine="granite_vision_3b",
+    )
+
+    line_item = envelope.line_items[0]
+    assert line_item.gross_amount == 120.0
+    assert line_item.allowed_amount == 80.0
+    assert line_item.plan_paid_amount == 50.0
+    assert line_item.net_amount == 30.0
+    assert line_item.currency_code == "USD"

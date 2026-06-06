@@ -43,6 +43,67 @@ def test_medical_eob_claim_resolver_records_absent_required_parties() -> None:
     assert projection.quality_outcome == "needs_human_review"
 
 
+def test_medical_eob_claim_resolver_projects_service_line_allowed_and_plan_paid() -> None:
+    anchor = ClaimAnchor(page_number=2, table_id="eob-service-lines", row_index=4)
+
+    projection = resolve_claims_for_family(
+        family="medical_eob",
+        claims=[
+            _claim(
+                canonical_key="medical_eob.payer.display_name",
+                typed_value="Anthem Blue Cross",
+                source_engine="granite",
+                anchor=anchor,
+            ),
+            _claim(
+                canonical_key="medical_eob.patient.display_name",
+                typed_value="Jane Patient",
+                source_engine="granite",
+                anchor=anchor,
+            ),
+            _claim(
+                canonical_key="medical_eob.line_item.description",
+                typed_value="Office visit",
+                source_engine="granite",
+                anchor=anchor,
+                group_id="service-line-1",
+            ),
+            _claim(
+                canonical_key="medical_eob.line_item.allowed_amount",
+                typed_value={"amount": 80.0, "currency": "USD"},
+                source_engine="granite",
+                anchor=anchor,
+                group_id="service-line-1",
+            ),
+            _claim(
+                canonical_key="medical_eob.line_item.plan_paid",
+                typed_value={"amount": 50.0, "currency": "USD"},
+                source_engine="granite",
+                anchor=anchor,
+                group_id="service-line-1",
+            ),
+            _claim(
+                canonical_key="medical_eob.line_item.amount",
+                typed_value={"amount": 30.0, "currency": "USD"},
+                source_engine="granite",
+                anchor=anchor,
+                group_id="service-line-1",
+            ),
+        ],
+    )
+
+    assert projection.line_items == [
+        {
+            "service_description": "Office visit",
+            "allowed_amount": {"amount": 80.0, "currency": "USD"},
+            "plan_paid": {"amount": 50.0, "currency": "USD"},
+            "patient_responsibility": {"amount": 30.0, "currency": "USD"},
+            "evidence": [{"page_number": 2, "table_id": "eob-service-lines", "row_index": 4}],
+        }
+    ]
+    assert projection.quality_outcome == "extracted_cleanly"
+
+
 def _claim(
     *,
     canonical_key: str,

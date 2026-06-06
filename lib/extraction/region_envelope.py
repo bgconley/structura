@@ -71,6 +71,8 @@ class RegionLineItem(BaseModel):
     unit: str | None = None
     unit_price: float | None = None
     gross_amount: float | None = None
+    allowed_amount: float | None = None
+    plan_paid_amount: float | None = None
     net_amount: float | None = None
     tax_amount: float | None = None
     currency_code: str | None = None
@@ -368,12 +370,16 @@ def _line_item(
         unit=item.get("unit"),
         unit_price=_money_amount(item.get("unit_price")),
         gross_amount=_money_amount(item.get("billed_amount") or item.get("amount")),
+        allowed_amount=_money_amount(item.get("allowed_amount")),
+        plan_paid_amount=_money_amount(item.get("plan_paid") or item.get("paid_amount")),
         net_amount=_money_amount(item.get("patient_responsibility") or item.get("amount")),
         tax_amount=_money_amount(item.get("tax_amount")),
         currency_code=(
             item.get("currency_code")
             or amount.get("currency")
             or unit_price.get("currency")
+            or _money_currency(item.get("allowed_amount"))
+            or _money_currency(item.get("plan_paid") or item.get("paid_amount"))
             or _money_currency(item.get("patient_responsibility"))
         ),
         service_date=item.get("service_date"),
