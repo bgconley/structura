@@ -373,6 +373,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   Line-item fragment normalization now admits only the contracted top-level
   `line_items` key, leaving alias-shaped payloads as rejected off-contract
   input instead of a compatibility path.
+- 2026-06-06: Generic KVP observation normalization no longer maps arbitrary
+  flat top-level fields into observations. `granite_generic_kvp.v1` must use
+  its contracted `fields` array, while direct-field observation contracts keep
+  their declared top-level keys.
 
 ## Deferred Work
 

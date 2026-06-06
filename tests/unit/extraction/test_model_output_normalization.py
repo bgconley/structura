@@ -76,6 +76,24 @@ def test_generic_kvp_output_maps_to_reviewable_observations() -> None:
     assert observation_dicts_from_payload(normalized)[0]["value"] == "Brennan Conley"
 
 
+def test_generic_kvp_contract_rejects_flat_top_level_fields() -> None:
+    document_id = uuid4()
+
+    normalized, metadata = normalize_granite_region_output(
+        document_id=document_id,
+        schema_name="document_observation",
+        model_output_schema_name="granite_generic_kvp.v1",
+        payload={
+            "seller_notes": "Jane Seller",
+            "confidence": {"overall": 0.61},
+        },
+    )
+
+    assert normalized["observations"] == []
+    assert metadata["repairs"] == []
+    assert metadata["rejected_fields"] == ["seller_notes"]
+
+
 def test_review_only_receipt_like_output_defers_broad_observations() -> None:
     document_id = uuid4()
 
@@ -733,10 +751,10 @@ def test_healthcare_coverage_decision_defers_unbounded_observations_for_repeatab
     assert "deferred_unbounded_healthcare_coverage_decision_observations" in metadata["repairs"]
 
 
-def test_observation_mapper_drops_schema_and_prompt_echo_fields() -> None:
+def test_generic_kvp_mapper_rejects_flat_prompt_echo_payload() -> None:
     document_id = uuid4()
 
-    normalized, _metadata = normalize_granite_region_output(
+    normalized, metadata = normalize_granite_region_output(
         document_id=document_id,
         schema_name="document_observation",
         model_output_schema_name="granite_generic_kvp.v1",
@@ -747,8 +765,13 @@ def test_observation_mapper_drops_schema_and_prompt_echo_fields() -> None:
         },
     )
 
-    observations = observation_dicts_from_payload(normalized)
-    assert [item["field_name"] for item in observations] == ["seller_name"]
+    assert observation_dicts_from_payload(normalized) == []
+    assert metadata["repairs"] == []
+    assert metadata["rejected_fields"] == [
+        "instructions",
+        "properties",
+        "seller_name",
+    ]
 
 
 def test_receipt_line_item_model_output_maps_to_canonical_receipt_lines() -> None:
@@ -863,7 +886,13 @@ def test_observation_source_text_is_bounded_to_schema_limit() -> None:
         schema_name="document_observation",
         model_output_schema_name="granite_generic_kvp.v1",
         payload={
-            "seller_notes": "x" * 700,
+            "fields": [
+                {
+                    "name": "seller_notes",
+                    "value": "Jane Seller",
+                    "source_text": "x" * 700,
+                }
+            ],
             "confidence": {"overall": 0.61},
         },
     )

@@ -39,6 +39,7 @@ ECHO_PHRASES = (
     "<tables_json>",
     "additionalproperties",
 )
+GENERIC_KVP_SCHEMA_NAME = "granite_generic_kvp.v1"
 
 
 def looks_like_schema_echo(payload: dict[str, Any]) -> bool:
@@ -86,6 +87,8 @@ def observations_from_model_payload(
                     evidence_context=evidence_context,
                 )
             )
+        return observations
+    if model_output_schema_name == GENERIC_KVP_SCHEMA_NAME:
         return observations
     for key, value in payload.items():
         if should_drop_observation(key, value):

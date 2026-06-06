@@ -579,9 +579,9 @@ def _document_observation_output(
             model_output_schema_name,
             evidence_context=evidence_context,
         )
-        if "fields" in payload:
+        if isinstance(payload.get("fields"), list):
             repairs.append("mapped_fields_array_to_observations")
-        else:
+        elif model_output_schema_name != "granite_generic_kvp.v1":
             repairs.append("mapped_flat_fields_to_observations")
     if _should_defer_review_only_receipt_like_observations(
         model_output_schema_name=model_output_schema_name,
