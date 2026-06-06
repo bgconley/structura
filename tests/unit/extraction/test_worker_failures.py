@@ -96,6 +96,42 @@ def test_extraction_worker_records_model_runtime_error_details(monkeypatch) -> N
     }
 
 
+def test_extraction_worker_rejects_removed_rescue_payload_nonretryably(monkeypatch) -> None:
+    document_id = uuid4()
+    job_id = uuid4()
+    job_service = RecordingJobService(
+        SimpleNamespace(
+            state=SimpleNamespace(job_id=job_id, job_type="extract"),
+            document_id=document_id,
+            household_id=uuid4(),
+            payload={
+                "target_schema_name": "invoice",
+                "route_profile": "docling_plus_granite_structured",
+                "allow_8b_rescue": True,
+            },
+        )
+    )
+    service = CapturingExtractionService()
+    monkeypatch.setattr(extraction_worker_module.worker, "JobService", lambda: job_service)
+
+    processed = process_next_extraction_job(
+        worker_name="worker-extraction-test",
+        service=service,
+    )
+
+    assert processed is True
+    assert service.kwargs == {}
+    assert job_service.failed[0]["job_id"] == job_id
+    assert job_service.failed[0]["error_class"] == "ExtractionWorkerError"
+    assert job_service.failed[0]["message"] == (
+        "Extraction job failed: Removed semantic rescue controls are not accepted."
+    )
+    assert job_service.failed[0]["retryable"] is False
+    assert job_service.failed[0]["details"] == {
+        "model_failure_policy": "removed_semantic_rescue_control"
+    }
+
+
 def test_extraction_worker_passes_phase85_run_id_from_job_metadata(monkeypatch) -> None:
     document_id = uuid4()
     job_id = uuid4()

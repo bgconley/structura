@@ -62,6 +62,43 @@ def test_semantic_annotation_worker_processes_semantic_annotate_job() -> None:
     assert job_service.failed == []
 
 
+def test_semantic_annotation_worker_rejects_removed_rescue_payload_nonretryably() -> None:
+    document_id = uuid4()
+    job_id = uuid4()
+    job_service = RecordingJobService(
+        SimpleNamespace(
+            state=SimpleNamespace(job_id=job_id, job_type="semantic_annotate"),
+            document_id=document_id,
+            household_id=uuid4(),
+            payload={
+                "quality_mode": "smart",
+                "requested_by": "system",
+                "allow_8b_rescue": True,
+            },
+        )
+    )
+    service = RecordingSemanticService(annotation_id=uuid4(), queued_granite_job_ids=())
+
+    processed = process_next_semantic_annotation_job(
+        worker_name="worker-semantic-annotations-test",
+        job_service=job_service,
+        service=service,
+    )
+
+    assert processed is True
+    assert service.calls == []
+    assert job_service.completed == []
+    assert job_service.failed == [
+        {
+            "job_id": job_id,
+            "error_class": "SemanticAnnotationWorkerError",
+            "message": "Removed high-quality/rescue semantic controls are not accepted.",
+            "retryable": False,
+            "suppress": False,
+        }
+    ]
+
+
 def test_semantic_annotation_worker_fails_unknown_job_type() -> None:
     job_id = uuid4()
     job_service = RecordingJobService(

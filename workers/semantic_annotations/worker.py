@@ -8,6 +8,10 @@ from typing import Any, Protocol, cast
 from uuid import UUID
 
 from lib.jobs import JobService, record_service_health
+from lib.jobs.removed_semantic_controls import (
+    REMOVED_SEMANTIC_CONTROL_MESSAGE,
+    has_removed_semantic_controls,
+)
 from lib.semantic_annotations.models import QualityMode
 from lib.semantic_annotations.service import (
     SemanticAnnotationRunResult,
@@ -76,6 +80,8 @@ def process_next_semantic_annotation_job(
             raise SemanticAnnotationWorkerError(
                 f"Unsupported semantic annotation job: {claimed.state.job_type}"
             )
+        if has_removed_semantic_controls(claimed.payload):
+            raise SemanticAnnotationWorkerError(REMOVED_SEMANTIC_CONTROL_MESSAGE)
         result = semantic_service.annotate_document(
             target_document_id,
             quality_mode=cast(QualityMode, str(claimed.payload.get("quality_mode") or "smart")),

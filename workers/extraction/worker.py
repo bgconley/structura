@@ -12,6 +12,7 @@ from lib.extraction import ExtractionService
 from lib.extraction.model_failure_policy import extraction_failure_policy
 from lib.extraction.reconciliation_repository import maybe_reconcile_semantic_annotation
 from lib.jobs import JobService, record_service_health
+from lib.jobs.removed_semantic_controls import has_removed_semantic_controls
 from lib.relationships.jobs import enqueue_relationship_job
 from lib.search.jobs import enqueue_embed_document_job
 from workers.runtime import start_health_server
@@ -86,6 +87,18 @@ def process_next_extraction_job(
             route_profile = str(
                 claimed.payload.get("route_profile") or "docling_plus_structured_extraction"
             )
+            if has_removed_semantic_controls(claimed.payload):
+                job_service.fail_job(
+                    job_id=claimed.state.job_id,
+                    error_class=ExtractionWorkerError.__name__,
+                    message=(
+                        "Extraction job failed: Removed semantic rescue controls are not accepted."
+                    ),
+                    retryable=False,
+                    suppress=False,
+                    details={"model_failure_policy": "removed_semantic_rescue_control"},
+                )
+                return True
             persisted = extraction_service.extract_document(
                 target_document_id,
                 schema_name=schema_name,

@@ -478,6 +478,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   complete schema-declared nullable fields to `null` before validation, but it still
   fails closed when extraction-bearing roots such as `line_items`, `fields`, or
   `service_lines` are absent and it does not mine off-contract keys.
+- 2026-06-06: Semantic annotation and extraction workers now reject stale removed
+  high-quality/rescue controls at the queue boundary before service execution.
+  Such legacy payloads fail closed as non-retryable contract violations, preserving
+  the single Smart Parse Qwen path without creating retry loops or silently ignoring
+  removed controls.
 
 ## Deferred Work
 
