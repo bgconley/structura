@@ -367,6 +367,9 @@ def _receipt_line_items_output(
         "confidence": confidence,
         "created_at": datetime.now(UTC).isoformat(),
     }
+    retail_order_metadata = _retail_order_metadata(payload)
+    if retail_order_metadata:
+        normalized["metadata"] = {"retail_order": retail_order_metadata}
     metadata = {
         "mapper": "granite_receipt_line_items.v1",
         "repairs": ["mapped_model_output_to_canonical_receipt_line_items"],
@@ -376,6 +379,15 @@ def _receipt_line_items_output(
         ),
     }
     return apply_table_consistency_projection(normalized, metadata, consistency)
+
+
+def _retail_order_metadata(payload: dict[str, Any]) -> dict[str, Any]:
+    metadata: dict[str, Any] = {}
+    for key in ("order_number", "order_date"):
+        value = payload.get(key)
+        if value not in (None, ""):
+            metadata[key] = str(value)
+    return metadata
 
 
 def _service_record_line_items_output(

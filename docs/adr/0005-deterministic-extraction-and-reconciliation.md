@@ -287,6 +287,12 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   part-number codes through receipt-shaped alias normalization, region envelope
   facts, and canonical `service_record.line_item.code` Claims instead of
   dropping those identifiers before deterministic projection.
+- 2026-06-05: Receipt-shaped alias header facts now respect the resolved
+  canonical family. Retail-order model outputs emit anchored
+  `retail_order.merchant_name`, `retail_order.order_number`,
+  `retail_order.order_date`, and `retail_order.total` Claims, while
+  service-record totals emit `service_record.*` Claims instead of leaking
+  receipt-prefixed header facts into alias reconciliation.
 
 ## Deferred Work
 

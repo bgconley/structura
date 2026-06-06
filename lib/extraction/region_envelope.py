@@ -150,6 +150,7 @@ def envelope_from_normalization_projection(
             projection,
             document_id=document_id,
             source_engine=source_engine,
+            resolved_document_type=resolved_document_type,
         ),
         line_items=_line_items_from_projection(
             projection,
@@ -204,10 +205,24 @@ def _facts_from_projection(
     *,
     document_id: str,
     source_engine: str | None,
+    resolved_document_type: str | None,
 ) -> list[RegionFact]:
     schema_name = str(projection.get("schema_name") or "")
     facts: list[RegionFact] = []
     if schema_name == "receipt":
+        alias_family = str(resolved_document_type or "").strip().lower()
+        if alias_family == "retail_order":
+            return _retail_order_facts_from_receipt_projection(
+                projection,
+                document_id=document_id,
+                source_engine=source_engine,
+            )
+        if alias_family == "service_record":
+            return _service_record_facts_from_receipt_projection(
+                projection,
+                document_id=document_id,
+                source_engine=source_engine,
+            )
         merchant = _dict_or_empty(projection.get("merchant"))
         if merchant.get("display_name") not in (None, ""):
             facts.append(
@@ -331,6 +346,89 @@ def _observations_from_projection(
             )
         )
     return facts
+
+
+def _retail_order_facts_from_receipt_projection(
+    projection: dict[str, Any],
+    *,
+    document_id: str,
+    source_engine: str | None,
+) -> list[RegionFact]:
+    facts: list[RegionFact] = []
+    merchant = _dict_or_empty(projection.get("merchant"))
+    if merchant.get("display_name") not in (None, ""):
+        facts.append(
+            _fact(
+                "retail_order.merchant_name",
+                merchant["display_name"],
+                owner=merchant,
+                document_id=document_id,
+                source_engine=source_engine,
+            )
+        )
+    metadata = _dict_or_empty(_dict_or_empty(projection.get("metadata")).get("retail_order"))
+    for key, claim_key, value_type in (
+        ("order_number", "retail_order.order_number", "string"),
+        ("order_date", "retail_order.order_date", "date"),
+    ):
+        if metadata.get(key) not in (None, ""):
+            facts.append(
+                _fact(
+                    claim_key,
+                    metadata[key],
+                    owner=_projection_metadata_owner(metadata[key], projection),
+                    value_type=cast(ValueType, value_type),
+                    document_id=document_id,
+                    source_engine=source_engine,
+                )
+            )
+    transaction = _dict_or_empty(projection.get("transaction"))
+    if transaction.get("total") not in (None, ""):
+        facts.append(
+            _fact(
+                "retail_order.total",
+                transaction["total"],
+                owner=_dict_or_empty(transaction.get("total")) or transaction,
+                value_type="money",
+                document_id=document_id,
+                source_engine=source_engine,
+            )
+        )
+    return facts
+
+
+def _service_record_facts_from_receipt_projection(
+    projection: dict[str, Any],
+    *,
+    document_id: str,
+    source_engine: str | None,
+) -> list[RegionFact]:
+    transaction = _dict_or_empty(projection.get("transaction"))
+    facts: list[RegionFact] = []
+    for key, claim_key in (
+        ("subtotal", "service_record.subtotal"),
+        ("tax", "service_record.tax"),
+        ("total", "service_record.total"),
+    ):
+        if transaction.get(key) not in (None, ""):
+            facts.append(
+                _fact(
+                    claim_key,
+                    transaction[key],
+                    owner=_dict_or_empty(transaction.get(key)) or transaction,
+                    value_type="money",
+                    document_id=document_id,
+                    source_engine=source_engine,
+                )
+            )
+    return facts
+
+
+def _projection_metadata_owner(value: Any, projection: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "source_text": str(value),
+        "evidence": deepcopy(projection.get("evidence") or []),
+    }
 
 
 def _fact(
