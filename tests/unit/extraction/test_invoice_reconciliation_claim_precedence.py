@@ -10,7 +10,7 @@ from lib.extraction.region_reconciliation import RegionExtraction
 from tests.unit.extraction.invoice_reconciliation_fixtures import evidence, invoice_region
 
 
-def test_invoice_region_reconciliation_uses_claims_over_raw_payload() -> None:
+def test_invoice_region_reconciliation_uses_claims_for_projection() -> None:
     document_id = uuid4()
     region_id = uuid4()
     region_evidence = evidence(document_id, region_id, row_index=4, table_id="table-7")
@@ -25,16 +25,6 @@ def test_invoice_region_reconciliation_uses_claims_over_raw_payload() -> None:
                 extraction_id=uuid4(),
                 semantic_region_id=region_id,
                 semantic_type="invoice_line_item_table",
-                normalized_json={
-                    "schema_name": "invoice",
-                    "line_items": [
-                        {
-                            "description": "Prompt schema artifact",
-                            "amount": {"amount": 999.99, "currency": "USD"},
-                        }
-                    ],
-                    "totals": {"total": {"amount": 999.99, "currency": "USD"}},
-                },
                 facts=[
                     RegionFact(
                         name="invoice.total_amount",
@@ -65,7 +55,7 @@ def test_invoice_region_reconciliation_uses_claims_over_raw_payload() -> None:
     assert aggregate["totals"]["total"] == {"amount": 125.0, "currency": "USD"}
 
 
-def test_invoice_region_reconciliation_ignores_conflicting_raw_payload() -> None:
+def test_invoice_region_reconciliation_projects_claim_values_only() -> None:
     document_id = uuid4()
     region_id = uuid4()
     region_evidence = evidence(document_id, region_id, row_index=2, table_id="table-8")
@@ -80,16 +70,6 @@ def test_invoice_region_reconciliation_ignores_conflicting_raw_payload() -> None
                 extraction_id=uuid4(),
                 semantic_region_id=region_id,
                 semantic_type="invoice_line_item_table",
-                normalized_json={
-                    "schema_name": "invoice",
-                    "line_items": [
-                        {
-                            "description": "Raw service",
-                            "amount": {"amount": 1234.0, "currency": "USD"},
-                        }
-                    ],
-                    "totals": {"total": {"amount": 1234.0, "currency": "USD"}},
-                },
                 facts=[
                     RegionFact(
                         name="invoice.total_amount",
@@ -130,7 +110,7 @@ def test_invoice_region_reconciliation_ignores_conflicting_raw_payload() -> None
     }
 
 
-def test_invoice_region_reconciliation_uses_claim_family_over_raw_schema_label() -> None:
+def test_invoice_region_reconciliation_uses_claim_family_without_schema_label() -> None:
     document_id = uuid4()
     region_id = uuid4()
     group_id = "invoice-row-1"
@@ -145,10 +125,6 @@ def test_invoice_region_reconciliation_uses_claim_family_over_raw_schema_label()
                 extraction_id=uuid4(),
                 semantic_region_id=region_id,
                 semantic_type="invoice_line_item_table",
-                normalized_json={
-                    "schema_name": "medical_eob",
-                    "line_items": [{"description": "Raw medical fallback"}],
-                },
                 claims=(
                     Claim(
                         claim_id="claim-invoice-total",

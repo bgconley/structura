@@ -48,15 +48,6 @@ def test_document_observation_region_reconciliation_uses_anchored_claims() -> No
                 extraction_id=extraction_id,
                 semantic_region_id=region_id,
                 semantic_type="generic_form_kvp",
-                normalized_json={
-                    "schema_name": "document_observation",
-                    "observations": [
-                        {
-                            "field_name": "raw_schema_echo",
-                            "value": "Should not survive without a Claim",
-                        }
-                    ],
-                },
                 region_envelope=envelope,
                 claims=claims_from_region_envelope(envelope),
             )
@@ -106,10 +97,6 @@ def test_document_observation_region_reconciliation_requires_claims() -> None:
                 extraction_id=uuid4(),
                 semantic_region_id=uuid4(),
                 semantic_type="generic_form_kvp",
-                normalized_json={
-                    "schema_name": "document_observation",
-                    "observations": [{"field_name": "unanchored", "value": "ignored"}],
-                },
             )
         ],
     )

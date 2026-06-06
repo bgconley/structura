@@ -78,7 +78,6 @@ def maybe_reconcile_semantic_annotation(
                 extraction_id=row["id"],
                 semantic_region_id=row["source_semantic_region_id"],
                 semantic_type=row["semantic_type"],
-                normalized_json=dict(row["normalized_json"] or {}),
                 region_envelope=region_envelope,
                 claims=(
                     tuple(claims_from_region_envelope(region_envelope))
@@ -245,7 +244,6 @@ def _current_region_extraction_rows(
           id,
           source_semantic_region_id,
           semantic_type,
-          normalized_json,
           normalization_json
         FROM document_extractions
         WHERE document_id = %s

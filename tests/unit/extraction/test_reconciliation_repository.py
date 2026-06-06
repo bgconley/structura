@@ -22,6 +22,32 @@ from lib.extraction.region_envelope import (
 )
 
 
+def test_current_region_extraction_rows_keeps_raw_payload_out_of_reconciliation_loader() -> None:
+    class RecordingCursor:
+        query = ""
+        args: tuple[object, ...] = ()
+
+        def execute(self, query: str, args: tuple[object, ...]) -> None:
+            self.query = query
+            self.args = args
+
+        def fetchall(self) -> list[dict[str, object]]:
+            return []
+
+    cursor = RecordingCursor()
+
+    rows = repo._current_region_extraction_rows(
+        cursor,
+        document_id=uuid4(),
+        semantic_annotation_id=uuid4(),
+        schema_name="invoice",
+    )
+
+    assert rows == []
+    assert "normalization_json" in cursor.query
+    assert "normalized_json" not in cursor.query
+
+
 def test_maybe_reconcile_semantic_annotation_persists_document_observation_aggregate(
     monkeypatch,
 ) -> None:
@@ -67,10 +93,6 @@ def test_maybe_reconcile_semantic_annotation_persists_document_observation_aggre
                 "id": extraction_id,
                 "source_semantic_region_id": region_id,
                 "semantic_type": "generic_form_kvp",
-                "normalized_json": {
-                    "schema_name": "document_observation",
-                    "observations": [{"field_name": "raw_unanchored", "value": "ignored"}],
-                },
                 "normalization_json": {
                     "regionEnvelope": envelope.model_dump(mode="json", exclude_none=True)
                 },
@@ -107,7 +129,7 @@ def test_maybe_reconcile_semantic_annotation_persists_document_observation_aggre
     assert captured["line_item_candidates"] == []
 
 
-def test_maybe_reconcile_semantic_annotation_rejects_raw_only_invoice_regions(
+def test_maybe_reconcile_semantic_annotation_rejects_region_without_claims(
     monkeypatch,
 ) -> None:
     document_id = uuid4()
@@ -124,16 +146,6 @@ def test_maybe_reconcile_semantic_annotation_rejects_raw_only_invoice_regions(
                 "id": uuid4(),
                 "source_semantic_region_id": region_id,
                 "semantic_type": "invoice_line_item_table",
-                "normalized_json": {
-                    "schema_name": "invoice",
-                    "line_items": [
-                        {
-                            "description": "Raw fallback service",
-                            "amount": {"amount": 42.0, "currency": "USD"},
-                        }
-                    ],
-                    "totals": {"total": {"amount": 42.0, "currency": "USD"}},
-                },
                 "normalization_json": {},
             }
         ],
@@ -243,18 +255,6 @@ def test_maybe_reconcile_semantic_annotation_persists_medical_eob_claim_aggregat
                 "id": extraction_id,
                 "source_semantic_region_id": region_id,
                 "semantic_type": "covered_services_line_item_table",
-                "normalized_json": {
-                    "schema_name": "medical_eob",
-                    "service_lines": [
-                        {
-                            "service_description": "Raw payload should not drive aggregate",
-                            "patient_responsibility": {
-                                "amount": 999.0,
-                                "currency": "USD",
-                            },
-                        }
-                    ],
-                },
                 "normalization_json": {
                     "regionEnvelope": envelope.model_dump(mode="json", exclude_none=True)
                 },
@@ -354,12 +354,6 @@ def test_maybe_reconcile_semantic_annotation_persists_service_record_observation
                 "id": extraction_id,
                 "source_semantic_region_id": region_id,
                 "semantic_type": "service_record_line_item_table",
-                "normalized_json": {
-                    "schema_name": "receipt",
-                    "line_items": [
-                        {"description": "Raw receipt fallback must not drive aggregate"}
-                    ],
-                },
                 "normalization_json": {
                     "regionEnvelope": envelope.model_dump(mode="json", exclude_none=True)
                 },

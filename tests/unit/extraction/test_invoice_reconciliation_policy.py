@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+from dataclasses import fields
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -17,7 +18,9 @@ from lib.extraction.region_envelope import (
 )
 
 
-def test_invoice_region_reconciliation_disables_raw_payloads_by_default() -> None:
+def test_invoice_region_reconciliation_has_no_raw_payload_input() -> None:
+    assert "normalized_json" not in {field.name for field in fields(RegionExtraction)}
+
     aggregate = reconcile_invoice_region_extractions(
         document_id=uuid4(),
         seller={"display_name": "MAX BMW", "party_type": "company"},
@@ -27,16 +30,6 @@ def test_invoice_region_reconciliation_disables_raw_payloads_by_default() -> Non
                 extraction_id=uuid4(),
                 semantic_region_id=uuid4(),
                 semantic_type="invoice_line_item_table",
-                normalized_json={
-                    "schema_name": "invoice",
-                    "line_items": [
-                        {
-                            "description": "Raw fallback service",
-                            "amount": {"amount": 42.0, "currency": "USD"},
-                        }
-                    ],
-                    "totals": {"total": {"amount": 42.0, "currency": "USD"}},
-                },
             ),
         ],
     )
@@ -79,7 +72,6 @@ def test_invoice_region_reconciliation_disables_envelope_fallback_by_default() -
                 extraction_id=uuid4(),
                 semantic_region_id=region_id,
                 semantic_type="invoice_line_item_table",
-                normalized_json={"schema_name": "invoice"},
                 region_envelope=RegionExtractionEnvelope(
                     document_id=str(document_id),
                     semantic_region_id=str(region_id),

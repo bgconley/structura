@@ -21,10 +21,6 @@ def test_claim_region_projection_derives_source_family_from_claims_not_raw_paylo
                 extraction_id=uuid4(),
                 semantic_region_id=region_id,
                 semantic_type="covered_services_line_item_table",
-                normalized_json={
-                    "schema_name": "invoice",
-                    "metadata": {"source_family": "invoice"},
-                },
                 claims=(
                     Claim(
                         claim_id="claim-medical-payer",
@@ -66,16 +62,11 @@ def test_claim_region_projection_records_unclaimed_regions_with_family_reason() 
                 extraction_id=unclaimed_extraction_id,
                 semantic_region_id=unclaimed_region_id,
                 semantic_type="generic_form_kvp",
-                normalized_json={
-                    "schema_name": "document_observation",
-                    "observations": [{"field_name": "unanchored", "value": "ignored"}],
-                },
             ),
             RegionExtraction(
                 extraction_id=uuid4(),
                 semantic_region_id=claimed_region_id,
                 semantic_type="generic_form_kvp",
-                normalized_json={"schema_name": "document_observation"},
                 claims=(
                     Claim(
                         claim_id="claim-title-parcel",
@@ -123,7 +114,6 @@ def test_claim_region_projection_skips_incompatible_first_class_regions() -> Non
                 extraction_id=invoice_extraction_id,
                 semantic_region_id=invoice_region_id,
                 semantic_type="invoice_line_item_table",
-                normalized_json={"schema_name": "medical_eob"},
                 claims=(
                     Claim(
                         claim_id="claim-invoice-total",
@@ -146,7 +136,6 @@ def test_claim_region_projection_skips_incompatible_first_class_regions() -> Non
                 extraction_id=uuid4(),
                 semantic_region_id=eob_region_id,
                 semantic_type="covered_services_line_item_table",
-                normalized_json={"schema_name": "medical_eob"},
                 claims=(
                     Claim(
                         claim_id="claim-eob-payer",

@@ -327,10 +327,6 @@ def test_invoice_region_reconciliation_skips_non_invoice_observation_regions() -
                 extraction_id=uuid4(),
                 semantic_region_id=uuid4(),
                 semantic_type="seller_information_block",
-                normalized_json={
-                    "schema_name": "document_observation",
-                    "observations": [{"field_name": "seller_name", "value": "Jane Seller"}],
-                },
             )
         ],
     )

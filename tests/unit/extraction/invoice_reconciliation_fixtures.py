@@ -23,7 +23,6 @@ def invoice_region(
     coverage: dict[str, object] | None = None,
     target_schema: str = "invoice",
     resolved_document_type: str = "invoice",
-    normalized_json: dict[str, object] | None = None,
 ) -> RegionExtraction:
     envelope = RegionExtractionEnvelope(
         document_id=str(document_id),
@@ -40,7 +39,6 @@ def invoice_region(
         extraction_id=extraction_id,
         semantic_region_id=semantic_region_id,
         semantic_type=semantic_type,
-        normalized_json=normalized_json or {"schema_name": target_schema},
         region_envelope=envelope,
         claims=claims_from_region_envelope(envelope),
     )

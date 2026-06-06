@@ -297,6 +297,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   `retail_order.order_date`, and `retail_order.total` Claims, while
   service-record totals emit `service_record.*` Claims instead of leaking
   receipt-prefixed header facts into alias reconciliation.
+- 2026-06-05: Region aggregate reconciliation inputs no longer carry raw
+  `normalized_json`. The repository loader selects only region identity and
+  normalization-envelope lineage, and `RegionExtraction` now exposes only
+  optional region envelopes plus typed Claims, keeping raw model payloads out
+  of deterministic reconciliation.
 
 ## Deferred Work
 
