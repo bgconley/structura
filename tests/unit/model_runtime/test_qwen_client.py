@@ -55,6 +55,10 @@ def test_qwen_semantic_client_requires_json_schema_before_transport() -> None:
 def test_qwen_client_builds_multimodal_payload_and_returns_truthful_provenance() -> None:
     seen: dict[str, object] = {}
     image_sha256 = hashlib.sha256(b"image-bytes").hexdigest()
+    response_payload = {
+        "normalized": {"fields": [{"name": "total", "value": 42}]},
+        "confidence": {"overall": 0.74},
+    }
 
     def handler(request: httpx.Request) -> httpx.Response:
         seen["payload"] = json.loads(request.content)
@@ -63,18 +67,7 @@ def test_qwen_client_builds_multimodal_payload_and_returns_truthful_provenance()
             json={
                 "model": "Qwen/Qwen3-VL-8B-Instruct",
                 "model_version": "nvfp4-local",
-                "choices": [
-                    {
-                        "message": {
-                            "content": json.dumps(
-                                {
-                                    "normalized": {"fields": [{"name": "total", "value": 42}]},
-                                    "confidence": {"overall": 0.74},
-                                }
-                            )
-                        }
-                    }
-                ],
+                "choices": [{"message": {"content": json.dumps(response_payload)}}],
             },
         )
 
@@ -107,7 +100,7 @@ def test_qwen_client_builds_multimodal_payload_and_returns_truthful_provenance()
     assert response.profile_name == QWEN_VL_PROFILE
     assert response.model_name == "Qwen/Qwen3-VL-8B-Instruct"
     assert response.model_version == "nvfp4-local"
-    assert response.normalized_json == {"fields": [{"name": "total", "value": 42}]}
+    assert response.normalized_json == response_payload
     assert response.confidence_json == {"overall": 0.74}
     assert response.input_sha256 == (image_sha256,)
 

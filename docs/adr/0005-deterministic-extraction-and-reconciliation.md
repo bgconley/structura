@@ -532,6 +532,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   still exposed separately as transport telemetry, but downstream contract
   validation and Claim/envelope construction no longer have to synthesize null
   confidence after the adapter strips a required field.
+- 2026-06-06: The vision adapter no longer unwraps a schema-valid
+  `{"normalized": ..., "confidence": ...}` wrapper into the inner
+  `normalized` object. Adapter output is now the exact JSON object that passed
+  the response schema; any legacy wrapper shape must be represented by an
+  explicit schema or rejected before downstream normalization.
 - 2026-06-06: Granite visual crop retry usefulness now prefers the normalized
   region envelope and typed Claims when available. A crop response with
   line-item-shaped JSON but no anchored Claims is treated as not useful and may

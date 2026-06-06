@@ -206,9 +206,6 @@ def _structured_content(
     confidence = parsed.get("confidence")
     if not isinstance(confidence, dict):
         confidence = {}
-    normalized = parsed.get("normalized")
-    if isinstance(normalized, dict):
-        return normalized, confidence
     return dict(parsed), confidence
 
 

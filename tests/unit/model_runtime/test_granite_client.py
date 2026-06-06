@@ -148,6 +148,47 @@ def test_granite_client_preserves_schema_valid_confidence_in_direct_payload() ->
     assert response.confidence_json == payload["confidence"]
 
 
+def test_granite_client_preserves_schema_valid_normalized_wrapper_payload() -> None:
+    image_sha256 = hashlib.sha256(b"page-image").hexdigest()
+    payload = {
+        "normalized": {"tables": [{"columns": ["date", "amount"], "rows": 2}]},
+        "confidence": {"table_structure": 0.82},
+    }
+
+    client = GraniteVisionClient(
+        profile=get_model_profile(GRANITE_VISION_PROFILE),
+        http_client_base_url="http://model-granite:8101",
+        transport=httpx.MockTransport(
+            lambda _request: httpx.Response(
+                200,
+                json={
+                    "model": "ibm-granite/granite-4.0-3b-vision",
+                    "choices": [{"message": {"content": json.dumps(payload)}}],
+                },
+            )
+        ),
+    )
+
+    response = client.generate(
+        VisionGenerateRequest(
+            profile_name=GRANITE_VISION_PROFILE,
+            prompt_version="phase8_5-granite-structured-v1",
+            prompt="extract table structure",
+            image_inputs=(
+                ModelImageInput(content=b"page-image", mime_type="image/png", sha256=image_sha256),
+            ),
+            response_schema_name="legacy_wrapper_schema",
+            response_json_schema=_legacy_wrapper_schema(),
+            max_output_tokens=1024,
+            temperature=0.0,
+            timeout_seconds=30,
+        )
+    )
+
+    assert response.normalized_json == payload
+    assert response.confidence_json == payload["confidence"]
+
+
 def test_granite_client_rejects_confidence_only_json_that_misses_required_payload() -> None:
     image_sha256 = hashlib.sha256(b"page-image").hexdigest()
 
@@ -205,6 +246,41 @@ def _table_schema() -> dict[str, object]:
                         "columns": {"type": "array", "items": {"type": "string"}},
                         "rows": {"type": "integer"},
                     },
+                },
+            },
+            "confidence": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {"table_structure": {"type": "number"}},
+                "required": ["table_structure"],
+            },
+        },
+    }
+
+
+def _legacy_wrapper_schema() -> dict[str, object]:
+    return {
+        "type": "object",
+        "required": ["normalized", "confidence"],
+        "additionalProperties": False,
+        "properties": {
+            "normalized": {
+                "type": "object",
+                "required": ["tables"],
+                "additionalProperties": False,
+                "properties": {
+                    "tables": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": ["columns", "rows"],
+                            "additionalProperties": False,
+                            "properties": {
+                                "columns": {"type": "array", "items": {"type": "string"}},
+                                "rows": {"type": "integer"},
+                            },
+                        },
+                    }
                 },
             },
             "confidence": {
