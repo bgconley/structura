@@ -150,6 +150,7 @@ def maybe_reconcile_semantic_annotation(
         schema_name=aggregate_schema_name,
         payload=aggregate_json,
         validation=validation,
+        source_engine=gateway_extraction.route.source_engine,
     )
     return persist_extraction_run(
         gateway_extraction,

@@ -40,12 +40,11 @@ from lib.extraction.models import (
     ObservationCandidateFact,
     ValidationReport,
 )
+from lib.model_runtime.source_engines import is_qwen_source_engine
 
 AUTHORITY_WEIGHTS = {
     "docling": 0.62,
     "granite_vision_3b": 0.82,
-    "qwen3_vl_8b": 0.78,
-    "qwen3_vl_4b": 0.72,
     "validator": 0.9,
     "human": 1.0,
     "system": 0.55,
@@ -62,6 +61,8 @@ def field_candidates_from_extraction(
     require_concrete_evidence: bool = False,
 ) -> list[CandidateFact]:
     del document_id
+    if is_qwen_source_engine(source_engine):
+        return []
     evidence_fallback = _first_evidence(payload)
     confidence = _overall_confidence(payload)
     status = _candidate_status(validation, evidence_fallback, source_engine=source_engine)
@@ -93,6 +94,8 @@ def line_item_candidates_from_extraction(
     source_engine: str,
     require_concrete_evidence: bool = False,
 ) -> list[LineItemCandidateFact]:
+    if is_qwen_source_engine(source_engine):
+        return []
     confidence = _overall_confidence(payload)
     status = _candidate_status(validation, _first_evidence(payload), source_engine=source_engine)
     if schema_name == "receipt":
@@ -138,8 +141,11 @@ def observation_candidates_from_extraction(
     schema_name: str,
     payload: dict[str, Any],
     validation: ValidationReport,
+    source_engine: str = "system",
     require_concrete_evidence: bool = False,
 ) -> list[ObservationCandidateFact]:
+    if is_qwen_source_engine(source_engine):
+        return []
     if schema_name != "document_observation":
         return []
     candidates: list[ObservationCandidateFact] = []

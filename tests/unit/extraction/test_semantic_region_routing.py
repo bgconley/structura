@@ -521,6 +521,31 @@ def test_live_classification_does_not_enqueue_broad_document_extraction(monkeypa
     assert jobs.created == []
 
 
+def test_extraction_service_rejects_qwen_sourced_legacy_candidates() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    source = _source(document_id=document_id, household_id=household_id)
+    captured: dict[str, Any] = {}
+
+    def persist(*_args: object, **kwargs: object) -> PersistedExtraction:
+        captured.update(kwargs)
+        return _persisted()
+
+    ExtractionService(
+        gateway=QwenValueGateway(),
+        source_loader=lambda loaded_document_id: source,
+        persister=persist,
+    ).extract_document(
+        document_id,
+        schema_name="document_observation",
+        route_profile="qwen_primary_review_required",
+    )
+
+    assert captured["field_candidates"] == []
+    assert captured["line_item_candidates"] == []
+    assert captured["observation_candidates"] == []
+
+
 class RecordingGateway:
     def __init__(self, *, needs_review: bool = False) -> None:
         self.semantic_task: SemanticExtractionTask | None = None
@@ -569,6 +594,49 @@ class RecordingGateway:
                 "confidence": {"overall": 0.8},
                 "validation": {"needs_review": self.needs_review, "checks": []},
                 "created_at": datetime.now(UTC).isoformat(),
+                "metadata": {},
+            },
+            raw_output_json={"modelInvoked": True},
+        )
+
+
+class QwenValueGateway:
+    def extract(
+        self,
+        source: ExtractionSourceDocument,
+        *,
+        schema_name: str,
+        route_profile: str,
+        semantic_task: SemanticExtractionTask | None = None,
+    ) -> GatewayExtraction:
+        del semantic_task
+        evidence = _evidence(source_engine="qwen3_vl_8b")
+        return GatewayExtraction(
+            schema_name=schema_name,
+            schema_version="v1",
+            route=ModelRoute(
+                source_engine="qwen3_vl_8b",
+                model_name="qwen-semantic",
+                model_version="v1",
+                prompt_version="phase8_5-qwen-semantic-v1",
+                route_profile=route_profile,
+            ),
+            normalized_json={
+                "schema_name": "document_observation",
+                "schema_version": "v1",
+                "document_id": str(source.document_id),
+                "observations": [
+                    {
+                        "family": "document_observation",
+                        "field_name": "claimed_total",
+                        "value_type": "string",
+                        "value": "$42.00",
+                        "evidence": [evidence],
+                        "confidence": 0.75,
+                    }
+                ],
+                "evidence": [evidence],
+                "confidence": {"overall": 0.75},
                 "metadata": {},
             },
             raw_output_json={"modelInvoked": True},

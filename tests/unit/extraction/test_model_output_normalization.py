@@ -149,6 +149,63 @@ def test_uncontracted_document_observation_rejects_arbitrary_flat_fields() -> No
     assert metadata["rejected_fields"] == ["seller_notes"]
 
 
+def test_legacy_candidate_creation_rejects_qwen_value_sources() -> None:
+    document_id = uuid4()
+    evidence = [{"page_number": 1, "source_engine": "qwen3_vl_8b", "source_text": "$42.00"}]
+
+    field_candidates = field_candidates_from_extraction(
+        document_id=document_id,
+        schema_name="invoice",
+        payload={
+            "schema_name": "invoice",
+            "invoice": {"invoice_number": "INV-42", "evidence": evidence},
+            "totals": {
+                "total": {"amount": 42.0, "currency": "USD"},
+                "evidence": evidence,
+            },
+            "confidence": {"overall": 0.75},
+        },
+        validation=ValidationReport(needs_review=False, checks=[]),
+        source_engine="qwen3_vl_8b",
+    )
+    line_item_candidates = line_item_candidates_from_extraction(
+        schema_name="invoice",
+        payload={
+            "schema_name": "invoice",
+            "line_items": [
+                {
+                    "description": "Qwen value",
+                    "amount": {"amount": 42.0, "currency": "USD"},
+                    "evidence": evidence,
+                }
+            ],
+            "confidence": {"overall": 0.75},
+        },
+        validation=ValidationReport(needs_review=False, checks=[]),
+        source_engine="qwen3_vl_8b",
+    )
+    observation_candidates = observation_candidates_from_extraction(
+        schema_name="document_observation",
+        payload={
+            "schema_name": "document_observation",
+            "observations": [
+                {
+                    "field_name": "claimed_total",
+                    "value_type": "string",
+                    "value": "$42.00",
+                    "evidence": evidence,
+                }
+            ],
+        },
+        validation=ValidationReport(needs_review=False, checks=[]),
+        source_engine="qwen3_vl_8b",
+    )
+
+    assert field_candidates == []
+    assert line_item_candidates == []
+    assert observation_candidates == []
+
+
 def test_review_only_receipt_like_output_defers_broad_observations() -> None:
     document_id = uuid4()
 

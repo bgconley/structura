@@ -405,6 +405,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
 - 2026-06-06: The Granite extraction adapter itself now enforces the same
   grounded semantic-region requirement. Direct adapter callers cannot bypass
   routing policy and invoke broad document-level Granite extraction.
+- 2026-06-06: Legacy target-payload candidate creation now rejects Qwen-sourced
+  values outright, including document-observation candidates. Qwen remains a
+  semantic planner/router only even if a compatibility caller returns
+  target-shaped `normalized_json` with Qwen provenance.
 
 ## Deferred Work
 

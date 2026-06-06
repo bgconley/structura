@@ -261,6 +261,7 @@ class ExtractionService:
                 schema_name=normalized_schema_name,
                 payload=gateway_result.normalized_json,
                 validation=validation,
+                source_engine=gateway_result.route.source_engine,
                 require_concrete_evidence=require_concrete_candidate_evidence,
             )
         persisted = self.persister(

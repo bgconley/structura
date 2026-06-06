@@ -17,6 +17,16 @@ MODEL_SOURCE_ENGINES = frozenset(
     }
 )
 MODEL_SOURCE_ENGINE_PREFIXES = ("granite_vision_", "qwen3_vl_")
+QWEN_SOURCE_ENGINES = frozenset(
+    {
+        "qwen",
+        "qwen_vl",
+        "qwen3_vl_2b",
+        "qwen3_vl_4b",
+        "qwen3_vl_8b",
+    }
+)
+QWEN_SOURCE_ENGINE_PREFIXES = ("qwen3_vl_",)
 NON_MODEL_SOURCE_ENGINES = frozenset(
     {
         "",
@@ -43,6 +53,11 @@ def is_model_source_engine(source_engine: Any) -> bool:
     if normalized in NON_MODEL_SOURCE_ENGINES:
         return False
     return normalized in MODEL_SOURCE_ENGINES or normalized.startswith(MODEL_SOURCE_ENGINE_PREFIXES)
+
+
+def is_qwen_source_engine(source_engine: Any) -> bool:
+    normalized = normalize_source_engine(source_engine)
+    return normalized in QWEN_SOURCE_ENGINES or normalized.startswith(QWEN_SOURCE_ENGINE_PREFIXES)
 
 
 def is_non_model_source_engine(source_engine: Any) -> bool:
