@@ -346,6 +346,38 @@ def test_model_source_text_only_evidence_is_rejected() -> None:
     assert admission.events[0].reasons == ("missing_concrete_evidence",)
 
 
+def test_model_source_semantic_region_only_evidence_is_rejected_for_value_candidate() -> None:
+    context = _context(source_engine="granite_vision_3b")
+    candidate = CandidateFact(
+        field_path="receipt.transaction.total",
+        value_type="money",
+        value={"amount": 4.65, "currency": "USD"},
+        currency="USD",
+        evidence=[
+            {
+                "document_id": str(context.document_id),
+                "semantic_annotation_id": str(context.semantic_annotation_id),
+                "semantic_region_id": str(context.semantic_region_id),
+                "page_number": 1,
+                "source_engine": "granite_vision_3b",
+                "source_text": "Coffee Shop total $4.65",
+            }
+        ],
+        status="proposed",
+    )
+
+    admission = admit_extraction_candidates(
+        context=context,
+        field_candidates=[candidate],
+        line_item_candidates=[],
+        observation_candidates=[],
+    )
+
+    assert admission.field_candidates == []
+    assert admission.events[0].decision == "rejected_missing_evidence"
+    assert admission.events[0].reasons == ("missing_structural_value_anchor",)
+
+
 def test_qwen_source_engine_candidates_are_rejected_even_with_concrete_evidence() -> None:
     context = _context(source_engine="qwen3_vl_8b")
     field_candidate = CandidateFact(
@@ -1720,6 +1752,7 @@ def _evidence(context: CandidateAdmissionContext) -> dict[str, object]:
         "page_number": 1,
         "source_engine": context.source_engine,
         "source_text": "Coffee Shop total $4.65",
+        "text_span": {"start": 0, "end": 23, "basis": "page_text"},
     }
 
 

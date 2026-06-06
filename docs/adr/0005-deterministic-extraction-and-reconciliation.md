@@ -414,6 +414,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   engines as requiring structural anchors. Page-number plus source-text-only
   evidence is no longer concrete for model aliases such as `granite`,
   `model_runtime`, `granite_vision_*`, or historical Qwen profiles.
+- 2026-06-06: Candidate admission now applies an even stricter model-value
+  anchor rule: semantic-region lineage alone is not enough to admit model
+  value candidates. Model-backed fields, line items, and observations need a
+  page plus element, table row, bbox, or text-span locator.
 
 ## Deferred Work
 

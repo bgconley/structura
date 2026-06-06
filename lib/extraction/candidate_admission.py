@@ -8,6 +8,10 @@ from typing import Any
 from lib.extraction.candidate_admission_events import (
     persist_candidate_admission_events as persist_candidate_admission_events,
 )
+from lib.extraction.candidate_admission_evidence import (
+    candidate_evidence_concrete,
+    missing_evidence_reason,
+)
 from lib.extraction.candidate_admission_fingerprints import (
     field_fingerprint,
     line_item_fingerprint,
@@ -42,7 +46,6 @@ from lib.extraction.candidate_schema_policy import (
     field_path_schema_rejection_reason,
 )
 from lib.extraction.candidate_source_policy import title_derived_counterparty_rejection_reason
-from lib.extraction.evidence import has_concrete_evidence
 from lib.extraction.models import (
     CandidateFact,
     LineItemCandidateFact,
@@ -138,7 +141,7 @@ def _admit_field_candidate(
 ) -> tuple[CandidateAdmissionEvent, CandidateFact | None]:
     payload = _field_payload(candidate)
     fingerprint = field_fingerprint(candidate, context)
-    evidence_concrete = has_concrete_evidence(candidate.evidence)
+    evidence_concrete = candidate_evidence_concrete(context, candidate.evidence)
     decision, reasons = _field_rejection_decision(context, candidate, evidence_concrete)
     if fingerprint in admitted_fingerprints:
         decision, reasons = "rejected_duplicate", ("duplicate_candidate_fingerprint",)
@@ -183,7 +186,7 @@ def _admit_line_item_candidate(
 ) -> tuple[CandidateAdmissionEvent, LineItemCandidateFact | None]:
     payload = _line_item_payload(candidate)
     fingerprint = line_item_fingerprint(candidate, context)
-    evidence_concrete = has_concrete_evidence(candidate.evidence)
+    evidence_concrete = candidate_evidence_concrete(context, candidate.evidence)
     decision, reasons = _line_item_rejection_decision(context, candidate, evidence_concrete)
     if fingerprint in admitted_fingerprints:
         decision, reasons = "rejected_duplicate", ("duplicate_candidate_fingerprint",)
@@ -229,7 +232,7 @@ def _admit_observation_candidate(
 ) -> tuple[CandidateAdmissionEvent, ObservationCandidateFact | None]:
     payload = _observation_payload(candidate)
     fingerprint = observation_fingerprint(candidate, context)
-    evidence_concrete = has_concrete_evidence(candidate.evidence)
+    evidence_concrete = candidate_evidence_concrete(context, candidate.evidence)
     decision, reasons = _observation_rejection_decision(context, candidate, evidence_concrete)
     if fingerprint in admitted_fingerprints:
         decision, reasons = "rejected_duplicate", ("duplicate_candidate_fingerprint",)
@@ -288,8 +291,13 @@ def _field_rejection_decision(
     )
     if source_reason:
         return "rejected_source_provenance", (source_reason,)
-    if not evidence_concrete:
-        return "rejected_missing_evidence", ("missing_concrete_evidence",)
+    evidence_reason = missing_evidence_reason(
+        context,
+        candidate.evidence,
+        evidence_concrete=evidence_concrete,
+    )
+    if evidence_reason:
+        return "rejected_missing_evidence", (evidence_reason,)
     return None, ()
 
 
@@ -307,8 +315,13 @@ def _line_item_rejection_decision(
     rejected, reason = reject_line_item(_line_item_payload(candidate))
     if rejected:
         return decision_for_quality_reason(reason)
-    if not evidence_concrete:
-        return "rejected_missing_evidence", ("missing_concrete_evidence",)
+    evidence_reason = missing_evidence_reason(
+        context,
+        candidate.evidence,
+        evidence_concrete=evidence_concrete,
+    )
+    if evidence_reason:
+        return "rejected_missing_evidence", (evidence_reason,)
     return None, ()
 
 
@@ -323,8 +336,13 @@ def _observation_rejection_decision(
     rejected, reason = reject_observation(candidate.field_name, candidate.value)
     if rejected:
         return decision_for_quality_reason(reason)
-    if not evidence_concrete:
-        return "rejected_missing_evidence", ("missing_concrete_evidence",)
+    evidence_reason = missing_evidence_reason(
+        context,
+        candidate.evidence,
+        evidence_concrete=evidence_concrete,
+    )
+    if evidence_reason:
+        return "rejected_missing_evidence", (evidence_reason,)
     return None, ()
 
 

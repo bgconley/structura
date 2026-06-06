@@ -105,4 +105,5 @@ def _evidence(context: CandidateAdmissionContext) -> dict[str, object]:
         "page_number": 1,
         "source_engine": context.source_engine,
         "source_text": "Grounded extracted row $42.00",
+        "text_span": {"start": 0, "end": 28, "basis": "page_text"},
     }

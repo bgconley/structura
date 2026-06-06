@@ -71,6 +71,12 @@ def has_concrete_evidence(evidence: list[Evidence] | None) -> bool:
     return any(is_concrete_evidence_ref(item) for item in evidence)
 
 
+def has_structural_value_anchor(evidence: list[Evidence] | None) -> bool:
+    if not evidence:
+        return False
+    return any(is_structural_value_anchor(item) for item in evidence)
+
+
 def is_concrete_evidence_ref(item: Evidence) -> bool:
     has_page_context = (
         _evidence_value(item, "page_id", "pageId") is not None
@@ -92,6 +98,25 @@ def is_concrete_evidence_ref(item: Evidence) -> bool:
     if is_model_source_engine(_evidence_value(item, "source_engine", "sourceEngine")):
         return False
     return bool(_evidence_value(item, "source_text", "sourceText"))
+
+
+def is_structural_value_anchor(item: Evidence) -> bool:
+    has_page_context = (
+        _evidence_value(item, "page_id", "pageId") is not None
+        or _evidence_value(item, "page_number", "pageNumber") is not None
+    )
+    if not has_page_context:
+        return False
+    if item.get("bbox") is not None:
+        return True
+    if _evidence_value(item, "element_id", "elementId") is not None:
+        return True
+    if (
+        _evidence_value(item, "table_id", "tableId") is not None
+        and _evidence_value(item, "row_index", "rowIndex") is not None
+    ):
+        return True
+    return _evidence_value(item, "text_span", "textSpan") is not None
 
 
 def _evidence_value(item: Evidence, *keys: str) -> Any:
