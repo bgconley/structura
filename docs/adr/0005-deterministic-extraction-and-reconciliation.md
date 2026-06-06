@@ -307,6 +307,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   round-tripping `RegionExtractionEnvelope` data through legacy normalized
   target-schema payload parsing. Stored normalized projections remain lineage
   data, while candidate creation uses the Claim registry and resolver path.
+- 2026-06-05: Candidate admission no longer runs legacy target-payload
+  rejection scans for semantic-region extractions that carry a
+  `RegionExtractionEnvelope`. Claim-backed semantic-region candidates are the
+  admission input; normalized projections remain debug/lineage data instead of
+  a second reject-list surface.
 
 ## Deferred Work
 

@@ -17,6 +17,7 @@ from lib.extraction.models import (
     LineItemCandidateFact,
     ObservationCandidateFact,
 )
+from lib.extraction.region_envelope import region_envelope_from_normalization_json
 
 
 @dataclass(frozen=True)
@@ -53,9 +54,10 @@ def apply_candidate_admission_boundary(
         field_candidates=field_candidates,
         line_item_candidates=line_item_candidates,
         observation_candidates=observation_candidates,
-        rejected_candidate_payloads=rejected_candidates_from_payload(
-            schema_name=normalized_schema_name,
-            payload=extraction.normalized_json,
+        rejected_candidate_payloads=_rejected_payloads_for_boundary(
+            extraction=extraction,
+            run_scope=run_scope,
+            normalized_schema_name=normalized_schema_name,
             context=context,
             require_concrete_evidence=require_concrete_evidence,
         ),
@@ -76,3 +78,24 @@ def _optional_str(value: object) -> str | None:
     if value in (None, ""):
         return None
     return str(value)
+
+
+def _rejected_payloads_for_boundary(
+    *,
+    extraction: GatewayExtraction,
+    run_scope: ExtractionRunScope,
+    normalized_schema_name: str,
+    context: CandidateAdmissionContext,
+    require_concrete_evidence: bool,
+) -> list[dict[str, object]]:
+    if (
+        run_scope.extraction_scope == "semantic_region"
+        and region_envelope_from_normalization_json(extraction.normalization_json) is not None
+    ):
+        return []
+    return rejected_candidates_from_payload(
+        schema_name=normalized_schema_name,
+        payload=extraction.normalized_json,
+        context=context,
+        require_concrete_evidence=require_concrete_evidence,
+    )
