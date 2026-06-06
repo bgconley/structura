@@ -433,6 +433,12 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   extraction-bearing root key, and contract validation rejects empty-root
   schemas. This keeps `{}` from being schema-valid model output while still
   allowing honest abstention through empty arrays or nullable fragment fields.
+- 2026-06-06: Invoice payment-summary normalization now reads only fields
+  declared by `granite_payment_summary.v1`: `invoice_no`, top-level `amount`,
+  and declared `payments[]` fields. Legacy aliases such as top-level
+  `invoice_number`, nested `invoice`, `totals.amount_paid`, and
+  `metadata.payment_summary` remain rejected off-contract payload instead of
+  being mined for canonical candidates.
 
 ## Deferred Work
 
