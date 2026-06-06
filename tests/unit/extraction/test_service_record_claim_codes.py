@@ -60,10 +60,10 @@ def test_service_record_line_item_model_output_preserves_operation_and_part_code
     ]
 
 
-def test_service_record_flat_output_preserves_operation_and_part_codes() -> None:
+def test_service_record_flat_output_does_not_create_code_claims() -> None:
     document_id = uuid4()
 
-    normalized, _metadata = normalize_granite_region_output(
+    normalized, metadata = normalize_granite_region_output(
         document_id=document_id,
         schema_name="receipt",
         model_output_schema_name="granite_service_record_line_items.v1",
@@ -78,8 +78,15 @@ def test_service_record_flat_output_preserves_operation_and_part_codes() -> None
         evidence_context=_evidence_context(document_id),
     )
 
-    assert normalized["line_items"][0]["sku"] == "0000600"
-    assert normalized["line_items"][1]["sku"] == "33-11-7-695-240"
+    assert normalized["line_items"] == []
+    assert metadata["rejected_fields"] == [
+        "labor_operation",
+        "line_total",
+        "part_number",
+        "quantity",
+        "service_description",
+        "unit_price",
+    ]
 
 
 def _evidence_context(document_id: UUID) -> EvidenceContext:

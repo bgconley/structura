@@ -714,7 +714,7 @@ def test_receipt_line_item_model_output_maps_to_canonical_receipt_lines() -> Non
     assert metadata["mapper"] == "granite_receipt_line_items.v1"
 
 
-def test_service_record_flat_output_maps_to_canonical_receipt_lines() -> None:
+def test_service_record_flat_output_is_rejected_as_off_contract_shape() -> None:
     document_id = uuid4()
 
     normalized, metadata = normalize_granite_region_output(
@@ -736,14 +736,15 @@ def test_service_record_flat_output_maps_to_canonical_receipt_lines() -> None:
     )
 
     assert normalized["schema_name"] == "receipt"
-    assert [item["description"] for item in normalized["line_items"]] == [
-        "PERFORM 600 MILE RUNNING-IN CHECK ACCORDING TO BMWCHECKLIST.",
-        "MOUNT AND BALANCE FRONT AND REAR TIRES.DISPOSE OF OLD TIRES.",
-        ":Gypoid axle oil G3",
-        ":TIRE PR 4SC 160/60R15 67H",
+    assert normalized["line_items"] == []
+    assert metadata["rejected_fields"] == [
+        "labor_operation",
+        "line_total",
+        "part_number",
+        "quantity",
+        "service_description",
+        "unit_price",
     ]
-    assert normalized["line_items"][0]["amount"] == {"amount": 250.0, "currency": "USD"}
-    assert normalized["line_items"][2]["quantity"] == 1.0
     assert metadata["mapper"] == "granite_service_record_line_items.v1"
 
 

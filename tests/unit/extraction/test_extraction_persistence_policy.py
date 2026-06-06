@@ -98,14 +98,14 @@ def test_non_model_semantic_region_can_keep_auto_accepted_review_status() -> Non
     assert status == "auto_accepted"
 
 
-def test_bmw_style_flat_granite_invoice_fields_create_line_item_candidates() -> None:
+def test_flat_granite_invoice_fields_do_not_create_line_item_candidates() -> None:
     validation = ValidationReport(
         needs_review=True,
         checks=[
             {
                 "code": "json_schema",
                 "status": "failed",
-                "message": "Granite returned a noncanonical but useful flat payload.",
+                "message": "Granite returned off-contract flat fields.",
             }
         ],
     )
@@ -132,16 +132,7 @@ def test_bmw_style_flat_granite_invoice_fields_create_line_item_candidates() -> 
         source_engine="granite_vision_3b",
     )
 
-    assert [candidate.description for candidate in candidates] == [
-        "PERFORM 600 MILE RUNNING-IN CHECK ACCORDING TO BMW CHECKLIST.",
-        "MOUNT AND BALANCE FRONT AND REAR TIRES. DISPOSE OF OLD TIRES.",
-        ":Gypoid axle oil G3",
-        ":TIRE PR 4SC 160/60R15 67H",
-        ":TIRE PR 4SC 120/70R15 56H",
-    ]
-    assert all(candidate.status == "needs_review" for candidate in candidates)
-    assert candidates[0].net_amount == 250.00
-    assert candidates[2].net_amount == 51.00
+    assert candidates == []
 
 
 def test_wrapped_granite_invoice_lines_do_not_create_line_item_candidates() -> None:

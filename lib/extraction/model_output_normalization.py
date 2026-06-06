@@ -21,19 +21,10 @@ from lib.extraction.model_output_line_items import (
     is_non_line_item_heading as _is_non_line_item_heading,
 )
 from lib.extraction.model_output_line_items import (
-    join_source_text as _join_source_text,
-)
-from lib.extraction.model_output_line_items import (
     line_item_amount as _line_item_amount,
 )
 from lib.extraction.model_output_line_items import (
     line_item_description as _line_item_description,
-)
-from lib.extraction.model_output_line_items import (
-    service_record_line_item as _service_record_line_item,
-)
-from lib.extraction.model_output_line_items import (
-    simple_line_item as _line_item,
 )
 from lib.extraction.model_output_observations import (
     looks_like_schema_echo as _looks_like_schema_echo,
@@ -58,9 +49,6 @@ from lib.extraction.model_output_value_parsing import (
 )
 from lib.extraction.model_output_value_parsing import (
     number_value as _number,
-)
-from lib.extraction.model_output_value_parsing import (
-    string_values as _string_list,
 )
 from lib.extraction.model_output_wrappers import (
     unwrap_model_output_payload as _unwrapped_payload,
@@ -176,14 +164,6 @@ def normalize_granite_region_output(
             resolved_document_type=resolved_document_type,
         )
         return finalize(normalized, metadata)
-    if schema_name == "invoice" and _has_flat_invoice_line_items(model_payload):
-        normalized, metadata = _invoice_line_items_output(
-            document_id,
-            model_payload,
-            evidence_context=evidence_context,
-            docling_table_quality=docling_table_quality,
-        )
-        return finalize(normalized, metadata)
     return finalize(
         model_payload,
         {"mapper": None, "repairs": [], "rejected_fields": []},
@@ -222,7 +202,7 @@ def invoice_line_item_dicts_from_payload(
     records = _invoice_line_item_records(model_payload)
     if records:
         return _canonical_invoice_line_items(records, evidence_context=evidence_context)
-    return _flat_invoice_line_items(model_payload, evidence_context=evidence_context)
+    return []
 
 
 def _invoice_line_items_output(
@@ -400,9 +380,6 @@ def _service_record_line_items_output(
     records = _invoice_line_item_records(payload)
     line_items = _canonical_receipt_line_items(records, evidence_context=evidence_context)
     repairs = ["mapped_model_output_to_canonical_service_record_line_items"]
-    if not line_items:
-        line_items = _service_record_flat_line_items(payload, evidence_context=evidence_context)
-        repairs.append("mapped_flat_service_record_fields_to_line_items")
     consistency = gate_docling_authoritative_rows(line_items, docling_table_quality)
     line_items = consistency.accepted_rows
     confidence = payload.get("confidence") if isinstance(payload.get("confidence"), dict) else {}
@@ -415,14 +392,14 @@ def _service_record_line_items_output(
         ("tax_total", "tax"),
         ("total", "total"),
     ):
-        amount = _money(totals.get(source_key) or payload.get(source_key))
+        amount = _money(totals.get(source_key))
         if amount:
             transaction[target_key] = amount
     normalized: dict[str, Any] = {
         "schema_name": "receipt",
         "schema_version": "v1",
         "document_id": str(document_id),
-        "merchant": _receipt_merchant(payload, evidence_context=evidence_context),
+        "merchant": {},
         "transaction": transaction,
         "line_items": line_items,
         "confidence": confidence,
@@ -434,26 +411,7 @@ def _service_record_line_items_output(
         "repairs": repairs,
         "rejected_fields": _rejected_fields(
             payload,
-            {
-                "line_items",
-                "service_description",
-                "labor_operation",
-                "part_number",
-                "parts",
-                "quantity",
-                "unit",
-                "unit_price",
-                "line_total",
-                "amount",
-                "totals",
-                "subtotal",
-                "tax",
-                "tax_total",
-                "total",
-                "confidence",
-                "merchant",
-                "merchant_name",
-            },
+            {"line_items", "totals", "confidence"},
         ),
     }
     return apply_table_consistency_projection(normalized, metadata, consistency)
@@ -741,109 +699,12 @@ def _canonical_receipt_line_items(
     return normalized
 
 
-def _flat_invoice_line_items(
-    payload: dict[str, Any],
-    *,
-    evidence_context: EvidenceContext | None,
-) -> list[dict[str, Any]]:
-    service_descriptions = _string_list(payload.get("service_description"))
-    parts = _string_list(payload.get("parts"))
-    labor_costs = _string_list(payload.get("labor_cost"))
-    parts_costs = _string_list(payload.get("parts_cost"))
-    items: list[dict[str, Any]] = []
-    for index, description in enumerate(service_descriptions):
-        amount = _money(labor_costs[index] if index < len(labor_costs) else None)
-        items.append(
-            _line_item(
-                len(items) + 1,
-                description,
-                amount,
-                "service",
-                evidence_context=evidence_context,
-            )
-        )
-    for index, description in enumerate(parts):
-        amount = _money(parts_costs[index] if index < len(parts_costs) else None)
-        items.append(
-            _line_item(
-                len(items) + 1,
-                description,
-                amount,
-                "part",
-                evidence_context=evidence_context,
-            )
-        )
-    return items
-
-
-def _service_record_flat_line_items(
-    payload: dict[str, Any],
-    *,
-    evidence_context: EvidenceContext | None,
-) -> list[dict[str, Any]]:
-    service_descriptions = _string_list(payload.get("service_description"))
-    labor_operations = _string_list(payload.get("labor_operation"))
-    part_numbers = _string_list(payload.get("part_number") or payload.get("parts"))
-    quantities = _string_list(payload.get("quantity"))
-    unit_prices = _string_list(payload.get("unit_price"))
-    line_totals = _string_list(payload.get("line_total") or payload.get("amount"))
-    units = _string_list(payload.get("unit"))
-    items: list[dict[str, Any]] = []
-    for index, description in enumerate(service_descriptions):
-        items.append(
-            _service_record_line_item(
-                ordinal=len(items) + 1,
-                description=description,
-                category_hint="service",
-                quantity=quantities[index] if index < len(quantities) else None,
-                unit=units[index] if index < len(units) else None,
-                unit_price=unit_prices[index] if index < len(unit_prices) else None,
-                amount=line_totals[index] if index < len(line_totals) else None,
-                source_text=_join_source_text(
-                    description,
-                    labor_operation=(
-                        labor_operations[index] if index < len(labor_operations) else None
-                    ),
-                ),
-                evidence_context=evidence_context,
-                code=labor_operations[index] if index < len(labor_operations) else None,
-            )
-        )
-    for index, part_number in enumerate(part_numbers):
-        amount_index = len(service_descriptions) + index
-        items.append(
-            _service_record_line_item(
-                ordinal=len(items) + 1,
-                description=part_number,
-                category_hint="part",
-                quantity=quantities[index] if index < len(quantities) else None,
-                unit=units[index] if index < len(units) else None,
-                unit_price=unit_prices[index] if index < len(unit_prices) else None,
-                amount=(
-                    line_totals[amount_index]
-                    if amount_index < len(line_totals)
-                    else (line_totals[index] if index < len(line_totals) else None)
-                ),
-                source_text=part_number,
-                evidence_context=evidence_context,
-                code=part_number,
-            )
-        )
-    return [item for item in items if item["description"]]
-
-
 def _invoice_line_item_records(payload: dict[str, Any]) -> list[Any]:
     if isinstance(payload.get("line_items"), list):
         return list(payload["line_items"])
     if isinstance(payload.get("invoice_line_items"), list):
         return list(payload["invoice_line_items"])
     return []
-
-
-def _has_flat_invoice_line_items(payload: dict[str, Any]) -> bool:
-    return any(
-        key in payload for key in ("service_description", "parts", "labor_cost", "parts_cost")
-    )
 
 
 def _with_evidence_context(

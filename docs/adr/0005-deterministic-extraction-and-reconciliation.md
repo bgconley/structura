@@ -357,6 +357,12 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   as `{"data": ...}` or `{"normalized": ...}`. Contracted model-output schemas
   are the direct payload shape; wrapper objects remain off-contract fields for
   schema validation/admission instead of becoming a downstream repair path.
+- 2026-06-06: Flat, corpus-specific line-item repair paths were removed for
+  invoice and service-record outputs. Granite line-item fragments must use the
+  contracted top-level `line_items` array; flat arrays such as
+  `service_description`, `parts`, `labor_cost`, `part_number`, and `line_total`
+  are rejected as off-contract top-level fields instead of being mined for
+  candidates or Claims.
 
 ## Deferred Work
 
