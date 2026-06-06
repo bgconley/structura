@@ -133,11 +133,14 @@ def claims_from_region_envelope(envelope: RegionExtractionEnvelope) -> list[Clai
 
 
 def claim_anchor_from_evidence(refs: list[EvidenceRef]) -> ClaimAnchor | None:
+    anchors: list[ClaimAnchor] = []
     for ref in refs:
         anchor = _anchor_from_ref(ref)
         if anchor is not None:
-            return anchor
-    return None
+            anchors.append(anchor)
+    if not anchors:
+        return None
+    return min(anchors, key=_anchor_selection_key)
 
 
 def _claim_from_fact(
@@ -308,6 +311,29 @@ def _anchor_from_ref(ref: EvidenceRef) -> ClaimAnchor | None:
         bbox=tuple(ref.bbox) if ref.bbox is not None else None,
         text_span=ref.text_span,
         semantic_region_id=ref.semantic_region_id,
+    )
+
+
+def _anchor_selection_key(anchor: ClaimAnchor) -> tuple[int, int, str, str, int, str]:
+    return (
+        -_anchor_specificity(anchor),
+        anchor.page_number if anchor.page_number is not None else 1_000_000_000,
+        anchor.page_id or "",
+        anchor.table_id or "",
+        anchor.row_index if anchor.row_index is not None else 1_000_000_000,
+        _stable_json(anchor.as_json()),
+    )
+
+
+def _anchor_specificity(anchor: ClaimAnchor) -> int:
+    return sum(
+        (
+            bool(anchor.docling_element_ids),
+            anchor.table_id not in (None, ""),
+            anchor.row_index is not None,
+            anchor.bbox is not None,
+            anchor.text_span is not None,
+        )
     )
 
 

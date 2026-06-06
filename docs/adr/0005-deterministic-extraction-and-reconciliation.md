@@ -506,6 +506,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
 - 2026-06-06: Claim source provenance is now method-first. Granite fragment
   methods produce Granite value Claims even when evidence refs describe Docling
   anchor structure, and fallback evidence-source resolution is order-insensitive.
+- 2026-06-06: Claim anchor selection now evaluates all structural evidence refs
+  instead of trusting list order. The selector prefers richer anchors and then a
+  stable page/table/row/json key, so the same evidence set yields the same Claim
+  identity even when provider evidence arrays are reordered.
 
 ## Deferred Work
 

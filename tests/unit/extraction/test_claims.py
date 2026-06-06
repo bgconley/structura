@@ -183,6 +183,52 @@ def test_claim_source_uses_granite_method_for_docling_anchor_evidence() -> None:
     assert claims[0].source_engine == "granite"
 
 
+def test_claim_anchor_selection_is_order_insensitive_for_evidence_set() -> None:
+    document_id = uuid4()
+    region_id = uuid4()
+    first_ref = EvidenceRef(
+        document_id=str(document_id),
+        semantic_region_id=str(region_id),
+        page_number=1,
+        table_id="table-1",
+        row_index=1,
+        source_engine="granite_vision_3b",
+    )
+    second_ref = EvidenceRef(
+        document_id=str(document_id),
+        semantic_region_id=str(region_id),
+        page_number=1,
+        table_id="table-1",
+        row_index=3,
+        source_engine="granite_vision_3b",
+    )
+
+    def envelope(evidence: list[EvidenceRef]) -> RegionExtractionEnvelope:
+        return RegionExtractionEnvelope(
+            document_id=str(document_id),
+            semantic_region_id=str(region_id),
+            resolved_document_type="invoice",
+            semantic_type="payment_summary",
+            target_schema="invoice",
+            model_output_schema_name="granite_payment_summary.v1",
+            facts=[
+                RegionFact(
+                    name="invoice.total_amount",
+                    value={"amount": 42.5, "currency": "USD"},
+                    value_type="money",
+                    evidence=evidence,
+                )
+            ],
+        )
+
+    first = claims_from_region_envelope(envelope([second_ref, first_ref]))[0]
+    second = claims_from_region_envelope(envelope([first_ref, second_ref]))[0]
+
+    assert first.claim_id == second.claim_id
+    assert first.anchor.row_index == 1
+    assert second.anchor.row_index == 1
+
+
 def test_invoice_total_adjustment_claims_are_admissible() -> None:
     document_id = uuid4()
     region_id = uuid4()
