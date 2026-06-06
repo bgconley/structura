@@ -209,6 +209,11 @@ class ExtractionService:
         require_concrete_candidate_evidence = (
             semantic_task is not None and gateway_result.route.source_engine != "system"
         )
+        model_semantic_region_missing_envelope = (
+            semantic_task is not None
+            and is_model_source_engine(gateway_result.route.source_engine)
+            and region_envelope is None
+        )
         if region_envelope is not None:
             field_candidates = field_candidates_from_region_envelope(
                 document_id=document_id,
@@ -228,6 +233,14 @@ class ExtractionService:
                 validation=validation,
                 require_concrete_evidence=require_concrete_candidate_evidence,
             )
+        elif model_semantic_region_missing_envelope:
+            gateway_result.normalization_json["regionEnvelopeMissing"] = True
+            gateway_result.normalization_json["candidateSource"] = (
+                "suppressed_missing_region_envelope"
+            )
+            field_candidates = []
+            line_item_candidates = []
+            observation_candidates = []
         else:
             field_candidates = field_candidates_from_extraction(
                 document_id=document_id,

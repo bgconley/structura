@@ -399,6 +399,66 @@ def test_extraction_service_builds_candidates_from_region_envelope() -> None:
     assert persisted_total["evidence"][0]["semantic_region_id"] == str(region_id)
 
 
+def test_model_semantic_region_without_envelope_does_not_create_payload_candidates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    region_id = uuid4()
+    source = _source(document_id=document_id, household_id=household_id)
+    task = SemanticExtractionTask(
+        region_id=region_id,
+        annotation_id=uuid4(),
+        document_id=document_id,
+        semantic_type="payment_summary",
+        granite_task="kvp",
+        target_schema="invoice",
+        expected_fields=("total_amount",),
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+    )
+    captured: dict[str, Any] = {}
+
+    def fail_legacy_candidate_path(*_args: object, **_kwargs: object) -> list[object]:
+        raise AssertionError("legacy payload candidate path should not run")
+
+    monkeypatch.setattr(
+        "lib.extraction.service.field_candidates_from_extraction",
+        fail_legacy_candidate_path,
+    )
+    monkeypatch.setattr(
+        "lib.extraction.service.line_item_candidates_from_extraction",
+        fail_legacy_candidate_path,
+    )
+    monkeypatch.setattr(
+        "lib.extraction.service.observation_candidates_from_extraction",
+        fail_legacy_candidate_path,
+    )
+
+    def persist(*args: object, **kwargs: object) -> PersistedExtraction:
+        captured["extraction"] = args[0]
+        captured.update(kwargs)
+        return _persisted()
+
+    ExtractionService(
+        gateway=RecordingGateway(),
+        source_loader=lambda loaded_document_id: source,
+        semantic_task_loader=lambda loaded_region_id: task,
+        persister=persist,
+    ).extract_document(
+        document_id,
+        schema_name="invoice",
+        route_profile="docling_plus_granite_structured",
+        semantic_region_id=region_id,
+    )
+
+    assert captured["field_candidates"] == []
+    assert captured["line_item_candidates"] == []
+    assert captured["observation_candidates"] == []
+    assert captured["extraction"].normalization_json["candidateSource"] == (
+        "suppressed_missing_region_envelope"
+    )
+
+
 def test_extraction_service_validates_non_model_semantic_region_as_full_schema() -> None:
     document_id = uuid4()
     household_id = uuid4()

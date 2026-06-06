@@ -394,6 +394,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
 - 2026-06-06: The live extraction routing gateway no longer imports, accepts,
   constructs, or branches to a Qwen extraction gateway. Qwen remains a semantic
   planner only; disabled Qwen extraction routes fail closed before model use.
+- 2026-06-06: Model-backed semantic-region extractions without a
+  `RegionExtractionEnvelope` no longer fall through to legacy target-payload
+  candidate creation. Candidates are suppressed and normalization metadata marks
+  the missing envelope so semantic-region candidates stay Claim/envelope-backed.
 
 ## Deferred Work
 
