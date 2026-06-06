@@ -54,6 +54,12 @@ class ClaimFamilyRegistry:
     arithmetic_invariants: tuple[ClaimArithmeticInvariant, ...] = ()
     line_item_sum_invariants: tuple[ClaimLineItemSumInvariant, ...] = ()
     money_upper_bound_invariants: tuple[ClaimMoneyUpperBoundInvariant, ...] = ()
+    aggregate_schema_name: str | None = None
+    aggregate_schema_version: str = "v1"
+    aggregate_line_items_key: str | None = None
+    aggregate_line_item_required_field: str | None = None
+    aggregate_required_containers: tuple[str, ...] = ()
+    aggregate_optional_containers: tuple[str, ...] = ()
 
 
 INVOICE_CLAIM_REGISTRY = ClaimFamilyRegistry(
@@ -116,6 +122,10 @@ INVOICE_CLAIM_REGISTRY = ClaimFamilyRegistry(
             "category_hint": ("text",),
         },
     ),
+    aggregate_schema_name="invoice",
+    aggregate_line_items_key="line_items",
+    aggregate_line_item_required_field="description",
+    aggregate_required_containers=("invoice", "totals"),
 )
 
 RECEIPT_CLAIM_REGISTRY = ClaimFamilyRegistry(
@@ -180,6 +190,10 @@ RECEIPT_CLAIM_REGISTRY = ClaimFamilyRegistry(
             "category_hint": ("text",),
         },
     ),
+    aggregate_schema_name="receipt",
+    aggregate_line_items_key="line_items",
+    aggregate_line_item_required_field="description",
+    aggregate_required_containers=("merchant", "transaction"),
 )
 
 MEDICAL_EOB_CLAIM_REGISTRY = ClaimFamilyRegistry(
@@ -267,6 +281,11 @@ MEDICAL_EOB_CLAIM_REGISTRY = ClaimFamilyRegistry(
             "category_hint": ("text",),
         },
     ),
+    aggregate_schema_name="medical_eob",
+    aggregate_line_items_key="service_lines",
+    aggregate_line_item_required_field="service_description",
+    aggregate_required_containers=("payer", "patient", "claim", "financial_summary"),
+    aggregate_optional_containers=("provider",),
 )
 
 SERVICE_RECORD_CLAIM_REGISTRY = ClaimFamilyRegistry(

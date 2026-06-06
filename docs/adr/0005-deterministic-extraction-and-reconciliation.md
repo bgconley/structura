@@ -317,6 +317,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   stored normalized projection. This keeps evidence health aligned with the
   same Claim-backed path used for candidate creation and admission while
   preserving normalized projections as debug/lineage data only.
+- 2026-06-05: Claim family registries now carry aggregate projection metadata
+  for first-class families, and Medical EOB aggregate JSON is built through the
+  shared registry-driven Claim projector instead of bespoke container and
+  service-line dict assembly. This starts moving app-payload projection toward
+  declarative family registry data while preserving the existing schema shape.
 
 ## Deferred Work
 
