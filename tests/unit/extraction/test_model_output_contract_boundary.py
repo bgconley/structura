@@ -60,3 +60,26 @@ def test_receipt_payment_summary_ignores_off_contract_merchant_alias() -> None:
     assert normalized["merchant"] == {}
     assert normalized["transaction"]["total"] == {"amount": 4.65, "currency": "USD"}
     assert metadata["rejected_fields"] == ["merchant"]
+
+
+def test_line_item_contract_boundary_reports_nested_off_contract_fields() -> None:
+    document_id = uuid4()
+
+    normalized, metadata = normalize_granite_region_output(
+        document_id=document_id,
+        schema_name="receipt",
+        model_output_schema_name="granite_receipt_line_items.v1",
+        payload={
+            "line_items": [
+                {
+                    "description": "Coffee",
+                    "amount": "$4.65",
+                    "service_description": "Off-contract alias",
+                }
+            ],
+            "confidence": {"overall": 0.61},
+        },
+    )
+
+    assert normalized["line_items"] == []
+    assert metadata["rejected_fields"] == ["line_items[0].service_description"]

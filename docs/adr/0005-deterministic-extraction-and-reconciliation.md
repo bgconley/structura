@@ -446,6 +446,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   root-key boundary before mapper-specific logic. Off-contract top-level
   fields are removed from mapper input and reported as rejected fields, so
   aliases cannot be mined even in fixture/direct-normalizer paths.
+- 2026-06-06: The contract boundary now applies recursively to nested object
+  properties and array items. Malformed object records inside arrays are
+  dropped as whole records and their rejected field paths are reported,
+  preserving fail-closed fragment behavior for line items and payment rows.
 
 ## Deferred Work
 
