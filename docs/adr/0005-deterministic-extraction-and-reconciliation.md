@@ -248,6 +248,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   invariant path as invoices. `receipt.transaction.total` is demoted to
   `needs_review` with `cross_field_arithmetic_conflict` when the selected
   subtotal, tax, and tip Claims do not reconcile.
+- 2026-06-05: Receipt line-item rollups now also use the shared Claim
+  invariant path. A selected `receipt.transaction.subtotal` is demoted to
+  `needs_review` with `line_item_sum_conflict` when it disagrees with the
+  resolved sum of receipt line-item amounts.
 
 ## Deferred Work
 

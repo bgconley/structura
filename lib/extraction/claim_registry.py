@@ -127,6 +127,13 @@ RECEIPT_CLAIM_REGISTRY = ClaimFamilyRegistry(
             reason_code="cross_field_arithmetic_conflict",
         ),
     ),
+    line_item_sum_invariants=(
+        ClaimLineItemSumInvariant(
+            target_key="receipt.transaction.subtotal",
+            line_item_field="amount",
+            reason_code="line_item_sum_conflict",
+        ),
+    ),
     line_item_projection=ClaimLineItemProjection(
         canonical_prefix="receipt.line_item.",
         field_map={

@@ -167,6 +167,60 @@ def test_receipt_claim_resolver_demotes_total_arithmetic_conflicts_to_review() -
     assert projection.quality_outcome == "needs_human_review"
 
 
+def test_receipt_claim_resolver_demotes_line_item_sum_conflicts_to_review() -> None:
+    anchor = ClaimAnchor(page_number=1, table_id="receipt-summary", row_index=1)
+    subtotal = _claim(
+        canonical_key="receipt.transaction.subtotal",
+        typed_value={"amount": 25.0, "currency": "USD"},
+        source_engine="granite",
+        anchor=anchor,
+    )
+    tax = _claim(
+        canonical_key="receipt.transaction.tax",
+        typed_value={"amount": 0.0, "currency": "USD"},
+        source_engine="granite",
+        anchor=anchor,
+    )
+    total = _claim(
+        canonical_key="receipt.transaction.total",
+        typed_value={"amount": 25.0, "currency": "USD"},
+        source_engine="granite",
+        anchor=anchor,
+    )
+    first_line = _claim(
+        canonical_key="receipt.line_item.amount",
+        typed_value={"amount": 10.0, "currency": "USD"},
+        source_engine="granite",
+        anchor=ClaimAnchor(page_number=1, table_id="receipt-lines", row_index=1),
+        group_id="receipt-line-1",
+    )
+    second_line = _claim(
+        canonical_key="receipt.line_item.amount",
+        typed_value={"amount": 5.0, "currency": "USD"},
+        source_engine="granite",
+        anchor=ClaimAnchor(page_number=1, table_id="receipt-lines", row_index=2),
+        group_id="receipt-line-2",
+    )
+
+    projection = resolve_claims_for_family(
+        family="receipt",
+        claims=[subtotal, tax, total, first_line, second_line],
+    )
+
+    assert projection.fields["transaction"]["subtotal"] == {"amount": 25.0, "currency": "USD"}
+    assert [item["amount"] for item in projection.line_items] == [
+        {"amount": 10.0, "currency": "USD"},
+        {"amount": 5.0, "currency": "USD"},
+    ]
+    assert {
+        (decision.canonical_key, decision.decision, decision.reason_code)
+        for decision in projection.decisions
+    } >= {
+        ("receipt.transaction.subtotal", "needs_review", "line_item_sum_conflict"),
+    }
+    assert projection.quality_outcome == "needs_human_review"
+
+
 def test_invoice_claim_resolver_demotes_arithmetic_conflicts_to_review() -> None:
     anchor = ClaimAnchor(page_number=1, table_id="totals-table", row_index=1)
     invoice_number = _claim(
