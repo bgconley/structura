@@ -216,6 +216,16 @@ def _field_payload_values(
             ("invoice.due_date", invoice, invoice.get("due_on")),
             ("invoice.subtotal", _dict(totals.get("subtotal")), totals.get("subtotal")),
             ("invoice.tax_total", _dict(totals.get("tax_total")), totals.get("tax_total")),
+            (
+                "invoice.shipping_total",
+                _dict(totals.get("shipping_total")),
+                totals.get("shipping_total"),
+            ),
+            (
+                "invoice.discount_total",
+                _dict(totals.get("discount_total")),
+                totals.get("discount_total"),
+            ),
             ("invoice.total_amount", _dict(totals.get("total")), totals.get("total")),
             ("invoice.balance_due", _dict(totals.get("balance_due")), totals.get("balance_due")),
         ]

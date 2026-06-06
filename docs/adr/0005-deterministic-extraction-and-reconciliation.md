@@ -269,6 +269,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   patient responsibility exceeds total allowed beyond the two-cent validator
   tolerance, `medical_eob.total_allowed` is demoted to `needs_review` with
   `cross_field_plausibility_conflict`.
+- 2026-06-05: Invoice total adjustments now flow through the constrained
+  Granite line-item schema, normalization, region envelope facts, Claim
+  admission, and resolver registry. `invoice.shipping_total` and
+  `invoice.discount_total` are projected into `invoice.v1` totals, and invoice
+  total arithmetic now evaluates subtotal plus tax plus shipping minus discount.
 
 ## Deferred Work
 

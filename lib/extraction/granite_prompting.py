@@ -248,7 +248,9 @@ def _line_item_shape(model_output_schema: ModelOutputSchema) -> str:
         )
     return (
         'Use shape {"line_items":[{"ordinal":1,"description":"visible row",'
-        '"quantity":null,"unit_price":null,"amount":null}],"totals":{},'
+        '"quantity":null,"unit_price":null,"amount":null}],'
+        '"totals":{"subtotal":null,"tax_total":null,'
+        '"shipping_total":null,"discount_total":null,"total":null},'
         '"confidence":{}}.'
     )
 

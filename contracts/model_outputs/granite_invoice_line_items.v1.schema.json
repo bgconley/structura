@@ -32,6 +32,8 @@
       "properties": {
         "subtotal": {"type": ["number", "string", "null"]},
         "tax_total": {"type": ["number", "string", "null"]},
+        "shipping_total": {"type": ["number", "string", "null"]},
+        "discount_total": {"type": ["number", "string", "null"]},
         "total": {"type": ["number", "string", "null"]}
       }
     },

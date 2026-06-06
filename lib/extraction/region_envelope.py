@@ -253,6 +253,8 @@ def _facts_from_projection(
                 (
                     ("subtotal", "invoice.subtotal", "money"),
                     ("tax_total", "invoice.tax_total", "money"),
+                    ("shipping_total", "invoice.shipping_total", "money"),
+                    ("discount_total", "invoice.discount_total", "money"),
                     ("total", "invoice.total_amount", "money"),
                     ("amount_paid", "invoice.amount_paid", "money"),
                     ("balance_due", "invoice.balance_due", "money"),

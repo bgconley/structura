@@ -109,6 +109,52 @@ def test_claim_id_ignores_raw_source_payload_noise() -> None:
     assert first.source_engine == "granite"
 
 
+def test_invoice_total_adjustment_claims_are_admissible() -> None:
+    document_id = uuid4()
+    region_id = uuid4()
+    evidence = EvidenceRef(
+        document_id=str(document_id),
+        semantic_region_id=str(region_id),
+        page_number=1,
+        table_id="invoice-totals",
+        row_index=1,
+        source_engine="granite_vision_3b",
+    )
+    envelope = RegionExtractionEnvelope(
+        document_id=str(document_id),
+        semantic_region_id=str(region_id),
+        resolved_document_type="invoice",
+        semantic_type="invoice_line_item_table",
+        target_schema="invoice",
+        model_output_schema_name="granite_invoice_line_items.v1",
+        facts=[
+            RegionFact(
+                name="invoice.shipping_total",
+                value={"amount": 5.0, "currency": "USD"},
+                value_type="money",
+                evidence=[evidence],
+            ),
+            RegionFact(
+                name="invoice.discount_total",
+                value={"amount": 15.0, "currency": "USD"},
+                value_type="money",
+                evidence=[evidence],
+            ),
+        ],
+    )
+
+    claims = claims_from_region_envelope(envelope)
+
+    assert [claim.canonical_key for claim in claims] == [
+        "invoice.shipping_total",
+        "invoice.discount_total",
+    ]
+    assert {claim.canonical_key: claim.typed_value for claim in claims} == {
+        "invoice.shipping_total": {"amount": 5.0, "currency": "USD"},
+        "invoice.discount_total": {"amount": 15.0, "currency": "USD"},
+    }
+
+
 def test_claims_reject_qwen_sourced_values() -> None:
     document_id = uuid4()
     region_id = uuid4()

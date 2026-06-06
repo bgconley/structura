@@ -23,6 +23,9 @@ class ClaimArithmeticInvariant:
     target_key: str
     addend_keys: tuple[str, ...]
     reason_code: str
+    subtract_keys: tuple[str, ...] = ()
+    optional_addend_keys: tuple[str, ...] = ()
+    optional_subtract_keys: tuple[str, ...] = ()
     currency_reason_code: str = "cross_field_currency_conflict"
 
 
@@ -63,6 +66,8 @@ INVOICE_CLAIM_REGISTRY = ClaimFamilyRegistry(
         ClaimFieldProjection("invoice.due_date", "invoice", "due_on", ("date",)),
         ClaimFieldProjection("invoice.subtotal", "totals", "subtotal", ("money",)),
         ClaimFieldProjection("invoice.tax_total", "totals", "tax_total", ("money",)),
+        ClaimFieldProjection("invoice.shipping_total", "totals", "shipping_total", ("money",)),
+        ClaimFieldProjection("invoice.discount_total", "totals", "discount_total", ("money",)),
         ClaimFieldProjection("invoice.total_amount", "totals", "total", ("money",)),
         ClaimFieldProjection("invoice.balance_due", "totals", "balance_due", ("money",)),
         ClaimFieldProjection("invoice.amount_paid", "totals", "amount_paid", ("money",)),
@@ -71,7 +76,9 @@ INVOICE_CLAIM_REGISTRY = ClaimFamilyRegistry(
     arithmetic_invariants=(
         ClaimArithmeticInvariant(
             target_key="invoice.total_amount",
-            addend_keys=("invoice.subtotal", "invoice.tax_total"),
+            addend_keys=("invoice.subtotal",),
+            optional_addend_keys=("invoice.tax_total", "invoice.shipping_total"),
+            optional_subtract_keys=("invoice.discount_total",),
             reason_code="cross_field_arithmetic_conflict",
         ),
     ),
@@ -129,11 +136,8 @@ RECEIPT_CLAIM_REGISTRY = ClaimFamilyRegistry(
     arithmetic_invariants=(
         ClaimArithmeticInvariant(
             target_key="receipt.transaction.total",
-            addend_keys=(
-                "receipt.transaction.subtotal",
-                "receipt.transaction.tax",
-                "receipt.transaction.tip",
-            ),
+            addend_keys=("receipt.transaction.subtotal",),
+            optional_addend_keys=("receipt.transaction.tax", "receipt.transaction.tip"),
             reason_code="cross_field_arithmetic_conflict",
         ),
     ),

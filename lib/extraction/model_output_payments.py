@@ -72,6 +72,8 @@ def invoice_totals(payload: dict[str, Any]) -> dict[str, Any]:
     for source_key, target_key in (
         ("subtotal", "subtotal"),
         ("tax_total", "tax_total"),
+        ("shipping_total", "shipping_total"),
+        ("discount_total", "discount_total"),
         ("total", "total"),
     ):
         amount = money_value(totals.get(source_key))

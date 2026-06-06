@@ -154,3 +154,44 @@ def test_medical_eob_envelope_preserves_allowed_and_paid_line_amounts() -> None:
     assert line_item.plan_paid_amount == 50.0
     assert line_item.net_amount == 30.0
     assert line_item.currency_code == "USD"
+
+
+def test_invoice_envelope_preserves_shipping_and_discount_totals() -> None:
+    document_id = str(uuid4())
+    evidence = [
+        {
+            "document_id": document_id,
+            "page_number": 1,
+            "table_id": "invoice-totals",
+            "row_index": 1,
+            "source_engine": "granite_vision_3b",
+        }
+    ]
+
+    envelope = envelope_from_normalization_projection(
+        projection={
+            "schema_name": "invoice",
+            "schema_version": "v1",
+            "document_id": document_id,
+            "totals": {
+                "subtotal": {"amount": 100.0, "currency": "USD", "evidence": evidence},
+                "tax_total": {"amount": 10.0, "currency": "USD", "evidence": evidence},
+                "shipping_total": {"amount": 5.0, "currency": "USD", "evidence": evidence},
+                "discount_total": {"amount": 15.0, "currency": "USD", "evidence": evidence},
+                "total": {"amount": 100.0, "currency": "USD", "evidence": evidence},
+            },
+        },
+        model_output_schema_name="granite_invoice_line_items.v1",
+        semantic_type="invoice_line_item_table",
+        target_schema="invoice",
+        resolved_document_type="invoice",
+        source_engine="granite_vision_3b",
+    )
+
+    assert [(fact.name, fact.value) for fact in envelope.facts] == [
+        ("invoice.subtotal", {"amount": 100.0, "currency": "USD", "evidence": evidence}),
+        ("invoice.tax_total", {"amount": 10.0, "currency": "USD", "evidence": evidence}),
+        ("invoice.shipping_total", {"amount": 5.0, "currency": "USD", "evidence": evidence}),
+        ("invoice.discount_total", {"amount": 15.0, "currency": "USD", "evidence": evidence}),
+        ("invoice.total_amount", {"amount": 100.0, "currency": "USD", "evidence": evidence}),
+    ]

@@ -55,17 +55,36 @@ def _apply_arithmetic_invariants(
             _claim_money_amount(selected_claims.get(addend_key))
             for addend_key in invariant.addend_keys
         ]
+        subtract_amounts = [
+            _claim_money_amount(selected_claims.get(subtract_key))
+            for subtract_key in invariant.subtract_keys
+        ]
+        optional_addend_amounts = [
+            _claim_money_amount(selected_claims.get(addend_key))
+            for addend_key in invariant.optional_addend_keys
+        ]
+        optional_subtract_amounts = [
+            _claim_money_amount(selected_claims.get(subtract_key))
+            for subtract_key in invariant.optional_subtract_keys
+        ]
         currencies = [
             _claim_money_currency(claim)
             for claim in (
                 target_claim,
                 *(selected_claims.get(addend_key) for addend_key in invariant.addend_keys),
+                *(selected_claims.get(subtract_key) for subtract_key in invariant.subtract_keys),
+                *(selected_claims.get(addend_key) for addend_key in invariant.optional_addend_keys),
+                *(
+                    selected_claims.get(subtract_key)
+                    for subtract_key in invariant.optional_subtract_keys
+                ),
             )
         ]
         if (
             target_claim is None
             or target_amount is None
             or any(amount is None for amount in addend_amounts)
+            or any(amount is None for amount in subtract_amounts)
         ):
             continue
         if _has_currency_conflict(currencies):
@@ -76,7 +95,24 @@ def _apply_arithmetic_invariants(
                 reason_code=invariant.currency_reason_code,
             )
             continue
-        expected = sum((amount for amount in addend_amounts if amount is not None), Decimal("0"))
+        expected = (
+            sum(
+                (amount for amount in addend_amounts if amount is not None),
+                Decimal("0"),
+            )
+            + sum(
+                (amount for amount in optional_addend_amounts if amount is not None),
+                Decimal("0"),
+            )
+            - sum(
+                (amount for amount in subtract_amounts if amount is not None),
+                Decimal("0"),
+            )
+            - sum(
+                (amount for amount in optional_subtract_amounts if amount is not None),
+                Decimal("0"),
+            )
+        )
         if target_amount == expected:
             continue
         updated = _demote_decision(
