@@ -3,7 +3,10 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from lib.extraction.claim_projection import project_claim_family_payload
+from lib.extraction.claim_projection import (
+    project_claim_family_payload,
+    project_document_observation_payload,
+)
 from lib.extraction.claim_resolver import ClaimFamilyProjection
 
 
@@ -109,6 +112,53 @@ def test_registry_projection_builds_medical_eob_payload_shape() -> None:
         "validation": {"needs_review": True, "checks": []},
         "created_at": created_at.isoformat(),
         "metadata": {"quality_outcome": "extracted_cleanly"},
+    }
+
+
+def test_projection_builds_document_observation_payload_shape() -> None:
+    document_id = uuid4()
+    created_at = datetime.now(UTC)
+    projection = ClaimFamilyProjection(
+        family="document_observation",
+        observations=[
+            {
+                "family": "real_estate_title",
+                "field_name": "property.address",
+                "value": "123 Main St",
+                "value_type": "string",
+                "source_text": "123 Main St",
+                "confidence": 0.82,
+                "evidence": [{"page_number": 2, "element_id": "el-2"}],
+            }
+        ],
+    )
+
+    payload = project_document_observation_payload(
+        document_id=document_id,
+        created_at=created_at,
+        projection=projection,
+        metadata={"quality_outcome": "needs_human_review"},
+    )
+
+    assert payload == {
+        "schema_name": "document_observation",
+        "schema_version": "v1",
+        "document_id": str(document_id),
+        "observations": [
+            {
+                "family": "real_estate_title",
+                "field_name": "property.address",
+                "value": "123 Main St",
+                "value_type": "string",
+                "source_text": "123 Main St",
+                "confidence": 0.82,
+                "evidence": [{"page_number": 2, "element_id": "el-2"}],
+            }
+        ],
+        "confidence": {},
+        "validation": {"needs_review": True, "checks": []},
+        "created_at": created_at.isoformat(),
+        "metadata": {"quality_outcome": "needs_human_review"},
     }
 
 

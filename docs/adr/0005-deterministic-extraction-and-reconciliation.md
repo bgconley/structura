@@ -327,6 +327,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   policy remains in the invoice wrapper only for external seller context,
   payment-summary metadata, missing-field review warnings, and duplicate line
   row selection.
+- 2026-06-05: Document-observation aggregate JSON now uses the shared Claim
+  projection module for generic anchored observations. The observation
+  reconciler is limited to Claim-region resolution while the projector
+  preserves the existing `document_observation.v1` payload shape.
 
 ## Deferred Work
 

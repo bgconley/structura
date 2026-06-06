@@ -7,6 +7,7 @@ from uuid import UUID
 from lib.extraction.claim_aggregate_reconciliation import (
     resolve_claim_regions_for_family,
 )
+from lib.extraction.claim_projection import project_document_observation_payload
 from lib.extraction.region_reconciliation import RegionExtraction
 
 
@@ -24,19 +25,9 @@ def reconcile_document_observation_region_extractions(
     if claim_regions is None:
         return None
 
-    claim_projection = claim_regions.claim_projection
-    if not claim_projection.observations:
-        return None
-
-    metadata = claim_regions.metadata
-
-    return {
-        "schema_name": "document_observation",
-        "schema_version": "v1",
-        "document_id": str(document_id),
-        "observations": claim_projection.observations,
-        "confidence": {},
-        "created_at": created_at.isoformat(),
-        "validation": {"needs_review": True, "checks": []},
-        "metadata": metadata,
-    }
+    return project_document_observation_payload(
+        document_id=document_id,
+        created_at=created_at,
+        projection=claim_regions.claim_projection,
+        metadata=claim_regions.metadata,
+    )

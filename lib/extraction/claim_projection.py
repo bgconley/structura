@@ -46,6 +46,28 @@ def project_claim_family_payload(
     return payload
 
 
+def project_document_observation_payload(
+    *,
+    document_id: UUID,
+    created_at: datetime,
+    projection: ClaimFamilyProjection,
+    metadata: dict[str, Any],
+) -> dict[str, Any] | None:
+    if projection.family != "document_observation" or not projection.observations:
+        return None
+
+    return {
+        "schema_name": "document_observation",
+        "schema_version": "v1",
+        "document_id": str(document_id),
+        "observations": _clean_value(projection.observations),
+        "confidence": {},
+        "validation": {"needs_review": True, "checks": []},
+        "created_at": created_at.isoformat(),
+        "metadata": _clean_value(metadata),
+    }
+
+
 def _projected_containers(
     projection: ClaimFamilyProjection,
     registry: ClaimFamilyRegistry,
