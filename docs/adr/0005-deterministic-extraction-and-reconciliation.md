@@ -517,6 +517,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
 - 2026-06-06: Candidate deduplication now uses deterministic evidence locator
   selection as well. Reordered but equivalent evidence arrays no longer cause
   duplicate line-item candidates to survive dedupe.
+- 2026-06-06: Deterministic evidence-locator selection now lives in
+  `lib/extraction/evidence_locator.py` and is shared by candidate fingerprints,
+  candidate deduplication, and invoice aggregate line-item dedupe. Canonical
+  invoice aggregates no longer depend on provider evidence-array order.
 
 ## Deferred Work
 

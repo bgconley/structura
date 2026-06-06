@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import cast
 from uuid import uuid4
 
+from lib.extraction.claims import Claim, ClaimAnchor, ClaimValueType
 from lib.extraction.reconciliation import (
     RegionExtraction,
     reconcile_invoice_region_extractions,
@@ -252,6 +254,80 @@ def test_invoice_region_reconciliation_collapses_duplicate_line_items_from_same_
     ]
 
 
+def test_invoice_region_reconciliation_dedupes_line_items_with_reordered_evidence() -> None:
+    document_id = uuid4()
+    region_id = uuid4()
+    first_ref = {
+        "page_number": 1,
+        "semantic_region_id": str(region_id),
+        "table_id": "table-1",
+        "row_index": 1,
+    }
+    second_ref = {
+        "page_number": 1,
+        "semantic_region_id": str(region_id),
+        "table_id": "table-1",
+        "row_index": 3,
+    }
+    anchor = ClaimAnchor(page_number=1, table_id="table-1", row_index=1)
+
+    aggregate = reconcile_invoice_region_extractions(
+        document_id=document_id,
+        seller={"display_name": "MAX BMW", "party_type": "company"},
+        created_at=datetime.now(UTC),
+        regions=[
+            RegionExtraction(
+                extraction_id=uuid4(),
+                semantic_region_id=region_id,
+                semantic_type="invoice_line_item_table",
+                claims=(
+                    _claim(
+                        document_id=document_id,
+                        claim_id="line-a-description",
+                        anchor=anchor,
+                        canonical_key="invoice.line_item.description",
+                        typed_value="Monthly service fee",
+                        group_id="line-a",
+                        evidence=(second_ref, first_ref),
+                    ),
+                    _claim(
+                        document_id=document_id,
+                        claim_id="line-a-amount",
+                        anchor=anchor,
+                        canonical_key="invoice.line_item.amount",
+                        typed_value={"amount": 99.0, "currency": "USD"},
+                        value_type="money",
+                        group_id="line-a",
+                        evidence=(second_ref, first_ref),
+                    ),
+                    _claim(
+                        document_id=document_id,
+                        claim_id="line-b-description",
+                        anchor=anchor,
+                        canonical_key="invoice.line_item.description",
+                        typed_value="monthly service fee",
+                        group_id="line-b",
+                        evidence=(first_ref, second_ref),
+                    ),
+                    _claim(
+                        document_id=document_id,
+                        claim_id="line-b-amount",
+                        anchor=anchor,
+                        canonical_key="invoice.line_item.amount",
+                        typed_value={"amount": 99.0, "currency": "USD"},
+                        value_type="money",
+                        group_id="line-b",
+                        evidence=(first_ref, second_ref),
+                    ),
+                ),
+            )
+        ],
+    )
+
+    assert aggregate is not None
+    assert [item["description"] for item in aggregate["line_items"]] == ["Monthly service fee"]
+
+
 def test_invoice_region_reconciliation_skips_incompatible_source_family() -> None:
     document_id = uuid4()
     region_id = uuid4()
@@ -283,6 +359,33 @@ def test_invoice_region_reconciliation_skips_incompatible_source_family() -> Non
     )
 
     assert aggregate is None
+
+
+def _claim(
+    *,
+    document_id: object,
+    claim_id: str,
+    anchor: ClaimAnchor,
+    canonical_key: str,
+    typed_value: object,
+    group_id: str,
+    evidence: tuple[dict[str, object], ...],
+    value_type: str = "text",
+) -> Claim:
+    return Claim(
+        claim_id=claim_id,
+        document_id=str(document_id),
+        source_engine="granite",
+        anchor=anchor,
+        canonical_key=canonical_key,
+        raw_value=str(typed_value),
+        typed_value=typed_value,
+        value_type=cast(ClaimValueType, value_type),
+        confidence=0.9,
+        method="granite_invoice_line_items.v1",
+        group_id=group_id,
+        evidence=evidence,
+    )
 
 
 def test_invoice_region_reconciliation_requires_non_placeholder_seller() -> None:

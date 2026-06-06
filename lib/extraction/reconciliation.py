@@ -17,6 +17,7 @@ from lib.extraction.claim_aggregate_reconciliation import (
     resolve_claim_regions_for_family,
 )
 from lib.extraction.claim_projection import project_claim_family_payload
+from lib.extraction.evidence_locator import selected_evidence_ref
 from lib.extraction.region_envelope import RegionExtractionEnvelope
 from lib.extraction.region_reconciliation import RegionExtraction
 
@@ -114,9 +115,7 @@ def _line_item_key(item: dict[str, Any]) -> tuple[Any, ...]:
 
 def _line_item_locator_key(item: dict[str, Any]) -> tuple[Any, ...]:
     evidence = item.get("evidence")
-    first = evidence[0] if isinstance(evidence, list) and evidence else {}
-    if not isinstance(first, dict):
-        first = {}
+    first = selected_evidence_ref(evidence) if isinstance(evidence, list) else {}
     return (
         normalized_text_key(first.get("semantic_region_id")),
         first.get("page_number") or item.get("page_number"),

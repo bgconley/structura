@@ -7,6 +7,7 @@ from typing import Any
 from uuid import UUID
 
 from lib.extraction.candidate_admission_models import CandidateAdmissionContext, CandidateKind
+from lib.extraction.evidence_locator import selected_evidence_ref
 from lib.extraction.models import CandidateFact, LineItemCandidateFact, ObservationCandidateFact
 
 
@@ -118,7 +119,7 @@ def _region_key(
     context: CandidateAdmissionContext,
     evidence: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    first = _selected_evidence(evidence)
+    first = selected_evidence_ref(evidence)
     return {
         "locator_kind": _locator_kind(first, context),
         "page_number": first.get("page_number"),
@@ -127,7 +128,7 @@ def _region_key(
 
 
 def _table_key(evidence: list[dict[str, Any]]) -> dict[str, Any]:
-    first = _selected_evidence(evidence)
+    first = selected_evidence_ref(evidence)
     return {
         "locator_kind": _locator_kind(first, None),
         "page_number": first.get("page_number"),
@@ -150,66 +151,6 @@ def _locator_kind(
     if context is not None and context.semantic_region_id is not None:
         return "semantic_region"
     return "unknown"
-
-
-def _selected_evidence(evidence: list[dict[str, Any]]) -> dict[str, Any]:
-    refs = [ref for ref in evidence if isinstance(ref, dict)]
-    if not refs:
-        return {}
-    return min(refs, key=_evidence_selection_key)
-
-
-def _evidence_selection_key(evidence: dict[str, Any]) -> tuple[int, int, int, str, int, str]:
-    return (
-        -_evidence_specificity(evidence),
-        _locator_rank(evidence),
-        _int_key(evidence.get("page_number")),
-        _normalized_text(evidence.get("page_id")),
-        _int_key(evidence.get("row_index")),
-        _stable_locator_json(evidence),
-    )
-
-
-def _evidence_specificity(evidence: dict[str, Any]) -> int:
-    return sum(
-        (
-            evidence.get("row_index") is not None,
-            evidence.get("table_id") not in (None, ""),
-            evidence.get("element_id") not in (None, ""),
-            evidence.get("bbox") is not None,
-            evidence.get("text_span") is not None,
-            evidence.get("page_number") is not None or evidence.get("page_id") not in (None, ""),
-        )
-    )
-
-
-def _locator_rank(evidence: dict[str, Any]) -> int:
-    return {
-        "table_row": 0,
-        "table": 1,
-        "element": 2,
-        "page": 3,
-        "unknown": 4,
-    }[_locator_kind(evidence, None)]
-
-
-def _int_key(value: Any) -> int:
-    if isinstance(value, int):
-        return value
-    return 1_000_000_000
-
-
-def _stable_locator_json(evidence: dict[str, Any]) -> str:
-    return json.dumps(
-        {
-            "bbox": _normalized_json_value(evidence.get("bbox")),
-            "element_id": _normalized_text(evidence.get("element_id")),
-            "table_id": _normalized_text(evidence.get("table_id")),
-            "text_span": _normalized_json_value(evidence.get("text_span")),
-        },
-        sort_keys=True,
-        separators=(",", ":"),
-    )
 
 
 def _money_key(value: Any) -> float | None:
