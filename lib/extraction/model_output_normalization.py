@@ -11,6 +11,12 @@ from lib.extraction.docling_table_quality import (
 )
 from lib.extraction.evidence_context import EvidenceContext
 from lib.extraction.line_item_provenance import line_item_evidence, line_item_provenance
+from lib.extraction.model_output_contract_boundary import (
+    contract_root_payload as _contract_root_payload,
+)
+from lib.extraction.model_output_contract_boundary import (
+    merge_rejected_fields as _merge_rejected_fields,
+)
 from lib.extraction.model_output_healthcare import (
     healthcare_coverage_decision_output as _healthcare_coverage_decision_output,
 )
@@ -86,11 +92,18 @@ def normalize_granite_region_output(
     docling_table_quality: DoclingTableQuality | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     model_payload, wrapper_repairs = _unwrapped_payload(payload)
+    if _looks_like_schema_echo(model_payload):
+        wrapper_repairs = [*wrapper_repairs, "schema_echo_rejected"]
+    model_payload, contract_rejected_fields = _contract_root_payload(
+        model_payload,
+        model_output_schema_name=model_output_schema_name,
+    )
 
     def finalize(
         normalized: dict[str, Any],
         metadata: dict[str, Any],
     ) -> tuple[dict[str, Any], dict[str, Any]]:
+        _merge_rejected_fields(metadata, contract_rejected_fields)
         return _finalized_output(
             normalized,
             metadata,

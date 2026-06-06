@@ -442,6 +442,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
 - 2026-06-06: Invoice line-item normalization likewise stopped mining
   top-level `total_amount`; totals now come only from the contracted
   `granite_invoice_line_items.v1` `totals` object.
+- 2026-06-06: Granite region normalization now applies a schema-derived
+  root-key boundary before mapper-specific logic. Off-contract top-level
+  fields are removed from mapper input and reported as rejected fields, so
+  aliases cannot be mined even in fixture/direct-normalizer paths.
 
 ## Deferred Work
 
