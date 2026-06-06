@@ -496,6 +496,9 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   model ordinal when a row-level anchor exists. Duplicate model rows with the
   same Docling table row, element, bbox, or text span collapse into one
   deterministic group, while ordinal remains only a fallback for weaker anchors.
+- 2026-06-06: Claim anchors now canonicalize comma-separated Docling element IDs
+  before identity hashing. Equivalent Docling anchor sets therefore produce the
+  same Claim ID even when provider evidence strings arrive in a different order.
 
 ## Deferred Work
 

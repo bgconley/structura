@@ -283,7 +283,7 @@ def _claim_target_schema(envelope: RegionExtractionEnvelope) -> str | None:
 def _anchor_from_ref(ref: EvidenceRef) -> ClaimAnchor | None:
     if ref.page_number is None and ref.page_id in (None, ""):
         return None
-    element_ids = tuple(str(ref.element_id).split(",")) if ref.element_id else ()
+    element_ids = _docling_element_ids(ref.element_id)
     has_structural_locator = (
         bool(element_ids)
         or ref.table_id not in (None, "")
@@ -302,6 +302,12 @@ def _anchor_from_ref(ref: EvidenceRef) -> ClaimAnchor | None:
         text_span=ref.text_span,
         semantic_region_id=ref.semantic_region_id,
     )
+
+
+def _docling_element_ids(element_id: str | None) -> tuple[str, ...]:
+    if not element_id:
+        return ()
+    return tuple(sorted({part.strip() for part in str(element_id).split(",") if part.strip()}))
 
 
 def _typed_value(value_type: str, value: Any) -> tuple[ClaimValueType, Any] | None:

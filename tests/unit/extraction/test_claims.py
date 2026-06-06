@@ -109,6 +109,46 @@ def test_claim_id_ignores_raw_source_payload_noise() -> None:
     assert first.source_engine == "granite"
 
 
+def test_claim_id_canonicalizes_docling_element_id_order() -> None:
+    document_id = uuid4()
+    region_id = uuid4()
+
+    def envelope(element_id: str) -> RegionExtractionEnvelope:
+        return RegionExtractionEnvelope(
+            document_id=str(document_id),
+            semantic_region_id=str(region_id),
+            resolved_document_type="invoice",
+            semantic_type="payment_summary",
+            target_schema="invoice",
+            model_output_schema_name="granite_payment_summary.v1",
+            facts=[
+                RegionFact(
+                    name="invoice.total_amount",
+                    value={"amount": 42.5, "currency": "USD"},
+                    value_type="money",
+                    evidence=[
+                        EvidenceRef(
+                            document_id=str(document_id),
+                            semantic_region_id=str(region_id),
+                            page_number=1,
+                            element_id=element_id,
+                            table_id="table-1",
+                            row_index=3,
+                            source_engine="granite_vision_3b",
+                        )
+                    ],
+                )
+            ],
+        )
+
+    first = claims_from_region_envelope(envelope("cell-b,cell-a"))[0]
+    second = claims_from_region_envelope(envelope("cell-a,cell-b"))[0]
+
+    assert first.claim_id == second.claim_id
+    assert first.anchor.docling_element_ids == ("cell-a", "cell-b")
+    assert second.anchor.docling_element_ids == ("cell-a", "cell-b")
+
+
 def test_invoice_total_adjustment_claims_are_admissible() -> None:
     document_id = uuid4()
     region_id = uuid4()
