@@ -6,6 +6,7 @@ from lib.extraction.granite_budgets import (
     granite_budget_for_task,
     granite_length_retry_budget,
 )
+from lib.extraction.models import ExtractionSourceDocument, GatewayExtraction
 from lib.model_runtime.http_client import ModelProtocolError
 from lib.model_runtime.profiles import GRANITE_VISION_PROFILE
 from lib.semantic_annotations.models import SemanticExtractionTask
@@ -18,6 +19,26 @@ class GraniteVisionExtractionGateway(VisionExtractionGateway):
 
     def __init__(self, *, client: VisionClientProtocol) -> None:
         super().__init__(client=client)
+
+    def extract(
+        self,
+        source: ExtractionSourceDocument,
+        *,
+        schema_name: str,
+        route_profile: str,
+        semantic_task: SemanticExtractionTask | None = None,
+    ) -> GatewayExtraction:
+        if semantic_task is None:
+            raise ModelProtocolError(
+                "Granite extraction requires a grounded semantic region task. "
+                "Broad document-level Granite extraction is disabled."
+            )
+        return super().extract(
+            source,
+            schema_name=schema_name,
+            route_profile=route_profile,
+            semantic_task=semantic_task,
+        )
 
     def _request_budget(
         self,

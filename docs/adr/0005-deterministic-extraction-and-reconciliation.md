@@ -402,6 +402,9 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   extraction task. Broad document-level structured-schema requests fail closed
   before model use, so live extraction cannot ask Granite to extract an entire
   invoice, receipt, or EOB without Qwen/Docling grounded region planning.
+- 2026-06-06: The Granite extraction adapter itself now enforces the same
+  grounded semantic-region requirement. Direct adapter callers cannot bypass
+  routing policy and invoke broad document-level Granite extraction.
 
 ## Deferred Work
 

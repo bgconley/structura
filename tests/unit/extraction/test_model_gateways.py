@@ -4,6 +4,8 @@ import hashlib
 from dataclasses import dataclass
 from uuid import uuid4
 
+import pytest
+
 from lib.extraction.gateways.granite_vision import GraniteVisionExtractionGateway
 from lib.extraction.models import (
     ExtractionSourceDocument,
@@ -39,6 +41,37 @@ class FakeVisionClient:
         )
 
 
+def _invoice_line_item_task(source: ExtractionSourceDocument) -> SemanticExtractionTask:
+    return SemanticExtractionTask(
+        region_id=uuid4(),
+        annotation_id=uuid4(),
+        document_id=source.document_id,
+        semantic_type="invoice_line_item_table",
+        granite_task="tables_json",
+        target_schema="invoice",
+        expected_fields=("line_items", "total_amount"),
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+        reason="Qwen identified a grounded invoice table.",
+        confidence=0.92,
+    )
+
+
+def test_granite_extraction_gateway_rejects_missing_semantic_task() -> None:
+    client = FakeVisionClient(
+        source_engine="granite_vision_3b",
+        profile_name=GRANITE_VISION_PROFILE,
+    )
+
+    with pytest.raises(ModelProtocolError, match="semantic region task"):
+        GraniteVisionExtractionGateway(client=client).extract(
+            _source_with_page_image(),
+            schema_name="invoice",
+            route_profile="docling_plus_granite_structured",
+        )
+
+    assert client.request is None
+
+
 def test_granite_extraction_gateway_truthfully_sets_granite_provenance() -> None:
     client = FakeVisionClient(
         source_engine="granite_vision_3b",
@@ -50,10 +83,12 @@ def test_granite_extraction_gateway_truthfully_sets_granite_provenance() -> None
         source,
         schema_name="invoice",
         route_profile="docling_plus_granite_structured",
+        semantic_task=_invoice_line_item_task(source),
     )
 
     assert result.route.source_engine == "granite_vision_3b"
-    assert result.normalized_json["from_model"] is True
+    assert result.raw_output_json["sourceEngine"] == "granite_vision_3b"
+    assert result.raw_output_json["modelOutputPayload"]["from_model"] is True
     assert result.raw_output_json["profileName"] == GRANITE_VISION_PROFILE
 
 
