@@ -1307,6 +1307,36 @@ def test_candidate_fingerprint_ignores_volatile_evidence_ids() -> None:
     assert first.events[0].candidate_fingerprint == second.events[0].candidate_fingerprint
 
 
+def test_line_item_fingerprint_is_stable_when_evidence_order_changes() -> None:
+    context = _context(semantic_type="receipt_line_item_table")
+    first_ref = {
+        **_evidence(context),
+        "table_id": "table-1",
+        "row_index": 1,
+    }
+    second_ref = {
+        **_evidence(context),
+        "table_id": "table-1",
+        "row_index": 3,
+    }
+    base = {
+        "line_item_type": "receipt_item",
+        "ordinal": 1,
+        "description": "Coffee beans",
+        "quantity": 2.0,
+        "unit": "bag",
+        "unit_price": 12.0,
+        "net_amount": 21.0,
+        "currency": "USD",
+        "category_hint": "grocery",
+    }
+
+    first = LineItemCandidateFact(**base, evidence=[second_ref, first_ref])
+    second = LineItemCandidateFact(**base, evidence=[first_ref, second_ref])
+
+    assert line_item_fingerprint(first, context) == line_item_fingerprint(second, context)
+
+
 def test_line_item_admission_fingerprint_includes_discount() -> None:
     context = _context(semantic_type="receipt_line_item_table")
     base = {

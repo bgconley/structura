@@ -510,6 +510,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   instead of trusting list order. The selector prefers richer anchors and then a
   stable page/table/row/json key, so the same evidence set yields the same Claim
   identity even when provider evidence arrays are reordered.
+- 2026-06-06: Candidate admission fingerprints now select evidence locators
+  deterministically instead of reading `evidence[0]`. Field, line-item,
+  observation, and raw-payload fingerprints therefore remain stable when
+  equivalent provider evidence arrays are reordered.
 
 ## Deferred Work
 
