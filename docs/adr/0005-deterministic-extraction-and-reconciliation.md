@@ -450,6 +450,14 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   properties and array items. Malformed object records inside arrays are
   dropped as whole records and their rejected field paths are reported,
   preserving fail-closed fragment behavior for line items and payment rows.
+- 2026-06-06: The normalizer contract boundary now validates the shaped model
+  payload against the selected model-output JSON Schema before mapper logic.
+  Direct or fixture payloads that still violate required keys, type constraints,
+  numeric bounds, or length bounds are dropped instead of partially mined, with
+  `model_output_contract_errors` and `model_output_contract_validation_failed`
+  recorded as lineage metadata. Live adapters already fail these payloads before
+  normalization, so this closes the compatibility/direct-call path without adding
+  corpus-specific repairs.
 
 ## Deferred Work
 

@@ -15,6 +15,9 @@ from lib.extraction.model_output_contract_boundary import (
     contract_root_payload as _contract_root_payload,
 )
 from lib.extraction.model_output_contract_boundary import (
+    merge_contract_errors as _merge_contract_errors,
+)
+from lib.extraction.model_output_contract_boundary import (
     merge_rejected_fields as _merge_rejected_fields,
 )
 from lib.extraction.model_output_healthcare import (
@@ -94,7 +97,7 @@ def normalize_granite_region_output(
     model_payload, wrapper_repairs = _unwrapped_payload(payload)
     if _looks_like_schema_echo(model_payload):
         wrapper_repairs = [*wrapper_repairs, "schema_echo_rejected"]
-    model_payload, contract_rejected_fields = _contract_root_payload(
+    model_payload, contract_rejected_fields, contract_errors = _contract_root_payload(
         model_payload,
         model_output_schema_name=model_output_schema_name,
     )
@@ -104,6 +107,7 @@ def normalize_granite_region_output(
         metadata: dict[str, Any],
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         _merge_rejected_fields(metadata, contract_rejected_fields)
+        _merge_contract_errors(metadata, contract_errors)
         return _finalized_output(
             normalized,
             metadata,

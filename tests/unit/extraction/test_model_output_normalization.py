@@ -126,8 +126,9 @@ def test_generic_kvp_contract_rejects_flat_top_level_fields() -> None:
     )
 
     assert normalized["observations"] == []
-    assert metadata["repairs"] == []
+    assert metadata["repairs"] == ["model_output_contract_validation_failed"]
     assert metadata["rejected_fields"] == ["seller_notes"]
+    assert metadata["model_output_contract_errors"] == ["$: 'fields' is a required property"]
 
 
 def test_uncontracted_document_observation_rejects_arbitrary_flat_fields() -> None:
@@ -569,6 +570,7 @@ def test_receipt_payment_summary_defers_page_identity_without_amount_signal() ->
         payload={
             "merchant_name": "Amtra",
             "transaction_date": "2025-09-09",
+            "total": None,
             "confidence": {},
         },
         evidence_context=EvidenceContext(
@@ -878,12 +880,13 @@ def test_generic_kvp_mapper_rejects_flat_prompt_echo_payload() -> None:
     )
 
     assert observation_dicts_from_payload(normalized) == []
-    assert metadata["repairs"] == []
+    assert metadata["repairs"] == ["model_output_contract_validation_failed"]
     assert metadata["rejected_fields"] == [
         "instructions",
         "properties",
         "seller_name",
     ]
+    assert metadata["model_output_contract_errors"] == ["$: 'fields' is a required property"]
 
 
 def test_receipt_line_item_model_output_maps_to_canonical_receipt_lines() -> None:
@@ -969,8 +972,13 @@ def test_wrapped_data_payload_is_not_mined_for_invoice_line_items() -> None:
     )
 
     assert normalized["line_items"] == []
-    assert normalized["totals"]["total"] == {"amount": 99.0, "currency": "USD"}
+    assert "totals" not in normalized
     assert metadata["rejected_fields"] == ["data"]
+    assert metadata["model_output_contract_errors"] == [
+        "$.totals.total: {'amount': 99.0, 'currency': 'USD'} is not of type "
+        "'number', 'string', 'null'",
+        "$: 'line_items' is a required property",
+    ]
 
 
 def test_observation_payload_with_type_object_and_fields_is_not_schema_echo() -> None:
@@ -990,10 +998,10 @@ def test_observation_payload_with_type_object_and_fields_is_not_schema_echo() ->
     assert observation_dicts_from_payload(normalized)[0]["field_name"] == "seller_name"
 
 
-def test_observation_source_text_is_bounded_to_schema_limit() -> None:
+def test_observation_source_text_over_schema_limit_fails_closed() -> None:
     document_id = uuid4()
 
-    normalized, _metadata = normalize_granite_region_output(
+    normalized, metadata = normalize_granite_region_output(
         document_id=document_id,
         schema_name="document_observation",
         model_output_schema_name="granite_generic_kvp.v1",
@@ -1012,7 +1020,9 @@ def test_observation_source_text_is_bounded_to_schema_limit() -> None:
 
     assert report.checks[0]["status"] == "passed"
     observations = observation_dicts_from_payload(normalized)
-    assert len(observations[0]["source_text"]) == 500
+    assert observations == []
+    assert metadata["model_output_contract_errors"][0].startswith("$.fields[0].source_text: ")
+    assert metadata["model_output_contract_errors"][0].endswith("is too long")
 
 
 def test_observation_candidate_confidence_rejects_out_of_range_model_values() -> None:

@@ -83,3 +83,22 @@ def test_line_item_contract_boundary_reports_nested_off_contract_fields() -> Non
 
     assert normalized["line_items"] == []
     assert metadata["rejected_fields"] == ["line_items[0].service_description"]
+
+
+def test_schema_invalid_contract_payload_does_not_mine_allowed_sibling_fields() -> None:
+    document_id = uuid4()
+
+    normalized, metadata = normalize_granite_region_output(
+        document_id=document_id,
+        schema_name="invoice",
+        model_output_schema_name="granite_invoice_line_items.v1",
+        payload={
+            "totals": {"total": "$99.00"},
+            "confidence": {"overall": 0.61},
+        },
+    )
+
+    assert normalized["line_items"] == []
+    assert "totals" not in normalized
+    assert metadata["model_output_contract_errors"] == ["$: 'line_items' is a required property"]
+    assert "model_output_contract_validation_failed" in metadata["repairs"]
