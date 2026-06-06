@@ -118,21 +118,14 @@ def _openai_payload(
     if request.seed is not None:
         payload["seed"] = request.seed
     schema_name = request.response_schema_name or "structured_response"
-    if request.structured_output_mode == "response_format_json_schema":
-        payload["response_format"] = {
-            "type": "json_schema",
-            "json_schema": {
-                "name": schema_name,
-                "schema": request.response_json_schema,
-                "strict": True,
-            },
-        }
-    elif request.structured_output_mode == "structured_outputs_json":
-        payload["structured_outputs"] = {"json": request.response_json_schema}
-    else:
-        raise ModelProtocolError(
-            f"Unsupported structured output mode: {request.structured_output_mode}"
-        )
+    payload["response_format"] = {
+        "type": "json_schema",
+        "json_schema": {
+            "name": schema_name,
+            "schema": request.response_json_schema,
+            "strict": True,
+        },
+    }
     return payload
 
 

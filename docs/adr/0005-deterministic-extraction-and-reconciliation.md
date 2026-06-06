@@ -186,6 +186,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   model transport. The last manual Phase 8.5 GPU live-probe `json_object`
   request was replaced with a strict `json_schema` probe payload, so
   free-form JSON is no longer a permitted runtime path for vision generation.
+- 2026-06-05: `VisionGenerateRequest` no longer exposes a
+  `structured_output_mode` switch. The shared OpenAI-compatible vision adapter
+  always sends strict `response_format: json_schema`, removing the last
+  adapter-level route to alternate structured-output mechanisms.
 - 2026-06-05: Invoice semantic-region aggregation no longer accepts
   document-level raw `normalized_json` fallback fields. The repository stopped
   loading current document-level Granite output as aggregate fallback, and

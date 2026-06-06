@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import replace
+from dataclasses import fields, replace
 
 import httpx
 import pytest
@@ -282,44 +282,8 @@ def test_qwen_client_fails_closed_when_structured_output_request_is_rejected() -
     assert "structured_outputs" not in seen[0]
 
 
-def test_qwen_client_can_use_legacy_structured_outputs_payload_when_requested() -> None:
-    seen: dict[str, object] = {}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        seen["payload"] = json.loads(request.content)
-        return httpx.Response(
-            200,
-            json={
-                "model": "Qwen/Qwen3-VL-8B-Instruct",
-                "choices": [{"message": {"content": json.dumps({"normalized": {"ok": True}})}}],
-            },
-        )
-
-    client = QwenVLClient(
-        profile=get_model_profile(QWEN_VL_PROFILE),
-        http_client_base_url="http://model-qwen-semantic:8104",
-        transport=httpx.MockTransport(handler),
-    )
-
-    client.generate(
-        VisionGenerateRequest(
-            profile_name=QWEN_VL_PROFILE,
-            prompt_version="phase8_5-semantic-smart-v3",
-            prompt="Return JSON only",
-            image_inputs=_request().image_inputs,
-            response_schema_name="semantic_annotation_manifest",
-            response_json_schema=semantic_annotation_manifest_schema(),
-            max_output_tokens=4096,
-            temperature=0.0,
-            timeout_seconds=30,
-            structured_output_mode="structured_outputs_json",
-        )
-    )
-
-    payload = seen["payload"]
-    assert isinstance(payload, dict)
-    assert payload["structured_outputs"] == {"json": semantic_annotation_manifest_schema()}
-    assert "response_format" not in payload
+def test_vision_generate_request_has_no_structured_output_mode_escape_hatch() -> None:
+    assert "structured_output_mode" not in {field.name for field in fields(VisionGenerateRequest)}
 
 
 def test_qwen_client_rejects_truncated_structured_content() -> None:
