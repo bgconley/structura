@@ -48,6 +48,7 @@ from lib.extraction.models import (
     LineItemCandidateFact,
     ObservationCandidateFact,
 )
+from lib.model_runtime.source_engines import is_qwen_source_engine
 
 
 def admit_extraction_candidates(
@@ -270,6 +271,9 @@ def _field_rejection_decision(
     candidate: CandidateFact,
     evidence_concrete: bool,
 ) -> tuple[str | None, tuple[str, ...]]:
+    source_reason = _value_source_rejection_reason(context)
+    if source_reason:
+        return "rejected_source_provenance", (source_reason,)
     schema_reason = field_path_schema_rejection_reason(context, candidate.field_path)
     if schema_reason:
         return "rejected_family_schema", (schema_reason,)
@@ -294,6 +298,9 @@ def _line_item_rejection_decision(
     candidate: LineItemCandidateFact,
     evidence_concrete: bool,
 ) -> tuple[str | None, tuple[str, ...]]:
+    source_reason = _value_source_rejection_reason(context)
+    if source_reason:
+        return "rejected_source_provenance", (source_reason,)
     schema_reason = canonical_candidate_schema_rejection_reason(context)
     if schema_reason:
         return "rejected_family_schema", (schema_reason,)
@@ -310,12 +317,21 @@ def _observation_rejection_decision(
     candidate: ObservationCandidateFact,
     evidence_concrete: bool,
 ) -> tuple[str | None, tuple[str, ...]]:
+    source_reason = _value_source_rejection_reason(context)
+    if source_reason:
+        return "rejected_source_provenance", (source_reason,)
     rejected, reason = reject_observation(candidate.field_name, candidate.value)
     if rejected:
         return decision_for_quality_reason(reason)
     if not evidence_concrete:
         return "rejected_missing_evidence", ("missing_concrete_evidence",)
     return None, ()
+
+
+def _value_source_rejection_reason(context: CandidateAdmissionContext) -> str | None:
+    if is_qwen_source_engine(context.source_engine):
+        return "qwen_semantic_source_cannot_emit_value_candidate"
+    return None
 
 
 def _review_required_candidate(
