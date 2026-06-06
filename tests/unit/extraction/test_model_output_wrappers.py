@@ -18,3 +18,17 @@ def test_model_output_wrapper_unwraps_data_payload_and_preserves_sibling_context
         "confidence": {"overall": 0.82},
     }
     assert repairs == ["unwrapped_data_payload"]
+
+
+def test_model_output_wrapper_drops_non_object_payloads_instead_of_creating_raw_text() -> None:
+    payload, repairs = unwrap_model_output_payload("Return only JSON matching the schema")
+
+    assert payload == {}
+    assert repairs == ["dropped_non_object_str_model_output_payload"]
+
+
+def test_model_output_wrapper_drops_list_payloads_instead_of_creating_synthetic_fields() -> None:
+    payload, repairs = unwrap_model_output_payload(["seller", "amount", "date"])
+
+    assert payload == {}
+    assert repairs == ["dropped_non_object_list_model_output_payload"]

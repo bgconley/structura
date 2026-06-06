@@ -349,6 +349,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   candidates only, while preserving legacy undecided report rows. Explicitly
   rejected prompt/schema/placeholder noise is represented by the rejection
   distribution gate instead of causing canonical repeatability drift.
+- 2026-06-06: Model-output wrapper normalization no longer converts scalar or
+  list payloads into synthetic `raw_text`/`item_N` observation fields. Non-object
+  model payloads are dropped with explicit repair metadata; live strict
+  structured-output clients should fail such payloads before normalization.
 
 ## Deferred Work
 

@@ -6,15 +6,8 @@ from typing import Any
 def unwrap_model_output_payload(payload: Any) -> tuple[dict[str, Any], list[str]]:
     repairs: list[str] = []
     if not isinstance(payload, dict):
-        repairs.append(f"coerced_{type(payload).__name__}_payload_to_observation_shell")
-        if isinstance(payload, list):
-            fields = [
-                {"name": f"item_{index + 1}", "value": item} for index, item in enumerate(payload)
-            ]
-            return {"fields": fields}, repairs
-        if payload is None:
-            return {}, repairs
-        return {"fields": [{"name": "raw_text", "value": str(payload)}]}, repairs
+        repairs.append(f"dropped_non_object_{type(payload).__name__}_model_output_payload")
+        return {}, repairs
     normalized = payload.get("normalized")
     if isinstance(normalized, dict):
         repairs.append("unwrapped_normalized_payload")
