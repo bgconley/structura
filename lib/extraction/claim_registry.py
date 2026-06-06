@@ -116,6 +116,7 @@ RECEIPT_CLAIM_REGISTRY = ClaimFamilyRegistry(
         ClaimFieldProjection("receipt.transaction.tip", "transaction", "tip", ("money",)),
         ClaimFieldProjection("receipt.transaction.total", "transaction", "total", ("money",)),
     ),
+    required_keys=("receipt.transaction.total",),
     arithmetic_invariants=(
         ClaimArithmeticInvariant(
             target_key="receipt.transaction.total",

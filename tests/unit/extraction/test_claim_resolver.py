@@ -125,6 +125,44 @@ def test_receipt_claim_resolver_projects_registry_fields_and_line_items() -> Non
     assert projection.quality_outcome == "extracted_cleanly"
 
 
+def test_receipt_claim_resolver_records_absent_required_total() -> None:
+    anchor = ClaimAnchor(page_number=1, table_id="receipt-table", row_index=2)
+    line_description = _claim(
+        canonical_key="receipt.line_item.description",
+        typed_value="USB-C cable",
+        source_engine="granite",
+        anchor=anchor,
+        group_id="receipt-line-1",
+    )
+    line_amount = _claim(
+        canonical_key="receipt.line_item.amount",
+        typed_value={"amount": 19.98, "currency": "USD"},
+        source_engine="granite",
+        anchor=anchor,
+        group_id="receipt-line-1",
+    )
+
+    projection = resolve_claims_for_family(
+        family="receipt",
+        claims=[line_description, line_amount],
+    )
+
+    assert projection.line_items == [
+        {
+            "description": "USB-C cable",
+            "amount": {"amount": 19.98, "currency": "USD"},
+            "evidence": [{"page_number": 1, "table_id": "receipt-table", "row_index": 2}],
+        }
+    ]
+    assert {
+        (decision.canonical_key, decision.decision, decision.reason_code)
+        for decision in projection.decisions
+    } >= {
+        ("receipt.transaction.total", "absent", "required_claim_absent"),
+    }
+    assert projection.quality_outcome == "needs_human_review"
+
+
 def test_receipt_claim_resolver_demotes_total_arithmetic_conflicts_to_review() -> None:
     anchor = ClaimAnchor(page_number=1, table_id="receipt-summary", row_index=1)
     subtotal = _claim(

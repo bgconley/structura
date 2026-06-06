@@ -252,6 +252,9 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   invariant path. A selected `receipt.transaction.subtotal` is demoted to
   `needs_review` with `line_item_sum_conflict` when it disagrees with the
   resolved sum of receipt line-item amounts.
+- 2026-06-05: Receipt now declares `receipt.transaction.total` as a required
+  Claim key. Line-item-only receipt projections record an explicit `absent`
+  / `required_claim_absent` decision instead of being marked clean.
 
 ## Deferred Work
 
