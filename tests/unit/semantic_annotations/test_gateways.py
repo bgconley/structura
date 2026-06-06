@@ -1293,6 +1293,47 @@ def test_live_qwen_gateway_retries_once_after_truncated_model_output() -> None:
     assert len(client.requests) == 2
 
 
+def test_live_qwen_gateway_retries_once_after_schema_invalid_structured_output() -> None:
+    source = _source_with_page_image()
+
+    class SchemaInvalidThenValidClient:
+        requests: list[VisionGenerateRequest]
+
+        def __init__(self) -> None:
+            self.requests = []
+
+        def generate(self, request: VisionGenerateRequest) -> VisionGenerateResponse:
+            self.requests.append(request)
+            if len(self.requests) == 1:
+                raise ModelProtocolError(
+                    "Vision model JSON content does not match response schema.",
+                    details={"validator": "required", "path": []},
+                )
+            return VisionGenerateResponse(
+                profile_name=QWEN_SEMANTIC_PROFILE,
+                model_name="fake-qwen",
+                model_version="test",
+                source_engine="qwen3_vl_8b",
+                prompt_version=request.prompt_version,
+                raw_text="{}",
+                normalized_json=_semantic_payload(source.pages[0].page_id),
+                confidence_json={"overall": 0.8},
+                input_sha256=tuple(image.validated_sha256() for image in request.image_inputs),
+                latency_ms=1,
+            )
+
+    client = SchemaInvalidThenValidClient()
+
+    result = QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
+
+    assert result.manifest.pages[0].page_id == source.pages[0].page_id
+    assert len(client.requests) == 2
+    assert client.requests[0].response_schema_name == "semantic_annotation_model_output"
+    assert client.requests[1].response_schema_name == "semantic_annotation_model_output"
+    assert client.requests[0].response_json_schema == client.requests[1].response_json_schema
+    assert client.requests[0].max_output_tokens == client.requests[1].max_output_tokens
+
+
 def test_qwen_semantic_client_uses_only_active_smart_semantic_url(
     monkeypatch,
 ) -> None:

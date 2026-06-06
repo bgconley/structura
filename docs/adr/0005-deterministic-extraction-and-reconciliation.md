@@ -464,6 +464,13 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   structured content retries with the same schema and budget before surfacing as a
   model protocol/runtime failure for the job layer. This implements the fail-closed
   `retry once -> pipeline_failed` policy without any `json_object` fallback.
+- 2026-06-06: Qwen semantic-planner structured-output failures now use the same
+  fail-closed generation policy. Schema-invalid JSON, non-object JSON, invalid JSON,
+  empty structured content, and truncation retry once with the same semantic
+  annotation schema, prompt, image fan-in, and output budget before surfacing as a
+  model protocol failure. Context-length and invalid local schema/configuration
+  errors remain non-retryable, and there is still no one-page, high-quality, rescue,
+  or `json_object` fallback.
 
 ## Deferred Work
 

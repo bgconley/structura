@@ -43,6 +43,7 @@ from lib.semantic_annotations.qwen_output_normalization import (
     expected_fields_from_json,
     validated_model_output_payload,
 )
+from lib.semantic_annotations.retry_policy import is_retryable_semantic_generation_error
 from lib.semantic_annotations.schema import (
     semantic_annotation_manifest_schema,
     semantic_annotation_model_output_schema,
@@ -203,7 +204,10 @@ class QwenSemanticAnnotationGateway:
                 return manifest
             except (ModelProtocolError, SemanticAnnotationValidationError) as exc:
                 last_error = exc
-                if attempt + 1 >= MAX_SEMANTIC_MODEL_ATTEMPTS or not _is_retryable_error(exc):
+                if (
+                    attempt + 1 >= MAX_SEMANTIC_MODEL_ATTEMPTS
+                    or not is_retryable_semantic_generation_error(exc)
+                ):
                     break
         if last_error is None:
             raise ModelProtocolError("Semantic annotation model failed without error details.")
@@ -706,17 +710,3 @@ def _confidence_from_payload(payload: dict[str, object]) -> dict[str, object]:
     if not isinstance(confidence, dict):
         return {}
     return {str(key): value for key, value in confidence.items()}
-
-
-def _is_retryable_error(exc: Exception) -> bool:
-    message = str(exc).lower()
-    return any(
-        fragment in message
-        for fragment in (
-            "truncated",
-            "not valid json",
-            "schema validation",
-            "semantic annotation output",
-            "invalid semantic annotation output",
-        )
-    )
