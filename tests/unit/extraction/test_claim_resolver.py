@@ -776,6 +776,57 @@ def test_claim_resolver_ignores_qwen_value_claims() -> None:
     assert projection.quality_outcome == "insufficient_signal"
 
 
+def test_claim_resolver_conflict_selection_is_stable_across_confidence_jitter() -> None:
+    anchor = ClaimAnchor(page_number=1, table_id="invoice-header", row_index=1)
+    low_a_high_b = resolve_claims_for_family(
+        family="invoice",
+        claims=[
+            _claim(
+                canonical_key="invoice.invoice_number",
+                typed_value="INV-A",
+                source_engine="granite",
+                anchor=anchor,
+                confidence=0.11,
+            ),
+            _claim(
+                canonical_key="invoice.invoice_number",
+                typed_value="INV-B",
+                source_engine="granite",
+                anchor=anchor,
+                confidence=0.99,
+            ),
+        ],
+    )
+    high_a_low_b = resolve_claims_for_family(
+        family="invoice",
+        claims=[
+            _claim(
+                canonical_key="invoice.invoice_number",
+                typed_value="INV-A",
+                source_engine="granite",
+                anchor=anchor,
+                confidence=0.99,
+            ),
+            _claim(
+                canonical_key="invoice.invoice_number",
+                typed_value="INV-B",
+                source_engine="granite",
+                anchor=anchor,
+                confidence=0.11,
+            ),
+        ],
+    )
+
+    assert low_a_high_b.fields["invoice"]["invoice_number"] == "INV-A"
+    assert high_a_low_b.fields["invoice"]["invoice_number"] == "INV-A"
+    assert {
+        (decision.canonical_key, decision.decision, decision.reason_code)
+        for decision in low_a_high_b.decisions
+    } >= {
+        ("invoice.invoice_number", "needs_review", "source_precedence_conflict"),
+    }
+
+
 def _claim(
     *,
     canonical_key: str,
@@ -783,6 +834,7 @@ def _claim(
     source_engine: ClaimSourceEngine,
     anchor: ClaimAnchor,
     group_id: str | None = None,
+    confidence: float = 0.9,
 ) -> Claim:
     return Claim(
         claim_id=f"{source_engine}:{canonical_key}:{typed_value}",
@@ -793,7 +845,7 @@ def _claim(
         raw_value=str(typed_value),
         typed_value=typed_value,
         value_type="money" if isinstance(typed_value, dict) else "text",
-        confidence=0.9,
+        confidence=confidence,
         method="test",
         group_id=group_id,
         evidence=(anchor.as_json(),),

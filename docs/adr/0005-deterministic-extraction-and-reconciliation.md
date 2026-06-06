@@ -483,6 +483,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   Such legacy payloads fail closed as non-retryable contract violations, preserving
   the single Smart Parse Qwen path without creating retry loops or silently ignoring
   removed controls.
+- 2026-06-06: Claim resolver precedence no longer uses model confidence as a
+  tie-breaker for conflicting Claims. Source authority still wins first, but
+  same-source conflicts now select by stable Claim identity and remain
+  `needs_review`, preventing stochastic confidence jitter from changing the
+  projected review payload.
 
 ## Deferred Work
 

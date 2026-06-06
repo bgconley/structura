@@ -214,10 +214,9 @@ def _absent_required_decisions(
     ]
 
 
-def _claim_sort_key(claim: Claim) -> tuple[int, float, str]:
+def _claim_sort_key(claim: Claim) -> tuple[int, str]:
     return (
         -SOURCE_PRECEDENCE.get(claim.source_engine, 0),
-        -(claim.confidence or 0.0),
         claim.claim_id,
     )
 
