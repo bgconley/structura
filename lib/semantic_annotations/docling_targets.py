@@ -19,6 +19,7 @@ from lib.semantic_annotations.models import (
     SemanticGroundingRef,
     SemanticRegionAnnotation,
 )
+from lib.semantic_annotations.task_routing import LINE_ITEM_TABLE_SEMANTIC_TYPES
 
 DOCLING_STRUCTURAL_REGION_SOURCE = "docling_structural"
 MAX_DOCLING_STRUCTURAL_TARGETS = 4
@@ -304,7 +305,7 @@ def _table_region(
     semantic_type, target_schema, expected_fields = target
     return SemanticRegionAnnotation(
         semantic_type=semantic_type,
-        priority="critical" if semantic_type.endswith("line_item_table") else "high",
+        priority="critical" if semantic_type in LINE_ITEM_TABLE_SEMANTIC_TYPES else "high",
         granite_task="tables_json",
         target_schema=target_schema,
         expected_fields=expected_fields,

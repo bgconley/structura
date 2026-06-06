@@ -336,6 +336,9 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   structured-output character and length constraints. Canonical Structura
   schema names such as `granite_invoice_line_items.v1` remain preserved in
   metadata, model-output schema lineage, validation, and reconciliation.
+- 2026-06-06: Docling structural-target priority now uses the explicit
+  `LINE_ITEM_TABLE_SEMANTIC_TYPES` registry instead of inferring table-critical
+  routing from a `semantic_type.endswith(...)` suffix check.
 
 ## Deferred Work
 
