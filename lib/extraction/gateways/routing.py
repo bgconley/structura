@@ -44,7 +44,15 @@ class ModelRoutingExtractionGateway:
                 f"Route profile {route_profile} is disabled in Phase 8.5 production. "
                 "Qwen is semantic-only; extraction must be Granite or deterministic fixture."
             )
-        if route_profile in GRANITE_ROUTE_PROFILES or schema_name in STRUCTURED_SCHEMAS:
+        granite_requested = (
+            route_profile in GRANITE_ROUTE_PROFILES or schema_name in STRUCTURED_SCHEMAS
+        )
+        if granite_requested:
+            if semantic_task is None:
+                raise ModelProtocolError(
+                    "Live Granite extraction requires a grounded semantic region task. "
+                    "Broad document-level structured extraction is disabled."
+                )
             return self.granite.extract(
                 source,
                 schema_name=schema_name,

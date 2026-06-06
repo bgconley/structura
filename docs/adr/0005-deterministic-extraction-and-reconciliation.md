@@ -398,6 +398,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   `RegionExtractionEnvelope` no longer fall through to legacy target-payload
   candidate creation. Candidates are suppressed and normalization metadata marks
   the missing envelope so semantic-region candidates stay Claim/envelope-backed.
+- 2026-06-06: Live Granite routing now requires a grounded semantic-region
+  extraction task. Broad document-level structured-schema requests fail closed
+  before model use, so live extraction cannot ask Granite to extract an entire
+  invoice, receipt, or EOB without Qwen/Docling grounded region planning.
 
 ## Deferred Work
 
