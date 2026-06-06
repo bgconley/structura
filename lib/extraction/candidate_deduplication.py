@@ -136,17 +136,66 @@ def observation_key(candidate: ObservationCandidateFact) -> tuple[Any, ...]:
 
 
 def evidence_locator_key(evidence: list[dict[str, Any]]) -> tuple[Any, ...]:
-    first = evidence[0] if evidence else {}
-    if not _has_deduplication_locator(first):
+    selected = _selected_evidence(evidence)
+    if not _has_deduplication_locator(selected):
         return ()
     return (
-        normalized_text_key(first.get("semantic_region_id")),
-        first.get("page_number"),
-        normalized_text_key(first.get("page_id")),
-        normalized_text_key(first.get("element_id")),
-        normalized_text_key(first.get("table_id")),
-        first.get("row_index"),
-        json_key(first.get("bbox")) if first.get("bbox") is not None else "",
+        normalized_text_key(selected.get("semantic_region_id")),
+        selected.get("page_number"),
+        normalized_text_key(selected.get("page_id")),
+        normalized_text_key(selected.get("element_id")),
+        normalized_text_key(selected.get("table_id")),
+        selected.get("row_index"),
+        json_key(selected.get("bbox")) if selected.get("bbox") is not None else "",
+    )
+
+
+def _selected_evidence(evidence: list[dict[str, Any]]) -> dict[str, Any]:
+    refs = [ref for ref in evidence if isinstance(ref, dict)]
+    if not refs:
+        return {}
+    return min(refs, key=_evidence_selection_key)
+
+
+def _evidence_selection_key(evidence: dict[str, Any]) -> tuple[int, int, str, str, int, str]:
+    return (
+        -_evidence_specificity(evidence),
+        _int_key(evidence.get("page_number")),
+        normalized_text_key(evidence.get("semantic_region_id")),
+        normalized_text_key(evidence.get("page_id")),
+        _int_key(evidence.get("row_index")),
+        _stable_locator_json(evidence),
+    )
+
+
+def _evidence_specificity(evidence: dict[str, Any]) -> int:
+    return sum(
+        (
+            evidence.get("row_index") is not None,
+            evidence.get("table_id") not in (None, ""),
+            evidence.get("element_id") not in (None, ""),
+            evidence.get("bbox") is not None,
+            evidence.get("page_number") is not None or evidence.get("page_id") not in (None, ""),
+            evidence.get("semantic_region_id") not in (None, ""),
+        )
+    )
+
+
+def _int_key(value: Any) -> int:
+    if isinstance(value, int):
+        return value
+    return 1_000_000_000
+
+
+def _stable_locator_json(evidence: dict[str, Any]) -> str:
+    return json.dumps(
+        {
+            "bbox": json_key_value(evidence.get("bbox")),
+            "element_id": normalized_text_key(evidence.get("element_id")),
+            "table_id": normalized_text_key(evidence.get("table_id")),
+        },
+        sort_keys=True,
+        separators=(",", ":"),
     )
 
 

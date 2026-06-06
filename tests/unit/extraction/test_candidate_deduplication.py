@@ -84,6 +84,44 @@ def test_candidate_deduplication_preserves_same_line_item_from_distinct_rows() -
     ]
 
 
+def test_candidate_deduplication_collapses_duplicate_line_items_when_evidence_order_changes() -> (
+    None
+):
+    first_ref = {
+        "page_number": 1,
+        "semantic_region_id": "region-1",
+        "table_id": "table-1",
+        "row_index": 1,
+    }
+    second_ref = {
+        "page_number": 1,
+        "semantic_region_id": "region-1",
+        "table_id": "table-1",
+        "row_index": 3,
+    }
+    first = LineItemCandidateFact(
+        line_item_type="invoice_item",
+        ordinal=1,
+        description="Monthly service fee",
+        net_amount=99.00,
+        currency="USD",
+        evidence=[second_ref, first_ref],
+    )
+    second = LineItemCandidateFact(
+        line_item_type="invoice_item",
+        ordinal=2,
+        description="Monthly service fee",
+        net_amount=99.00,
+        currency="USD",
+        evidence=[first_ref, second_ref],
+    )
+
+    candidates = dedupe_line_item_candidates([first, second])
+
+    assert len(candidates) == 1
+    assert candidates[0].ordinal == 1
+
+
 def test_candidate_deduplication_preserves_sparse_line_item_with_distinct_locator() -> None:
     sparse = LineItemCandidateFact(
         line_item_type="invoice_item",

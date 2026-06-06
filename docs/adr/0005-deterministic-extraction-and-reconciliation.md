@@ -514,6 +514,9 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   deterministically instead of reading `evidence[0]`. Field, line-item,
   observation, and raw-payload fingerprints therefore remain stable when
   equivalent provider evidence arrays are reordered.
+- 2026-06-06: Candidate deduplication now uses deterministic evidence locator
+  selection as well. Reordered but equivalent evidence arrays no longer cause
+  duplicate line-item candidates to survive dedupe.
 
 ## Deferred Work
 
