@@ -76,6 +76,25 @@ def test_generic_kvp_output_maps_to_reviewable_observations() -> None:
     assert observation_dicts_from_payload(normalized)[0]["value"] == "Brennan Conley"
 
 
+def test_direct_observation_contract_rejects_unknown_top_level_fields() -> None:
+    document_id = uuid4()
+
+    normalized, metadata = normalize_granite_region_output(
+        document_id=document_id,
+        schema_name="document_observation",
+        model_output_schema_name="granite_real_estate_title_seller_info.v1",
+        payload={
+            "seller_name": "Brennan Conley",
+            "notary_name": "Jane Notary",
+            "confidence": {"overall": 0.74},
+        },
+    )
+
+    observations = observation_dicts_from_payload(normalized)
+    assert [item["field_name"] for item in observations] == ["seller_name"]
+    assert metadata["rejected_fields"] == ["notary_name"]
+
+
 def test_generic_kvp_contract_rejects_flat_top_level_fields() -> None:
     document_id = uuid4()
 

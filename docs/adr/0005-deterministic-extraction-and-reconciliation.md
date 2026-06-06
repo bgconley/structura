@@ -377,6 +377,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   flat top-level fields into observations. `granite_generic_kvp.v1` must use
   its contracted `fields` array, while direct-field observation contracts keep
   their declared top-level keys.
+- 2026-06-06: Direct-field observation contracts now admit only their declared
+  top-level fields. Unknown keys in seller-info, mortgage-escrow, or dispute
+  model outputs are rejected as off-contract input instead of passing through
+  a prompt/schema echo deny list.
 
 ## Deferred Work
 
