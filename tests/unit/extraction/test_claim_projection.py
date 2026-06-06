@@ -7,6 +7,59 @@ from lib.extraction.claim_projection import project_claim_family_payload
 from lib.extraction.claim_resolver import ClaimFamilyProjection
 
 
+def test_registry_projection_builds_invoice_payload_shape() -> None:
+    document_id = uuid4()
+    created_at = datetime.now(UTC)
+    projection = ClaimFamilyProjection(
+        family="invoice",
+        fields={
+            "invoice": {"invoice_number": "INV-42"},
+            "totals": {
+                "subtotal": {"amount": 100.0, "currency": "USD"},
+                "total": {"amount": 108.0, "currency": "USD"},
+            },
+        },
+        line_items=[
+            {
+                "description": "Labor",
+                "amount": {"amount": 100.0, "currency": "USD"},
+                "evidence": [{"page_number": 1, "table_id": "invoice-table", "row_index": 2}],
+            }
+        ],
+    )
+
+    payload = project_claim_family_payload(
+        document_id=document_id,
+        created_at=created_at,
+        projection=projection,
+        metadata={"quality_outcome": "extracted_cleanly"},
+        extra_containers={"seller": {"display_name": "MAX BMW", "party_type": "company"}},
+    )
+
+    assert payload == {
+        "schema_name": "invoice",
+        "schema_version": "v1",
+        "document_id": str(document_id),
+        "seller": {"display_name": "MAX BMW", "party_type": "company"},
+        "invoice": {"invoice_number": "INV-42"},
+        "line_items": [
+            {
+                "description": "Labor",
+                "amount": {"amount": 100.0, "currency": "USD"},
+                "evidence": [{"page_number": 1, "table_id": "invoice-table", "row_index": 2}],
+                "ordinal": 1,
+            }
+        ],
+        "totals": {
+            "subtotal": {"amount": 100.0, "currency": "USD"},
+            "total": {"amount": 108.0, "currency": "USD"},
+        },
+        "validation": {"needs_review": True, "checks": []},
+        "created_at": created_at.isoformat(),
+        "metadata": {"quality_outcome": "extracted_cleanly"},
+    }
+
+
 def test_registry_projection_builds_medical_eob_payload_shape() -> None:
     document_id = uuid4()
     created_at = datetime.now(UTC)

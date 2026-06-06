@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from dataclasses import replace
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -15,6 +16,7 @@ from lib.extraction.candidate_value_parsing import (
 from lib.extraction.claim_aggregate_reconciliation import (
     resolve_claim_regions_for_family,
 )
+from lib.extraction.claim_projection import project_claim_family_payload
 from lib.extraction.region_envelope import RegionExtractionEnvelope
 from lib.extraction.region_reconciliation import RegionExtraction
 
@@ -26,8 +28,6 @@ def reconcile_invoice_region_extractions(
     created_at: datetime,
     regions: list[RegionExtraction],
 ) -> dict[str, Any] | None:
-    invoice: dict[str, Any] = {}
-    totals: dict[str, Any] = {}
     claim_regions = resolve_claim_regions_for_family(
         family="invoice",
         missing_claims_reason="claims_required_for_invoice_aggregate",
@@ -44,10 +44,9 @@ def reconcile_invoice_region_extractions(
         if region.region_envelope is not None:
             _merge_envelope_metadata(metadata, region.region_envelope)
 
-    _merge_projection_fields(invoice, totals, claim_projection.fields)
-    line_items = claim_projection.line_items
-    if not line_items and not invoice and not totals:
-        return None
+    fields = deepcopy(claim_projection.fields)
+    invoice = fields.setdefault("invoice", {})
+    totals = fields.setdefault("totals", {})
     if not invoice.get("invoice_number"):
         metadata.setdefault("missing_fields", []).append("invoice.invoice_number")
         invoice.pop("invoice_number", None)
@@ -59,32 +58,17 @@ def reconcile_invoice_region_extractions(
     if "total" not in totals:
         metadata.setdefault("missing_fields", []).append("totals.total")
 
-    return {
-        "schema_name": "invoice",
-        "schema_version": "v1",
-        "document_id": str(document_id),
-        "seller": seller,
-        "invoice": invoice,
-        "line_items": _renumber(_dedupe_line_item_dicts(line_items)),
-        "totals": totals,
-        "validation": {"needs_review": True, "checks": []},
-        "created_at": created_at.isoformat(),
-        "metadata": metadata,
-    }
-
-
-def _merge_projection_fields(
-    invoice: dict[str, Any],
-    totals: dict[str, Any],
-    fields: dict[str, dict[str, Any]],
-) -> None:
-    for key, value in fields.get("invoice", {}).items():
-        cleaned = _clean_canonical_scalar(value)
-        if cleaned not in (None, ""):
-            invoice[key] = deepcopy(cleaned)
-    for key, value in fields.get("totals", {}).items():
-        if isinstance(value, dict) and value.get("amount") is not None:
-            totals[key] = deepcopy(value)
+    return project_claim_family_payload(
+        document_id=document_id,
+        created_at=created_at,
+        projection=replace(
+            claim_projection,
+            fields=fields,
+            line_items=_dedupe_line_item_dicts(claim_projection.line_items),
+        ),
+        metadata=metadata,
+        extra_containers={"seller": seller},
+    )
 
 
 def _merge_envelope_metadata(

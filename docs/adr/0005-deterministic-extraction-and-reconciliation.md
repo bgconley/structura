@@ -322,6 +322,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   shared registry-driven Claim projector instead of bespoke container and
   service-line dict assembly. This starts moving app-payload projection toward
   declarative family registry data while preserving the existing schema shape.
+- 2026-06-05: Invoice aggregate JSON now also uses the shared registry-driven
+  Claim projector for invoice, totals, and line-item shape. Invoice-specific
+  policy remains in the invoice wrapper only for external seller context,
+  payment-summary metadata, missing-field review warnings, and duplicate line
+  row selection.
 
 ## Deferred Work
 

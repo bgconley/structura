@@ -15,6 +15,7 @@ def project_claim_family_payload(
     created_at: datetime,
     projection: ClaimFamilyProjection,
     metadata: dict[str, Any],
+    extra_containers: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     registry = CLAIM_FAMILY_REGISTRIES.get(projection.family)
     if registry is None or registry.aggregate_schema_name is None:
@@ -30,6 +31,8 @@ def project_claim_family_payload(
         "schema_version": registry.aggregate_schema_version,
         "document_id": str(document_id),
     }
+    if extra_containers:
+        payload.update({key: _clean_value(value) for key, value in extra_containers.items()})
     payload.update(containers)
     if registry.aggregate_line_items_key is not None:
         payload[registry.aggregate_line_items_key] = line_items
@@ -85,5 +88,9 @@ def _clean_container(fields: dict[str, Any] | None) -> dict[str, Any]:
     if not fields:
         return {}
     return {
-        key: deepcopy(value) for key, value in fields.items() if value not in (None, "", [], {})
+        key: _clean_value(value) for key, value in fields.items() if value not in (None, "", [], {})
     }
+
+
+def _clean_value(value: Any) -> Any:
+    return deepcopy(value)
