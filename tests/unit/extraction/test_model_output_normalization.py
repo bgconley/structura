@@ -186,6 +186,27 @@ def test_invoice_line_item_contract_drops_off_contract_item_keys() -> None:
     assert normalized["line_items"] == []
 
 
+def test_invoice_line_item_contract_drops_top_level_alias_key() -> None:
+    document_id = uuid4()
+
+    normalized, metadata = normalize_granite_region_output(
+        document_id=document_id,
+        schema_name="invoice",
+        model_output_schema_name="granite_invoice_line_items.v1",
+        payload={
+            "invoice_line_items": [
+                {
+                    "description": "Alignment service",
+                    "amount": "$99.00",
+                }
+            ]
+        },
+    )
+
+    assert normalized["line_items"] == []
+    assert metadata["rejected_fields"] == ["invoice_line_items"]
+
+
 def test_receipt_line_item_contract_drops_service_record_item_aliases() -> None:
     document_id = uuid4()
 

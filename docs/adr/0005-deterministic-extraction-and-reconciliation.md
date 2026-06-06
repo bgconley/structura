@@ -369,6 +369,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   aliases such as `service_description`, `service_cost`, `line_total`, or
   `labor_operation` cannot leak into invoice/receipt normalization unless the
   selected contract explicitly allows them.
+- 2026-06-06: The remaining top-level `invoice_line_items` alias was removed.
+  Line-item fragment normalization now admits only the contracted top-level
+  `line_items` key, leaving alias-shaped payloads as rejected off-contract
+  input instead of a compatibility path.
 
 ## Deferred Work
 

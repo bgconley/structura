@@ -728,8 +728,6 @@ def _canonical_receipt_line_items(
 def _invoice_line_item_records(payload: dict[str, Any]) -> list[Any]:
     if isinstance(payload.get("line_items"), list):
         return list(payload["line_items"])
-    if isinstance(payload.get("invoice_line_items"), list):
-        return list(payload["invoice_line_items"])
     return []
 
 
