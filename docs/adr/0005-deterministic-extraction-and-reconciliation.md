@@ -353,6 +353,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   list payloads into synthetic `raw_text`/`item_N` observation fields. Non-object
   model payloads are dropped with explicit repair metadata; live strict
   structured-output clients should fail such payloads before normalization.
+- 2026-06-06: Model-output normalization no longer unwraps object envelopes such
+  as `{"data": ...}` or `{"normalized": ...}`. Contracted model-output schemas
+  are the direct payload shape; wrapper objects remain off-contract fields for
+  schema validation/admission instead of becoming a downstream repair path.
 
 ## Deferred Work
 

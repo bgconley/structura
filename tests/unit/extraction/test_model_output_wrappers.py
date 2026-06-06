@@ -3,7 +3,7 @@ from __future__ import annotations
 from lib.extraction.model_output_wrappers import unwrap_model_output_payload
 
 
-def test_model_output_wrapper_unwraps_data_payload_and_preserves_sibling_context() -> None:
+def test_model_output_wrapper_leaves_object_payload_shape_unchanged() -> None:
     payload, repairs = unwrap_model_output_payload(
         {
             "data": {"line_items": [{"description": "Alignment service"}]},
@@ -13,11 +13,26 @@ def test_model_output_wrapper_unwraps_data_payload_and_preserves_sibling_context
     )
 
     assert payload == {
-        "line_items": [{"description": "Alignment service"}],
+        "data": {"line_items": [{"description": "Alignment service"}]},
         "totals": {"total": "$99.00"},
         "confidence": {"overall": 0.82},
     }
-    assert repairs == ["unwrapped_data_payload"]
+    assert repairs == []
+
+
+def test_model_output_wrapper_leaves_normalized_payload_shape_unchanged() -> None:
+    payload, repairs = unwrap_model_output_payload(
+        {
+            "normalized": {"fields": [{"name": "seller", "value": "Jane Seller"}]},
+            "confidence": {"overall": 0.82},
+        }
+    )
+
+    assert payload == {
+        "normalized": {"fields": [{"name": "seller", "value": "Jane Seller"}]},
+        "confidence": {"overall": 0.82},
+    }
+    assert repairs == []
 
 
 def test_model_output_wrapper_drops_non_object_payloads_instead_of_creating_raw_text() -> None:

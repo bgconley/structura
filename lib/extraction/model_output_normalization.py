@@ -837,12 +837,6 @@ def _invoice_line_item_records(payload: dict[str, Any]) -> list[Any]:
         return list(payload["line_items"])
     if isinstance(payload.get("invoice_line_items"), list):
         return list(payload["invoice_line_items"])
-    data = payload.get("data")
-    if isinstance(data, dict):
-        if isinstance(data.get("line_items"), list):
-            return list(data["line_items"])
-        if isinstance(data.get("invoice_line_items"), list):
-            return list(data["invoice_line_items"])
     return []
 
 

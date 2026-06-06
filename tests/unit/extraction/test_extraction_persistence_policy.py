@@ -144,14 +144,14 @@ def test_bmw_style_flat_granite_invoice_fields_create_line_item_candidates() -> 
     assert candidates[2].net_amount == 51.00
 
 
-def test_bmw_wrapped_granite_invoice_lines_create_line_item_candidates() -> None:
+def test_wrapped_granite_invoice_lines_do_not_create_line_item_candidates() -> None:
     validation = ValidationReport(
         needs_review=True,
         checks=[
             {
                 "code": "json_schema",
                 "status": "failed",
-                "message": "Granite returned useful rows under data.invoice_line_items.",
+                "message": "Granite returned off-contract rows under data.invoice_line_items.",
             }
         ],
     )
@@ -192,13 +192,7 @@ def test_bmw_wrapped_granite_invoice_lines_create_line_item_candidates() -> None
         source_engine="granite_vision_3b",
     )
 
-    assert [candidate.description for candidate in candidates] == [
-        "PERFORM 600 MILE RUNNING-IN CHECK.",
-        "removed rear wheel mounted and balanced rear tire",
-    ]
-    assert candidates[0].net_amount == 51.00
-    assert candidates[1].net_amount == 465.66
-    assert candidates[1].service_date.isoformat() == "2023-04-25"
+    assert candidates == []
 
 
 def test_prompt_echo_line_items_are_rejected_before_candidate_creation() -> None:

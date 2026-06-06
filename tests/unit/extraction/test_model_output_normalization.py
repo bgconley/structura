@@ -747,10 +747,10 @@ def test_service_record_flat_output_maps_to_canonical_receipt_lines() -> None:
     assert metadata["mapper"] == "granite_service_record_line_items.v1"
 
 
-def test_unwrapped_data_payload_preserves_sibling_totals_for_invoice_line_items() -> None:
+def test_wrapped_data_payload_is_not_mined_for_invoice_line_items() -> None:
     document_id = uuid4()
 
-    normalized, _metadata = normalize_granite_region_output(
+    normalized, metadata = normalize_granite_region_output(
         document_id=document_id,
         schema_name="invoice",
         model_output_schema_name="granite_invoice_line_items.v1",
@@ -767,8 +767,9 @@ def test_unwrapped_data_payload_preserves_sibling_totals_for_invoice_line_items(
         },
     )
 
-    assert normalized["line_items"][0]["description"] == "Alignment service"
+    assert normalized["line_items"] == []
     assert normalized["totals"]["total"] == {"amount": 99.0, "currency": "USD"}
+    assert metadata["rejected_fields"] == ["data"]
 
 
 def test_observation_payload_with_type_object_and_fields_is_not_schema_echo() -> None:
