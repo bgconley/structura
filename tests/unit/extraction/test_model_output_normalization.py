@@ -113,6 +113,25 @@ def test_generic_kvp_contract_rejects_flat_top_level_fields() -> None:
     assert metadata["rejected_fields"] == ["seller_notes"]
 
 
+def test_uncontracted_document_observation_rejects_arbitrary_flat_fields() -> None:
+    document_id = uuid4()
+
+    normalized, metadata = normalize_granite_region_output(
+        document_id=document_id,
+        schema_name="document_observation",
+        model_output_schema_name=None,
+        payload={
+            "seller_notes": "Jane Seller",
+            "confidence": {"overall": 0.61},
+        },
+    )
+
+    assert normalized["observations"] == []
+    assert metadata["mapper"] is None
+    assert metadata["repairs"] == ["uncontracted_observation_payload_rejected"]
+    assert metadata["rejected_fields"] == ["seller_notes"]
+
+
 def test_review_only_receipt_like_output_defers_broad_observations() -> None:
     document_id = uuid4()
 

@@ -115,16 +115,16 @@ def observations_from_model_payload(
 
 def direct_observation_field_keys(
     model_output_schema_name: str | None,
-) -> frozenset[str] | None:
+) -> frozenset[str]:
     if model_output_schema_name is None or model_output_schema_name == GENERIC_KVP_SCHEMA_NAME:
-        return None
+        return frozenset()
     try:
         schema = load_model_output_schema(model_output_schema_name).schema
     except (OSError, ValueError, KeyError):
-        return None
+        return frozenset()
     properties = schema.get("properties")
     if not isinstance(properties, dict):
-        return None
+        return frozenset()
     return frozenset(str(key) for key in properties if key not in DIRECT_OBSERVATION_METADATA_KEYS)
 
 

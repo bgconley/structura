@@ -579,6 +579,8 @@ def _document_observation_output(
             model_output_schema_name,
             evidence_context=evidence_context,
         )
+        if model_output_schema_name is None:
+            repairs.append("uncontracted_observation_payload_rejected")
     if _should_defer_review_only_receipt_like_observations(
         model_output_schema_name=model_output_schema_name,
         semantic_type=semantic_type,
@@ -606,7 +608,7 @@ def _document_observation_output(
             "metadata": output_metadata,
         },
         {
-            "mapper": model_output_schema_name or "granite_generic_kvp.v1",
+            "mapper": model_output_schema_name,
             "repairs": repairs,
             **(
                 {"deferred_observation_count": deferred_observation_count}

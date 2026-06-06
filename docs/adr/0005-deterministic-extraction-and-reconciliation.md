@@ -385,6 +385,9 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   top-level fields from the selected model-output schema contract instead of a
   second hard-coded allow-list. Generic KVP remains a separate contracted
   `fields`-array shape.
+- 2026-06-06: Uncontracted document-observation model payloads now fail closed
+  at normalization: arbitrary flat fields are rejected, and generic fallback
+  must be represented by the explicit `granite_generic_kvp.v1` `fields` array.
 
 ## Deferred Work
 
