@@ -23,3 +23,21 @@ def test_invoice_payment_summary_ignores_off_contract_alias_fields() -> None:
     assert normalized["invoice"] == {}
     assert normalized["totals"] == {}
     assert metadata["rejected_fields"] == ["invoice_number", "totals"]
+
+
+def test_invoice_line_items_ignore_off_contract_total_amount_alias() -> None:
+    document_id = uuid4()
+
+    normalized, metadata = normalize_granite_region_output(
+        document_id=document_id,
+        schema_name="invoice",
+        model_output_schema_name="granite_invoice_line_items.v1",
+        payload={
+            "line_items": [],
+            "total_amount": "$99.00",
+            "confidence": {"overall": 0.61},
+        },
+    )
+
+    assert "totals" not in normalized
+    assert metadata["rejected_fields"] == ["total_amount"]

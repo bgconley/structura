@@ -4,7 +4,7 @@ from typing import Any
 
 from lib.extraction.evidence_concretizer import evidence_ref_from_context
 from lib.extraction.evidence_context import EvidenceContext
-from lib.extraction.model_output_value_parsing import money_value, string_values
+from lib.extraction.model_output_value_parsing import money_value
 
 
 def invoice_payment_summary_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
@@ -43,12 +43,6 @@ def invoice_totals(payload: dict[str, Any]) -> dict[str, Any]:
         amount = money_value(totals.get(source_key))
         if amount:
             result[target_key] = amount
-    if not result:
-        total_values = string_values(payload.get("total_amount"))
-        if total_values:
-            amount = money_value(total_values[0])
-            if amount:
-                result["total"] = amount
     return result
 
 

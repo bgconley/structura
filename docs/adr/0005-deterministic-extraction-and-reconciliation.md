@@ -439,6 +439,9 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   `invoice_number`, nested `invoice`, `totals.amount_paid`, and
   `metadata.payment_summary` remain rejected off-contract payload instead of
   being mined for canonical candidates.
+- 2026-06-06: Invoice line-item normalization likewise stopped mining
+  top-level `total_amount`; totals now come only from the contracted
+  `granite_invoice_line_items.v1` `totals` object.
 
 ## Deferred Work
 
