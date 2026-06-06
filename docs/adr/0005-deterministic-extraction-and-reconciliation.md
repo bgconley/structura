@@ -418,6 +418,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   anchor rule: semantic-region lineage alone is not enough to admit model
   value candidates. Model-backed fields, line items, and observations need a
   page plus element, table row, bbox, or text-span locator.
+- 2026-06-06: The admission boundary now bypasses the legacy raw
+  target-payload rejection scanner for all model-backed semantic-region
+  extractions, including missing-envelope cases. Semantic-region model output
+  is therefore accepted only through typed envelope/Claim-backed candidates;
+  raw `normalized_json` remains debug lineage rather than a cleanup surface.
 
 ## Deferred Work
 

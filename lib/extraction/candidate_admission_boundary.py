@@ -18,6 +18,7 @@ from lib.extraction.models import (
     ObservationCandidateFact,
 )
 from lib.extraction.region_envelope import region_envelope_from_normalization_json
+from lib.model_runtime.source_engines import is_model_source_engine
 
 
 @dataclass(frozen=True)
@@ -88,6 +89,10 @@ def _rejected_payloads_for_boundary(
     context: CandidateAdmissionContext,
     require_concrete_evidence: bool,
 ) -> list[dict[str, object]]:
+    if run_scope.extraction_scope == "semantic_region" and is_model_source_engine(
+        context.source_engine
+    ):
+        return []
     if (
         run_scope.extraction_scope == "semantic_region"
         and region_envelope_from_normalization_json(extraction.normalization_json) is not None

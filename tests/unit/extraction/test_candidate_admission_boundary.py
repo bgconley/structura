@@ -90,6 +90,44 @@ def test_document_level_admission_still_scans_payload_rejections() -> None:
     assert result.admission.rejected_candidates[0]["reasons"] == ["prompt_or_schema_echo"]
 
 
+def test_model_semantic_region_without_envelope_does_not_scan_raw_payload_rejections() -> None:
+    document_id = uuid4()
+    region_id = uuid4()
+    extraction = _extraction(
+        normalized_json={
+            "schema_name": "receipt",
+            "line_items": [
+                {
+                    "description": "Identify and extract the schema",
+                    "quantity": "1.0000",
+                    "unit": "rows",
+                    "amount": {"amount": 1.0, "currency": "USD"},
+                    "evidence": [_evidence(document_id, region_id)],
+                }
+            ],
+        },
+        normalization_json={"candidateSource": "suppressed_missing_region_envelope"},
+    )
+
+    result = apply_candidate_admission_boundary(
+        extraction=extraction,
+        source=_source(document_id),
+        run_scope=ExtractionRunScope.semantic_region(
+            semantic_annotation_id=uuid4(),
+            source_semantic_region_id=region_id,
+            semantic_type="receipt_line_item_table",
+            granite_task="tables_json",
+            canonical_target_schema="receipt",
+        ),
+        field_candidates=[],
+        line_item_candidates=[],
+        observation_candidates=[],
+    )
+
+    assert result.admission.events == []
+    assert result.admission.rejected_candidates == []
+
+
 def _extraction(
     *,
     normalized_json: dict[str, object],
