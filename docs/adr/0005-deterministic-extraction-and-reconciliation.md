@@ -331,6 +331,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   projection module for generic anchored observations. The observation
   reconciler is limited to Claim-region resolution while the projector
   preserves the existing `document_observation.v1` payload shape.
+- 2026-06-06: OpenAI-compatible vision requests now sanitize only the
+  `response_format.json_schema.name` transport field to the documented
+  structured-output character and length constraints. Canonical Structura
+  schema names such as `granite_invoice_line_items.v1` remain preserved in
+  metadata, model-output schema lineage, validation, and reconciliation.
 
 ## Deferred Work
 

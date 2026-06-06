@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
+import re
 import time
 from typing import Any
 
@@ -10,6 +12,9 @@ import httpx
 from lib.model_runtime.contracts import VisionGenerateRequest, VisionGenerateResponse
 from lib.model_runtime.http_client import ModelHttpClient, ModelProtocolError
 from lib.model_runtime.profiles import ModelProfile
+
+_RESPONSE_FORMAT_NAME_MAX_LENGTH = 64
+_RESPONSE_FORMAT_NAME_PATTERN = re.compile(r"[^A-Za-z0-9_-]+")
 
 
 class OpenAIVisionGenerateClient:
@@ -117,7 +122,7 @@ def _openai_payload(
     }
     if request.seed is not None:
         payload["seed"] = request.seed
-    schema_name = request.response_schema_name or "structured_response"
+    schema_name = _response_format_schema_name(request.response_schema_name)
     payload["response_format"] = {
         "type": "json_schema",
         "json_schema": {
@@ -127,6 +132,19 @@ def _openai_payload(
         },
     }
     return payload
+
+
+def _response_format_schema_name(name: str | None) -> str:
+    raw_name = str(name or "").strip() or "structured_response"
+    sanitized = _RESPONSE_FORMAT_NAME_PATTERN.sub("_", raw_name)
+    sanitized = re.sub(r"_+", "_", sanitized).strip("_-") or "structured_response"
+    if len(sanitized) <= _RESPONSE_FORMAT_NAME_MAX_LENGTH:
+        return sanitized
+
+    digest = hashlib.sha256(sanitized.encode("utf-8")).hexdigest()[:8]
+    prefix_length = _RESPONSE_FORMAT_NAME_MAX_LENGTH - len(digest) - 1
+    prefix = sanitized[:prefix_length].rstrip("_-") or "structured_response"
+    return f"{prefix}_{digest}"[:_RESPONSE_FORMAT_NAME_MAX_LENGTH]
 
 
 def _raw_message_content(response: dict[str, Any]) -> tuple[str, str | None]:

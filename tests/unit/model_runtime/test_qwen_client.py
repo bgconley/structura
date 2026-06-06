@@ -241,6 +241,51 @@ def test_qwen_client_sends_json_schema_structured_output_payload() -> None:
     assert response.structured_output_used is True
 
 
+def test_qwen_client_sanitizes_response_format_schema_name_for_openai_compatibility() -> None:
+    seen: dict[str, object] = {}
+    canonical_schema_name = "granite_invoice_line_items.v1"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["payload"] = json.loads(request.content)
+        return httpx.Response(
+            200,
+            json={
+                "model": "Qwen/Qwen3-VL-8B-Instruct",
+                "choices": [{"message": {"content": json.dumps({"line_items": []})}}],
+            },
+        )
+
+    client = QwenVLClient(
+        profile=get_model_profile(QWEN_VL_PROFILE),
+        http_client_base_url="http://model-qwen-semantic:8104",
+        transport=httpx.MockTransport(handler),
+    )
+
+    client.generate(
+        VisionGenerateRequest(
+            profile_name=QWEN_VL_PROFILE,
+            prompt_version="phase8_5-granite-structured-v1",
+            prompt="Return JSON only",
+            image_inputs=_request().image_inputs,
+            response_schema_name=canonical_schema_name,
+            response_json_schema={
+                "type": "object",
+                "properties": {"line_items": {"type": "array", "items": {"type": "object"}}},
+                "required": ["line_items"],
+                "additionalProperties": False,
+            },
+            max_output_tokens=4096,
+            temperature=0.0,
+            timeout_seconds=30,
+        )
+    )
+
+    payload = seen["payload"]
+    assert isinstance(payload, dict)
+    assert payload["response_format"]["json_schema"]["name"] == "granite_invoice_line_items_v1"
+    assert payload["metadata"]["response_schema_name"] == canonical_schema_name
+
+
 def test_qwen_client_fails_closed_when_structured_output_request_is_rejected() -> None:
     seen: list[dict[str, object]] = []
 
