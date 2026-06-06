@@ -283,6 +283,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   tax/category hints through the constrained Granite line-item schema,
   normalization, region envelope facts, Claim IR, candidate identity, and
   resolver registry.
+- 2026-06-05: Service-record line items now preserve labor-operation and
+  part-number codes through receipt-shaped alias normalization, region envelope
+  facts, and canonical `service_record.line_item.code` Claims instead of
+  dropping those identifiers before deterministic projection.
 
 ## Deferred Work
 

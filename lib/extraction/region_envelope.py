@@ -371,7 +371,13 @@ def _line_item(
         ordinal=_int_or_none(item.get("ordinal")),
         line_item_type="service_line" if schema_name == "medical_eob" else None,
         description=str(item.get("service_description") or item.get("description") or "") or None,
-        code=item.get("procedure_code") or item.get("code") or item.get("sku"),
+        code=(
+            item.get("procedure_code")
+            or item.get("code")
+            or item.get("sku")
+            or item.get("labor_operation")
+            or item.get("part_number")
+        ),
         quantity=_float_or_none(item.get("quantity")),
         unit=item.get("unit"),
         unit_price=_money_amount(item.get("unit_price")),

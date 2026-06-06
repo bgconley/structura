@@ -46,6 +46,7 @@ def service_record_line_item(
     amount: Any,
     source_text: str,
     evidence_context: EvidenceContext | None,
+    code: Any = None,
 ) -> dict[str, Any]:
     normalized: dict[str, Any] = {
         "ordinal": ordinal,
@@ -58,6 +59,8 @@ def service_record_line_item(
     parsed_amount = money_value(amount)
     if parsed_quantity is not None:
         normalized["quantity"] = parsed_quantity
+    if code not in (None, ""):
+        normalized["sku"] = str(code)
     if unit not in (None, ""):
         normalized["unit"] = str(unit)
     if parsed_unit_price is not None:

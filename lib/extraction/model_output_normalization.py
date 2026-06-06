@@ -701,6 +701,12 @@ def _canonical_receipt_line_items(
         if not description:
             continue
         amount = _line_item_amount(item)
+        code = (
+            item.get("sku")
+            or item.get("code")
+            or item.get("labor_operation")
+            or item.get("part_number")
+        )
         normalized_item = {
             "ordinal": int(item.get("ordinal") or len(normalized) + 1),
             "description": description,
@@ -710,7 +716,7 @@ def _canonical_receipt_line_items(
             **({"unit_price": _money(item.get("unit_price"))} if item.get("unit_price") else {}),
             **({"discount": _money(item.get("discount"))} if item.get("discount") else {}),
             **({"amount": amount} if amount else {}),
-            **({"sku": item.get("sku")} if item.get("sku") else {}),
+            **({"sku": code} if code else {}),
             **(
                 {"tax_category_hint": item.get("tax_category_hint")}
                 if item.get("tax_category_hint")
@@ -788,6 +794,7 @@ def _service_record_flat_line_items(
                     ),
                 ),
                 evidence_context=evidence_context,
+                code=labor_operations[index] if index < len(labor_operations) else None,
             )
         )
     for index, part_number in enumerate(part_numbers):
@@ -807,6 +814,7 @@ def _service_record_flat_line_items(
                 ),
                 source_text=part_number,
                 evidence_context=evidence_context,
+                code=part_number,
             )
         )
     return [item for item in items if item["description"]]
