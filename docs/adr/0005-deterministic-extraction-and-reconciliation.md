@@ -255,6 +255,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
 - 2026-06-05: Receipt now declares `receipt.transaction.total` as a required
   Claim key. Line-item-only receipt projections record an explicit `absent`
   / `required_claim_absent` decision instead of being marked clean.
+- 2026-06-05: Medical EOB now declares payer and patient display names as
+  required Claim keys, mirroring the existing validator presence checks. EOB
+  service-line-only projections retain useful service evidence but stay
+  `needs_human_review` with explicit required-party absence decisions.
 
 ## Deferred Work
 

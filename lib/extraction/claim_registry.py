@@ -207,6 +207,7 @@ MEDICAL_EOB_CLAIM_REGISTRY = ClaimFamilyRegistry(
             ("money",),
         ),
     ),
+    required_keys=("medical_eob.payer.display_name", "medical_eob.patient.display_name"),
     line_item_projection=ClaimLineItemProjection(
         canonical_prefix="medical_eob.line_item.",
         field_map={
