@@ -29,7 +29,12 @@
     },
     "confidence": {
       "type": "object",
-      "additionalProperties": true
+      "additionalProperties": false,
+      "properties": {
+        "overall": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "schema_fit": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "table_structure": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
+      }
     }
   },
   "required": ["service_lines"]

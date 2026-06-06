@@ -34,6 +34,7 @@ def test_contract_registry_loads_openapi_schemas_and_events() -> None:
     assert summary["path_count"] >= 20
     assert "common_defs.schema.json" in summary["schemas"]
     assert "ingest_document_job.v1.schema.json" in summary["events"]
+    assert "granite_invoice_line_items.v1.schema.json" in summary["model_outputs"]
 
 
 def test_json_schemas_are_valid_draft_2020_12() -> None:
@@ -45,6 +46,12 @@ def test_json_schemas_are_valid_draft_2020_12() -> None:
 def test_model_output_schemas_are_valid_draft_2020_12() -> None:
     for path in sorted(Path("contracts/model_outputs").glob("*.schema.json")):
         Draft202012Validator.check_schema(json.loads(path.read_text(encoding="utf-8")))
+
+
+def test_model_output_schemas_are_strict_structured_output_contracts() -> None:
+    registry = ContractRegistry.load("contracts")
+
+    registry.check_model_output_structured_schemas()
 
 
 def test_evidence_requires_page_number_and_concrete_locator() -> None:

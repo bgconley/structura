@@ -14,7 +14,7 @@
         "required": ["name"],
         "properties": {
           "name": {"type": "string", "minLength": 1, "maxLength": 120},
-          "value": {"type": ["string", "number", "boolean", "object", "array", "null"]},
+          "value": {"type": ["string", "number", "boolean", "null"]},
           "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
           "source_text": {"type": ["string", "null"], "maxLength": 500}
         }
@@ -62,7 +62,11 @@
     },
     "confidence": {
       "type": "object",
-      "additionalProperties": true
+      "additionalProperties": false,
+      "properties": {
+        "overall": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "schema_fit": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
+      }
     }
   },
   "required": ["facts", "contacts", "service_lines", "warnings"]

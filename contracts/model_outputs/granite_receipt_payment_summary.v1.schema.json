@@ -13,6 +13,13 @@
     "discount_total": {"type": ["number", "string", "null"]},
     "total": {"type": ["number", "string", "null"]},
     "payment_method": {"type": ["string", "null"], "maxLength": 120},
-    "confidence": {"type": "object", "additionalProperties": true}
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "overall": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "schema_fit": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
+      }
+    }
   }
 }

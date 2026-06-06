@@ -339,6 +339,12 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
 - 2026-06-06: Docling structural-target priority now uses the explicit
   `LINE_ITEM_TABLE_SEMANTIC_TYPES` registry instead of inferring table-critical
   routing from a `semantic_type.endswith(...)` suffix check.
+- 2026-06-06: Model-output contracts are now loaded by `ContractRegistry` and
+  enforced by `scripts/validate_contracts.py` as strict structured-output
+  schemas. Granite fragment schemas close every object with
+  `additionalProperties: false`, bound confidence to finite numeric keys, and
+  keep generic KVP/fact values scalar instead of allowing arbitrary object or
+  array payloads from the model.
 
 ## Deferred Work
 

@@ -20,6 +20,7 @@ class ContractRegistry:
     openapi: dict[str, Any]
     schemas: dict[str, dict[str, Any]]
     events: dict[str, dict[str, Any]]
+    model_outputs: dict[str, dict[str, Any]]
 
     @classmethod
     def from_settings(cls, settings: Settings) -> ContractRegistry:
@@ -31,6 +32,7 @@ class ContractRegistry:
         openapi_path = contracts_root / "api" / "openapi.yaml"
         schemas_dir = contracts_root / "schemas"
         events_dir = contracts_root / "events"
+        model_outputs_dir = contracts_root / "model_outputs"
 
         if not openapi_path.exists():
             raise FileNotFoundError(f"OpenAPI contract not found: {openapi_path}")
@@ -38,6 +40,8 @@ class ContractRegistry:
             raise FileNotFoundError(f"Schema directory not found: {schemas_dir}")
         if not events_dir.exists():
             raise FileNotFoundError(f"Event directory not found: {events_dir}")
+        if not model_outputs_dir.exists():
+            raise FileNotFoundError(f"Model-output schema directory not found: {model_outputs_dir}")
 
         openapi = yaml.safe_load(openapi_path.read_text(encoding="utf-8"))
         schemas = {
@@ -48,8 +52,18 @@ class ContractRegistry:
             path.name: json.loads(path.read_text(encoding="utf-8"))
             for path in sorted(events_dir.glob("*.json"))
         }
+        model_outputs = {
+            path.name: json.loads(path.read_text(encoding="utf-8"))
+            for path in sorted(model_outputs_dir.glob("*.schema.json"))
+        }
 
-        return cls(root=contracts_root, openapi=openapi, schemas=schemas, events=events)
+        return cls(
+            root=contracts_root,
+            openapi=openapi,
+            schemas=schemas,
+            events=events,
+            model_outputs=model_outputs,
+        )
 
     def check_json_schemas(self) -> None:
         for name, schema in self.schemas.items():
@@ -62,6 +76,15 @@ class ContractRegistry:
                 Draft202012Validator.check_schema(schema)
             except Exception as exc:  # pragma: no cover
                 raise ValueError(f"Invalid event schema {name}: {exc}") from exc
+        for name, schema in self.model_outputs.items():
+            try:
+                Draft202012Validator.check_schema(schema)
+            except Exception as exc:  # pragma: no cover
+                raise ValueError(f"Invalid model-output JSON Schema {name}: {exc}") from exc
+
+    def check_model_output_structured_schemas(self) -> None:
+        for name, schema in self.model_outputs.items():
+            _check_structured_output_schema(name=name, schema=schema)
 
     @cached_property
     def _schema_registry(self) -> Registry:
@@ -119,6 +142,44 @@ class ContractRegistry:
             "path_count": len(paths),
             "schema_count": len(self.schemas),
             "event_schema_count": len(self.events),
+            "model_output_schema_count": len(self.model_outputs),
             "schemas": sorted(self.schemas),
             "events": sorted(self.events),
+            "model_outputs": sorted(self.model_outputs),
         }
+
+
+def _check_structured_output_schema(
+    *,
+    name: str,
+    schema: dict[str, Any],
+) -> None:
+    for path, node in _schema_nodes(schema, path="$"):
+        node_type = node.get("type")
+        node_types = set(node_type) if isinstance(node_type, list) else {node_type}
+        if "object" not in node_types:
+            continue
+        if node.get("additionalProperties") is not False:
+            raise ValueError(
+                f"Model-output structured schema {name} has open object at {path}; "
+                "set additionalProperties to false."
+            )
+
+
+def _schema_nodes(schema: Any, *, path: str) -> list[tuple[str, dict[str, Any]]]:
+    if not isinstance(schema, dict):
+        return []
+    nodes = [(path, schema)]
+    properties = schema.get("properties")
+    if isinstance(properties, dict):
+        for key, child in properties.items():
+            nodes.extend(_schema_nodes(child, path=f"{path}.properties.{key}"))
+    items = schema.get("items")
+    if isinstance(items, dict):
+        nodes.extend(_schema_nodes(items, path=f"{path}.items"))
+    for keyword in ("anyOf", "oneOf", "allOf"):
+        variants = schema.get(keyword)
+        if isinstance(variants, list):
+            for index, child in enumerate(variants):
+                nodes.extend(_schema_nodes(child, path=f"{path}.{keyword}[{index}]"))
+    return nodes

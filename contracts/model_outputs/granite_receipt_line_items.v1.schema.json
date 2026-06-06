@@ -38,7 +38,15 @@
         "total": {"type": ["number", "string", "null"]}
       }
     },
-    "confidence": {"type": "object", "additionalProperties": true}
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "overall": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "schema_fit": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "table_structure": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
+      }
+    }
   },
   "required": ["line_items"]
 }
