@@ -465,10 +465,11 @@ def _receipt_payment_output(
         ("subtotal", "subtotal"),
         ("tax", "tax"),
         ("tip", "tip"),
+        ("discount_total", "discount_total"),
         ("total", "total"),
     ):
         value = payload.get(source_key)
-        if target_key in {"subtotal", "tax", "tip", "total"}:
+        if target_key in {"subtotal", "tax", "tip", "discount_total", "total"}:
             if value not in (None, "") and defer_money_fields:
                 deferred_fields.append(source_key)
                 continue
@@ -538,6 +539,7 @@ def _receipt_payment_output(
                 "subtotal",
                 "tax",
                 "tip",
+                "discount_total",
                 "total",
                 "payment_method",
                 "confidence",
@@ -547,7 +549,9 @@ def _receipt_payment_output(
 
 
 def _receipt_payment_amount_signal(payload: dict[str, Any]) -> bool:
-    return any(_money(payload.get(key)) for key in ("subtotal", "tax", "tip", "total"))
+    return any(
+        _money(payload.get(key)) for key in ("subtotal", "tax", "tip", "discount_total", "total")
+    )
 
 
 def _is_page_scoped_model_summary(evidence_context: EvidenceContext | None) -> bool:

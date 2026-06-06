@@ -235,6 +235,16 @@ def _receipt_candidates(
             require_concrete_evidence=require_concrete_evidence,
         ),
         *_money_candidate(
+            "receipt.transaction.discount_total",
+            transaction.get("discount_total"),
+            transaction,
+            confidence,
+            source_engine,
+            validation,
+            status,
+            require_concrete_evidence=require_concrete_evidence,
+        ),
+        *_money_candidate(
             "receipt.transaction.total",
             transaction.get("total"),
             transaction,

@@ -274,6 +274,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   admission, and resolver registry. `invoice.shipping_total` and
   `invoice.discount_total` are projected into `invoice.v1` totals, and invoice
   total arithmetic now evaluates subtotal plus tax plus shipping minus discount.
+- 2026-06-05: Receipt discounts now flow through the constrained Granite
+  payment-summary schema, normalization, region envelope facts, Claim
+  admission, and resolver registry. `receipt.transaction.discount_total` is
+  projected into `receipt.v1` and receipt total arithmetic now subtracts the
+  discount from subtotal plus tax plus tip.
 
 ## Deferred Work
 

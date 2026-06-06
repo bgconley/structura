@@ -282,7 +282,8 @@ def _compact_shape_for_schema(schema_name: str) -> str:
     if schema_name == "granite_receipt_payment_summary.v1":
         return (
             'Use shape {"merchant_name":null,"transaction_date":null,'
-            '"subtotal":null,"tax":null,"tip":null,"total":null,'
+            '"subtotal":null,"tax":null,"tip":null,'
+            '"discount_total":null,"total":null,'
             '"payment_method":null,"confidence":{}}.'
         )
     if schema_name == "granite_payment_summary.v1":

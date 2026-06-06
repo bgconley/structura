@@ -223,6 +223,7 @@ def _facts_from_projection(
             ("subtotal", "money"),
             ("tax", "money"),
             ("tip", "money"),
+            ("discount_total", "money"),
             ("total", "money"),
         ):
             if transaction.get(key) not in (None, ""):

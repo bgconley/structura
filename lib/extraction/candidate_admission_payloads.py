@@ -200,6 +200,11 @@ def _field_payload_values(
             ),
             ("receipt.transaction.tax", _dict(transaction.get("tax")), transaction.get("tax")),
             (
+                "receipt.transaction.discount_total",
+                _dict(transaction.get("discount_total")),
+                transaction.get("discount_total"),
+            ),
+            (
                 "receipt.transaction.total",
                 _dict(transaction.get("total")),
                 transaction.get("total"),

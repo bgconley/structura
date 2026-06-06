@@ -10,6 +10,7 @@
     "subtotal": {"type": ["number", "string", "null"]},
     "tax": {"type": ["number", "string", "null"]},
     "tip": {"type": ["number", "string", "null"]},
+    "discount_total": {"type": ["number", "string", "null"]},
     "total": {"type": ["number", "string", "null"]},
     "payment_method": {"type": ["string", "null"], "maxLength": 120},
     "confidence": {"type": "object", "additionalProperties": true}
