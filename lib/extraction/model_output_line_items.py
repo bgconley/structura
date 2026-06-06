@@ -15,6 +15,68 @@ NON_LINE_ITEM_HEADINGS = {
     "payment information",
 }
 
+INVOICE_LINE_ITEM_KEYS = frozenset(
+    {
+        "ordinal",
+        "description",
+        "quantity",
+        "unit",
+        "unit_price",
+        "amount",
+        "category_hint",
+        "row_index",
+        "table_id",
+        "page_number",
+    }
+)
+
+RECEIPT_LINE_ITEM_KEYS = frozenset(
+    {
+        "ordinal",
+        "description",
+        "quantity",
+        "unit",
+        "unit_price",
+        "discount",
+        "amount",
+        "sku",
+        "tax_category_hint",
+        "category_hint",
+        "row_index",
+        "table_id",
+        "page_number",
+    }
+)
+
+RETAIL_ORDER_LINE_ITEM_KEYS = frozenset(
+    {
+        "description",
+        "quantity",
+        "unit_price",
+        "amount",
+        "source_text",
+    }
+)
+
+SERVICE_RECORD_LINE_ITEM_KEYS = frozenset(
+    {
+        "ordinal",
+        "description",
+        "service_description",
+        "labor_operation",
+        "part_number",
+        "quantity",
+        "unit",
+        "unit_price",
+        "line_total",
+        "amount",
+        "category_hint",
+        "row_index",
+        "table_id",
+        "page_number",
+    }
+)
+
 
 def simple_line_item(
     ordinal: int,
@@ -78,34 +140,38 @@ def join_source_text(description: str, **parts: Any) -> str:
     return " | ".join(values)
 
 
-def line_item_description(item: dict[str, Any]) -> str | None:
-    for key in ("description", "service_description", "service_type", "line_description"):
+def line_item_description(
+    item: dict[str, Any],
+    *,
+    keys: tuple[str, ...] = ("description",),
+) -> str | None:
+    for key in keys:
         value = item.get(key)
         if isinstance(value, str) and value.strip():
             return value.strip()
     return None
 
 
-def line_item_amount(item: dict[str, Any]) -> dict[str, Any] | None:
-    for key in (
-        "amount",
-        "total_due",
-        "service_cost",
-        "subtotal",
-        "net_amount",
-        "line_total",
-        "labor",
-        "parts_cost",
-    ):
+def line_item_amount(
+    item: dict[str, Any],
+    *,
+    keys: tuple[str, ...] = ("amount",),
+) -> dict[str, Any] | None:
+    for key in keys:
         amount = money_value(item.get(key))
         if amount is not None:
             return amount
     return None
 
 
-def is_non_line_item_heading(item: dict[str, Any], description: str) -> bool:
+def is_non_line_item_heading(
+    item: dict[str, Any],
+    description: str,
+    *,
+    category_keys: tuple[str, ...] = ("category_hint",),
+) -> bool:
     normalized_description = description.strip().lower()
-    category = item.get("category_hint") or item.get("gl_hint")
+    category = next((item.get(key) for key in category_keys if item.get(key)), None)
     normalized_category = str(category).strip().lower() if category else ""
     return (
         normalized_description in NON_LINE_ITEM_HEADINGS
@@ -128,6 +194,10 @@ def canonical_line_item_evidence(
     evidence_context: EvidenceContext | None,
 ) -> dict[str, Any]:
     return line_item_evidence(item, line_item_source_text(item, description), evidence_context)
+
+
+def item_matches_contract(item: dict[str, Any], allowed_keys: frozenset[str]) -> bool:
+    return set(item).issubset(allowed_keys)
 
 
 def _evidence(

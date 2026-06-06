@@ -15,10 +15,17 @@ from lib.extraction.model_output_healthcare import (
     healthcare_coverage_decision_output as _healthcare_coverage_decision_output,
 )
 from lib.extraction.model_output_line_items import (
+    INVOICE_LINE_ITEM_KEYS,
+    RECEIPT_LINE_ITEM_KEYS,
+    RETAIL_ORDER_LINE_ITEM_KEYS,
+    SERVICE_RECORD_LINE_ITEM_KEYS,
     canonical_line_item_evidence,
 )
 from lib.extraction.model_output_line_items import (
     is_non_line_item_heading as _is_non_line_item_heading,
+)
+from lib.extraction.model_output_line_items import (
+    item_matches_contract as _item_matches_contract,
 )
 from lib.extraction.model_output_line_items import (
     line_item_amount as _line_item_amount,
@@ -123,6 +130,7 @@ def normalize_granite_region_output(
             model_payload,
             evidence_context=evidence_context,
             docling_table_quality=docling_table_quality,
+            model_output_schema_name=model_output_schema_name,
         )
         metadata["mapper"] = model_output_schema_name
         return finalize(normalized, metadata)
@@ -312,15 +320,23 @@ def _receipt_line_items_output(
     *,
     evidence_context: EvidenceContext | None,
     docling_table_quality: DoclingTableQuality | None,
+    model_output_schema_name: str,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
+    allowed_item_keys = (
+        RETAIL_ORDER_LINE_ITEM_KEYS
+        if model_output_schema_name == "granite_retail_order.v1"
+        else RECEIPT_LINE_ITEM_KEYS
+    )
     line_items = _canonical_receipt_line_items(
         _invoice_line_item_records(payload),
         evidence_context=evidence_context,
+        allowed_item_keys=allowed_item_keys,
     )
     if not line_items:
         line_items = _canonical_receipt_line_items(
             payload.get("line_items") or [],
             evidence_context=evidence_context,
+            allowed_item_keys=allowed_item_keys,
         )
     consistency = gate_docling_authoritative_rows(line_items, docling_table_quality)
     line_items = consistency.accepted_rows
@@ -378,7 +394,14 @@ def _service_record_line_items_output(
     docling_table_quality: DoclingTableQuality | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     records = _invoice_line_item_records(payload)
-    line_items = _canonical_receipt_line_items(records, evidence_context=evidence_context)
+    line_items = _canonical_receipt_line_items(
+        records,
+        evidence_context=evidence_context,
+        allowed_item_keys=SERVICE_RECORD_LINE_ITEM_KEYS,
+        description_keys=("description", "service_description"),
+        amount_keys=("line_total", "amount"),
+        code_keys=("labor_operation", "part_number"),
+    )
     repairs = ["mapped_model_output_to_canonical_service_record_line_items"]
     consistency = gate_docling_authoritative_rows(line_items, docling_table_quality)
     line_items = consistency.accepted_rows
@@ -629,6 +652,8 @@ def _canonical_invoice_line_items(
     for item in items:
         if not isinstance(item, dict):
             continue
+        if not _item_matches_contract(item, INVOICE_LINE_ITEM_KEYS):
+            continue
         description = _line_item_description(item)
         if not description:
             continue
@@ -660,6 +685,10 @@ def _canonical_receipt_line_items(
     items: Any,
     *,
     evidence_context: EvidenceContext | None,
+    allowed_item_keys: frozenset[str],
+    description_keys: tuple[str, ...] = ("description",),
+    amount_keys: tuple[str, ...] = ("amount",),
+    code_keys: tuple[str, ...] = ("sku", "code"),
 ) -> list[dict[str, Any]]:
     if not isinstance(items, list):
         return []
@@ -667,16 +696,13 @@ def _canonical_receipt_line_items(
     for item in items:
         if not isinstance(item, dict):
             continue
-        description = _line_item_description(item)
+        if not _item_matches_contract(item, allowed_item_keys):
+            continue
+        description = _line_item_description(item, keys=description_keys)
         if not description:
             continue
-        amount = _line_item_amount(item)
-        code = (
-            item.get("sku")
-            or item.get("code")
-            or item.get("labor_operation")
-            or item.get("part_number")
-        )
+        amount = _line_item_amount(item, keys=amount_keys)
+        code = next((item.get(key) for key in code_keys if item.get(key)), None)
         normalized_item = {
             "ordinal": int(item.get("ordinal") or len(normalized) + 1),
             "description": description,

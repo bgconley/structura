@@ -363,6 +363,12 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   `service_description`, `parts`, `labor_cost`, `part_number`, and `line_total`
   are rejected as off-contract top-level fields instead of being mined for
   candidates or Claims.
+- 2026-06-06: Line-item admission is now schema-aware at the item level.
+  Invoice, receipt, retail-order, and service-record fragments each admit only
+  the keys declared by their selected model-output contract, so service-record
+  aliases such as `service_description`, `service_cost`, `line_total`, or
+  `labor_operation` cannot leak into invoice/receipt normalization unless the
+  selected contract explicitly allows them.
 
 ## Deferred Work
 

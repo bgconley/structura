@@ -162,6 +162,50 @@ def test_granite_line_item_evidence_uses_region_grounding_context() -> None:
     assert has_concrete_evidence([evidence]) is True
 
 
+def test_invoice_line_item_contract_drops_off_contract_item_keys() -> None:
+    document_id = uuid4()
+
+    normalized, _metadata = normalize_granite_region_output(
+        document_id=document_id,
+        schema_name="invoice",
+        model_output_schema_name="granite_invoice_line_items.v1",
+        payload={
+            "line_items": [
+                {
+                    "description": "Alignment service",
+                    "service_cost": "$99.00",
+                },
+                {
+                    "service_type": "Tire mounting",
+                    "amount": "$42.00",
+                },
+            ],
+        },
+    )
+
+    assert normalized["line_items"] == []
+
+
+def test_receipt_line_item_contract_drops_service_record_item_aliases() -> None:
+    document_id = uuid4()
+
+    normalized, _metadata = normalize_granite_region_output(
+        document_id=document_id,
+        schema_name="receipt",
+        model_output_schema_name="granite_receipt_line_items.v1",
+        payload={
+            "line_items": [
+                {
+                    "service_description": "Battery replacement",
+                    "line_total": "$44.00",
+                }
+            ],
+        },
+    )
+
+    assert normalized["line_items"] == []
+
+
 def test_authoritative_docling_table_rejects_line_items_without_row_identity() -> None:
     document_id = uuid4()
     table_id = uuid4()
