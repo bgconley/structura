@@ -20,6 +20,7 @@ from lib.contracts import (
     SearchResponse,
     UploadDocumentMultipartRequest,
 )
+from lib.contracts.registry import _check_structured_output_schema
 
 UUID_1 = "11111111-1111-1111-1111-111111111111"
 UUID_2 = "22222222-2222-2222-2222-222222222222"
@@ -52,6 +53,39 @@ def test_model_output_schemas_are_strict_structured_output_contracts() -> None:
     registry = ContractRegistry.load("contracts")
 
     registry.check_model_output_structured_schemas()
+
+
+def test_model_output_schema_checker_rejects_empty_root_contracts() -> None:
+    with pytest.raises(ValueError, match="require at least one extraction-bearing"):
+        _check_structured_output_schema(
+            name="empty_model_output.schema.json",
+            schema={
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["confidence"],
+                "properties": {
+                    "confidence": {
+                        "type": "object",
+                        "additionalProperties": False,
+                    }
+                },
+            },
+        )
+
+
+def test_model_output_schemas_reject_empty_root_objects() -> None:
+    registry = ContractRegistry.load("contracts")
+
+    for name, schema in registry.model_outputs.items():
+        required = schema.get("required")
+        properties = schema.get("properties") or {}
+        assert isinstance(required, list), f"{name} must declare root required keys"
+        assert any(key != "confidence" for key in required), (
+            f"{name} must require at least one extraction-bearing root key"
+        )
+        with pytest.raises(ValidationError):
+            Draft202012Validator(schema).validate({})
+        assert set(required).issubset(properties)
 
 
 def test_evidence_requires_page_number_and_concrete_locator() -> None:

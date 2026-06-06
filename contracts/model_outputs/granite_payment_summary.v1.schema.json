@@ -4,6 +4,7 @@
   "title": "Granite Payment Summary v1",
   "type": "object",
   "additionalProperties": false,
+  "required": ["payments"],
   "properties": {
     "invoice_no": {"type": ["string", "null"]},
     "amount": {"type": ["number", "string", "null"]},

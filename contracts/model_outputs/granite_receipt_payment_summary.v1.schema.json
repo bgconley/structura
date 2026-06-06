@@ -4,6 +4,7 @@
   "title": "Granite Receipt Payment Summary v1",
   "type": "object",
   "additionalProperties": false,
+  "required": ["total"],
   "properties": {
     "merchant_name": {"type": ["string", "null"], "maxLength": 200},
     "transaction_date": {"type": ["string", "null"], "maxLength": 40},

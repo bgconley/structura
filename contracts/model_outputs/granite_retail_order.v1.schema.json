@@ -4,6 +4,7 @@
   "title": "Granite Retail Order v1",
   "type": "object",
   "additionalProperties": false,
+  "required": ["line_items"],
   "properties": {
     "merchant_name": {"type": ["string", "null"], "maxLength": 200},
     "order_number": {"type": ["string", "null"], "maxLength": 120},

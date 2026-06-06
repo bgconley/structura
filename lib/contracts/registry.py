@@ -154,6 +154,7 @@ def _check_structured_output_schema(
     name: str,
     schema: dict[str, Any],
 ) -> None:
+    _check_structured_output_root(name=name, schema=schema)
     for path, node in _schema_nodes(schema, path="$"):
         node_type = node.get("type")
         node_types = set(node_type) if isinstance(node_type, list) else {node_type}
@@ -164,6 +165,25 @@ def _check_structured_output_schema(
                 f"Model-output structured schema {name} has open object at {path}; "
                 "set additionalProperties to false."
             )
+
+
+def _check_structured_output_root(*, name: str, schema: dict[str, Any]) -> None:
+    required = schema.get("required")
+    properties = schema.get("properties")
+    if not isinstance(properties, dict):
+        raise ValueError(f"Model-output structured schema {name} must declare properties.")
+    if not isinstance(required, list):
+        raise ValueError(f"Model-output structured schema {name} must declare root required keys.")
+    if not any(key != "confidence" for key in required):
+        raise ValueError(
+            f"Model-output structured schema {name} must require at least one "
+            "extraction-bearing root key."
+        )
+    unknown = sorted(key for key in required if key not in properties)
+    if unknown:
+        raise ValueError(
+            f"Model-output structured schema {name} requires unknown root keys: {unknown}."
+        )
 
 
 def _schema_nodes(schema: Any, *, path: str) -> list[tuple[str, dict[str, Any]]]:

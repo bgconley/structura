@@ -4,6 +4,7 @@
   "title": "Granite Mortgage Escrow Statement v1",
   "type": "object",
   "additionalProperties": false,
+  "required": ["servicer_name"],
   "properties": {
     "loan_number": {"type": ["string", "null"], "maxLength": 120},
     "servicer_name": {"type": ["string", "null"], "maxLength": 240},

@@ -4,6 +4,7 @@
   "title": "Granite Dispute Form v1",
   "type": "object",
   "additionalProperties": false,
+  "required": ["transactions"],
   "properties": {
     "account_holder": {"type": ["string", "null"], "maxLength": 240},
     "merchant_name": {"type": ["string", "null"], "maxLength": 240},

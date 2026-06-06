@@ -4,6 +4,7 @@
   "title": "Granite Real Estate Title Seller Info v1",
   "type": "object",
   "additionalProperties": false,
+  "required": ["seller_name"],
   "properties": {
     "seller_name": {"type": ["string", "null"], "maxLength": 240},
     "property_address": {"type": ["string", "null"], "maxLength": 400},

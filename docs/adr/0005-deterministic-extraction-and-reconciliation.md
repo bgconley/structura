@@ -429,6 +429,10 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   structured decoding and returns schema-invalid JSON, the adapter fails closed
   with a redacted `ModelProtocolError` instead of handing malformed shape to
   downstream normalizers.
+- 2026-06-06: Model-output structured schemas now require at least one
+  extraction-bearing root key, and contract validation rejects empty-root
+  schemas. This keeps `{}` from being schema-valid model output while still
+  allowing honest abstention through empty arrays or nullable fragment fields.
 
 ## Deferred Work
 
