@@ -16,6 +16,22 @@ from lib.extraction.normalization import (
     observation_candidates_from_extraction,
 )
 from lib.extraction.validators import validate_extraction_payload, validate_semantic_region_payload
+from tests.unit.extraction.model_output_contract_fixtures import confidence as _confidence
+from tests.unit.extraction.model_output_contract_fixtures import generic_field as _generic_field
+from tests.unit.extraction.model_output_contract_fixtures import (
+    invoice_line_item as _invoice_line_item,
+)
+from tests.unit.extraction.model_output_contract_fixtures import invoice_totals as _invoice_totals
+from tests.unit.extraction.model_output_contract_fixtures import (
+    receipt_line_item as _receipt_line_item,
+)
+from tests.unit.extraction.model_output_contract_fixtures import receipt_totals as _receipt_totals
+from tests.unit.extraction.model_output_contract_fixtures import (
+    receipt_payment_payload as _receipt_payment_payload,
+)
+from tests.unit.extraction.model_output_contract_fixtures import (
+    seller_info_payload as _seller_info_payload,
+)
 
 
 def test_normalize_granite_region_output_handles_non_object_payloads_without_crashing() -> None:
@@ -60,11 +76,10 @@ def test_generic_kvp_output_maps_to_reviewable_observations() -> None:
         document_id=document_id,
         schema_name="document_observation",
         model_output_schema_name="granite_real_estate_title_seller_info.v1",
-        payload={
-            "seller_name": "Brennan Conley",
-            "property_address": "123 Main St",
-            "confidence": {"overall": 0.74},
-        },
+        payload=_seller_info_payload(
+            seller_name="Brennan Conley",
+            property_address="123 Main St",
+        ),
     )
 
     assert normalized["schema_name"] == "document_observation"
@@ -83,16 +98,16 @@ def test_direct_observation_contract_rejects_unknown_top_level_fields() -> None:
         document_id=document_id,
         schema_name="document_observation",
         model_output_schema_name="granite_real_estate_title_seller_info.v1",
-        payload={
-            "seller_name": "Brennan Conley",
-            "notary_name": "Jane Notary",
-            "confidence": {"overall": 0.74},
-        },
+        payload=_seller_info_payload(
+            seller_name="Brennan Conley",
+            notary_name="Jane Notary",
+        ),
     )
 
     observations = observation_dicts_from_payload(normalized)
-    assert [item["field_name"] for item in observations] == ["seller_name"]
+    assert observations == []
     assert metadata["rejected_fields"] == ["notary_name"]
+    assert "model_output_contract_validation_failed" in metadata["repairs"]
 
 
 def test_direct_observation_contract_reports_fields_array_as_rejected() -> None:
@@ -121,14 +136,14 @@ def test_generic_kvp_contract_rejects_flat_top_level_fields() -> None:
         model_output_schema_name="granite_generic_kvp.v1",
         payload={
             "seller_notes": "Jane Seller",
-            "confidence": {"overall": 0.61},
+            "confidence": _confidence(0.61),
         },
     )
 
     assert normalized["observations"] == []
     assert metadata["repairs"] == ["model_output_contract_validation_failed"]
     assert metadata["rejected_fields"] == ["seller_notes"]
-    assert metadata["model_output_contract_errors"] == ["$: 'fields' is a required property"]
+    assert "$: 'fields' is a required property" in metadata["model_output_contract_errors"]
 
 
 def test_uncontracted_document_observation_rejects_arbitrary_flat_fields() -> None:
@@ -216,10 +231,10 @@ def test_review_only_receipt_like_output_defers_broad_observations() -> None:
         model_output_schema_name="granite_generic_kvp.v1",
         payload={
             "fields": [
-                {"name": "total_amount", "value": "$42.00"},
-                {"name": "payment_method", "value": "AMEX CREDIT"},
+                _generic_field("total_amount", "$42.00"),
+                _generic_field("payment_method", "AMEX CREDIT"),
             ],
-            "confidence": {"overall": 0.74},
+            "confidence": _confidence(),
         },
         semantic_type="receipt_payment_summary",
         target_schema="document_observation",
@@ -242,12 +257,12 @@ def test_review_only_receipt_like_output_defers_when_resolved_as_receipt() -> No
         model_output_schema_name="granite_generic_kvp.v1",
         payload={
             "fields": [
-                {"name": "subtotal", "value": "$20.00"},
-                {"name": "tax", "value": "$1.60"},
-                {"name": "total_amount", "value": "$21.60"},
-                {"name": "payment_method", "value": "CARD"},
+                _generic_field("subtotal", "$20.00"),
+                _generic_field("tax", "$1.60"),
+                _generic_field("total_amount", "$21.60"),
+                _generic_field("payment_method", "CARD"),
             ],
-            "confidence": {"overall": 0.74},
+            "confidence": _confidence(),
         },
         semantic_type="receipt_payment_summary",
         target_schema="document_observation",
@@ -272,7 +287,18 @@ def test_granite_line_item_evidence_uses_region_grounding_context() -> None:
         document_id=document_id,
         schema_name="invoice",
         model_output_schema_name="granite_invoice_line_items.v1",
-        payload={"line_items": [{"description": "Alignment service", "amount": "$99.00"}]},
+        payload={
+            "line_items": [
+                _invoice_line_item(
+                    description="Alignment service",
+                    amount="$99.00",
+                    table_id=str(table_id),
+                    page_number=3,
+                )
+            ],
+            "totals": _invoice_totals(),
+            "confidence": _confidence(table_structure=0.8),
+        },
         evidence_context=EvidenceContext(
             source_engine="granite_vision_3b",
             document_id=document_id,
@@ -302,15 +328,17 @@ def test_invoice_line_item_contract_drops_off_contract_item_keys() -> None:
         model_output_schema_name="granite_invoice_line_items.v1",
         payload={
             "line_items": [
-                {
-                    "description": "Alignment service",
-                    "service_cost": "$99.00",
-                },
-                {
-                    "service_type": "Tire mounting",
-                    "amount": "$42.00",
-                },
+                _invoice_line_item(
+                    description="Alignment service",
+                    service_cost="$99.00",
+                ),
+                _invoice_line_item(
+                    service_type="Tire mounting",
+                    amount="$42.00",
+                ),
             ],
+            "totals": _invoice_totals(),
+            "confidence": _confidence(table_structure=0.8),
         },
     )
 
@@ -347,11 +375,13 @@ def test_receipt_line_item_contract_drops_service_record_item_aliases() -> None:
         model_output_schema_name="granite_receipt_line_items.v1",
         payload={
             "line_items": [
-                {
-                    "service_description": "Battery replacement",
-                    "line_total": "$44.00",
-                }
+                _receipt_line_item(
+                    service_description="Battery replacement",
+                    line_total="$44.00",
+                )
             ],
+            "totals": _receipt_totals(),
+            "confidence": _confidence(table_structure=0.8),
         },
     )
 
@@ -368,16 +398,22 @@ def test_authoritative_docling_table_rejects_line_items_without_row_identity() -
         model_output_schema_name="granite_invoice_line_items.v1",
         payload={
             "line_items": [
-                {
-                    "description": "Grounded row",
-                    "row_index": 1,
-                    "table_id": str(table_id),
-                    "page_number": 2,
-                    "amount": "$99.00",
-                },
-                {"description": "Invented row", "amount": "$12.00"},
+                _invoice_line_item(
+                    description="Grounded row",
+                    row_index=1,
+                    table_id=str(table_id),
+                    page_number=2,
+                    amount="$99.00",
+                ),
+                _invoice_line_item(
+                    description="Invented row",
+                    amount="$12.00",
+                    table_id=str(table_id),
+                    page_number=2,
+                ),
             ],
-            "confidence": {"overall": 0.81},
+            "totals": _invoice_totals(),
+            "confidence": _confidence(0.81, table_structure=0.8),
         },
         docling_table_quality=DoclingTableQuality(
             table_id=str(table_id),
@@ -431,14 +467,13 @@ def test_receipt_payment_summary_concretizes_region_evidence_and_defers_page_mon
         document_id=document_id,
         schema_name="receipt",
         model_output_schema_name="granite_receipt_payment_summary.v1",
-        payload={
-            "merchant_name": "Coffee Shop",
-            "transaction_date": "2026-05-01",
-            "subtotal": "$4.25",
-            "tax": "$0.40",
-            "total": "$4.65",
-            "confidence": {},
-        },
+        payload=_receipt_payment_payload(
+            merchant_name="Coffee Shop",
+            transaction_date="2026-05-01",
+            subtotal="$4.25",
+            tax="$0.40",
+            total="$4.65",
+        ),
         evidence_context=EvidenceContext(
             source_engine="granite_vision_3b",
             document_id=document_id,
@@ -476,14 +511,13 @@ def test_receipt_payment_summary_defers_unanchored_money_candidates_for_repeatab
         document_id=document_id,
         schema_name="receipt",
         model_output_schema_name="granite_receipt_payment_summary.v1",
-        payload={
-            "merchant_name": "Coffee Shop",
-            "transaction_date": "2026-05-01",
-            "subtotal": "$4.25",
-            "tax": "$0.40",
-            "total": "$4.65",
-            "confidence": {},
-        },
+        payload=_receipt_payment_payload(
+            merchant_name="Coffee Shop",
+            transaction_date="2026-05-01",
+            subtotal="$4.25",
+            tax="$0.40",
+            total="$4.65",
+        ),
         evidence_context=EvidenceContext(
             source_engine="granite_vision_3b",
             document_id=document_id,
@@ -521,14 +555,13 @@ def test_receipt_payment_summary_defers_page_identity_when_money_is_deferred() -
         document_id=document_id,
         schema_name="receipt",
         model_output_schema_name="granite_receipt_payment_summary.v1",
-        payload={
-            "merchant_name": "Amtra",
-            "transaction_date": "2025-09-09",
-            "subtotal": "$12.00",
-            "tip": "$2.00",
-            "total": "$14.00",
-            "confidence": {},
-        },
+        payload=_receipt_payment_payload(
+            merchant_name="Amtra",
+            transaction_date="2025-09-09",
+            subtotal="$12.00",
+            tip="$2.00",
+            total="$14.00",
+        ),
         evidence_context=EvidenceContext(
             source_engine="granite_vision_3b",
             document_id=document_id,
@@ -567,12 +600,11 @@ def test_receipt_payment_summary_defers_page_identity_without_amount_signal() ->
         document_id=document_id,
         schema_name="receipt",
         model_output_schema_name="granite_receipt_payment_summary.v1",
-        payload={
-            "merchant_name": "Amtra",
-            "transaction_date": "2025-09-09",
-            "total": None,
-            "confidence": {},
-        },
+        payload=_receipt_payment_payload(
+            merchant_name="Amtra",
+            transaction_date="2025-09-09",
+            total=None,
+        ),
         evidence_context=EvidenceContext(
             source_engine="granite_vision_3b",
             document_id=document_id,
@@ -613,14 +645,14 @@ def test_receipt_payment_summary_persists_region_envelope_projection() -> None:
         document_id=document_id,
         schema_name="receipt",
         model_output_schema_name="granite_receipt_payment_summary.v1",
-        payload={
-            "merchant_name": "Coffee Shop",
-            "transaction_date": "2026-05-01",
-            "subtotal": "$4.25",
-            "tax": "$0.40",
-            "total": "$4.65",
-            "confidence": {"overall": 0.83},
-        },
+        payload=_receipt_payment_payload(
+            merchant_name="Coffee Shop",
+            transaction_date="2026-05-01",
+            subtotal="$4.25",
+            tax="$0.40",
+            total="$4.65",
+            confidence=_confidence(0.83),
+        ),
         evidence_context=EvidenceContext(
             source_engine="granite_vision_3b",
             document_id=document_id,
@@ -658,12 +690,11 @@ def test_receipt_payment_summary_parses_model_datetime_before_candidate_insert()
         document_id=document_id,
         schema_name="receipt",
         model_output_schema_name="granite_receipt_payment_summary.v1",
-        payload={
-            "merchant_name": "Coffee Shop",
-            "transaction_date": "10-Sep-2025 12:17:38P",
-            "total": "$4.65",
-            "confidence": {},
-        },
+        payload=_receipt_payment_payload(
+            merchant_name="Coffee Shop",
+            transaction_date="10-Sep-2025 12:17:38P",
+            total="$4.65",
+        ),
         evidence_context=EvidenceContext(
             source_engine="granite_vision_3b",
             document_id=document_id,
@@ -743,7 +774,7 @@ def test_empty_kvp_output_keeps_region_level_evidence_for_validation() -> None:
             "transaction_amount": None,
             "dispute_reason": None,
             "transactions": [],
-            "confidence": {},
+            "confidence": _confidence(),
         },
         evidence_context=EvidenceContext(
             source_engine="granite_vision_3b",
@@ -767,7 +798,7 @@ def test_empty_kvp_output_keeps_region_level_evidence_for_validation() -> None:
             "transaction_amount": None,
             "dispute_reason": None,
             "transactions": [],
-            "confidence": {},
+            "confidence": _confidence(),
         },
     )
     assert [check for check in validation.checks if check["code"] == "evidence.concrete_locator"][
@@ -793,13 +824,19 @@ def test_healthcare_coverage_decision_defers_broad_model_observations() -> None:
             "contacts": [
                 {
                     "contact_type": "appeal",
+                    "name": None,
                     "phone": "555-0100",
+                    "fax": None,
+                    "address": None,
+                    "url": None,
+                    "deadline": None,
                     "source_text": "Appeals: 555-0100",
                     "confidence": 0.8,
                 }
             ],
             "service_lines": [],
             "warnings": [],
+            "confidence": _confidence(),
         },
         evidence_context=EvidenceContext(
             source_engine="granite_vision_3b",
@@ -841,14 +878,20 @@ def test_healthcare_coverage_decision_defers_unbounded_observations_for_repeatab
             ],
             "contacts": [
                 {
+                    "contact_type": None,
                     "name": "Grievances and Appeals",
                     "phone": "1-800-365-0609",
+                    "fax": None,
+                    "address": None,
+                    "url": None,
+                    "deadline": None,
                     "source_text": "Grievances and Appeals 1-800-365-0609",
                     "confidence": 0.8,
                 }
             ],
             "service_lines": [],
             "warnings": [],
+            "confidence": _confidence(),
         },
         evidence_context=EvidenceContext(
             source_engine="granite_vision_3b",
@@ -876,6 +919,7 @@ def test_generic_kvp_mapper_rejects_flat_prompt_echo_payload() -> None:
             "properties": {"seller_name": {"type": "string"}},
             "instructions": "Return only JSON matching this schema",
             "seller_name": "Jane Seller",
+            "confidence": _confidence(),
         },
     )
 
@@ -886,7 +930,7 @@ def test_generic_kvp_mapper_rejects_flat_prompt_echo_payload() -> None:
         "properties",
         "seller_name",
     ]
-    assert metadata["model_output_contract_errors"] == ["$: 'fields' is a required property"]
+    assert "$: 'fields' is a required property" in metadata["model_output_contract_errors"]
 
 
 def test_receipt_line_item_model_output_maps_to_canonical_receipt_lines() -> None:
@@ -898,15 +942,15 @@ def test_receipt_line_item_model_output_maps_to_canonical_receipt_lines() -> Non
         model_output_schema_name="granite_receipt_line_items.v1",
         payload={
             "line_items": [
-                {
-                    "description": "USB-C cable",
-                    "quantity": "2",
-                    "unit_price": "$9.99",
-                    "amount": "$19.98",
-                }
+                _receipt_line_item(
+                    description="USB-C cable",
+                    quantity="2",
+                    unit_price="$9.99",
+                    amount="$19.98",
+                )
             ],
-            "totals": {"total": "$21.63"},
-            "confidence": {"overall": 0.82},
+            "totals": _receipt_totals(total="$21.63"),
+            "confidence": _confidence(0.82, table_structure=0.8),
         },
     )
 
@@ -967,18 +1011,19 @@ def test_wrapped_data_payload_is_not_mined_for_invoice_line_items() -> None:
                     }
                 ]
             },
-            "totals": {"total": {"amount": 99.00, "currency": "USD"}},
+            "totals": _invoice_totals(total={"amount": 99.00, "currency": "USD"}),
+            "confidence": _confidence(table_structure=0.8),
         },
     )
 
     assert normalized["line_items"] == []
     assert "totals" not in normalized
     assert metadata["rejected_fields"] == ["data"]
-    assert metadata["model_output_contract_errors"] == [
+    assert (
         "$.totals.total: {'amount': 99.0, 'currency': 'USD'} is not of type "
-        "'number', 'string', 'null'",
-        "$: 'line_items' is a required property",
-    ]
+        "'number', 'string', 'null'"
+    ) in metadata["model_output_contract_errors"]
+    assert "$: 'line_items' is a required property" in metadata["model_output_contract_errors"]
 
 
 def test_observation_payload_with_type_object_and_fields_is_not_schema_echo() -> None:
@@ -990,12 +1035,15 @@ def test_observation_payload_with_type_object_and_fields_is_not_schema_echo() ->
         model_output_schema_name="granite_generic_kvp.v1",
         payload={
             "type": "object",
-            "fields": [{"name": "seller_name", "value": "Jane Seller"}],
+            "fields": [_generic_field("seller_name", "Jane Seller")],
+            "confidence": _confidence(),
         },
     )
 
     assert "schema_echo_rejected" not in metadata["repairs"]
-    assert observation_dicts_from_payload(normalized)[0]["field_name"] == "seller_name"
+    assert observation_dicts_from_payload(normalized) == []
+    assert metadata["rejected_fields"] == ["type"]
+    assert "model_output_contract_validation_failed" in metadata["repairs"]
 
 
 def test_observation_source_text_over_schema_limit_fails_closed() -> None:
@@ -1011,9 +1059,10 @@ def test_observation_source_text_over_schema_limit_fails_closed() -> None:
                     "name": "seller_notes",
                     "value": "Jane Seller",
                     "source_text": "x" * 700,
+                    "confidence": 0.61,
                 }
             ],
-            "confidence": {"overall": 0.61},
+            "confidence": _confidence(0.61),
         },
     )
     report = validate_extraction_payload("document_observation", normalized)
@@ -1021,8 +1070,10 @@ def test_observation_source_text_over_schema_limit_fails_closed() -> None:
     assert report.checks[0]["status"] == "passed"
     observations = observation_dicts_from_payload(normalized)
     assert observations == []
-    assert metadata["model_output_contract_errors"][0].startswith("$.fields[0].source_text: ")
-    assert metadata["model_output_contract_errors"][0].endswith("is too long")
+    assert any(
+        error.startswith("$.fields[0].source_text: ") and error.endswith("is too long")
+        for error in metadata["model_output_contract_errors"]
+    )
 
 
 def test_observation_candidate_confidence_rejects_out_of_range_model_values() -> None:

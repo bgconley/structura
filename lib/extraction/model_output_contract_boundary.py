@@ -7,8 +7,6 @@ from jsonschema.exceptions import SchemaError
 
 from lib.extraction.model_output_schemas import load_model_output_schema
 
-_MISSING = object()
-
 
 def contract_root_payload(
     payload: dict[str, Any],
@@ -24,11 +22,11 @@ def contract_root_payload(
     properties = schema.get("properties")
     if not isinstance(properties, dict):
         return payload, [], []
-    shaped, rejected = _shape_object(payload, schema=schema, path="")
-    contract_errors = _contract_validation_errors(shaped, schema=schema)
+    rejected = _off_contract_fields(payload, schema=schema, path="")
+    contract_errors = _contract_validation_errors(payload, schema=schema)
     if contract_errors:
         return {}, sorted(rejected), contract_errors
-    return shaped, sorted(rejected), []
+    return payload, sorted(rejected), []
 
 
 def merge_rejected_fields(metadata: dict[str, Any], rejected_fields: list[str]) -> None:
@@ -51,76 +49,45 @@ def merge_contract_errors(metadata: dict[str, Any], contract_errors: list[str]) 
     metadata["repairs"] = repairs
 
 
-def _shape_value(value: Any, *, schema: dict[str, Any], path: str) -> tuple[Any, list[str]]:
-    if isinstance(value, dict) and isinstance(schema.get("properties"), dict):
-        return _shape_object(value, schema=schema, path=path)
-    items_schema = schema.get("items")
-    if isinstance(value, list) and isinstance(items_schema, dict):
-        shaped_items: list[Any] = []
-        rejected: list[str] = []
-        for index, item in enumerate(value):
-            shaped_item, item_rejected = _shape_value(
-                item,
-                schema=items_schema,
-                path=f"{path}[{index}]",
-            )
-            rejected.extend(item_rejected)
-            if item_rejected and isinstance(item, dict):
-                continue
-            shaped_items.append(shaped_item)
-        return shaped_items, rejected
-    return value, []
-
-
-def _shape_object(
-    payload: dict[str, Any],
+def _off_contract_fields(
+    value: Any,
     *,
     schema: dict[str, Any],
     path: str,
-) -> tuple[dict[str, Any], list[str]]:
+) -> list[str]:
+    if isinstance(value, list) and isinstance(schema.get("items"), dict):
+        item_rejected: list[str] = []
+        for index, item in enumerate(value):
+            item_rejected.extend(
+                _off_contract_fields(
+                    item,
+                    schema=schema["items"],
+                    path=f"{path}[{index}]",
+                )
+            )
+        return item_rejected
+    if not isinstance(value, dict):
+        return []
     properties = schema.get("properties")
     if not isinstance(properties, dict):
-        return payload, []
-    shaped: dict[str, Any] = {}
+        return []
     rejected: list[str] = []
-    for key, value in payload.items():
+    additional_properties = schema.get("additionalProperties")
+    for key, child_value in value.items():
         child_schema = properties.get(key)
         child_path = f"{path}.{key}" if path else str(key)
         if not isinstance(child_schema, dict):
-            rejected.append(child_path)
+            if additional_properties is False:
+                rejected.append(child_path)
             continue
-        shaped_value, child_rejected = _shape_value(
-            value,
-            schema=child_schema,
-            path=child_path,
+        rejected.extend(
+            _off_contract_fields(
+                child_value,
+                schema=child_schema,
+                path=child_path,
+            )
         )
-        shaped[str(key)] = shaped_value
-        rejected.extend(child_rejected)
-    for key, child_schema in properties.items():
-        if key in shaped or not isinstance(child_schema, dict):
-            continue
-        missing_value = _missing_value_for_schema(child_schema)
-        if missing_value is not _MISSING:
-            shaped[str(key)] = missing_value
-    return shaped, rejected
-
-
-def _missing_value_for_schema(schema: dict[str, Any]) -> Any:
-    schema_type = schema.get("type")
-    schema_types = set(schema_type) if isinstance(schema_type, list) else {schema_type}
-    if "null" in schema_types:
-        return None
-    if "object" in schema_types and isinstance(schema.get("properties"), dict):
-        value: dict[str, Any] = {}
-        for key, child_schema in schema["properties"].items():
-            if not isinstance(child_schema, dict):
-                return _MISSING
-            child_value = _missing_value_for_schema(child_schema)
-            if child_value is _MISSING:
-                return _MISSING
-            value[str(key)] = child_value
-        return value
-    return _MISSING
+    return rejected
 
 
 def _contract_validation_errors(payload: dict[str, Any], *, schema: dict[str, Any]) -> list[str]:

@@ -18,6 +18,8 @@ def test_receipt_payment_summary_model_output_preserves_discount_total() -> None
             "tip": "$3.00",
             "discount_total": "$5.00",
             "total": "$20.00",
+            "payment_method": None,
+            "confidence": {"overall": 0.8, "schema_fit": 0.8},
         },
     )
 

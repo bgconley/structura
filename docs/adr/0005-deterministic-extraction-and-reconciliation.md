@@ -444,20 +444,21 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   `granite_invoice_line_items.v1` `totals` object.
 - 2026-06-06: Granite region normalization now applies a schema-derived
   root-key boundary before mapper-specific logic. Off-contract top-level
-  fields are removed from mapper input and reported as rejected fields, so
-  aliases cannot be mined even in fixture/direct-normalizer paths.
+  fields are reported as rejected fields and make the selected model-output
+  contract fail before mapper input, so aliases cannot be mined even in
+  fixture/direct-normalizer paths.
 - 2026-06-06: The contract boundary now applies recursively to nested object
-  properties and array items. Malformed object records inside arrays are
-  dropped as whole records and their rejected field paths are reported,
-  preserving fail-closed fragment behavior for line items and payment rows.
-- 2026-06-06: The normalizer contract boundary now validates the shaped model
+  properties and array items only for rejected-field reporting. It no longer
+  prunes malformed object records or keeps valid siblings; any invalid registered
+  model-output payload fails closed as a whole before mapper logic.
+- 2026-06-06: The normalizer contract boundary now validates the original model
   payload against the selected model-output JSON Schema before mapper logic.
-  Direct or fixture payloads that still violate required keys, type constraints,
-  numeric bounds, or length bounds are dropped instead of partially mined, with
-  `model_output_contract_errors` and `model_output_contract_validation_failed`
-  recorded as lineage metadata. Live adapters already fail these payloads before
-  normalization, so this closes the compatibility/direct-call path without adding
-  corpus-specific repairs.
+  Direct or fixture payloads that contain extra keys, omit required nullable
+  fields, or violate type, numeric, length, or array bounds are dropped instead
+  of partially mined, with `model_output_contract_errors` and
+  `model_output_contract_validation_failed` recorded as lineage metadata. Live
+  adapters already fail these payloads before normalization, so this closes the
+  compatibility/direct-call path without adding corpus-specific repairs.
 - 2026-06-06: Granite structured-output failures now retry once without changing
   the selected JSON Schema contract. Length truncation keeps the existing larger
   budget retry, while schema-invalid JSON, non-object JSON, invalid JSON, or empty
@@ -474,10 +475,11 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
 - 2026-06-06: Model-output schemas now enforce OpenAI/vLLM strict structured-output
   object shape recursively: every declared object property is listed in `required`,
   and optional fragment fields use explicit `null` values instead of disappearing
-  from the payload shape. The normalizer's direct/fixture compatibility boundary can
-  complete schema-declared nullable fields to `null` before validation, but it still
-  fails closed when extraction-bearing roots such as `line_items`, `fields`, or
-  `service_lines` are absent and it does not mine off-contract keys.
+  from the payload shape. The normalizer's direct/fixture compatibility boundary
+  now validates those complete shapes as received; it no longer completes
+  schema-declared nullable fields to `null`, and it fails closed when
+  extraction-bearing roots such as `line_items`, `fields`, or `service_lines` are
+  absent or off-contract keys are present.
 - 2026-06-06: Semantic annotation and extraction workers now reject stale removed
   high-quality/rescue controls at the queue boundary before service execution.
   Such legacy payloads fail closed as non-retryable contract violations, preserving

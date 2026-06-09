@@ -11,7 +11,20 @@ def test_invoice_line_item_model_output_preserves_total_adjustments() -> None:
         schema_name="invoice",
         model_output_schema_name="granite_invoice_line_items.v1",
         payload={
-            "line_items": [{"description": "Alignment service", "amount": "$99.00"}],
+            "line_items": [
+                {
+                    "ordinal": None,
+                    "description": "Alignment service",
+                    "quantity": None,
+                    "unit": None,
+                    "unit_price": None,
+                    "amount": "$99.00",
+                    "category_hint": None,
+                    "row_index": None,
+                    "table_id": None,
+                    "page_number": None,
+                }
+            ],
             "totals": {
                 "subtotal": "$100.00",
                 "tax_total": "$10.00",
@@ -19,6 +32,7 @@ def test_invoice_line_item_model_output_preserves_total_adjustments() -> None:
                 "discount_total": "$16.00",
                 "total": "$99.00",
             },
+            "confidence": {"overall": 0.8, "schema_fit": 0.8, "table_structure": 0.8},
         },
     )
 

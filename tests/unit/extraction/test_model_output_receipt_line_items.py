@@ -13,6 +13,7 @@ def test_receipt_line_item_model_output_preserves_unit_discount_and_tax_hint() -
         payload={
             "line_items": [
                 {
+                    "ordinal": None,
                     "description": "Coffee beans",
                     "quantity": "2",
                     "unit": "bag",
@@ -21,8 +22,14 @@ def test_receipt_line_item_model_output_preserves_unit_discount_and_tax_hint() -
                     "amount": "$21.00",
                     "sku": "BEANS-12",
                     "tax_category_hint": "grocery",
+                    "category_hint": None,
+                    "row_index": None,
+                    "table_id": None,
+                    "page_number": None,
                 }
             ],
+            "totals": {"subtotal": None, "tax": None, "total": None},
+            "confidence": {"overall": 0.82, "schema_fit": 0.8, "table_structure": 0.8},
         },
     )
 

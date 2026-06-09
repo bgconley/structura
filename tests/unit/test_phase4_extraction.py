@@ -91,7 +91,27 @@ def test_semantic_region_validation_does_not_require_full_canonical_receipt() ->
             ],
         },
         model_output_schema_name="granite_receipt_line_items.v1",
-        model_output_payload={"line_items": [{"description": "Coffee", "amount": "4.25"}]},
+        model_output_payload={
+            "line_items": [
+                {
+                    "ordinal": None,
+                    "description": "Coffee",
+                    "quantity": None,
+                    "unit": None,
+                    "unit_price": None,
+                    "discount": None,
+                    "amount": "4.25",
+                    "sku": None,
+                    "tax_category_hint": None,
+                    "category_hint": None,
+                    "row_index": None,
+                    "table_id": None,
+                    "page_number": None,
+                }
+            ],
+            "totals": {"subtotal": None, "tax": None, "total": None},
+            "confidence": {"overall": 0.8, "schema_fit": 0.8, "table_structure": 0.8},
+        },
     )
 
     assert report.needs_review

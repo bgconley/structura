@@ -26,8 +26,10 @@ def test_retail_order_model_output_preserves_header_claims() -> None:
                     "quantity": "2",
                     "unit_price": "$12.50",
                     "amount": "$25.00",
+                    "source_text": "Replacement charging cable",
                 }
             ],
+            "confidence": {"overall": 0.8, "schema_fit": 0.8},
         },
         evidence_context=_evidence_context(document_id),
     )

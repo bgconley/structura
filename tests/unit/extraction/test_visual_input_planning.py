@@ -22,6 +22,9 @@ from lib.extraction.visual_input_planning import (
 from lib.model_runtime.contracts import VisionGenerateRequest, VisionGenerateResponse
 from lib.model_runtime.profiles import GRANITE_VISION_PROFILE
 from lib.semantic_annotations.models import SemanticExtractionTask, SemanticGroundingRef
+from tests.unit.extraction.model_output_contract_fixtures import (
+    invoice_line_items_payload as _invoice_line_items_payload,
+)
 
 
 @dataclass
@@ -308,8 +311,8 @@ def test_crop_output_empty_line_items_retries_full_page(monkeypatch) -> None:
     task = _line_item_task(source, element_id=element_id)
     client = SequencedVisionClient(
         payloads=[
-            {"line_items": []},
-            {"line_items": [{"description": "600 mile service", "amount": 250.0}]},
+            _invoice_line_items_payload([]),
+            _invoice_line_items_payload([{"description": "600 mile service", "amount": 250.0}]),
         ]
     )
 
@@ -368,7 +371,7 @@ def test_planned_crop_evidence_records_visual_bbox(monkeypatch) -> None:
     task = _line_item_task(source, element_id=element_id)
     client = SequencedVisionClient(
         payloads=[
-            {"line_items": [{"description": "600 mile service", "amount": 250.0}]},
+            _invoice_line_items_payload([{"description": "600 mile service", "amount": 250.0}]),
         ]
     )
 
