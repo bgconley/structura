@@ -78,6 +78,7 @@ export function Inbox({
           uploadFile={uploadFile}
         />
         <PipelineSummary
+          documents={documents}
           total={total}
           previewed={documents.filter((document) => document.thumbnailUrl).length}
         />

@@ -398,11 +398,12 @@ export default function App() {
             summary={selectedSummary}
             evidenceTarget={evidenceTarget}
             onBack={() => setViewMode("inbox")}
+            onOpenReview={() => setViewMode("review")}
             folders={folders}
             tags={tags}
             onSaveOrganization={handleSaveOrganization}
             documents={documents}
-            onOpenDocument={(documentId) => openDocument(documentId)}
+            onOpenDocument={openDocument}
             onRelationshipsChanged={() => reloadSelectedDocument(selectedId)}
             parseDebug={parseDebug}
             parseDebugError={parseDebugError}

@@ -1,13 +1,21 @@
+import {useEffect, useState} from "react";
+
 import {assetUrl} from "../api";
+import {evidenceTargetFromRef, selectEvidenceRef} from "../evidence";
 import {familyLabel, formatDate} from "../format";
 import type {
   DocumentDetail,
+  DocumentPage,
   EvidenceTarget,
   DocumentOrganizationWrite,
   DocumentSummary,
+  ExtractionObservation,
+  ExtractionSummary,
   Folder,
   ParseDebugView,
+  QualityOutcome,
   SemanticAnnotationManifest,
+  SemanticRegionExtraction,
   Tag,
 } from "../types";
 import {FilingPanel} from "./FilingPanel";
@@ -20,6 +28,7 @@ export function Viewer({
   summary,
   evidenceTarget,
   onBack,
+  onOpenReview,
   folders,
   tags,
   onSaveOrganization,
@@ -39,11 +48,12 @@ export function Viewer({
   summary?: DocumentSummary;
   evidenceTarget: EvidenceTarget | null;
   onBack: () => void;
+  onOpenReview: () => void;
   folders: Folder[];
   tags: Tag[];
   onSaveOrganization: (documentId: string, payload: DocumentOrganizationWrite) => Promise<void>;
   documents: DocumentSummary[];
-  onOpenDocument: (documentId: string) => void;
+  onOpenDocument: (documentId: string, evidenceTarget?: EvidenceTarget) => void;
   onRelationshipsChanged: () => Promise<void>;
   parseDebug: ParseDebugView | null;
   parseDebugError: string | null;
@@ -56,12 +66,27 @@ export function Viewer({
 }) {
   const active = document ?? summary;
   const original = document?.assets.find((asset) => asset.assetRole === "original");
-  const preview = document?.pages[0]?.imageUrl;
+  const pages = document?.pages ?? [];
+  const evidencePageNumber = evidenceTarget?.pageNumber;
+  const [selectedPageNumber, setSelectedPageNumber] = useState<number | null>(null);
+
+  useEffect(() => {
+    setSelectedPageNumber(evidencePageNumber ?? null);
+  }, [evidencePageNumber, document?.id]);
+
+  const activePageNumber = selectedPageNumber ?? evidencePageNumber ?? pages[0]?.pageNumber ?? 1;
+  const activePage = pages.find((page) => page.pageNumber === activePageNumber) ?? pages[0];
+  const preview = activePage?.imageUrl;
   const quality = document?.qualitySummary ?? summary?.qualitySummary ?? null;
+  const extractionState = extractionChip(document);
 
   if (!active) {
     return null;
   }
+
+  const showHighlight =
+    Boolean(evidenceTarget?.bbox)
+    && (evidenceTarget?.pageNumber ?? activePage?.pageNumber) === activePage?.pageNumber;
 
   return (
     <section className="viewer-grid">
@@ -73,34 +98,46 @@ export function Viewer({
         <button type="button" onClick={onBack}>Back to Inbox</button>
       </div>
       <aside className="page-rail">
-        {[1, 2, 3, 4, 5].map((page) => (
-          <button className={page === 1 ? "selected" : undefined} type="button" key={page}>
+        {pages.length ? pages.map((page) => (
+          <button
+            className={page.pageNumber === activePage?.pageNumber ? "selected" : undefined}
+            type="button"
+            key={page.pageNumber}
+            onClick={() => setSelectedPageNumber(page.pageNumber)}
+          >
             <span className="rail-thumb" />
-            <small>{page}</small>
+            <small>{page.pageNumber}</small>
           </button>
-        ))}
+        )) : (
+          <small>No parsed pages yet.</small>
+        )}
       </aside>
       <section className="viewer-card">
         <div className="viewer-card-title">
           <h2>{active.title}</h2>
           <StatusChip tone="green" label="Immutable original" />
-          <StatusChip tone="neutral" label="Extraction pending" />
+          {extractionState ? (
+            <StatusChip tone={extractionState.tone} label={extractionState.label} />
+          ) : null}
           {quality?.reviewRequired ? <StatusChip tone="amber" label="Difficult document" /> : null}
         </div>
         {evidenceTarget ? (
           <div className="evidence-focus" role="status">
             <strong>{evidenceTarget.fieldPath ?? "Evidence"}</strong>
             <span>
-              Page {evidenceTarget.pageNumber ?? document?.pages[0]?.pageNumber ?? 1}
+              Page {evidenceTarget.pageNumber ?? activePage?.pageNumber ?? 1}
               {evidenceTarget.sourceText ? ` · ${evidenceTarget.sourceText}` : ""}
+              {evidenceTarget.bbox ? "" : " · no visual anchor; text/table locator only"}
             </span>
           </div>
         ) : null}
         <div className="rendered-page">
           {preview ? (
             <>
-              <img src={assetUrl(preview)} alt={`Preview of ${active.title}`} />
-              {evidenceTarget ? <EvidenceHighlight target={evidenceTarget} /> : null}
+              <img src={assetUrl(preview)} alt={`Preview of ${active.title} page ${activePage?.pageNumber ?? 1}`} />
+              {evidenceTarget && showHighlight ? (
+                <EvidenceHighlight target={evidenceTarget} page={activePage} />
+              ) : null}
             </>
           ) : original?.mimeType === "application/pdf" ? (
             <iframe src={assetUrl(original.assetUrl)} title={active.title} />
@@ -113,12 +150,12 @@ export function Viewer({
         </div>
         {quality ? (
           <div className="quality-banner" role="note">
-            <strong>Phase 8 quality signals</strong>
+            <strong>Document quality signals</strong>
             <span>{quality.summary ?? quality.reasons?.join(", ")}</span>
           </div>
         ) : null}
         <div className="viewer-actions">
-          <button type="button" className="primary">Open review</button>
+          <button type="button" className="primary" onClick={onOpenReview}>Open review</button>
           {original ? <a href={assetUrl(original.assetUrl)} download>Download original</a> : null}
         </div>
       </section>
@@ -145,18 +182,30 @@ export function Viewer({
         <FactRow label="Counterparty" value={active.counterpartyDisplay ?? "Pending extraction"} />
         <FactRow label="Date" value={formatDate(active.documentDate)} />
         <FactRow label="Folder" value={active.folderPaths?.[0] ?? "Unfiled"} />
-        {document?.fields.slice(0, 5).map((field, index) => (
+        {document?.fields.slice(0, 5).map((field) => (
           <FactRow
-            key={index}
-            label={String((field as {fieldPath?: string}).fieldPath ?? "Field")}
-            value={formatFactValue((field as {value?: unknown; currency?: string}).value, (field as {currency?: string}).currency)}
+            key={field.id}
+            label={field.fieldPath}
+            value={formatFactValue(field.value, field.currency ?? undefined)}
+            onJump={field.evidence?.length ? () => (
+              onOpenDocument(
+                document.id,
+                evidenceTargetFromRef(document.id, selectEvidenceRef(field.evidence), field.fieldPath),
+              )
+            ) : undefined}
           />
         ))}
-        <button type="button" className="primary">Review extracted fields</button>
-        <div className="two-actions">
-          <button type="button">File document</button>
-          <button type="button">Link document</button>
-        </div>
+        {document ? <QualityDecisionPanel extractions={document.extractions} /> : null}
+        {document ? (
+          <RegionExtractionPanel regions={document.semanticRegionExtractions ?? []} />
+        ) : null}
+        {document ? (
+          <ObservationPanel
+            documentId={document.id}
+            observations={document.observations ?? []}
+            onJump={(target) => onOpenDocument(document.id, target)}
+          />
+        ) : null}
         <FilingPanel
           document={document}
           folders={folders}
@@ -182,6 +231,128 @@ export function Viewer({
           onLoad={() => onLoadSemanticAnnotation(String(active.id))}
         />
       </aside>
+    </section>
+  );
+}
+
+const QUALITY_OUTCOME_LABELS: Record<QualityOutcome, {tone: "green" | "blue" | "neutral" | "amber"; label: string}> = {
+  extracted_cleanly: {tone: "green", label: "Extracted cleanly"},
+  needs_human_review: {tone: "amber", label: "Needs human review"},
+  insufficient_signal: {tone: "amber", label: "Insufficient signal"},
+  no_extraction_target: {tone: "neutral", label: "No extraction target"},
+  pipeline_failed: {tone: "amber", label: "Pipeline failed"},
+};
+
+function extractionChip(
+  document: DocumentDetail | null,
+): {tone: "green" | "blue" | "neutral" | "amber"; label: string} | null {
+  if (!document) {
+    return null;
+  }
+  const extractions = document.extractions ?? [];
+  const current = extractions.find((extraction) => extraction.extractionScope === "aggregate")
+    ?? extractions.find((extraction) => extraction.extractionScope === "document")
+    ?? extractions[0];
+  if (!current) {
+    return {tone: "neutral", label: "Extraction pending"};
+  }
+  if (current.qualityOutcome) {
+    return QUALITY_OUTCOME_LABELS[current.qualityOutcome];
+  }
+  if (current.reviewStatus === "needs_review") {
+    return {tone: "amber", label: "Extraction needs review"};
+  }
+  return {tone: "green", label: "Extracted"};
+}
+
+function QualityDecisionPanel({extractions}: {extractions: ExtractionSummary[]}) {
+  const decided = extractions.filter(
+    (extraction) => extraction.qualityOutcome || extraction.claimResolutionDecisions?.length,
+  );
+  if (!decided.length) {
+    return null;
+  }
+  return (
+    <section className="quality-decisions">
+      <h3>Quality decisions</h3>
+      {decided.map((extraction) => (
+        <div key={extraction.id} className="field-list">
+          <p>
+            <strong>{extraction.schemaName}</strong>
+            <span>
+              {extraction.qualityOutcome
+                ? QUALITY_OUTCOME_LABELS[extraction.qualityOutcome].label
+                : extraction.reviewStatus ?? "recorded"}
+            </span>
+          </p>
+          {extraction.claimResolutionDecisions?.slice(0, 6).map((decision) => (
+            <p key={`${extraction.id}-${decision.canonicalKey}`}>
+              <strong>{decision.canonicalKey}</strong>
+              <span>{decision.decision} · {decision.reasonCode}</span>
+            </p>
+          ))}
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function RegionExtractionPanel({regions}: {regions: SemanticRegionExtraction[]}) {
+  if (!regions.length) {
+    return null;
+  }
+  return (
+    <section className="region-extractions">
+      <h3>Region extractions</h3>
+      <div className="field-list">
+        {regions.map((region) => (
+          <p key={region.id}>
+            <strong>{region.semanticType ?? region.schemaName}</strong>
+            <span>
+              {region.graniteTask ?? "no granite task"}
+              {" · "}
+              {region.status}
+              {region.reviewStatus ? ` · ${region.reviewStatus}` : ""}
+              {region.qualityOutcome
+                ? ` · ${QUALITY_OUTCOME_LABELS[region.qualityOutcome].label}`
+                : ""}
+            </span>
+          </p>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ObservationPanel({
+  documentId,
+  observations,
+  onJump,
+}: {
+  documentId: string;
+  observations: ExtractionObservation[];
+  onJump: (target: EvidenceTarget) => void;
+}) {
+  if (!observations.length) {
+    return null;
+  }
+  return (
+    <section className="observation-rows">
+      <h3>Observations</h3>
+      <div className="field-list">
+        {observations.slice(0, 12).map((observation) => {
+          const evidence = selectEvidenceRef(observation.evidence);
+          const fieldPath = `observations.${observation.observationFamily ?? "document_observation"}.${observation.fieldName}`;
+          return (
+            <FactRow
+              key={observation.id}
+              label={`${observation.observationFamily ?? "document_observation"}.${observation.fieldName}`}
+              value={`${formatFactValue(observation.value)}${observation.status ? ` · ${observation.status}` : ""}`}
+              onJump={evidence ? () => onJump(evidenceTargetFromRef(documentId, evidence, fieldPath)) : undefined}
+            />
+          );
+        })}
+      </div>
     </section>
   );
 }
@@ -231,8 +402,11 @@ function SemanticAnnotationPanel({
   );
 }
 
-function EvidenceHighlight({target}: {target: EvidenceTarget}) {
-  const box = normalizedBox(target.bbox);
+function EvidenceHighlight({target, page}: {target: EvidenceTarget; page?: DocumentPage}) {
+  const box = normalizedBox(target.bbox, page);
+  if (!box) {
+    return null;
+  }
   return (
     <div
       className="evidence-highlight"
@@ -247,9 +421,10 @@ function EvidenceHighlight({target}: {target: EvidenceTarget}) {
   );
 }
 
-function normalizedBox(bbox?: [number, number, number, number]) {
+function normalizedBox(bbox: [number, number, number, number] | undefined, page?: DocumentPage) {
   if (!bbox) {
-    return {left: 12, top: 16, width: 76, height: 12};
+    // No visual anchor: never fabricate a highlight.
+    return null;
   }
   const [left, top, right, bottom] = bbox;
   const maxX = Math.max(left, right, 1);
@@ -262,11 +437,13 @@ function normalizedBox(bbox?: [number, number, number, number]) {
       height: clampPercent((bottom - top) * 100, 4),
     };
   }
+  const pageWidth = page?.width && page.width > 0 ? page.width : 612;
+  const pageHeight = page?.height && page.height > 0 ? page.height : 792;
   return {
-    left: clampPercent((left / 612) * 100),
-    top: clampPercent((top / 792) * 100),
-    width: clampPercent(((right - left) / 612) * 100, 4),
-    height: clampPercent(((bottom - top) / 792) * 100, 4),
+    left: clampPercent((left / pageWidth) * 100),
+    top: clampPercent((top / pageHeight) * 100),
+    width: clampPercent(((right - left) / pageWidth) * 100, 4),
+    height: clampPercent(((bottom - top) / pageHeight) * 100, 4),
   };
 }
 
