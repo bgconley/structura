@@ -556,3 +556,41 @@ def test_first_class_family_without_registry_facts_abstains_to_vision() -> None:
     assert str(result.normalization_json["laneEligibility"]).startswith(
         "text_lane_abstained:first_class_family_without_registry_facts"
     )
+
+
+def test_unregistered_family_with_first_class_target_abstains() -> None:
+    # MRI run-C regression: denial_or_coverage_decision resolves to the
+    # unregistered healthcare_coverage_decision family but targets
+    # medical_eob, so the candidate layer drops dot-less observations; the
+    # lane must abstain to vision instead of stranding the region.
+    elements = [
+        _element("Reference number: ABC1234567", 1),
+        _element("Member name: Jordan Example", 2),
+    ]
+    source = _source(elements)
+    task = _task(
+        source,
+        semantic_type="denial_or_coverage_decision",
+        expected=("reference_number", "member_name"),
+    )
+
+    def _pick(expected_keys, spans):  # noqa: ANN001
+        ref = next(span for span in spans if span.label_text == "Reference number")
+        return {key: (ref.span_id if key == "reference_number" else None) for key in expected_keys}
+
+    granite = _FakeGranite()
+    gateway = ModelRoutingExtractionGateway(
+        deterministic=_FakeGranite(),
+        granite=granite,
+        text_lane_kvp=TextLaneKvpExtractionGateway(selector=_StaticSelector(_pick)),
+    )
+    result = gateway.extract(
+        source,
+        schema_name="medical_eob",
+        route_profile="docling_plus_structured_extraction",
+        semantic_task=task,
+    )
+    assert granite.calls == 1
+    assert str(result.normalization_json["laneEligibility"]).startswith(
+        "text_lane_abstained:first_class_family_without_registry_facts"
+    )

@@ -34,6 +34,15 @@ def _family_is_first_class(family: str) -> bool:
     return registry is not None and registry.aggregate_schema_name is not None
 
 
+def _candidate_family(family: str, target_schema: str) -> str:
+    """Mirror region_envelope_candidates._claim_family's fallback."""
+    resolved = family.strip()
+    if resolved in CLAIM_FAMILY_REGISTRIES:
+        return resolved
+    target = (target_schema or "").strip()
+    return target or resolved or "document_observation"
+
+
 class TextLaneKvpExtractionGateway:
     prompt_version = TEXT_LANE_KVP_METHOD
 
@@ -85,12 +94,18 @@ class TextLaneKvpExtractionGateway:
         )
         if extraction.fact_count == 0 and extraction.observation_count == 0:
             raise TextLaneAbstention("no_extractable_values")
-        if extraction.fact_count == 0 and _family_is_first_class(family):
+        if extraction.fact_count == 0 and _family_is_first_class(
+            _candidate_family(family, schema_name)
+        ):
             # First-class families (invoice/receipt/medical_eob) consume only
             # registry-keyed claims: dot-less observations produce no
             # candidates and no aggregate input for them, so an
             # observations-only result would silently replace the vision
-            # path's value-bearing extraction with dead weight.
+            # path's value-bearing extraction with dead weight. The check
+            # uses the same effective family as the candidate layer (resolved
+            # family when registered, else the target schema), so an
+            # unregistered resolved type with a first-class target (e.g.
+            # healthcare_coverage_decision -> medical_eob) abstains too.
             raise TextLaneAbstention("first_class_family_without_registry_facts")
         envelope = extraction.envelope
         normalization_json: dict[str, object] = {
