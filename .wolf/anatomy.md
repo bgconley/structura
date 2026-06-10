@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-10T05:15:11.912Z
-> Files: 431 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-10T07:22:00.231Z
+> Files: 440 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -375,6 +375,14 @@
 
 - `evaluation-and-test-strategy.md` — Evaluation and Test Strategy (~1538 tok)
 
+## docs/adr/
+
+- `0006-extractive-first-extraction.md` — ADR 0006: Extractive-First Extraction Architecture (~1452 tok)
+
+## docs/superpowers/plans/
+
+- `2026-06-10-extractive-first-extraction-plan.md` — Extractive-First Extraction Migration Plan (E0-E5) (~2486 tok)
+
 ## gold-master/
 
 - `architecture.md` — System Architecture (~1616 tok)
@@ -394,10 +402,15 @@
 - `docling_anchor_resolution.py` — resolve_docling_anchors_for_envelope (~938 tok)
 - `evidence.py` — from: for_value, first_page_evidence, has_concrete_evidence, has_structural_value_anchor + 3 more (~1620 tok)
 - `granite_budgets.py` — from: granite_budget_for_task, granite_length_retry_budget (~1045 tok)
+- `granite_prompting.py` — granite_prompt (~3708 tok)
 - `model_output_normalization.py` — normalize_granite_region_output, finalize, invoice_line_item_dicts_from_payload (~8666 tok)
 - `observation_repository.py` — insert_observation_candidate (~566 tok)
 - `reconciliation_repository.py` — aggregate: maybe_reconcile_semantic_annotation (~4998 tok)
 - `region_envelope_projection.py` — finalized_region_output (~652 tok)
+
+## lib/model_runtime/clients/
+
+- `_openai_vision.py` — OpenAIVisionGenerateClient: generate (~2786 tok)
 
 ## lib/semantic_annotations/
 

@@ -2589,6 +2589,36 @@
       "action": "edit",
       "tokens": 430,
       "at": "2026-06-10T05:15:11.924Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/extraction/granite_prompting.py",
+      "action": "edit",
+      "tokens": 136,
+      "at": "2026-06-10T05:46:14.298Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/model_runtime/clients/_openai_vision.py",
+      "action": "edit",
+      "tokens": 165,
+      "at": "2026-06-10T06:25:41.021Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/model_runtime/clients/_openai_vision.py",
+      "action": "edit",
+      "tokens": 244,
+      "at": "2026-06-10T06:25:56.981Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/docs/adr/0006-extractive-first-extraction.md",
+      "action": "create",
+      "tokens": 1660,
+      "at": "2026-06-10T07:20:55.715Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/docs/superpowers/plans/2026-06-10-extractive-first-extraction-plan.md",
+      "action": "create",
+      "tokens": 2841,
+      "at": "2026-06-10T07:22:00.240Z"
     }
   ],
   "edit_counts": {
@@ -2718,11 +2748,15 @@
     ".claude/worktrees/agent-a86df2a212eebdab3/lib/semantic_annotations/qwen_gateway.py": 6,
     ".claude/worktrees/agent-a86df2a212eebdab3/tests/unit/semantic_annotations/test_input_budget.py": 2,
     ".claude/worktrees/agent-a86df2a212eebdab3/tests/unit/semantic_annotations/test_gateways.py": 1,
-    ".claude/worktrees/agent-a86df2a212eebdab3/.wolf/anatomy.md": 1
+    ".claude/worktrees/agent-a86df2a212eebdab3/.wolf/anatomy.md": 1,
+    "lib/extraction/granite_prompting.py": 1,
+    "lib/model_runtime/clients/_openai_vision.py": 2,
+    "docs/adr/0006-extractive-first-extraction.md": 1,
+    "docs/superpowers/plans/2026-06-10-extractive-first-extraction-plan.md": 1
   },
   "anatomy_hits": 4,
   "anatomy_misses": 205,
   "repeated_reads_warned": 238,
   "cerebrum_warnings": 0,
-  "stop_count": 13
+  "stop_count": 20
 }

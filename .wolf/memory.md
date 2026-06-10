@@ -156,3 +156,16 @@
 | 01:15 | Edited .claude/worktrees/agent-a86df2a212eebdab3/.wolf/anatomy.md | expanded (+8 lines) | ~402 |
 | 01:20 | Session end: 256 writes across 113 files (repro_group_collapse.py, claims.py, model_output_value_parsing.py, candidate_value_parsing.py, claim_resolver.py) | 210 reads | ~105375 tok |
 | 06:05 | Remaining-items phase complete | lib/semantic_annotations (family repairs removed), granite_budgets, canonical_promotion_policy, telemetry agent merge, tests/e2e baselines | Family-specific semantic-intent normalization deleted per generalization spec (structural-only v2, canary scores post-planning manifest); Granite length retry to 8192 ceiling; source-based auto-promotion; expected-field coverage + Qwen input-budget telemetry live; Playwright baselines regenerated; run 5: 8 aggregates vs 6, telemetry verified, zero model auto-promotions | ~15000 |
+| 01:39 | Session end: 256 writes across 113 files (repro_group_collapse.py, claims.py, model_output_value_parsing.py, candidate_value_parsing.py, claim_resolver.py) | 210 reads | ~105375 tok |
+| 01:46 | Edited lib/extraction/granite_prompting.py | modified _compact_shape_for_schema() | ~136 |
+| 01:50 | Session end: 257 writes across 114 files (repro_group_collapse.py, claims.py, model_output_value_parsing.py, candidate_value_parsing.py, claim_resolver.py) | 210 reads | ~105511 tok |
+| 02:12 | Session end: 257 writes across 114 files (repro_group_collapse.py, claims.py, model_output_value_parsing.py, candidate_value_parsing.py, claim_resolver.py) | 210 reads | ~105511 tok |
+| 02:25 | Edited lib/model_runtime/clients/_openai_vision.py | 12→13 lines | ~165 |
+| 02:25 | Edited lib/model_runtime/clients/_openai_vision.py | modified _truncation_content_diagnostics() | ~244 |
+| 02:28 | Session end: 259 writes across 115 files (repro_group_collapse.py, claims.py, model_output_value_parsing.py, candidate_value_parsing.py, claim_resolver.py) | 210 reads | ~105920 tok |
+| 02:31 | Session end: 259 writes across 115 files (repro_group_collapse.py, claims.py, model_output_value_parsing.py, candidate_value_parsing.py, claim_resolver.py) | 210 reads | ~105920 tok |
+| 02:57 | Session end: 259 writes across 115 files (repro_group_collapse.py, claims.py, model_output_value_parsing.py, candidate_value_parsing.py, claim_resolver.py) | 210 reads | ~105920 tok |
+| 03:06 | Session end: 259 writes across 115 files (repro_group_collapse.py, claims.py, model_output_value_parsing.py, candidate_value_parsing.py, claim_resolver.py) | 210 reads | ~105920 tok |
+| 03:20 | Created docs/adr/0006-extractive-first-extraction.md | — | ~1549 |
+| 03:22 | Created docs/superpowers/plans/2026-06-10-extractive-first-extraction-plan.md | — | ~2652 |
+| 07:55 | Clean gate achieved; extractive-first migration approved | docs/adr/0006, docs/superpowers/plans/2026-06-10-extractive-first-extraction-plan.md, workers/model_services, contracts | Run 9: 101/101 jobs, zero dead letters, 9/9 aggregates with quality outcomes after whitespace-loop root cause fixed (xgrammar disable_any_whitespace + tokenization-aware bounds). Live suite 7/8 (phase8-live killed by planner dead-letter -> E3 scope). User approved extractive-first redesign; ADR 0006 + E0-E5 plan committed; baseline pinned to run 9 | ~14000 |
