@@ -76,7 +76,8 @@ def _source(tables: list[ParsedTableText]) -> ExtractionSourceDocument:
 def test_baseline_manifest_plans_tables_without_a_model() -> None:
     source = _source([_table()])
     baseline = deterministic_baseline_manifest(source)
-    assert baseline.source_engine == "docling_baseline"
+    assert baseline.source_engine == "docling"
+    assert baseline.model_name == "deterministic-planner"
     assert baseline.regions, "table-bearing source must produce baseline regions"
     table_region = baseline.regions[0]
     assert table_region.grounding.table_id == source.tables[0].table_id
@@ -247,7 +248,8 @@ def test_flag_on_gateway_failure_degrades_to_baseline(monkeypatch) -> None:  # n
             source.document_id
         )
         manifest = result.manifest_result.manifest
-        assert manifest.source_engine == "docling_baseline"
+        assert manifest.source_engine == "docling"
+        assert manifest.model_name == "deterministic-planner"
         assert manifest.review_required is True
         assert manifest.escalation_reason is not None
         assert manifest.escalation_reason.startswith("qwen_annotation_failed:")
@@ -296,5 +298,70 @@ def test_flag_on_success_enforces_baseline_superset(monkeypatch) -> None:  # noq
         assert telemetry["plan_region_count"] >= telemetry["baseline_region_count"]
         assert manifest.regions, "baseline coverage present in the final plan"
         assert jobs.created
+    finally:
+        get_settings.cache_clear()
+
+
+def test_table_grounded_kvp_region_does_not_cover_baseline_table_target() -> None:
+    # 2026-06-10 E3 review: a Qwen billing_summary kvp region sharing the
+    # table grounding must not suppress the deterministic tables_json target.
+    source = _source([_table()])
+    baseline = deterministic_baseline_manifest(source)
+    kvp_region = SemanticRegionAnnotation(
+        semantic_type="billing_summary",
+        priority="high",
+        granite_task="kvp",
+        grounding=SemanticGroundingRef(kind="table", table_id=source.tables[0].table_id),
+        target_schema="invoice",
+        expected_fields=("total",),
+    )
+    plan = SemanticAnnotationResult(
+        manifest=baseline.__class__(
+            document_id=baseline.document_id,
+            household_id=baseline.household_id,
+            quality_mode=baseline.quality_mode,
+            profile_name="qwen",
+            source_engine="qwen3_vl_8b",
+            model_name="qwen",
+            model_version="t",
+            prompt_version="t",
+            pages=baseline.pages,
+            regions=[kvp_region],
+            confidence={},
+            manifest={"regions": [], "pages": []},
+        )
+    )
+    enforced = apply_baseline_invariant(source, baseline, plan)
+    telemetry = enforced.manifest.manifest["deterministic_baseline"]
+    assert telemetry["enforced_region_count"] == len(baseline.regions)
+    tasks = {(region.semantic_type, region.granite_task) for region in enforced.manifest.regions}
+    assert ("billing_summary", "kvp") in tasks
+    assert any(task == "tables_json" for _stype, task in tasks)
+
+
+def test_baseline_manifest_uses_active_profile_when_supplied() -> None:
+    source = _source([_table()])
+    baseline = deterministic_baseline_manifest(source, profile_name="qwen3-vl-8b-fp8-semantic:v1")
+    assert baseline.profile_name == "qwen3-vl-8b-fp8-semantic:v1"
+    assert baseline.source_engine == "docling"
+
+
+def test_flag_on_transient_failure_propagates_for_job_retry(monkeypatch) -> None:  # noqa: ANN001
+    import pytest
+
+    from lib.config import get_settings
+    from lib.model_runtime.http_client import ModelTimeoutError
+
+    class _TimeoutGateway:
+        def annotate(self, source, *, quality_mode):  # noqa: ANN001, ANN003
+            raise ModelTimeoutError("qwen timed out")
+
+    _with_planner_flag(monkeypatch, True)
+    try:
+        source = _source([_table()])
+        with pytest.raises(ModelTimeoutError):
+            _service_with(_TimeoutGateway(), source, _RecordingJobs()).annotate_document(
+                source.document_id
+            )
     finally:
         get_settings.cache_clear()

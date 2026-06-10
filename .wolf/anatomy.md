@@ -1,25 +1,38 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-10T10:53:15.787Z
-> Files: 514 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-10T20:50:43.293Z
+> Files: 530 tracked | Anatomy hits: 0 | Misses: 0
+
+## ../../../../tmp/
+
+- `repro_e3_empty_baseline.py` — Repro: empty-baseline + Qwen failure under STRUCTURA_DETERMINISTIC_PLANNER. (~1423 tok)
 
 ## ../../../../tmp/structura-e0-capture/
 
 - `bmw_region_obs.sql` — Declares LIKE (~340 tok)
 - `bmw_values.sql` (~368 tok)
+- `claim_timeout_repro.py` — Repro: flag-on degradation swallows first-attempt retryable ModelTimeoutError. (~1535 tok)
 - `corpus_inventory.sql` (~182 tok)
+- `e2_lane_reasons.sql` (~218 tok)
+- `e3_fingerprints.sql` (~215 tok)
 - `element_bbox.sql` (~71 tok)
 - `gen_fixtures.py` — Generate sanitized text-lane grid fixtures mirroring live corpus shapes. (~1899 tok)
 - `kvp_expected_fields.sql` — Declares IN (~207 tok)
 - `kvp_expected_fields2.sql` — Declares IN (~223 tok)
 - `lane_reasons.sql` (~142 tok)
 - `markdown_check.sql` (~122 tok)
+- `mri_check.sql` (~211 tok)
 - `repeat_check.sql` (~235 tok)
 - `repeat_check2.sql` (~336 tok)
 - `repro_anchor_claim.py` — Verify claim: adjacency anchor inexactness + 80-char truncation. (~959 tok)
 - `repro_band_rows.py` — Adversarial repro: do Docling row_section band rows become canonical line items? (~1554 tok)
+- `repro_baseline_covered.py` — Repro: does a table-grounded billing_summary kvp Qwen region suppress the (~1900 tok)
 - `repro_e2_date.py` — Repro: unparseable-but-regex-admitted date spans vanish between envelope and claims. (~1055 tok)
 - `repro_e2_receipt_kvp.py` — Repro: receipt_payment_summary KVP region with real corpus expected_fields. (~2545 tok)
+- `repro_e3_claim.py` — Repro for the E3 claim: type-granular covered check makes docling-tagged (~2132 tok)
+- `repro_e3_eviction.py` — E3 c08a3ee: does the invariant's re-appended duplicate pair evict other (~1526 tok)
+- `repro_e3_invariant_paths.py` — Repro: which paths make apply_baseline_invariant append regions (E3, c08a3ee). (~2196 tok)
+- `repro_e3_retryable_degrade.py` — Repro: flag-on E3 degrades permanently on FIRST retryable transient error. (~1823 tok)
 - `repro_kvp_adjacency.py` — Repro: verify reviewer claims about adjacency pairing in span_candidates. (~1229 tok)
 - `repro_kvp_money.py` — Repro: registry money typing mints wrong money facts from digit-bearing text spans. (~839 tok)
 - `repro_kvp_projection.py` — Repro: KVP lane document_observation projection rows vs vision parity. (~1112 tok)
@@ -27,6 +40,7 @@
 - `repro_totals_rate.py` — Adversarial repro: does _totals_amount_cell pick the rate column for totals rows? (~1311 tok)
 - `repro_totals_substring.py` — Adversarial repro: does substring totals matching eat real line items? (~1652 tok)
 - `repro_totals_variants.py` — Variants: (a) shipping present + tax rate captured; (b) discount % captured. (~1378 tok)
+- `repro_weak_redundant.py` — Repro: weak redundant table suppression vs baseline invariant (claim check). (~1549 tok)
 - `run_a_violations.sql` (~274 tok)
 - `run_a_violations2.sql` (~349 tok)
 - `run9_docs.sql` (~167 tok)
@@ -38,7 +52,7 @@
 
 ## ../../.claude/projects/-Users-brennanconley-vibecode-structura/memory/
 
-- `structura-prod-readiness-push.md` — is: warnings (~2001 tok)
+- `structura-prod-readiness-push.md` — is: warnings (~2318 tok)
 
 ## ./
 
@@ -108,6 +122,11 @@
 
 - `test_gateways.py` — class: generate, test_fixture_gateway_has_explicit_fixture_provenance, test_fixture_gateway_infers_t (~17607 tok)
 - `test_input_budget.py` — test_estimate_text_tokens_matches_canary_heuristic, test_image_dimensions_parses_png_and_jpeg_header (~1598 tok)
+
+## Deterministic-primary planner E3 (2026-06-10, ADR 0006)
+
+- `lib/semantic_annotations/deterministic_plan.py` — Model-free baseline manifest via docling_targets builders over an empty manifest; run-stable baseline fingerprint (semantic types/granite tasks/table positions/expected fields, no UUIDs); apply_baseline_invariant enforcing plan ⊇ baseline with telemetry; baseline_only_result degrading Qwen failures to review-required baseline coverage (~1500 tok)
+- `tests/unit/semantic_annotations/test_deterministic_plan.py` — Baseline construction, fingerprint cross-ingest stability, invariant enforcement/coverage, failure degradation, service flag on/off behavior (~2200 tok)
 
 ## Extractive-first KVP lane E2 (2026-06-10, ADR 0006)
 
@@ -436,7 +455,7 @@
 
 ## docs/adr/
 
-- `0006-extractive-first-extraction.md` — ADR 0006: Extractive-First Extraction Architecture (~2164 tok)
+- `0006-extractive-first-extraction.md` — ADR 0006: Extractive-First Extraction Architecture (~2533 tok)
 
 ## docs/superpowers/plans/
 
@@ -454,7 +473,7 @@
 
 ## lib/config/
 
-- `settings.py` — Settings: reject_historical_live_semantic_profiles, canonical_objects_root, derived_objects_root, ex (~1244 tok)
+- `settings.py` — Settings: reject_historical_live_semantic_profiles, canonical_objects_root, derived_objects_root, ex (~1372 tok)
 
 ## lib/extraction/
 
@@ -486,7 +505,7 @@
 - `eligibility.py` — Text-lane eligibility: which regions may extract from Docling text. (~2084 tok)
 - `gateway.py` — Text-lane extraction gateway (ADR 0006 X2, migration phase E1). (~2222 tok)
 - `kvp_extractor.py` — Deterministic KVP extraction from selected spans (ADR 0006, E2). (~2363 tok)
-- `kvp_gateway.py` — KVP text-lane extraction gateway (ADR 0006 X2, migration phase E2). (~1766 tok)
+- `kvp_gateway.py` — KVP text-lane extraction gateway (ADR 0006 X2, migration phase E2). (~1962 tok)
 - `span_candidates.py` — Deterministic KVP span candidates from Docling elements (ADR 0006, E2). (~3485 tok)
 - `span_selection.py` — Model span selection for the extractive KVP lane (ADR 0006 X2, E2). (~1893 tok)
 - `table_extractor.py` — Deterministic line-item extraction from the Docling cell grid (ADR 0006). (~4658 tok)
@@ -503,7 +522,9 @@
 
 ## lib/semantic_annotations/
 
+- `deterministic_plan.py` — Deterministic-primary planning (ADR 0006 X4, migration phase E3). (~2386 tok)
 - `manifest_normalization.py` — normalize_result_for_planning, normalize_manifest_for_planning (~8248 tok)
+- `service.py` — SemanticAnnotationGateway: annotate, create_job, annotate_document (~7358 tok)
 
 ## pro-merged-master-v.beta/
 
@@ -788,6 +809,10 @@
 - `test_table_extractor.py` — test_line_items_are_verbatim_with_row_anchors, test_totals_row_emits_family_fact_not_line_item, test (~2413 tok)
 - `test_table_grid.py` — test_service_lines_grid_round_trip, test_retail_grid_dedupes_span_duplicates_and_detects_header_bloc (~1285 tok)
 - `test_text_lane_gateway.py` — _StaticLabeler: label_columns, extract, extract, test_eligible_line_item_region_routes_to_text_lane (~2854 tok)
+
+## tests/unit/semantic_annotations/
+
+- `test_deterministic_plan.py` — _FailingGateway: test_baseline_manifest_plans_tables_without_a_model, test_baseline_fingerprint_is_s (~3162 tok)
 
 ## workers/extraction/
 

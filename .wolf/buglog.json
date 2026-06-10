@@ -2050,6 +2050,20 @@
         "kvp",
         "review-workflow"
       ]
+    },
+    {
+      "date": "2026-06-10",
+      "error_message": "Pre-gate E3 review (17 agents): the Qwen-failure degradation path was dead on arrival (source_engine 'docling_baseline' not in model_source_enum -> every baseline-only persist raised InvalidTextRepresentation inside the atomic UoW, retried, and dead-lettered with a DB error masking the Qwen outage); profile_name 'deterministic-planner' forked the one-current-manifest supersede chain (keyed on document/profile/quality_mode); _baseline_region_covered let any non-ignore Qwen region sharing a table grounding (e.g. a billing_summary kvp) suppress the deterministic tables_json target while telemetry claimed full coverage; catching retryable ModelTimeout/ModelService errors on first failure removed the job layer's retry-then-fully-recover path for transient blips.",
+      "root_cause": "Synthetic manifest fields were never persisted in unit tests (fake persister bypassed the enum column and supersede chain); the covered check keyed on any non-ignore granite task instead of table-task semantics; the degrade catch was broader than the plan's stated dead-letter class.",
+      "fix": "Baseline manifests persist under source_engine 'docling' (valid enum, truthful) with the deterministic-planner identity in model_name/prompt_version, and under the active qwen profile_name so the supersede chain stays single-keyed; table-grounded baseline targets count covered only by TABLE_GRANITE_TASKS regions or same semantic_type; the service degrades only on ModelProtocolError (non-retryable, the phase8-live dead-letter class) while timeout/service errors propagate for job-layer retry. Regressions in test_deterministic_plan.py.",
+      "tags": [
+        "phase8.5",
+        "adr-0006",
+        "e3",
+        "deterministic-planner",
+        "model-source-enum",
+        "review-workflow"
+      ]
     }
   ]
 }

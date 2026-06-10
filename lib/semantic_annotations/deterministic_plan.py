@@ -32,6 +32,7 @@ from lib.semantic_annotations.models import (
     SemanticAnnotationResult,
     SemanticRegionAnnotation,
 )
+from lib.semantic_annotations.task_routing import TABLE_GRANITE_TASKS
 
 DETERMINISTIC_PLANNER_VERSION = "phase8_5-deterministic-baseline-v1"
 
@@ -40,8 +41,18 @@ def deterministic_baseline_manifest(
     source: ExtractionSourceDocument,
     *,
     quality_mode: QualityMode = "smart",
+    profile_name: str = "deterministic-planner",
 ) -> DocumentSemanticManifest:
-    """Build the model-free structural plan from Docling parse state."""
+    """Build the model-free structural plan from Docling parse state.
+
+    source_engine is the existing ``docling`` enum label (the plan IS
+    Docling-derived, and document_semantic_annotations.source_engine is a
+    closed Postgres enum); the deterministic-planner identity lives in
+    model_name/prompt_version and the telemetry block. When this manifest can
+    be persisted (the Qwen-failure degradation path), callers must pass the
+    active semantic profile_name so the one-current-manifest supersede chain
+    (keyed on document/profile/quality_mode) is not forked.
+    """
     pages = [
         PageSemanticAnnotation(
             page_id=page.page_id,
@@ -56,8 +67,8 @@ def deterministic_baseline_manifest(
         document_id=source.document_id,
         household_id=source.household_id,
         quality_mode=quality_mode,
-        profile_name="deterministic-planner",
-        source_engine="docling_baseline",
+        profile_name=profile_name,
+        source_engine="docling",
         model_name="deterministic-planner",
         model_version="e3-v1",
         prompt_version=DETERMINISTIC_PLANNER_VERSION,
@@ -166,10 +177,16 @@ def _baseline_region_covered(
 ) -> bool:
     table_id = baseline_region.grounding.table_id
     if table_id is not None:
+        # A table-grounded baseline target is a TABLE extraction; a Qwen KVP
+        # region that happens to share the table grounding (billing_summary
+        # etc.) does not cover it — counting it covered would let Qwen
+        # silently suppress the deterministic line-item extraction.
         return any(
             region.grounding.table_id == table_id
-            and region.granite_task is not None
-            and region.granite_task != "ignore"
+            and (
+                region.granite_task in TABLE_GRANITE_TASKS
+                or region.semantic_type == baseline_region.semantic_type
+            )
             for region in plan_regions
         )
     return any(

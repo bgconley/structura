@@ -16,11 +16,7 @@ from lib.extraction.models import ExtractionSourceDocument
 from lib.extraction.repository import load_extraction_source
 from lib.jobs import JobService, create_job_with_cursor
 from lib.jobs.event_payloads import build_extract_document_job_payload
-from lib.model_runtime.http_client import (
-    ModelProtocolError,
-    ModelServiceError,
-    ModelTimeoutError,
-)
+from lib.model_runtime.http_client import ModelProtocolError
 from lib.model_runtime.reliability_versions import REGION_ENVELOPE_VERSION
 from lib.semantic_annotations.deterministic_plan import (
     apply_baseline_invariant,
@@ -203,16 +199,25 @@ class SemanticAnnotationService:
         the annotation, and the final plan is enforced to be a superset of
         the baseline with plan-identity telemetry.
         """
-        if not get_settings().deterministic_planner_enabled:
+        settings = get_settings()
+        if not settings.deterministic_planner_enabled:
             manifest_result = self.gateway.annotate(source, quality_mode=quality_mode)
             manifest_result = augment_result_with_docling_structural_targets(
                 source, manifest_result
             )
             return normalize_result_for_planning(source, manifest_result)
-        baseline = deterministic_baseline_manifest(source, quality_mode=quality_mode)
+        baseline = deterministic_baseline_manifest(
+            source,
+            quality_mode=quality_mode,
+            profile_name=settings.qwen_semantic_profile,
+        )
         try:
             manifest_result = self.gateway.annotate(source, quality_mode=quality_mode)
-        except (ModelProtocolError, ModelServiceError, ModelTimeoutError) as exc:
+        except ModelProtocolError as exc:
+            # Only the non-retryable protocol class degrades: pre-E3 it
+            # dead-lettered the document on first failure (the phase8-live
+            # incident). Transient timeout/service errors keep propagating so
+            # the job layer's retry can still recover the full Qwen plan.
             return baseline_only_result(
                 source,
                 baseline,

@@ -317,3 +317,26 @@
 | 07:46 | Edited lib/config/settings.py | 6→7 lines | ~147 |
 | 07:46 | Edited docs/adr/0006-extractive-first-extraction.md | expanded (+21 lines) | ~413 |
 | 07:35 | E2 KVP lane gated; STRUCTURA_TEXT_LANE_KVP defaults on | lib/extraction/text_lane/{span_candidates,span_selection,kvp_extractor,kvp_gateway}.py, lib/config/settings.py, compose.yaml, docs/adr/0006 | Pre-gate review (16 agents) fixed money-regex mid-number matches, unvalidated date spans, first-class dead-end claims; run C exposed the effective-family hole (MRI denial 17->0 obs) fixed by keying abstention on the candidate layer's family fallback. Gate runs e2-e/e2-f vs run-9: Phenix obs 10->17, UWM 14->16 with exact anchors, fingerprints identical across runs, zero dead letters, receipt registry facts 2->5. KVP lane fired on Phenix/UWM/receipt-summary regions; MRI/medical_eob KVP correctly abstains to vision | ~55000 |
+| 07:48 | Edited ../../.claude/projects/-Users-brennanconley-vibecode-structura/memory/structura-prod-readiness-push.md | modified gated() | ~471 |
+| 08:04 | Created lib/semantic_annotations/deterministic_plan.py | — | ~2113 |
+| 08:04 | Edited lib/semantic_annotations/service.py | expanded (+10 lines) | ~128 |
+| 08:05 | Edited lib/semantic_annotations/service.py | 6→4 lines | ~78 |
+| 08:05 | Edited lib/semantic_annotations/service.py | modified _planned_manifest_result() | ~498 |
+| 08:05 | Edited lib/config/settings.py | expanded (+7 lines) | ~156 |
+| 08:06 | Created tests/unit/semantic_annotations/test_deterministic_plan.py | — | ~1839 |
+| 16:11 | Edited tests/unit/semantic_annotations/test_deterministic_plan.py | 9→13 lines | ~198 |
+| 08:20 | Implemented E3 deterministic-primary planner behind default-off STRUCTURA_DETERMINISTIC_PLANNER | lib/semantic_annotations/deterministic_plan.py, lib/semantic_annotations/service.py, lib/config/settings.py, compose.yaml, tests/unit/semantic_annotations/test_deterministic_plan.py | Baseline plan built model-free from docling_targets builders, run-stable fingerprint (no per-run UUIDs), plan-superset invariant enforced after Qwen augmentation with telemetry, Qwen protocol/timeout/service failures degrade to baseline-only review-required manifests instead of dead-lettering the document (the phase8-live failure class). 8 new tests, 1082 total green, commit c08a3ee; adversarial review workflow running before the E3 GPU gate | ~35000 |
+| 16:14 | Created ../../../../tmp/structura-e0-capture/e3_fingerprints.sql | — | ~215 |
+| 16:23 | Created ../../../../tmp/structura-e0-capture/repro_e3_invariant_paths.py | — | ~2196 |
+| 16:32 | Created ../../../../tmp/structura-e0-capture/repro_e3_retryable_degrade.py | — | ~1823 |
+| 16:33 | Created ../../../../tmp/structura-e0-capture/repro_baseline_covered.py | — | ~1900 |
+| 16:35 | Created ../../../../tmp/structura-e0-capture/claim_timeout_repro.py | — | ~1535 |
+| 16:37 | Created ../../../../tmp/repro_e3_empty_baseline.py | — | ~1423 |
+| 16:38 | Created ../../../../tmp/structura-e0-capture/repro_e3_eviction.py | — | ~1526 |
+| 16:41 | Created ../../../../tmp/structura-e0-capture/repro_weak_redundant.py | — | ~1549 |
+| 16:42 | Created ../../../../tmp/structura-e0-capture/repro_e3_claim.py | — | ~2132 |
+| 16:50 | Edited lib/semantic_annotations/deterministic_plan.py | modified deterministic_baseline_manifest() | ~410 |
+| 16:50 | Edited lib/semantic_annotations/deterministic_plan.py | modified _baseline_region_covered() | ~286 |
+| 16:50 | Edited lib/semantic_annotations/deterministic_plan.py | added 1 import(s) | ~72 |
+| 16:50 | Edited lib/semantic_annotations/service.py | except() → failure() | ~407 |
+| 16:50 | Edited lib/semantic_annotations/service.py | 5→1 lines | ~18 |
