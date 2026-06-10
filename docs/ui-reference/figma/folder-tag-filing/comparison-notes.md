@@ -10,3 +10,11 @@
 - Intentional Figma interpretation: the Figma source does not provide a single dedicated finalized manual folder/tag filing screen. The Phase 2 baseline is the Inbox workbench plus Viewer propagation and handoff constraints. Older filing-rules/watched-folders mockups are deferred automation scope, not the Phase 2 manual filing baseline.
 - Playwright validation: `npm run test:e2e` asserts the deterministic `phase2-filing-workflow.png` visual snapshot at `1440 x 960` after creating a folder/tag, filing a document, filtering by folder, and opening the viewer.
 - Stored source artifacts: `figma-context.json`, `figma-screenshot.png`, `handoff-interaction-specs.png`, `handoff-edge-states.png`, `handoff-dev-redlines.png`, `extraction-workspace-reference.png`, and `playwright-screenshot.png`.
+
+## 2026-06-10 shared-shell refresh
+
+- Playwright screenshot regenerated after the Phase 8.5 viewer/inbox
+  truthfulness pass. The Figma source is unchanged; deltas are inherited from
+  the shared application shell and Viewer surface (derived status chips,
+  truthful metric tiles, removed dead controls) rather than changes to this
+  screen's own workflow.

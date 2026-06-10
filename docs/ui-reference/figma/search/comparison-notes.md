@@ -15,3 +15,11 @@ Gate expectation:
 
 - `tests/e2e/phase5.spec.ts` owns deterministic browser snapshot coverage for the search surface.
 - `tests/e2e/phase5-live.spec.ts` validates the live GPU-hosted upload-to-search-to-viewer evidence flow.
+
+## 2026-06-10 shared-shell refresh
+
+- Playwright screenshot regenerated after the Phase 8.5 viewer/inbox
+  truthfulness pass. The Figma source is unchanged; deltas are inherited from
+  the shared application shell and Viewer surface (derived status chips,
+  truthful metric tiles, removed dead controls) rather than changes to this
+  screen's own workflow.

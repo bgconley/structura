@@ -3,3 +3,11 @@
 Phase 7 extends the existing Viewer and workspace visual language instead of introducing a new visual system. The deterministic Playwright baseline validates the new related-document panel, relationship workbench, deadlines, smart views, relationship-aware search filters, and timeline view.
 
 The committed Linux baseline is `tests/e2e/phase7.spec.ts-snapshots/phase7-relationships-timeline-chromium-linux.png`. The mirrored reference image in this folder is regenerated from that same mocked browser test.
+
+## 2026-06-10 shared-shell refresh
+
+- Playwright screenshot regenerated after the Phase 8.5 viewer/inbox
+  truthfulness pass. The Figma source is unchanged; deltas are inherited from
+  the shared application shell and Viewer surface (derived status chips,
+  truthful metric tiles, removed dead controls) rather than changes to this
+  screen's own workflow.
