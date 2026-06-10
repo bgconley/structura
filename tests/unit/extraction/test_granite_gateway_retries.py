@@ -36,7 +36,7 @@ def test_granite_gateway_retries_length_truncated_output_with_escalated_budget()
     assert len(client.requests) == 2
     assert client.requests[0].max_output_tokens == 4096
     assert client.requests[1].max_output_tokens == 8192
-    assert client.requests[1].timeout_seconds == 150
+    assert client.requests[1].timeout_seconds == 240
     assert result.raw_output_json["requestBudget"]["maxOutputTokens"] == 8192
     assert result.raw_output_json["modelRequestAttempts"] == [
         {

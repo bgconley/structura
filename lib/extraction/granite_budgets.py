@@ -114,11 +114,18 @@ def granite_budget_for_task(
 def granite_length_retry_budget(budget: GraniteTaskBudget) -> GraniteTaskBudget | None:
     if budget.max_attempts <= 1:
         return None
-    retry_tokens = min(LENGTH_RETRY_MAX_OUTPUT_TOKENS, budget.max_output_tokens * 2)
+    # The length retry is the last attempt before the job dead-letters, so it
+    # jumps straight to the output ceiling: dense regions (long thermal
+    # receipts, full escrow pages) have truncated at a doubled budget in live
+    # corpus runs. The timeout scales with the larger generation.
+    retry_tokens = LENGTH_RETRY_MAX_OUTPUT_TOKENS
     if retry_tokens <= budget.max_output_tokens:
         return None
     return GraniteTaskBudget(
         max_output_tokens=retry_tokens,
-        timeout_seconds=budget.timeout_seconds + LENGTH_RETRY_TIMEOUT_HEADROOM_SECONDS,
+        timeout_seconds=max(
+            budget.timeout_seconds * 2,
+            budget.timeout_seconds + LENGTH_RETRY_TIMEOUT_HEADROOM_SECONDS,
+        ),
         max_attempts=budget.max_attempts,
     )
