@@ -7,12 +7,18 @@ from lib.extraction.classification import TARGET_EXTRACTION_SCHEMAS
 from lib.extraction.gateway import DoclingHeuristicGateway, ExtractionGateway
 from lib.extraction.gateways.granite_vision import GraniteVisionExtractionGateway
 from lib.extraction.models import ExtractionSourceDocument, GatewayExtraction
-from lib.extraction.text_lane.eligibility import LaneDecision, text_lane_eligibility
+from lib.extraction.text_lane.eligibility import (
+    LaneDecision,
+    text_lane_eligibility,
+    text_lane_kvp_eligibility,
+)
 from lib.extraction.text_lane.gateway import TextLaneAbstention, TextLaneTableExtractionGateway
+from lib.extraction.text_lane.kvp_gateway import TextLaneKvpExtractionGateway
 from lib.model_runtime.clients.granite_vision import GraniteVisionClient
 from lib.model_runtime.http_client import ModelProtocolError
 from lib.model_runtime.profiles import get_model_profile
 from lib.semantic_annotations.models import SemanticExtractionTask
+from lib.semantic_annotations.task_routing import KVP_SEMANTIC_TYPES
 
 DISABLED_ROUTE_PROFILES = {
     "granite_then_qwen_fallback_review_required",
@@ -36,10 +42,12 @@ class ModelRoutingExtractionGateway:
         deterministic: ExtractionGateway,
         granite: ExtractionGateway,
         text_lane_tables: TextLaneTableExtractionGateway | None = None,
+        text_lane_kvp: TextLaneKvpExtractionGateway | None = None,
     ) -> None:
         self.deterministic = deterministic
         self.granite = granite
         self.text_lane_tables = text_lane_tables
+        self.text_lane_kvp = text_lane_kvp
 
     def extract(
         self,
@@ -64,7 +72,24 @@ class ModelRoutingExtractionGateway:
                     "Broad document-level structured extraction is disabled."
                 )
             lane_decision: LaneDecision | None = None
-            if self.text_lane_tables is not None:
+            if self.text_lane_kvp is not None and semantic_task.semantic_type in KVP_SEMANTIC_TYPES:
+                lane_decision = text_lane_kvp_eligibility(source, semantic_task=semantic_task)
+                if lane_decision.lane == "text":
+                    try:
+                        return self.text_lane_kvp.extract(
+                            source,
+                            schema_name=schema_name,
+                            route_profile=route_profile,
+                            semantic_task=semantic_task,
+                            lane_decision=lane_decision,
+                        )
+                    except TextLaneAbstention as abstention:
+                        lane_decision = LaneDecision(
+                            lane="vision",
+                            reason=f"text_lane_abstained:{abstention.reason}",
+                            page_number=lane_decision.page_number,
+                        )
+            elif self.text_lane_tables is not None:
                 lane_decision = text_lane_eligibility(source, semantic_task=semantic_task)
                 if lane_decision.lane == "text":
                     try:
@@ -122,6 +147,7 @@ def default_extraction_gateway() -> ExtractionGateway:
     text_lane_tables = (
         TextLaneTableExtractionGateway() if settings.text_lane_tables_enabled else None
     )
+    text_lane_kvp = TextLaneKvpExtractionGateway() if settings.text_lane_kvp_enabled else None
     return ModelRoutingExtractionGateway(
         deterministic=deterministic,
         granite=GraniteVisionExtractionGateway(
@@ -131,4 +157,5 @@ def default_extraction_gateway() -> ExtractionGateway:
             )
         ),
         text_lane_tables=text_lane_tables,
+        text_lane_kvp=text_lane_kvp,
     )

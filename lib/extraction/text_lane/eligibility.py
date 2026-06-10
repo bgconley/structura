@@ -21,7 +21,10 @@ from typing import Literal
 from lib.extraction.models import ExtractionSourceDocument, ParsedPageText, ParsedTableText
 from lib.extraction.text_lane.table_grid import TableGrid
 from lib.semantic_annotations.models import SemanticExtractionTask
-from lib.semantic_annotations.task_routing import LINE_ITEM_TABLE_SEMANTIC_TYPES
+from lib.semantic_annotations.task_routing import (
+    KVP_SEMANTIC_TYPES,
+    LINE_ITEM_TABLE_SEMANTIC_TYPES,
+)
 
 Lane = Literal["text", "vision"]
 
@@ -95,6 +98,66 @@ def text_lane_eligibility(
         page_number=table.page_number,
         table_id=str(table.table_id),
     )
+
+
+def text_lane_kvp_eligibility(
+    source: ExtractionSourceDocument,
+    *,
+    semantic_task: SemanticExtractionTask | None,
+) -> LaneDecision:
+    """KVP-lane eligibility: a grounded, readable page with parsed elements.
+
+    KVP regions are typically page-grounded (no Docling table), so the
+    screens are the page-quality reasons plus the presence of element text
+    to build span candidates from.
+    """
+    if semantic_task is None:
+        return LaneDecision(lane="vision", reason="no_semantic_task")
+    if semantic_task.semantic_type not in KVP_SEMANTIC_TYPES:
+        return LaneDecision(lane="vision", reason="region_not_kvp")
+    page_number = grounded_page_number(source, semantic_task)
+    if page_number is None:
+        return LaneDecision(lane="vision", reason="no_grounded_page")
+    if not any(
+        element.page_number == page_number and element.text.strip() for element in source.elements
+    ):
+        return LaneDecision(
+            lane="vision",
+            reason="no_page_elements",
+            page_number=page_number,
+        )
+    difficult = _difficult_page_reasons(source, page_number)
+    if difficult:
+        return LaneDecision(
+            lane="vision",
+            reason="difficult_page:" + ",".join(difficult),
+            page_number=page_number,
+        )
+    return LaneDecision(
+        lane="text",
+        reason="kvp_spans_on_text_page",
+        page_number=page_number,
+    )
+
+
+def grounded_page_number(
+    source: ExtractionSourceDocument,
+    semantic_task: SemanticExtractionTask,
+) -> int | None:
+    grounding = semantic_task.grounding
+    if grounding.page_id is not None:
+        for page in source.pages:
+            if page.page_id == grounding.page_id:
+                return page.page_number
+    if grounding.element_id is not None:
+        for element in source.elements:
+            if element.element_id == grounding.element_id:
+                return element.page_number
+    if grounding.table_id is not None:
+        for table in source.tables:
+            if table.table_id == grounding.table_id:
+                return table.page_number
+    return None
 
 
 def _grounded_table(
