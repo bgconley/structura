@@ -374,34 +374,6 @@ class VisionExtractionGateway:
         return None
 
 
-def _prompt(
-    *,
-    source: ExtractionSourceDocument,
-    schema_name: str,
-    route_profile: str,
-    semantic_task: SemanticExtractionTask | None = None,
-) -> str:
-    base = (
-        "Extract evidence-backed structured fields from the provided document page images. "
-        f"Target schema: {schema_name}. Route profile: {route_profile}. "
-        "Use Docling text only as context; image evidence is authoritative for visual fields. "
-        "Return compact candidate JSON; do not transcribe long paragraphs or unrelated fields. "
-        "Return JSON only in this shape: "
-        '{"normalized":{...target schema JSON...},"confidence":{"overall":0.0,'
-        '"schema_fit":0.0}}. Do not include Markdown fences or explanatory text.'
-    )
-    if semantic_task is None:
-        return base
-    return (
-        f"{base} Semantic task from Qwen annotation: "
-        f"type={semantic_task.semantic_type}; granite_task={semantic_task.granite_task}; "
-        f"expected_fields={list(semantic_task.expected_fields)}; "
-        f"grounding={semantic_task.grounding.kind}; reason={semantic_task.reason or ''}. "
-        "For grounded semantic tasks, extract only the visible fields needed for that task; "
-        "omit uncertain values instead of adding prose."
-    )
-
-
 def _semantic_task_json(task: SemanticExtractionTask | None) -> dict[str, object] | None:
     if task is None:
         return None

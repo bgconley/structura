@@ -31,7 +31,6 @@ class Settings(BaseSettings):
     contracts_dir: Path = Path("contracts")
     database_dir: Path = Path("database")
     queue_transport: str = "pgmq"
-    enable_model_placeholders: bool = False
     max_upload_bytes: int = 100 * 1024 * 1024
     watched_folder_root: Path = Path("/srv/structura/imports")
     docling_max_num_pages: int = 500

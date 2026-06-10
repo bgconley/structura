@@ -156,10 +156,6 @@ def _json_key(value: Any) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"))
 
 
-def _renumber(line_items: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return [{**item, "ordinal": index} for index, item in enumerate(line_items, start=1)]
-
-
 def _clean_canonical_scalar(value: object) -> object | None:
     if isinstance(value, str) and not value.strip():
         return None
