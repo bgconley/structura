@@ -26,12 +26,20 @@ export function TrustLine({ok, label}: {ok: boolean; label: string}) {
   );
 }
 
-export function FactRow({label, value}: {label: string; value: string}) {
+export function FactRow({
+  label,
+  value,
+  onJump,
+}: {
+  label: string;
+  value: string;
+  onJump?: () => void;
+}) {
   return (
     <div className="fact-row">
       <span>{label}</span>
       <strong>{value}</strong>
-      <button type="button">go</button>
+      {onJump ? <button type="button" onClick={onJump}>go</button> : null}
     </div>
   );
 }

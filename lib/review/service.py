@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import lib.review.repository as repository
 from lib.contracts import (
@@ -9,12 +9,12 @@ from lib.contracts import (
     RelationshipDecisionRequest,
     ReviewActionRequest,
 )
+from lib.db.connection import db_connection
 from lib.documents.access_policy import DocumentAccessContext
-from lib.jobs import JobService
-from lib.jobs.event_payloads import build_extract_document_job_payload
 from lib.relationships.errors import RelationshipServiceError
 from lib.relationships.service import RelationshipService
 from lib.search.projection import refresh_projection_and_enqueue_embedding
+from lib.semantic_annotations.jobs import enqueue_semantic_annotation_job
 
 
 class ReviewServiceError(Exception):
@@ -83,6 +83,26 @@ class ReviewService:
                 access=access,
                 actor_user_id=actor_user_id,
                 review_task_id=action.review_task_id,
+                reason=action.comment,
+            )
+        elif action.action_type in {"accept_observation", "reject_observation"}:
+            # The decision repository records the audit event, updates the
+            # candidate status, and clears matching review tasks by fieldPath.
+            event_id = repository.decide_observation(
+                document_id=action.document_id,
+                access=access,
+                actor_user_id=actor_user_id,
+                observation_id=_metadata_uuid(action, "observationId"),
+                decision=action.action_type.removesuffix("_observation"),
+                reason=action.comment,
+            )
+        elif action.action_type in {"accept_line_item", "reject_line_item"}:
+            event_id = repository.decide_line_item(
+                document_id=action.document_id,
+                access=access,
+                actor_user_id=actor_user_id,
+                candidate_id=_metadata_uuid(action, "lineItemCandidateId"),
+                decision=action.action_type.removesuffix("_line_item"),
                 reason=action.comment,
             )
         elif action.action_type == "accept_relationship":
@@ -161,34 +181,45 @@ class ReviewService:
         access: DocumentAccessContext,
         actor_user_id: UUID,
     ) -> dict[str, object]:
-        target_schema = _target_schema_from_action(action)
+        # Live routing fails closed on broad document-level Granite extraction,
+        # so a review rerun re-enters the pipeline at Smart Parse planning:
+        # Qwen semantic annotation -> grounded Granite region jobs -> aggregate
+        # reconciliation. The requested target schema is recorded as user
+        # intent lineage only; it no longer selects a Granite contract.
+        requested_schema = _target_schema_from_action(action)
         event_id = repository.record_rerun_request(
             document_id=action.document_id,
             access=access,
             actor_user_id=actor_user_id,
-            target_schema_name=target_schema,
+            target_schema_name=requested_schema,
             reason=action.comment,
         )
-        priority = 45
-        job_id = uuid4()
-        job = JobService().create_job(
-            job_id=job_id,
-            job_type="extract",
-            household_id=access.household_id,
-            document_id=action.document_id,
-            payload=build_extract_document_job_payload(
-                job_id=job_id,
-                document_id=action.document_id,
-                target_schema_name=target_schema,
-                target_schema_version="v1",
-                requested_by="user",
-                priority=priority,
-                force_reextract=True,
-            ),
-            priority=priority,
-            queue_name="extraction",
-        )
-        return {"ok": True, "reviewEventId": str(event_id), "jobId": str(job.job_id)}
+        with db_connection() as conn:
+            with conn.cursor() as cur:
+                job_id = enqueue_semantic_annotation_job(
+                    cur,
+                    document_id=action.document_id,
+                    household_id=access.household_id,
+                    quality_mode="smart",
+                    requested_by="reviewer",
+                    requested_by_user_id=actor_user_id,
+                    user_intent_reason=action.comment,
+                    priority=45,
+                    reason="review.rerun_extraction",
+                    dedupe_existing=True,
+                )
+            conn.commit()
+        return {"ok": True, "reviewEventId": str(event_id), "jobId": str(job_id)}
+
+
+def _metadata_uuid(action: ReviewActionRequest, key: str) -> UUID:
+    metadata = action.metadata or {}
+    value = metadata.get(key)
+    if not value and action.new_value:
+        value = action.new_value
+    if value:
+        return UUID(str(value))
+    raise ReviewServiceError(f"{action.action_type} requires metadata.{key}.")
 
 
 def _candidate_id_from_action(action: ReviewActionRequest) -> UUID:
@@ -242,7 +273,7 @@ def _classification_from_action(action: ReviewActionRequest) -> tuple[str, str |
     return str(family), str(subtype) if subtype else None
 
 
-def _target_schema_from_action(action: ReviewActionRequest) -> str:
+def _target_schema_from_action(action: ReviewActionRequest) -> str | None:
     metadata = action.metadata or {}
     schema = metadata.get("targetSchemaName")
     if schema:
@@ -250,7 +281,7 @@ def _target_schema_from_action(action: ReviewActionRequest) -> str:
     value = action.new_value
     if isinstance(value, dict) and value.get("targetSchemaName"):
         return str(value["targetSchemaName"])
-    return "receipt"
+    return None
 
 
 def _required(value: str | None, name: str) -> str:

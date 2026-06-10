@@ -15,7 +15,7 @@ def test_baseline_migration_scripts_are_present_and_ordered() -> None:
     plan = baseline_migration_plan("database")
 
     assert plan.scripts[0].name == "001_extensions.sql"
-    assert plan.scripts[-1].name == "086_phase8_5_service_health.sql"
+    assert plan.scripts[-1].name == "088_phase8_5_line_item_payer_amounts.sql"
     assert all(script.exists() for script in plan.scripts)
 
 
@@ -250,3 +250,27 @@ def test_phase8_5_service_health_migration_is_baseline_migration() -> None:
     assert "'unavailable'" in sql
     assert "service_health_snapshots_service_checked_idx" in sql
     assert "(service_name, checked_at DESC)" in sql
+
+
+def test_phase8_5_quality_outcome_migration_is_baseline_migration() -> None:
+    plan = baseline_migration_plan("database")
+    names = [script.name for script in plan.scripts]
+
+    assert "087_phase8_5_quality_outcome.sql" in names
+
+    sql = Path("database/087_phase8_5_quality_outcome.sql").read_text(encoding="utf-8")
+    assert "ALTER TABLE document_extractions" in sql
+    assert "ADD COLUMN IF NOT EXISTS quality_outcome text" in sql
+    assert "document_extractions_quality_outcome_check" in sql
+    for outcome in (
+        "extracted_cleanly",
+        "needs_human_review",
+        "insufficient_signal",
+        "no_extraction_target",
+        "pipeline_failed",
+    ):
+        assert f"'{outcome}'" in sql
+    assert "quality_outcome IS NULL" in sql
+    assert "extraction_observations_status_check" in sql
+    assert "'accepted'" in sql
+

@@ -3,6 +3,8 @@ import {useEffect, useMemo, useState} from "react";
 import {
   listCanonicalFields,
   listFieldCandidates,
+  listLineItemCandidates,
+  listObservationCandidates,
   listReviewTasks,
   postReviewAction,
 } from "../reviewApi";
@@ -10,9 +12,17 @@ import {
   coerceCorrectionValue,
   evidenceTargetFromCandidate,
   referenceCandidate,
-  schemaFromReviewTask,
 } from "../reviewActions";
-import type {CanonicalField, EvidenceTarget, FieldCandidate, ReviewTask} from "../types";
+import {evidenceTargetFromRef, selectEvidenceRef} from "../evidence";
+import type {
+  CanonicalField,
+  EvidenceRef,
+  EvidenceTarget,
+  FieldCandidate,
+  LineItemCandidate,
+  ObservationCandidate,
+  ReviewTask,
+} from "../types";
 import {ReviewDecisionPanel} from "./ReviewDecisionPanel";
 import "./ReviewQueue.css";
 
@@ -24,6 +34,8 @@ export function ReviewQueue({
   const [tasks, setTasks] = useState<ReviewTask[]>([]);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [candidates, setCandidates] = useState<FieldCandidate[]>([]);
+  const [observations, setObservations] = useState<ObservationCandidate[]>([]);
+  const [lineItems, setLineItems] = useState<LineItemCandidate[]>([]);
   const [canonical, setCanonical] = useState<CanonicalField[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const activeTask = tasks.find((task) => task.id === activeTaskId) ?? tasks[0] ?? null;
@@ -35,6 +47,8 @@ export function ReviewQueue({
   useEffect(() => {
     if (!activeTask) {
       setCandidates([]);
+      setObservations([]);
+      setLineItems([]);
       setCanonical([]);
       return;
     }
@@ -53,12 +67,24 @@ export function ReviewQueue({
   }
 
   async function refreshReviewDetail(task: ReviewTask) {
-    const [nextCandidates, nextCanonical] = await Promise.all([
-      listFieldCandidates(task.documentId, task.fieldPath),
+    const observationId = metadataId(task, "observationId");
+    const lineItemCandidateId = metadataId(task, "lineItemCandidateId");
+    const [nextCandidates, nextCanonical, nextObservations, nextLineItems] = await Promise.all([
+      task.taskType === "observation_review" || task.taskType === "line_item_review"
+        ? Promise.resolve([])
+        : listFieldCandidates(task.documentId, task.fieldPath),
       listCanonicalFields(task.documentId),
+      task.taskType === "observation_review"
+        ? listObservationCandidates(task.documentId, observationId)
+        : Promise.resolve([]),
+      task.taskType === "line_item_review"
+        ? listLineItemCandidates(task.documentId, lineItemCandidateId)
+        : Promise.resolve([]),
     ]);
     setCandidates(nextCandidates);
     setCanonical(nextCanonical);
+    setObservations(nextObservations);
+    setLineItems(nextLineItems);
   }
 
   async function handleAccept(candidate: FieldCandidate) {
@@ -76,6 +102,46 @@ export function ReviewQueue({
         createdAt: new Date().toISOString(),
       },
       "Candidate accepted and promoted.",
+    );
+  }
+
+  async function handleObservationDecision(
+    candidate: ObservationCandidate,
+    decision: "accept" | "reject",
+  ) {
+    await applyReviewAction(
+      {
+        schemaName: "review_action",
+        schemaVersion: "v1",
+        documentId: candidate.documentId,
+        reviewTaskId: activeTask?.id,
+        actionType: decision === "accept" ? "accept_observation" : "reject_observation",
+        actorType: "human",
+        metadata: {observationId: candidate.id},
+        comment: `Observation ${decision}ed from review queue.`,
+        createdAt: new Date().toISOString(),
+      },
+      decision === "accept" ? "Observation accepted." : "Observation rejected.",
+    );
+  }
+
+  async function handleLineItemDecision(
+    candidate: LineItemCandidate,
+    decision: "accept" | "reject",
+  ) {
+    await applyReviewAction(
+      {
+        schemaName: "review_action",
+        schemaVersion: "v1",
+        documentId: candidate.documentId,
+        reviewTaskId: activeTask?.id,
+        actionType: decision === "accept" ? "accept_line_item" : "reject_line_item",
+        actorType: "human",
+        metadata: {lineItemCandidateId: candidate.id},
+        comment: `Line item ${decision}ed from review queue.`,
+        createdAt: new Date().toISOString(),
+      },
+      decision === "accept" ? "Line item accepted." : "Line item rejected.",
     );
   }
 
@@ -181,11 +247,10 @@ export function ReviewQueue({
         documentId: activeTask.documentId,
         actionType: "rerun_extraction",
         actorType: "human",
-        metadata: {targetSchemaName: schemaFromReviewTask(activeTask)},
         comment: "Manual re-run requested from review queue.",
         createdAt: new Date().toISOString(),
       },
-      "Extraction re-run queued.",
+      "Smart Parse re-run queued.",
     );
   }
 
@@ -253,8 +318,8 @@ export function ReviewQueue({
                         <strong>{formatValue(candidate.value, candidate.currency)}</strong>
                         <span>{candidate.sourceEngine} · {confidence(candidate.confidence)}</span>
                       </div>
-                      <p>{candidate.status ?? "proposed"} · evidence page {candidate.evidence[0]?.pageNumber ?? "?"}</p>
-                      <small>{candidate.evidence[0]?.sourceText ?? "Evidence locator available."}</small>
+                      <p>{candidate.status ?? "proposed"} · {evidenceLabel(candidate.evidence)}</p>
+                      <small>{selectEvidenceRef(candidate.evidence)?.sourceText ?? "Evidence locator available."}</small>
                       <div className="candidate-actions">
                         <button type="button" onClick={() => handleAccept(candidate)}>
                           Accept candidate
@@ -272,6 +337,86 @@ export function ReviewQueue({
                   ))}
                 </div>
               ))}
+              {observations.map((candidate) => (
+                <article key={candidate.id} className="candidate-card">
+                  <div>
+                    <strong>{formatValue(candidate.value)}</strong>
+                    <span>
+                      {candidate.observationFamily ?? "document_observation"}.{candidate.fieldName}
+                      {" · "}
+                      {candidate.sourceEngine} · {confidence(candidate.confidence ?? undefined)}
+                    </span>
+                  </div>
+                  <p>{candidate.status ?? "needs_review"} · {evidenceLabel(candidate.evidence)}</p>
+                  <small>{selectEvidenceRef(candidate.evidence)?.sourceText ?? "Evidence locator available."}</small>
+                  <div className="candidate-actions">
+                    <button type="button" onClick={() => handleObservationDecision(candidate, "accept")}>
+                      Accept observation
+                    </button>
+                    <button type="button" onClick={() => handleObservationDecision(candidate, "reject")}>
+                      Reject observation
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => (
+                        onOpenDocument(
+                          candidate.documentId,
+                          evidenceTargetFromRef(
+                            candidate.documentId,
+                            selectEvidenceRef(candidate.evidence),
+                            `observations.${candidate.observationFamily ?? "document_observation"}.${candidate.fieldName}`,
+                          ),
+                        )
+                      )}
+                    >
+                      Jump to evidence
+                    </button>
+                  </div>
+                </article>
+              ))}
+              {lineItems.map((candidate) => (
+                <article key={candidate.id} className="candidate-card">
+                  <div>
+                    <strong>{candidate.description ?? `${candidate.lineItemType} ${candidate.ordinal}`}</strong>
+                    <span>
+                      {formatAmount(candidate.netAmount, candidate.currency)}
+                      {" · "}
+                      {candidate.sourceEngine} · {confidence(candidate.confidence ?? undefined)}
+                    </span>
+                  </div>
+                  <p>{candidate.status ?? "proposed"} · {evidenceLabel(candidate.evidence)}</p>
+                  <small>{selectEvidenceRef(candidate.evidence)?.sourceText ?? "Evidence locator available."}</small>
+                  <div className="candidate-actions">
+                    <button type="button" onClick={() => handleLineItemDecision(candidate, "accept")}>
+                      Accept line item
+                    </button>
+                    <button type="button" onClick={() => handleLineItemDecision(candidate, "reject")}>
+                      Reject line item
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => (
+                        onOpenDocument(
+                          candidate.documentId,
+                          evidenceTargetFromRef(
+                            candidate.documentId,
+                            selectEvidenceRef(candidate.evidence),
+                            `line_items.${candidate.lineItemType}.${candidate.ordinal}`,
+                          ),
+                        )
+                      )}
+                    >
+                      Jump to evidence
+                    </button>
+                  </div>
+                </article>
+              ))}
+              {activeTask.taskType === "observation_review" && !observations.length ? (
+                <p className="empty-state">No observation candidate found for this task.</p>
+              ) : null}
+              {activeTask.taskType === "line_item_review" && !lineItems.length ? (
+                <p className="empty-state">No line-item candidate found for this task.</p>
+              ) : null}
               <ReviewDecisionPanel
                 activeTask={activeTask}
                 referenceCandidate={activeReferenceCandidate}
@@ -313,6 +458,16 @@ function CanonicalSummary({
   );
 }
 
+function metadataId(task: ReviewTask, key: string): string | undefined {
+  const value = task.metadata?.[key];
+  return typeof value === "string" && value ? value : undefined;
+}
+
+function evidenceLabel(evidence: EvidenceRef[]): string {
+  const selected = selectEvidenceRef(evidence);
+  return selected ? `evidence page ${selected.pageNumber}` : "no evidence locator";
+}
+
 function groupCandidates(candidates: FieldCandidate[]): Array<[string, FieldCandidate[]]> {
   const groups = new Map<string, FieldCandidate[]>();
   for (const candidate of candidates) {
@@ -325,6 +480,13 @@ function groupCandidates(candidates: FieldCandidate[]): Array<[string, FieldCand
 
 function confidence(value?: number): string {
   return value === undefined || value === null ? "confidence pending" : `${Math.round(value * 100)}%`;
+}
+
+function formatAmount(amount?: number | null, currency?: string | null): string {
+  if (amount === undefined || amount === null) {
+    return "Amount pending";
+  }
+  return `${currency ?? "USD"} ${amount}`;
 }
 
 function formatValue(value: unknown, currency?: string): string {

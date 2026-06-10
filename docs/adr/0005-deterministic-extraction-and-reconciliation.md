@@ -544,6 +544,38 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   line-item-shaped JSON but no anchored Claims is treated as not useful and may
   retry full page instead of letting JSON shape heuristics decide acceptance.
 
+- 2026-06-09: D8 quality outcomes are now persisted decisions in the database.
+  Migration `087_phase8_5_quality_outcome.sql` adds
+  `document_extractions.quality_outcome` with the outcome vocabulary CHECK, and
+  `persist_extraction_run` stores the resolver outcome from the aggregate
+  payload metadata; rows without a resolver outcome stay NULL.
+- 2026-06-09: Document detail now exposes the D8 decision surface. Current
+  document/aggregate extraction payloads include `qualityOutcome`, projected
+  `claimResolutionDecisions` (decision + reason code per canonical key),
+  `regionJobCoverage` when recorded, and contributing `sourceFamilies`;
+  OpenAPI `ExtractionSummary` and the web types are aligned.
+- 2026-06-09: The review `rerun_extraction` action no longer enqueues a
+  document-level Granite `extract` job (which live routing rejects fail-closed
+  by design). Reruns re-enter the pipeline at Smart Parse: a deduplicated
+  `semantic_annotate` job carrying reviewer intent fields re-plans regions and
+  fans out grounded Granite extraction before reconciliation.
+- 2026-06-09: Extraction request intent (`requested_by`,
+  `requested_by_user_id`, `user_intent_reason`) is persisted into
+  `document_extractions.metadata_json` instead of being discarded after the
+  job payload, preserving run provenance past job pruning.
+- 2026-06-09: `observation_review` and `line_item_review` tasks are
+  actionable. Review tasks expose their candidate-reference metadata,
+  observation and line-item candidates have read endpoints with
+  contract-shaped evidence, and accept/reject decisions are recorded as
+  `accepted`/`rejected` candidate status with audit events and task clearing.
+  Accept intentionally does not promote to canonical facts; no new canonical
+  fact types were introduced.
+- 2026-06-09: The web client now selects evidence locators deterministically
+  (richer-anchor-first, mirroring `lib/extraction/evidence_locator.py`)
+  instead of reading `evidence[0]`, and the Viewer renders the evidence ref's
+  actual page, only draws highlights when a bbox exists, and normalizes
+  against stored page dimensions.
+
 ## Deferred Work
 
 - Plan-stage stochasticity (Qwen routing variance) is bounded by greedy/low-temperature

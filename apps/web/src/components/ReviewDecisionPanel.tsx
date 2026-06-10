@@ -45,9 +45,28 @@ export function ReviewDecisionPanel({
 }) {
   const fieldPath = activeTask.fieldPath ?? "classification.document_family";
   const valueType = referenceCandidate?.valueType ?? "string";
+  // Observation and line-item tasks are decided on their candidate cards
+  // (accept/reject); relationship suggestions are decided through the
+  // relationship actions. Field-shaped correct/reject forms only apply to
+  // field-path review tasks.
+  const candidateDecisionTask =
+    activeTask.taskType === "observation_review" || activeTask.taskType === "line_item_review";
+  const relationshipTask = activeTask.taskType === "relationship_suggestion";
+  const showFieldForms = !candidateDecisionTask && !relationshipTask;
 
   return (
     <div className="review-decision-panel">
+      {candidateDecisionTask ? (
+        <p className="debug-copy">
+          Accept or reject the candidate above; both decisions clear this task.
+        </p>
+      ) : null}
+      {relationshipTask ? (
+        <p className="debug-copy">
+          Decide this suggestion from the Relationships workspace or the document&apos;s related panel.
+        </p>
+      ) : null}
+      {showFieldForms ? (
       <form
         className="review-decision-form"
         onSubmit={(event) => {
@@ -76,7 +95,9 @@ export function ReviewDecisionPanel({
         </label>
         <button type="submit">Correct field</button>
       </form>
+      ) : null}
 
+      {showFieldForms ? (
       <form
         className="review-decision-form compact"
         onSubmit={(event) => {
@@ -97,7 +118,9 @@ export function ReviewDecisionPanel({
         </label>
         <button type="submit">Reject field</button>
       </form>
+      ) : null}
 
+      {showFieldForms ? (
       <form
         className="review-decision-form"
         onSubmit={(event) => {
@@ -129,6 +152,7 @@ export function ReviewDecisionPanel({
         </label>
         <button type="submit">Reclassify</button>
       </form>
+      ) : null}
 
       <div className="review-actions">
         <button type="button" className="primary" onClick={() => void onMarkDone()}>

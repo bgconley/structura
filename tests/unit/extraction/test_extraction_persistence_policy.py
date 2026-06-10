@@ -3,6 +3,7 @@ from __future__ import annotations
 from uuid import uuid4
 
 from lib.extraction.extraction_repository import (
+    _quality_outcome_for_extraction,
     _review_status_for_extraction,
     _status_for_persisted_extraction,
     _supersede_current_extractions,
@@ -96,6 +97,44 @@ def test_non_model_semantic_region_can_keep_auto_accepted_review_status() -> Non
     )
 
     assert status == "auto_accepted"
+
+
+def test_quality_outcome_is_persisted_from_aggregate_payload_metadata() -> None:
+    payload = {
+        "schema_name": "invoice",
+        "metadata": {
+            "quality_outcome": "needs_human_review",
+            "claim_resolution_decisions": [
+                {
+                    "canonical_key": "invoice.total_amount",
+                    "decision": "needs_review",
+                    "reason_code": "cross_field_arithmetic_conflict",
+                }
+            ],
+        },
+    }
+
+    assert _quality_outcome_for_extraction(payload) == "needs_human_review"
+
+
+def test_quality_outcome_stays_null_for_rows_without_resolver_outcome() -> None:
+    assert _quality_outcome_for_extraction({}) is None
+    assert _quality_outcome_for_extraction({"metadata": {}}) is None
+    assert _quality_outcome_for_extraction({"metadata": []}) is None
+    assert _quality_outcome_for_extraction({"metadata": {"quality_outcome": "made_up"}}) is None
+    assert _quality_outcome_for_extraction({"metadata": {"quality_outcome": 42}}) is None
+
+
+def test_every_resolver_quality_outcome_is_persistable() -> None:
+    for outcome in (
+        "extracted_cleanly",
+        "needs_human_review",
+        "insufficient_signal",
+        "no_extraction_target",
+        "pipeline_failed",
+    ):
+        payload = {"metadata": {"quality_outcome": outcome}}
+        assert _quality_outcome_for_extraction(payload) == outcome
 
 
 def test_flat_granite_invoice_fields_do_not_create_line_item_candidates() -> None:

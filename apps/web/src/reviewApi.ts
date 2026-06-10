@@ -2,6 +2,8 @@ import {csrfToken, fetchJson} from "./api";
 import type {
   CanonicalField,
   FieldCandidate,
+  LineItemCandidate,
+  ObservationCandidate,
   ReviewActionPayload,
   ReviewTask,
 } from "./types";
@@ -27,6 +29,34 @@ export async function listFieldCandidates(
   }
   const payload = await fetchJson<{items: FieldCandidate[]}>(
     `/api/v1/documents/${documentId}/field-candidates${params.size ? `?${params}` : ""}`,
+  );
+  return payload.items;
+}
+
+export async function listObservationCandidates(
+  documentId: string,
+  observationId?: string,
+): Promise<ObservationCandidate[]> {
+  const params = new URLSearchParams();
+  if (observationId) {
+    params.set("observationId", observationId);
+  }
+  const payload = await fetchJson<{items: ObservationCandidate[]}>(
+    `/api/v1/documents/${documentId}/observation-candidates${params.size ? `?${params}` : ""}`,
+  );
+  return payload.items;
+}
+
+export async function listLineItemCandidates(
+  documentId: string,
+  candidateId?: string,
+): Promise<LineItemCandidate[]> {
+  const params = new URLSearchParams();
+  if (candidateId) {
+    params.set("candidateId", candidateId);
+  }
+  const payload = await fetchJson<{items: LineItemCandidate[]}>(
+    `/api/v1/documents/${documentId}/line-item-candidates${params.size ? `?${params}` : ""}`,
   );
   return payload.items;
 }

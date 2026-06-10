@@ -244,6 +244,10 @@ def test_review_action_schema_matches_runtime_review_actions() -> None:
         "mark_done",
         "accept_relationship",
         "reject_relationship",
+        "accept_observation",
+        "reject_observation",
+        "accept_line_item",
+        "reject_line_item",
     }
 
     assert schema_actions == runtime_actions

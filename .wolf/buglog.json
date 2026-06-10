@@ -1883,6 +1883,19 @@
         "ordering",
         "invariants"
       ]
+    },
+    {
+      "date": "2026-06-09",
+      "error_message": "Review queue 'Re-run extraction' always failed: ModelProtocolError 'Live Granite extraction requires a grounded semantic region task. Broad document-level structured extraction is disabled.'",
+      "root_cause": "lib/review/service.py rerun_extraction enqueued a document-level 'extract' job with no semantic_region_id and a default 'receipt' target schema; live routing rejects broad document-level Granite extraction fail-closed by design, so every user rerun dead-lettered.",
+      "fix": "rerun_extraction now enqueues a deduplicated semantic_annotate job (Smart Parse entry point) with reviewer intent fields so reruns flow Qwen planning -> grounded Granite region jobs -> reconciliation; audit event records job_type semantic_annotate and the requested schema as lineage only; web client stopped fabricating a 'receipt' target schema.",
+      "tags": [
+        "review",
+        "rerun_extraction",
+        "semantic_annotate",
+        "fail-closed-routing",
+        "phase8_5"
+      ]
     }
   ]
 }

@@ -447,11 +447,11 @@ def _insert_extraction_run_row(
             model_output_schema_name, model_output_schema_version,
             normalization_json, metadata_json, plan_id, plan_task_id,
             canonical_target_schema, compatibility_mode,
-            contract_resolution_reason, region_envelope_version
+            contract_resolution_reason, region_envelope_version, quality_outcome
           )
         VALUES (
           %s, %s, %s, %s, true, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s, %s,
-          %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s, %s, %s, %s, %s, %s
+          %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s, %s, %s, %s, %s, %s, %s
         )
         RETURNING id
         """,
@@ -484,6 +484,7 @@ def _insert_extraction_run_row(
             run_scope.compatibility_mode,
             run_scope.contract_resolution_reason,
             run_scope.region_envelope_version,
+            _quality_outcome_for_extraction(extraction.normalized_json),
         ),
     )
     row = cur.fetchone()
@@ -716,6 +717,32 @@ def _review_status_for_extraction(
     if run_scope.extraction_scope == "aggregate":
         return "needs_review"
     return "needs_review" if validation.needs_review else "auto_accepted"
+
+
+PERSISTED_QUALITY_OUTCOMES = frozenset(
+    {
+        "extracted_cleanly",
+        "needs_human_review",
+        "insufficient_signal",
+        "no_extraction_target",
+        "pipeline_failed",
+    }
+)
+
+
+def _quality_outcome_for_extraction(payload: dict[str, Any]) -> str | None:
+    """ADR 0005 D8: resolver quality outcomes are persisted decisions.
+
+    The Claim reconciliation path writes ``metadata.quality_outcome`` into the
+    aggregate payload; rows without a resolver outcome stay NULL.
+    """
+    metadata = payload.get("metadata")
+    if not isinstance(metadata, dict):
+        return None
+    outcome = metadata.get("quality_outcome")
+    if isinstance(outcome, str) and outcome in PERSISTED_QUALITY_OUTCOMES:
+        return outcome
+    return None
 
 
 def _overall_confidence(payload: dict[str, Any]) -> float | None:

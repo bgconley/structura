@@ -14,6 +14,8 @@ from lib.review.repository import (
     ReviewRepositoryError,
     list_canonical_fields,
     list_field_candidates,
+    list_line_item_candidates,
+    list_observation_candidates,
     list_review_tasks,
 )
 from lib.review.service import ReviewServiceError
@@ -44,6 +46,50 @@ def get_field_candidates(
             document_id=documentId,
             access=access,
             field_path=fieldPath,
+        )
+    except ReviewRepositoryError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+        ) from exc
+    return {"items": [item.model_dump(by_alias=True) for item in items]}
+
+
+@router.get("/documents/{documentId}/observation-candidates")
+def get_observation_candidates(
+    documentId: UUID,
+    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    observationId: UUID | None = None,
+    status_filter: Annotated[str | None, Query(alias="status")] = None,
+) -> dict[str, object]:
+    access = _access_context(principal)
+    try:
+        items = list_observation_candidates(
+            document_id=documentId,
+            access=access,
+            observation_id=observationId,
+            status=status_filter,
+        )
+    except ReviewRepositoryError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+        ) from exc
+    return {"items": [item.model_dump(by_alias=True) for item in items]}
+
+
+@router.get("/documents/{documentId}/line-item-candidates")
+def get_line_item_candidates(
+    documentId: UUID,
+    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    candidateId: UUID | None = None,
+    status_filter: Annotated[str | None, Query(alias="status")] = None,
+) -> dict[str, object]:
+    access = _access_context(principal)
+    try:
+        items = list_line_item_candidates(
+            document_id=documentId,
+            access=access,
+            candidate_id=candidateId,
+            status=status_filter,
         )
     except ReviewRepositoryError as exc:
         raise HTTPException(

@@ -1,4 +1,5 @@
-import type {EvidenceRef, EvidenceTarget, FieldCandidate, ReviewTask} from "./types";
+import {evidenceTargetFromRef, selectEvidenceRef} from "./evidence";
+import type {EvidenceTarget, FieldCandidate, ReviewTask} from "./types";
 
 export function referenceCandidate(
   task: ReviewTask,
@@ -8,18 +9,10 @@ export function referenceCandidate(
 }
 
 export function evidenceTargetFromCandidate(candidate: FieldCandidate): EvidenceTarget {
-  const evidence = candidate.evidence[0] as EvidenceRef | undefined;
-  return {
-    documentId: candidate.documentId,
-    fieldPath: candidate.fieldPath,
-    pageNumber: evidence?.pageNumber,
-    sourceText: evidence?.sourceText,
-    bbox: evidence?.bbox,
-    elementId: evidence?.elementId,
-    tableId: evidence?.tableId,
-    rowIndex: evidence?.rowIndex,
-    textSpan: evidence?.textSpan,
-  };
+  // Deterministic richer-anchor-first selection; mirrors the backend
+  // evidence locator instead of trusting provider evidence array order.
+  const evidence = selectEvidenceRef(candidate.evidence);
+  return evidenceTargetFromRef(candidate.documentId, evidence, candidate.fieldPath);
 }
 
 export function coerceCorrectionValue(
@@ -53,15 +46,3 @@ export function coerceCorrectionValue(
   return {value: trimmed, metadata};
 }
 
-export function schemaFromReviewTask(task: ReviewTask): string {
-  if (task.fieldPath?.startsWith("invoice.")) {
-    return "invoice";
-  }
-  if (task.fieldPath?.startsWith("medical_eob.")) {
-    return "medical_eob";
-  }
-  if (task.fieldPath?.startsWith("receipt.")) {
-    return "receipt";
-  }
-  return "receipt";
-}

@@ -54,15 +54,106 @@ export type DocumentPage = {
   } | null;
 };
 
+export type QualityOutcome =
+  | "extracted_cleanly"
+  | "needs_human_review"
+  | "insufficient_signal"
+  | "no_extraction_target"
+  | "pipeline_failed";
+
+export type ClaimResolutionDecision = {
+  canonicalKey: string;
+  decision: string;
+  reasonCode: string;
+  selectedClaimId?: string;
+  rejectedClaimIds?: string[];
+};
+
+export type ExtractionSummary = {
+  id: string;
+  schemaName: string;
+  schemaVersion: string;
+  status: string;
+  sourceEngine?: string;
+  modelName?: string | null;
+  modelVersion?: string | null;
+  confidence?: number | null;
+  reviewStatus?: string | null;
+  extractionScope?: "document" | "aggregate" | "semantic_region";
+  qualityOutcome?: QualityOutcome | null;
+  claimResolutionDecisions?: ClaimResolutionDecision[];
+  regionJobCoverage?: Record<string, unknown>;
+  sourceFamilies?: string[];
+  createdAt?: string;
+};
+
+export type SemanticRegionExtraction = ExtractionSummary & {
+  semanticAnnotationId?: string | null;
+  sourceSemanticRegionId?: string | null;
+  semanticType?: string | null;
+  graniteTask?: string | null;
+  modelOutputSchemaName?: string | null;
+  modelOutputSchemaVersion?: string | null;
+  normalized?: Record<string, unknown>;
+  normalization?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+};
+
+export type ExtractionObservation = {
+  id: string;
+  extractionId?: string | null;
+  semanticAnnotationId?: string | null;
+  sourceSemanticRegionId?: string | null;
+  semanticType?: string | null;
+  sourceEngine?: string;
+  modelOutputSchemaName?: string | null;
+  observationFamily?: string | null;
+  fieldName: string;
+  valueType?: string;
+  value?: unknown;
+  confidence?: number | null;
+  evidence: EvidenceRef[];
+  validation?: Record<string, unknown>;
+  status?: string;
+  metadata?: Record<string, unknown>;
+  createdAt?: string;
+};
+
+export type CanonicalFieldSummary = {
+  id: string;
+  fieldPath: string;
+  ordinal?: number;
+  valueType: string;
+  value: unknown;
+  currency?: string | null;
+  sourceKind?: string;
+  reviewStatus?: string;
+  evidence?: EvidenceRef[];
+  validation?: Record<string, unknown>;
+  acceptedAt?: string | null;
+};
+
+export type CanonicalLineItemSummary = {
+  id: string;
+  lineItemType: string;
+  ordinal?: number;
+  description?: string | null;
+  netAmount?: number | null;
+  currency?: string | null;
+  sourceKind?: string;
+  reviewStatus?: string;
+  evidence?: EvidenceRef[];
+};
+
 export type DocumentDetail = DocumentSummary & {
   description?: string;
   pages: DocumentPage[];
   assets: DocumentAsset[];
-  fields: unknown[];
-  lineItems: unknown[];
-  extractions: unknown[];
-  semanticRegionExtractions: unknown[];
-  observations: unknown[];
+  fields: CanonicalFieldSummary[];
+  lineItems: CanonicalLineItemSummary[];
+  extractions: ExtractionSummary[];
+  semanticRegionExtractions?: SemanticRegionExtraction[];
+  observations?: ExtractionObservation[];
   relationships: DocumentRelationship[];
   tags: string[];
   folderIds: string[];
@@ -412,14 +503,66 @@ export type ReviewTask = {
   pageNumber?: number;
   fieldPath?: string;
   rationale?: string;
+  metadata?: Record<string, unknown> | null;
 };
+
+export type ObservationCandidate = {
+  id: string;
+  documentId: string;
+  extractionId?: string | null;
+  observationFamily?: string | null;
+  fieldName: string;
+  valueType: string;
+  value?: unknown;
+  confidence?: number | null;
+  sourceEngine: string;
+  semanticType?: string | null;
+  modelOutputSchemaName?: string | null;
+  evidence: EvidenceRef[];
+  validation?: Record<string, unknown>;
+  status?: string;
+};
+
+export type LineItemCandidate = {
+  id: string;
+  documentId: string;
+  extractionId?: string | null;
+  lineItemType: string;
+  ordinal: number;
+  code?: string | null;
+  serviceDate?: string | null;
+  description?: string | null;
+  quantity?: number | null;
+  unit?: string | null;
+  unitPrice?: number | null;
+  netAmount?: number | null;
+  currency?: string | null;
+  categoryHint?: string | null;
+  confidence?: number | null;
+  sourceEngine: string;
+  evidence: EvidenceRef[];
+  validation?: Record<string, unknown>;
+  status?: string;
+};
+
+export type ReviewActionType =
+  | "confirm_field"
+  | "correct_field"
+  | "reject_field"
+  | "reclassify_document"
+  | "rerun_extraction"
+  | "mark_done"
+  | "accept_observation"
+  | "reject_observation"
+  | "accept_line_item"
+  | "reject_line_item";
 
 export type ReviewActionPayload = {
   schemaName: "review_action";
   schemaVersion: "v1";
   documentId: string;
   reviewTaskId?: string;
-  actionType: "confirm_field" | "correct_field" | "reject_field" | "reclassify_document" | "rerun_extraction" | "mark_done";
+  actionType: ReviewActionType;
   actorType: "human";
   fieldPath?: string;
   newValue?: unknown;

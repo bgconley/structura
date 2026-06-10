@@ -48,6 +48,27 @@ class ExtractionServiceError(Exception):
     pass
 
 
+def _extraction_intent_metadata(
+    *,
+    requested_by: str,
+    requested_by_user_id: UUID | None,
+    user_intent_reason: str | None,
+) -> dict[str, str]:
+    """Run-intent provenance persisted into document_extractions.metadata_json.
+
+    Job payloads are pruned over time; who requested an extraction and why must
+    survive on the extraction row itself.
+    """
+    metadata: dict[str, str] = {}
+    if requested_by:
+        metadata["requested_by"] = requested_by
+    if requested_by_user_id is not None:
+        metadata["requested_by_user_id"] = str(requested_by_user_id)
+    if user_intent_reason:
+        metadata["user_intent_reason"] = user_intent_reason
+    return metadata
+
+
 class CreatedJob(Protocol):
     job_id: UUID
 
@@ -263,6 +284,16 @@ class ExtractionService:
                 validation=validation,
                 source_engine=gateway_result.route.source_engine,
                 require_concrete_evidence=require_concrete_candidate_evidence,
+            )
+        intent_metadata = _extraction_intent_metadata(
+            requested_by=requested_by,
+            requested_by_user_id=requested_by_user_id,
+            user_intent_reason=user_intent_reason,
+        )
+        if intent_metadata:
+            gateway_result = replace(
+                gateway_result,
+                metadata={**gateway_result.metadata, **intent_metadata},
             )
         persisted = self.persister(
             gateway_result,

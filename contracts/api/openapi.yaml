@@ -447,6 +447,82 @@ paths:
                       $ref: '#/components/schemas/FieldCandidate'
         '401':
           description: Not authenticated
+  /api/v1/documents/{documentId}/observation-candidates:
+    get:
+      tags:
+      - Review
+      summary: List reviewable observation candidates for a document
+      parameters:
+      - in: path
+        name: documentId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: observationId
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: status
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Observation candidate list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ObservationCandidate'
+        '401':
+          description: Not authenticated
+  /api/v1/documents/{documentId}/line-item-candidates:
+    get:
+      tags:
+      - Review
+      summary: List reviewable line-item candidates for a document
+      parameters:
+      - in: path
+        name: documentId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: candidateId
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: status
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Line-item candidate list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LineItemCandidate'
+        '401':
+          description: Not authenticated
   /api/v1/documents/{documentId}/canonical-fields:
     get:
       tags:
@@ -2095,8 +2171,10 @@ components:
       - schemaName
       - schemaVersion
       - status
-      - isCurrent
       properties:
+        id:
+          type: string
+          format: uuid
         schemaName:
           type: string
         schemaVersion:
@@ -2107,6 +2185,41 @@ components:
           type: boolean
         sourceEngine:
           type: string
+        modelName:
+          type: string
+        modelVersion:
+          type: string
+        confidence:
+          type: number
+        reviewStatus:
+          type: string
+        extractionScope:
+          type: string
+          enum: [document, aggregate, semantic_region]
+        qualityOutcome:
+          type: string
+          nullable: true
+          enum:
+          - extracted_cleanly
+          - needs_human_review
+          - insufficient_signal
+          - no_extraction_target
+          - pipeline_failed
+          description: ADR 0005 D8 persisted resolver quality outcome for current aggregate extractions; null when the row carries no resolver outcome.
+        claimResolutionDecisions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClaimResolutionDecision'
+          description: Deterministic per-canonical-key resolver decisions with machine-readable reason codes.
+        regionJobCoverage:
+          type: object
+          additionalProperties: true
+          description: Region job coverage telemetry recorded by aggregate reconciliation when present.
+        sourceFamilies:
+          type: array
+          items:
+            type: string
+          description: Claim canonical-key families that contributed to the aggregate.
         createdAt:
           type: string
           format: date-time
@@ -2116,6 +2229,26 @@ components:
         validationJson:
           type: object
           additionalProperties: true
+    ClaimResolutionDecision:
+      type: object
+      additionalProperties: false
+      required:
+      - canonicalKey
+      - decision
+      - reasonCode
+      properties:
+        canonicalKey:
+          type: string
+        decision:
+          type: string
+        reasonCode:
+          type: string
+        selectedClaimId:
+          type: string
+        rejectedClaimIds:
+          type: array
+          items:
+            type: string
     ExtractedField:
       type: object
       additionalProperties: false
@@ -2435,6 +2568,119 @@ components:
         evidence:
           type: array
           minItems: 1
+          items:
+            $ref: '#/components/schemas/EvidenceRef'
+        validation:
+          type: object
+          additionalProperties: true
+        status:
+          type: string
+    ObservationCandidate:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - documentId
+      - fieldName
+      - valueType
+      - sourceEngine
+      properties:
+        id:
+          type: string
+          format: uuid
+        documentId:
+          type: string
+          format: uuid
+        extractionId:
+          type: string
+          format: uuid
+        observationFamily:
+          type: string
+          nullable: true
+        fieldName:
+          type: string
+        valueType:
+          type: string
+        value:
+          nullable: true
+        confidence:
+          type: number
+          nullable: true
+        sourceEngine:
+          type: string
+        semanticType:
+          type: string
+          nullable: true
+        modelOutputSchemaName:
+          type: string
+          nullable: true
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceRef'
+        validation:
+          type: object
+          additionalProperties: true
+        status:
+          type: string
+    LineItemCandidate:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - documentId
+      - lineItemType
+      - ordinal
+      - sourceEngine
+      properties:
+        id:
+          type: string
+          format: uuid
+        documentId:
+          type: string
+          format: uuid
+        extractionId:
+          type: string
+          format: uuid
+        lineItemType:
+          type: string
+        ordinal:
+          type: integer
+        code:
+          type: string
+          nullable: true
+        serviceDate:
+          type: string
+          format: date
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        quantity:
+          type: number
+          nullable: true
+        unit:
+          type: string
+          nullable: true
+        unitPrice:
+          type: number
+          nullable: true
+        netAmount:
+          type: number
+          nullable: true
+        currency:
+          type: string
+          nullable: true
+        categoryHint:
+          type: string
+          nullable: true
+        confidence:
+          type: number
+          nullable: true
+        sourceEngine:
+          type: string
+        evidence:
+          type: array
           items:
             $ref: '#/components/schemas/EvidenceRef'
         validation:
@@ -3400,6 +3646,10 @@ components:
           type: string
         rationale:
           type: string
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Task metadata including candidate references such as observationId or lineItemCandidateId.
     JobState:
       type: object
       additionalProperties: false

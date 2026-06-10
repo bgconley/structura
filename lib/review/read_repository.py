@@ -2,13 +2,21 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from lib.contracts import CanonicalField, FieldCandidate, ReviewTask
+from lib.contracts import (
+    CanonicalField,
+    FieldCandidate,
+    LineItemCandidate,
+    ObservationCandidate,
+    ReviewTask,
+)
 from lib.db.connection import db_connection
 from lib.documents.access_policy import DocumentAccessContext, document_read_access_params
 from lib.review.access import assert_readable
 from lib.review.mappers import (
     canonical_field_from_row,
     field_candidate_from_row,
+    line_item_candidate_from_row,
+    observation_candidate_from_row,
     review_task_from_row,
 )
 
@@ -69,6 +77,56 @@ def list_field_candidates(
             )
             rows = cur.fetchall()
     return [field_candidate_from_row(row) for row in rows]
+
+
+def list_observation_candidates(
+    *,
+    document_id: UUID,
+    access: DocumentAccessContext,
+    observation_id: UUID | None = None,
+    status: str | None = None,
+) -> list[ObservationCandidate]:
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            assert_readable(cur, document_id, access)
+            cur.execute(
+                """
+                SELECT *
+                FROM extraction_observations
+                WHERE document_id = %s
+                  AND (%s::uuid IS NULL OR id = %s)
+                  AND (%s::text IS NULL OR status = %s)
+                ORDER BY observation_family, field_name, created_at DESC
+                """,
+                (document_id, observation_id, observation_id, status, status),
+            )
+            rows = cur.fetchall()
+    return [observation_candidate_from_row(row) for row in rows]
+
+
+def list_line_item_candidates(
+    *,
+    document_id: UUID,
+    access: DocumentAccessContext,
+    candidate_id: UUID | None = None,
+    status: str | None = None,
+) -> list[LineItemCandidate]:
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            assert_readable(cur, document_id, access)
+            cur.execute(
+                """
+                SELECT *
+                FROM line_item_candidates
+                WHERE document_id = %s
+                  AND (%s::uuid IS NULL OR id = %s)
+                  AND (%s::text IS NULL OR status = %s)
+                ORDER BY line_item_type, ordinal, created_at DESC
+                """,
+                (document_id, candidate_id, candidate_id, status, status),
+            )
+            rows = cur.fetchall()
+    return [line_item_candidate_from_row(row) for row in rows]
 
 
 def list_canonical_fields(

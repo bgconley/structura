@@ -102,6 +102,8 @@ def get_document_detail(document_id: UUID, access: DocumentAccessContext) -> Doc
                   confidence,
                   review_status::text AS review_status,
                   extraction_scope,
+                  quality_outcome,
+                  normalized_json -> 'metadata' AS aggregate_metadata,
                   created_at
                 FROM document_extractions
                 WHERE document_id = %s
@@ -307,7 +309,7 @@ def _page_quality_signals(metadata: object) -> dict[str, object] | None:
 
 
 def _extraction_payload(row: dict[str, object]) -> dict[str, object]:
-    return {
+    payload: dict[str, object] = {
         "id": row["id"],
         "schemaName": row["schema_name"],
         "schemaVersion": row["schema_version"],
@@ -320,6 +322,52 @@ def _extraction_payload(row: dict[str, object]) -> dict[str, object]:
         "extractionScope": row.get("extraction_scope"),
         "createdAt": row.get("created_at"),
     }
+    if "quality_outcome" in row or "aggregate_metadata" in row:
+        payload.update(_quality_decision_payload(row))
+    return payload
+
+
+def _quality_decision_payload(row: dict[str, object]) -> dict[str, object]:
+    """Project ADR 0005 D8 resolver decisions for current aggregate rows.
+
+    ``quality_outcome`` is the persisted column; ``claim_resolution_decisions``
+    and ``region_job_coverage`` live in the aggregate payload metadata written
+    by claim reconciliation.
+    """
+    payload: dict[str, object] = {"qualityOutcome": row.get("quality_outcome")}
+    metadata = row.get("aggregate_metadata")
+    if not isinstance(metadata, dict):
+        return payload
+    decisions = metadata.get("claim_resolution_decisions")
+    if isinstance(decisions, list):
+        payload["claimResolutionDecisions"] = [
+            _claim_decision_payload(decision)
+            for decision in decisions
+            if isinstance(decision, dict)
+        ]
+    coverage = metadata.get("region_job_coverage")
+    if isinstance(coverage, dict):
+        payload["regionJobCoverage"] = coverage
+    source_families = metadata.get("source_families")
+    if isinstance(source_families, list):
+        payload["sourceFamilies"] = [
+            str(item) for item in source_families if item not in (None, "")
+        ]
+    return payload
+
+
+def _claim_decision_payload(decision: dict[str, object]) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "canonicalKey": decision.get("canonical_key"),
+        "decision": decision.get("decision"),
+        "reasonCode": decision.get("reason_code"),
+    }
+    if decision.get("selected_claim_id") not in (None, ""):
+        payload["selectedClaimId"] = decision.get("selected_claim_id")
+    rejected = decision.get("rejected_claim_ids")
+    if isinstance(rejected, (list, tuple)) and rejected:
+        payload["rejectedClaimIds"] = [str(item) for item in rejected]
+    return payload
 
 
 def _semantic_region_extraction_payload(row: dict[str, object]) -> dict[str, object]:

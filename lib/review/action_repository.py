@@ -339,7 +339,7 @@ def record_rerun_request(
     document_id: UUID,
     access: DocumentAccessContext,
     actor_user_id: UUID,
-    target_schema_name: str,
+    target_schema_name: str | None,
     reason: str | None,
 ) -> UUID:
     with db_connection() as conn:
@@ -352,7 +352,11 @@ def record_rerun_request(
                 field_path=None,
                 action="rerun_extraction",
                 old_value=None,
-                new_value={"target_schema_name": target_schema_name},
+                new_value={
+                    "job_type": "semantic_annotate",
+                    "quality_mode": "smart",
+                    "requested_target_schema_name": target_schema_name,
+                },
                 actor_label=str(actor_user_id),
                 reason=reason,
             )
