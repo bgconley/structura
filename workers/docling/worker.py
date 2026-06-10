@@ -55,24 +55,6 @@ def process_next_docling_job(
             converter=converter,
         )
         quality = evaluate_document_quality(target_document_id)
-        completed = job_service.complete_job(
-            job_id=claimed.state.job_id,
-            result={
-                "parse_status": "succeeded",
-                "docling_asset_id": str(summary.docling_asset_id),
-                "page_count": summary.page_count,
-                "element_count": summary.element_count,
-                "table_count": summary.table_count,
-                "chunk_count": summary.chunk_count,
-                "phase8_quality": {
-                    "review_required": quality.review_required,
-                    "visual_embedding_eligible": quality.visual_embedding_eligible,
-                    "qwen_route_eligible": quality.qwen_route_eligible,
-                },
-            },
-        )
-        if getattr(completed, "status", None) == "cancelled":
-            return True
     except Exception as exc:
         if target_document_id:
             mark_document_parse_failed(
@@ -90,7 +72,50 @@ def process_next_docling_job(
         )
         return True
 
-    downstream_failures: list[str] = []
+    # Enqueue the semantic-annotation job before completing the docling job:
+    # a parsed document with no semantic_annotate job would silently never
+    # enter extraction, so an enqueue failure must keep this job retryable
+    # (parse artifacts are idempotent on retry).
+    try:
+        semantic_job_id = _enqueue_semantic_annotation(
+            target_document_id,
+            household_id=claimed.household_id,
+        )
+    except Exception as exc:
+        job_service.fail_job(
+            job_id=claimed.state.job_id,
+            error_class=exc.__class__.__name__,
+            message="Docling parse succeeded but semantic annotation enqueue failed",
+            retryable=True,
+            suppress=False,
+        )
+        return True
+
+    completed = job_service.complete_job(
+        job_id=claimed.state.job_id,
+        result={
+            "parse_status": "succeeded",
+            "docling_asset_id": str(summary.docling_asset_id),
+            "page_count": summary.page_count,
+            "element_count": summary.element_count,
+            "table_count": summary.table_count,
+            "chunk_count": summary.chunk_count,
+            "queued_semantic_annotation_job_id": str(semantic_job_id),
+            "phase8_quality": {
+                "review_required": quality.review_required,
+                "visual_embedding_eligible": quality.visual_embedding_eligible,
+                "qwen_route_eligible": quality.qwen_route_eligible,
+            },
+        },
+    )
+    if getattr(completed, "status", None) == "cancelled":
+        _cancel_semantic_annotation_job(
+            job_service,
+            semantic_job_id=semantic_job_id,
+            worker_name=worker_name,
+        )
+        return True
+
     try:
         _enqueue_embedding_refresh(
             target_document_id,
@@ -98,22 +123,33 @@ def process_next_docling_job(
             include_visual=quality.visual_embedding_eligible,
         )
     except Exception as exc:
-        downstream_failures.append(f"embeddings:{exc.__class__.__name__}")
-    try:
-        _enqueue_semantic_annotation(
-            target_document_id,
-            household_id=claimed.household_id,
-        )
-    except Exception as exc:
-        downstream_failures.append(f"semantic:{exc.__class__.__name__}")
-    if downstream_failures:
         _record_downstream_enqueue_failure(
             worker_name=worker_name,
             document_id=target_document_id,
             job_id=claimed.state.job_id,
-            failures=downstream_failures,
+            failures=[f"embeddings:{exc.__class__.__name__}"],
         )
     return True
+
+
+def _cancel_semantic_annotation_job(
+    job_service: JobService,
+    *,
+    semantic_job_id: UUID,
+    worker_name: str,
+) -> None:
+    cancel_job = getattr(job_service, "cancel_job", None)
+    if not callable(cancel_job):
+        return
+    try:
+        cancel_job(
+            job_id=semantic_job_id,
+            reason="Parent docling job was cancelled.",
+            include_running=True,
+            requested_by=worker_name,
+        )
+    except Exception as exc:
+        print(f"{worker_name}: semantic annotation cancel skipped: {exc}", flush=True)
 
 
 def _document_id_for_docling(document_id: UUID | None, payload: dict[str, object]) -> UUID:
@@ -151,12 +187,12 @@ def _enqueue_embedding_refresh(
         conn.commit()
 
 
-def _enqueue_semantic_annotation(document_id: UUID, *, household_id: UUID | None) -> None:
+def _enqueue_semantic_annotation(document_id: UUID, *, household_id: UUID | None) -> UUID:
     from lib.db.connection import db_connection
 
     with db_connection() as conn:
         with conn.cursor() as cur:
-            enqueue_semantic_annotation_job(
+            job_id = enqueue_semantic_annotation_job(
                 cur,
                 document_id=document_id,
                 household_id=household_id,
@@ -164,6 +200,7 @@ def _enqueue_semantic_annotation(document_id: UUID, *, household_id: UUID | None
                 requested_by="system",
             )
         conn.commit()
+    return job_id
 
 
 def main() -> None:
