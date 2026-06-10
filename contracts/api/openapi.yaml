@@ -447,6 +447,82 @@ paths:
                       $ref: '#/components/schemas/FieldCandidate'
         '401':
           description: Not authenticated
+  /api/v1/documents/{documentId}/observation-candidates:
+    get:
+      tags:
+      - Review
+      summary: List reviewable observation candidates for a document
+      parameters:
+      - in: path
+        name: documentId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: observationId
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: status
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Observation candidate list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ObservationCandidate'
+        '401':
+          description: Not authenticated
+  /api/v1/documents/{documentId}/line-item-candidates:
+    get:
+      tags:
+      - Review
+      summary: List reviewable line-item candidates for a document
+      parameters:
+      - in: path
+        name: documentId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: candidateId
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: status
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Line-item candidate list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LineItemCandidate'
+        '401':
+          description: Not authenticated
   /api/v1/documents/{documentId}/canonical-fields:
     get:
       tags:
@@ -2499,6 +2575,119 @@ components:
           additionalProperties: true
         status:
           type: string
+    ObservationCandidate:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - documentId
+      - fieldName
+      - valueType
+      - sourceEngine
+      properties:
+        id:
+          type: string
+          format: uuid
+        documentId:
+          type: string
+          format: uuid
+        extractionId:
+          type: string
+          format: uuid
+        observationFamily:
+          type: string
+          nullable: true
+        fieldName:
+          type: string
+        valueType:
+          type: string
+        value:
+          nullable: true
+        confidence:
+          type: number
+          nullable: true
+        sourceEngine:
+          type: string
+        semanticType:
+          type: string
+          nullable: true
+        modelOutputSchemaName:
+          type: string
+          nullable: true
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceRef'
+        validation:
+          type: object
+          additionalProperties: true
+        status:
+          type: string
+    LineItemCandidate:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - documentId
+      - lineItemType
+      - ordinal
+      - sourceEngine
+      properties:
+        id:
+          type: string
+          format: uuid
+        documentId:
+          type: string
+          format: uuid
+        extractionId:
+          type: string
+          format: uuid
+        lineItemType:
+          type: string
+        ordinal:
+          type: integer
+        code:
+          type: string
+          nullable: true
+        serviceDate:
+          type: string
+          format: date
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        quantity:
+          type: number
+          nullable: true
+        unit:
+          type: string
+          nullable: true
+        unitPrice:
+          type: number
+          nullable: true
+        netAmount:
+          type: number
+          nullable: true
+        currency:
+          type: string
+          nullable: true
+        categoryHint:
+          type: string
+          nullable: true
+        confidence:
+          type: number
+          nullable: true
+        sourceEngine:
+          type: string
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceRef'
+        validation:
+          type: object
+          additionalProperties: true
+        status:
+          type: string
     CanonicalField:
       type: object
       additionalProperties: false
@@ -3457,6 +3646,10 @@ components:
           type: string
         rationale:
           type: string
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Task metadata including candidate references such as observationId or lineItemCandidateId.
     JobState:
       type: object
       additionalProperties: false

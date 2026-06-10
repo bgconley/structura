@@ -208,6 +208,10 @@ class ReviewActionRequest(ContractModel):
         "mark_done",
         "accept_relationship",
         "reject_relationship",
+        "accept_observation",
+        "reject_observation",
+        "accept_line_item",
+        "reject_line_item",
     ] = Field(alias="actionType")
     actor_type: Literal["human", "system", "agent"] = Field(default="human", alias="actorType")
     field_path: str | None = Field(default=None, alias="fieldPath")
@@ -441,6 +445,46 @@ class ReviewTask(ContractModel):
     page_number: int | None = Field(default=None, alias="pageNumber")
     field_path: str | None = Field(default=None, alias="fieldPath")
     rationale: str | None = None
+    metadata: dict[str, Any] | None = None
+
+
+class ObservationCandidate(ContractModel):
+    id: UUID
+    document_id: UUID = Field(alias="documentId")
+    extraction_id: UUID | None = Field(default=None, alias="extractionId")
+    observation_family: str | None = Field(default=None, alias="observationFamily")
+    field_name: str = Field(alias="fieldName")
+    value_type: str = Field(alias="valueType")
+    value: Any = None
+    confidence: float | None = None
+    source_engine: str = Field(alias="sourceEngine")
+    semantic_type: str | None = Field(default=None, alias="semanticType")
+    model_output_schema_name: str | None = Field(default=None, alias="modelOutputSchemaName")
+    evidence: list[EvidenceRef] = Field(default_factory=list)
+    validation: dict[str, Any] | None = None
+    status: str | None = None
+
+
+class LineItemCandidate(ContractModel):
+    id: UUID
+    document_id: UUID = Field(alias="documentId")
+    extraction_id: UUID | None = Field(default=None, alias="extractionId")
+    line_item_type: str = Field(alias="lineItemType")
+    ordinal: int
+    code: str | None = None
+    service_date: date | None = Field(default=None, alias="serviceDate")
+    description: str | None = None
+    quantity: float | None = None
+    unit: str | None = None
+    unit_price: float | None = Field(default=None, alias="unitPrice")
+    net_amount: float | None = Field(default=None, alias="netAmount")
+    currency: str | None = None
+    category_hint: str | None = Field(default=None, alias="categoryHint")
+    confidence: float | None = None
+    source_engine: str = Field(alias="sourceEngine")
+    evidence: list[EvidenceRef] = Field(default_factory=list)
+    validation: dict[str, Any] | None = None
+    status: str | None = None
 
 
 class AcceptedJob(ContractModel):

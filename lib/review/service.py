@@ -85,6 +85,26 @@ class ReviewService:
                 review_task_id=action.review_task_id,
                 reason=action.comment,
             )
+        elif action.action_type in {"accept_observation", "reject_observation"}:
+            # The decision repository records the audit event, updates the
+            # candidate status, and clears matching review tasks by fieldPath.
+            event_id = repository.decide_observation(
+                document_id=action.document_id,
+                access=access,
+                actor_user_id=actor_user_id,
+                observation_id=_metadata_uuid(action, "observationId"),
+                decision=action.action_type.removesuffix("_observation"),
+                reason=action.comment,
+            )
+        elif action.action_type in {"accept_line_item", "reject_line_item"}:
+            event_id = repository.decide_line_item(
+                document_id=action.document_id,
+                access=access,
+                actor_user_id=actor_user_id,
+                candidate_id=_metadata_uuid(action, "lineItemCandidateId"),
+                decision=action.action_type.removesuffix("_line_item"),
+                reason=action.comment,
+            )
         elif action.action_type == "accept_relationship":
             try:
                 relationship = RelationshipService().accept_relationship(
@@ -190,6 +210,16 @@ class ReviewService:
                 )
             conn.commit()
         return {"ok": True, "reviewEventId": str(event_id), "jobId": str(job_id)}
+
+
+def _metadata_uuid(action: ReviewActionRequest, key: str) -> UUID:
+    metadata = action.metadata or {}
+    value = metadata.get(key)
+    if not value and action.new_value:
+        value = action.new_value
+    if value:
+        return UUID(str(value))
+    raise ReviewServiceError(f"{action.action_type} requires metadata.{key}.")
 
 
 def _candidate_id_from_action(action: ReviewActionRequest) -> UUID:

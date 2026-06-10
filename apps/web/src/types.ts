@@ -503,14 +503,66 @@ export type ReviewTask = {
   pageNumber?: number;
   fieldPath?: string;
   rationale?: string;
+  metadata?: Record<string, unknown> | null;
 };
+
+export type ObservationCandidate = {
+  id: string;
+  documentId: string;
+  extractionId?: string | null;
+  observationFamily?: string | null;
+  fieldName: string;
+  valueType: string;
+  value?: unknown;
+  confidence?: number | null;
+  sourceEngine: string;
+  semanticType?: string | null;
+  modelOutputSchemaName?: string | null;
+  evidence: EvidenceRef[];
+  validation?: Record<string, unknown>;
+  status?: string;
+};
+
+export type LineItemCandidate = {
+  id: string;
+  documentId: string;
+  extractionId?: string | null;
+  lineItemType: string;
+  ordinal: number;
+  code?: string | null;
+  serviceDate?: string | null;
+  description?: string | null;
+  quantity?: number | null;
+  unit?: string | null;
+  unitPrice?: number | null;
+  netAmount?: number | null;
+  currency?: string | null;
+  categoryHint?: string | null;
+  confidence?: number | null;
+  sourceEngine: string;
+  evidence: EvidenceRef[];
+  validation?: Record<string, unknown>;
+  status?: string;
+};
+
+export type ReviewActionType =
+  | "confirm_field"
+  | "correct_field"
+  | "reject_field"
+  | "reclassify_document"
+  | "rerun_extraction"
+  | "mark_done"
+  | "accept_observation"
+  | "reject_observation"
+  | "accept_line_item"
+  | "reject_line_item";
 
 export type ReviewActionPayload = {
   schemaName: "review_action";
   schemaVersion: "v1";
   documentId: string;
   reviewTaskId?: string;
-  actionType: "confirm_field" | "correct_field" | "reject_field" | "reclassify_document" | "rerun_extraction" | "mark_done";
+  actionType: ReviewActionType;
   actorType: "human";
   fieldPath?: string;
   newValue?: unknown;
