@@ -14,6 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from lib.extraction.candidate_value_parsing import date_value
 from lib.extraction.claim_registry import CLAIM_FAMILY_REGISTRIES
 from lib.extraction.expected_field_coverage import normalized_field_name
 from lib.extraction.model_output_value_parsing import parse_decimal_text
@@ -202,7 +203,9 @@ def _typed_span_value(
             amount = parse_decimal_text(text)
             return ("money", {"amount": amount} if amount is not None else None)
         if "date" in allowed_value_types:
-            return ("date", text)
+            # Pre-validate so an unparseable date counts as unmatched here
+            # instead of minting a fact whose claim silently drops later.
+            return ("date", text if date_value(text) is not None else None)
         return ("string", text)
     if span.value_type == "money":
         amount = parse_decimal_text(text)
@@ -210,7 +213,11 @@ def _typed_span_value(
             return ("money", {"amount": amount})
         return ("string", text)
     if span.value_type == "date":
-        return ("date", text)
+        # Unparseable date text stays a verbatim text observation (matching
+        # the vision baseline, which types these as strings).
+        if date_value(text) is not None:
+            return ("date", text)
+        return ("string", text)
     return ("string", text)
 
 

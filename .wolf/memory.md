@@ -270,3 +270,43 @@
 | 05:58 | Edited lib/config/settings.py | 4→6 lines | ~125 |
 | 05:59 | Edited docs/adr/0006-extractive-first-extraction.md | modified regressed() | ~471 |
 | 06:05 | E1 GPU A/B gate passed; table-lane defaults flipped on | scripts/gpu/{check_text_lane_eligibility,compare_text_lane_gate}.py, lib/config/settings.py, compose.yaml, docs/adr/0006, .wolf/buglog.json | Runs 20260610T093120Z-text-lane-e1-a + 095035Z-e1-b vs pinned run-9: zero dead letters, line items >= baseline everywhere, BMW aggregate 10=10, 100% concrete evidence on text-lane claims, text-lane envelopes byte-identical across runs, full-corpus canonical fingerprints identical. Lane fired on BMW service-lines + BH order tables; abstentions (money_columns_sparse on BH cell-loss table, no_money_column on EOB grid, no_grounded_docling_table on page-grounded receipts) all routed to vision safely. Found baseline-inherited: aggregate admission events NULL run_id; rejected-inserted identity collisions; docling_audit table signal blind to data.grid (eligibility now grid-derived). Acceptance evaluator fails run-9's own report identically - documented, not a regression | ~60000 |
+| 06:03 | Edited ../../.claude/projects/-Users-brennanconley-vibecode-structura/memory/structura-prod-readiness-push.md | modified pivot() | ~931 |
+| 06:04 | Created ../../../../tmp/structura-e0-capture/kvp_expected_fields.sql | — | ~207 |
+| 06:05 | Created ../../../../tmp/structura-e0-capture/kvp_expected_fields2.sql | — | ~223 |
+| 06:07 | Created lib/extraction/text_lane/span_candidates.py | — | ~3151 |
+| 06:08 | Created ../../../../tmp/structura-e0-capture/element_bbox.sql | — | ~71 |
+| 06:09 | Edited lib/extraction/text_lane/span_candidates.py | modified _bbox() | ~470 |
+| 06:09 | Created lib/extraction/text_lane/span_selection.py | — | ~1893 |
+| 06:10 | Created lib/extraction/text_lane/kvp_extractor.py | — | ~2236 |
+| 06:10 | Edited lib/extraction/text_lane/eligibility.py | 4→7 lines | ~95 |
+| 06:11 | Edited lib/extraction/text_lane/eligibility.py | modified text_lane_kvp_eligibility() | ~650 |
+| 06:11 | Created lib/extraction/text_lane/kvp_gateway.py | — | ~1551 |
+| 06:12 | Edited lib/extraction/gateways/routing.py | modified __init__() | ~126 |
+| 06:12 | Edited lib/extraction/gateways/routing.py | added 1 condition(s) | ~572 |
+| 06:12 | Edited lib/extraction/gateways/routing.py | 14→16 lines | ~190 |
+| 06:12 | Edited lib/extraction/gateways/routing.py | expanded (+6 lines) | ~180 |
+| 06:13 | Created tests/unit/extraction/text_lane/test_kvp_lane.py | — | ~4686 |
+| 06:14 | Edited tests/unit/extraction/text_lane/test_kvp_lane.py | 4→5 lines | ~84 |
+| 06:40 | Implemented E2 extractive KVP lane behind default-off STRUCTURA_TEXT_LANE_KVP | lib/extraction/text_lane/{span_candidates,span_selection,kvp_extractor,kvp_gateway}.py, eligibility.py, lib/extraction/gateways/routing.py, tests/unit/extraction/text_lane/test_kvp_lane.py | Deterministic bounded span candidates (label adjacency + typed regexes, BOTTOMLEFT-aware bbox math, positional ids), closed-enum span selection on qwen-semantic with prompt-hash cache, claims born verbatim from selected spans (registry-exact keys -> family facts, others dot-less observations), KVP routing with abstention fallback. 1069 unit tests/ruff/mypy clean; commit e9288c7; adversarial review workflow running before the E2 GPU gate | ~40000 |
+
+## 2026-06-10 E2 determinism review (subagent)
+- Reviewed e9288c7 (KVP lane) for E2 gate repeatability. Root determinism dependency: source.elements order via `ORDER BY p.page_number, e.ordinal` where (page, ordinal) is non-unique (docling converter restarts ordinal per texts/pictures/groups collection; no-prov items default page 1; no unique constraint or document_id index on document_elements). Ties feed _dedupe first-wins, adjacency label winner, [:80] truncation, prompt sha, and s{page}_{ordinal}_{start}_{end} span-id collisions.
+- _SELECTION_CACHE persists in worker-extraction across gate runs A/B (never cleared in prod); run B is served run A's selections when prompts are byte-identical, making the gate tautological for the selection step; cache misses fall to vLLM greedy decoding which is not bit-stable under batching.
+- Verified fail-safe: cross-document prompt-hash reuse is safe (identical prompt => identical span vocabulary; extractor resolves ids against current doc spans; unknown ids null on live path; all-unresolved => no_extractable_values abstention). canonicalOutput fingerprint excludes from_cache/modelInvoked telemetry.
+- Adjacency (right-of/below-of) spans carry whitespace-collapsed value_text but raw-text text_span offsets => inexact anchors vs the E2 "exact anchors" criterion.
+| 06:36 | Created ../../../../tmp/structura-e0-capture/repro_e2_date.py | — | ~1055 |
+| 06:38 | Created ../../../../tmp/structura-e0-capture/repro_ordinal_ties.py | — | ~1652 |
+| 06:39 | Created ../../../../tmp/structura-e0-capture/repro_kvp_money.py | — | ~839 |
+| 06:40 | Created ../../../../tmp/structura-e0-capture/repro_e2_receipt_kvp.py | — | ~2548 |
+| 06:40 | Created ../../../../tmp/structura-e0-capture/repro_kvp_adjacency.py | — | ~1229 |
+| 06:40 | Edited ../../../../tmp/structura-e0-capture/repro_e2_receipt_kvp.py | inline fix | ~19 |
+| 06:42 | Created ../../../../tmp/structura-e0-capture/repro_anchor_claim.py | — | ~950 |
+| 06:42 | Edited ../../../../tmp/structura-e0-capture/repro_anchor_claim.py | 3→3 lines | ~61 |
+| 06:47 | Created ../../../../tmp/structura-e0-capture/repro_kvp_projection.py | — | ~1111 |
+| 06:48 | Edited ../../../../tmp/structura-e0-capture/repro_kvp_projection.py | inline fix | ~19 |
+| 06:52 | Edited lib/extraction/text_lane/span_candidates.py | expanded (+6 lines) | ~141 |
+| 06:52 | Edited lib/extraction/text_lane/kvp_extractor.py | added 1 import(s) | ~78 |
+| 06:52 | Edited lib/extraction/text_lane/kvp_extractor.py | expanded (+6 lines) | ~311 |
+| 06:53 | Edited lib/extraction/text_lane/kvp_gateway.py | added 1 import(s) | ~70 |
+| 06:53 | Edited lib/extraction/text_lane/kvp_gateway.py | modified _family_is_first_class() | ~184 |
+| 06:53 | Edited lib/extraction/text_lane/kvp_gateway.py | modified _family_is_first_class() | ~74 |

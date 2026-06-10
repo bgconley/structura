@@ -1,19 +1,44 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-10T09:15:26.945Z
-> Files: 481 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-10T10:53:15.787Z
+> Files: 514 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../tmp/structura-e0-capture/
 
+- `bmw_region_obs.sql` — Declares LIKE (~340 tok)
+- `bmw_values.sql` (~368 tok)
 - `corpus_inventory.sql` (~182 tok)
+- `element_bbox.sql` (~71 tok)
 - `gen_fixtures.py` — Generate sanitized text-lane grid fixtures mirroring live corpus shapes. (~1899 tok)
+- `kvp_expected_fields.sql` — Declares IN (~207 tok)
+- `kvp_expected_fields2.sql` — Declares IN (~223 tok)
+- `lane_reasons.sql` (~142 tok)
+- `markdown_check.sql` (~122 tok)
+- `repeat_check.sql` (~235 tok)
+- `repeat_check2.sql` (~336 tok)
+- `repro_anchor_claim.py` — Verify claim: adjacency anchor inexactness + 80-char truncation. (~959 tok)
 - `repro_band_rows.py` — Adversarial repro: do Docling row_section band rows become canonical line items? (~1554 tok)
+- `repro_e2_date.py` — Repro: unparseable-but-regex-admitted date spans vanish between envelope and claims. (~1055 tok)
+- `repro_e2_receipt_kvp.py` — Repro: receipt_payment_summary KVP region with real corpus expected_fields. (~2545 tok)
+- `repro_kvp_adjacency.py` — Repro: verify reviewer claims about adjacency pairing in span_candidates. (~1229 tok)
+- `repro_kvp_money.py` — Repro: registry money typing mints wrong money facts from digit-bearing text spans. (~839 tok)
+- `repro_kvp_projection.py` — Repro: KVP lane document_observation projection rows vs vision parity. (~1112 tok)
+- `repro_ordinal_ties.py` — Repro: do (page_number, ordinal) ties change KVP span candidates / prompt bytes? (~1652 tok)
 - `repro_totals_rate.py` — Adversarial repro: does _totals_amount_cell pick the rate column for totals rows? (~1311 tok)
 - `repro_totals_substring.py` — Adversarial repro: does substring totals matching eat real line items? (~1652 tok)
 - `repro_totals_variants.py` — Variants: (a) shipping present + tax rate captured; (b) discount % captured. (~1378 tok)
+- `run_a_violations.sql` (~274 tok)
+- `run_a_violations2.sql` (~349 tok)
 - `run9_docs.sql` (~167 tok)
+- `run9_events.sql` (~205 tok)
 - `run9_files.sql` (~74 tok)
 - `run9_tables.sql` (~127 tok)
+- `source_path.sql` (~46 tok)
+- `text_lane_rows.sql` (~594 tok)
+
+## ../../.claude/projects/-Users-brennanconley-vibecode-structura/memory/
+
+- `structura-prod-readiness-push.md` — is: warnings (~2001 tok)
 
 ## ./
 
@@ -83,6 +108,14 @@
 
 - `test_gateways.py` — class: generate, test_fixture_gateway_has_explicit_fixture_provenance, test_fixture_gateway_infers_t (~17607 tok)
 - `test_input_budget.py` — test_estimate_text_tokens_matches_canary_heuristic, test_image_dimensions_parses_png_and_jpeg_header (~1598 tok)
+
+## Extractive-first KVP lane E2 (2026-06-10, ADR 0006)
+
+- `lib/extraction/text_lane/kvp_extractor.py` — Selected spans -> RegionExtractionEnvelope: registry-exact expected keys mint family facts under canonical keys (strict money/date typing), others stay dot-less observation keys; element/text-span docling anchors (~1300 tok)
+- `lib/extraction/text_lane/kvp_gateway.py` — TextLaneKvpExtractionGateway with abstentions and Granite-parity GatewayExtraction (~1100 tok)
+- `lib/extraction/text_lane/span_candidates.py` — Bounded (<=80/page) deterministic value spans from Docling elements: label:value colon pairs, right-of/below-of bbox adjacency (BOTTOMLEFT-aware reading-space normalization), typed regexes (money/date/identifier/phone/zip/email); positional span ids stable across runs (~1900 tok)
+- `lib/extraction/text_lane/span_selection.py` — Closed span-id enum selection schema/prompt over expected keys, LiveSpanSelector on qwen-semantic text endpoint, prompt-fingerprint in-process cache, selections_from_payload id validation (~1400 tok)
+- `tests/unit/extraction/text_lane/test_kvp_lane.py` — Span builders/ids, selection schema/prompt/cache, extractor claims+registry facts, eligibility screens, routing text/fallback, abstentions (~2600 tok)
 
 ## Extractive-first text lane E0+E1 (2026-06-10, ADR 0006)
 
@@ -403,7 +436,7 @@
 
 ## docs/adr/
 
-- `0006-extractive-first-extraction.md` — ADR 0006: Extractive-First Extraction Architecture (~1753 tok)
+- `0006-extractive-first-extraction.md` — ADR 0006: Extractive-First Extraction Architecture (~2164 tok)
 
 ## docs/superpowers/plans/
 
@@ -421,7 +454,7 @@
 
 ## lib/config/
 
-- `settings.py` — Settings: reject_historical_live_semantic_profiles, canonical_objects_root, derived_objects_root, ex (~1215 tok)
+- `settings.py` — Settings: reject_historical_live_semantic_profiles, canonical_objects_root, derived_objects_root, ex (~1244 tok)
 
 ## lib/extraction/
 
@@ -444,14 +477,18 @@
 
 ## lib/extraction/gateways/
 
-- `routing.py` — ModelRoutingExtractionGateway: extract, default_extraction_gateway (~1508 tok)
+- `routing.py` — ModelRoutingExtractionGateway: extract, default_extraction_gateway (~1916 tok)
 
 ## lib/extraction/text_lane/
 
 - `__init__.py` — Extractive-first text lane (ADR 0006). (~113 tok)
 - `column_labeling.py` — Model column-role labeling for the extractive table lane (ADR 0006 X2). (~2311 tok)
-- `eligibility.py` — Text-lane eligibility: which regions may extract from Docling text. (~1418 tok)
+- `eligibility.py` — Text-lane eligibility: which regions may extract from Docling text. (~2084 tok)
 - `gateway.py` — Text-lane extraction gateway (ADR 0006 X2, migration phase E1). (~2222 tok)
+- `kvp_extractor.py` — Deterministic KVP extraction from selected spans (ADR 0006, E2). (~2363 tok)
+- `kvp_gateway.py` — KVP text-lane extraction gateway (ADR 0006 X2, migration phase E2). (~1766 tok)
+- `span_candidates.py` — Deterministic KVP span candidates from Docling elements (ADR 0006, E2). (~3485 tok)
+- `span_selection.py` — Model span selection for the extractive KVP lane (ADR 0006 X2, E2). (~1893 tok)
 - `table_extractor.py` — Deterministic line-item extraction from the Docling cell grid (ADR 0006). (~4658 tok)
 - `table_grid.py` — Typed access to the Docling table cell grid persisted in table_json. (~2404 tok)
 
@@ -734,7 +771,8 @@
 
 ## scripts/gpu/
 
-- `check_text_lane_eligibility.py` — E0 gate check: text-lane eligibility over live corpus documents. (~1615 tok)
+- `check_text_lane_eligibility.py` — E0 gate check: text-lane eligibility over live corpus documents. (~1540 tok)
+- `compare_text_lane_gate.py` — E1 gate comparison: text-lane corpus run(s) vs the pinned baseline report. (~1987 tok)
 - `run_phase8_5_semantic_canary.py` — main, build_parser, parse_args (~9270 tok)
 
 ## tests/unit/extraction/
@@ -744,11 +782,12 @@
 ## tests/unit/extraction/text_lane/
 
 - `test_column_labeling.py` — from: generate, test_line_item_roles_come_from_claim_registry, test_schema_is_strict_closed_enum, te (~1511 tok)
-- `test_eligibility.py` — test_strong_table_on_text_page_is_text_lane, test_non_line_item_region_routes_to_vision, test_missin (~1893 tok)
+- `test_eligibility.py` — test_usable_grid_on_text_page_is_text_lane, test_empty_markdown_does_not_disqualify_a_rich_grid, tes (~2061 tok)
+- `test_kvp_lane.py` — _StaticSelector: test_span_candidates_cover_labeled_pairs_and_typed_regexes, test_selection_schema_i (~4705 tok)
 - `test_review_regressions.py` — Regression coverage for the 2026-06-10 adversarial review findings. (~3649 tok)
 - `test_table_extractor.py` — test_line_items_are_verbatim_with_row_anchors, test_totals_row_emits_family_fact_not_line_item, test (~2413 tok)
 - `test_table_grid.py` — test_service_lines_grid_round_trip, test_retail_grid_dedupes_span_duplicates_and_detects_header_bloc (~1285 tok)
-- `test_text_lane_gateway.py` — _StaticLabeler: label_columns, extract, extract, test_eligible_line_item_region_routes_to_text_lane (~2860 tok)
+- `test_text_lane_gateway.py` — _StaticLabeler: label_columns, extract, extract, test_eligible_line_item_region_routes_to_text_lane (~2854 tok)
 
 ## workers/extraction/
 

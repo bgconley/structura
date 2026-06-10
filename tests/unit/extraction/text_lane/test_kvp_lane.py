@@ -442,3 +442,117 @@ def test_selection_cache_dedupes_identical_prompts() -> None:
         assert _Client.calls == 1
     finally:
         clear_span_selection_cache()
+
+
+def test_money_regex_does_not_match_inside_longer_numbers() -> None:
+    # 2026-06-10 E2 review: '12345.67' must not yield a '345.67' span.
+    elements = [
+        _element("Escrow balance 12345.67", 1),
+        _element("Total amount due 1234.56", 2),
+        _element("Rate 4.125%", 3),
+        _element("Paid on 29.04.2024", 4),
+        _element("Charge $1234.56 applied", 5),
+    ]
+    spans = span_candidates_for_page(_source(elements), 1)
+    money_values = {span.value_text for span in spans if span.kind == "regex_money"}
+    assert "345.67" not in money_values
+    assert "234.56" not in money_values
+    assert "4.12" not in money_values
+    assert "29.04" not in money_values
+    assert "12345.67" in money_values
+    assert "1234.56" in money_values
+    assert "$1234.56" in money_values
+
+
+def test_unparseable_date_selection_counts_unmatched_or_degrades_to_text() -> None:
+    # 2026-06-10 E2 review: dash-numeric dates fail date_value; the fact must
+    # not be counted and then silently dropped at claim minting.
+    elements = [
+        _element("Statement Date: 04-29-2024", 1),
+        _element("Loan Number: 1234567890", 2),
+    ]
+    source = _source(elements)
+    task = _task(source, expected=("statement_date", "loan_number"))
+    spans = span_candidates_for_page(source, 1)
+    statement = next(span for span in spans if span.label_text == "Statement Date")
+    loan = next(span for span in spans if span.label_text == "Loan Number")
+    extraction = extract_kvp_region(
+        source=source,
+        semantic_task=task,
+        spans=spans,
+        selection=_selection_for(
+            spans,
+            {"statement_date": statement.span_id, "loan_number": loan.span_id},
+        ),
+        family="mortgage_escrow_statement",
+        target_schema="document_observation",
+    )
+    claims = claims_from_region_envelope(extraction.envelope)
+    by_key = {claim.canonical_key: claim for claim in claims}
+    # the unparseable date degrades to a verbatim text observation claim
+    assert extraction.observation_count == 2
+    assert by_key["statement_date"].value_type == "text"
+    assert by_key["statement_date"].raw_value == "04-29-2024"
+    assert len(claims) == extraction.observation_count
+
+
+def test_registry_date_key_with_unparseable_date_counts_unmatched() -> None:
+    elements = [_element("Date: 04-29-2024", 1), _element("Total: 10.00", 2)]
+    source = _source(elements)
+    task = _task(
+        source,
+        semantic_type="receipt_payment_summary",
+        expected=("date_local", "total"),
+    )
+    spans = span_candidates_for_page(source, 1)
+    date_span = next(span for span in spans if span.label_text == "Date")
+    total_span = next(span for span in spans if span.label_text == "Total")
+    extraction = extract_kvp_region(
+        source=source,
+        semantic_task=task,
+        spans=spans,
+        selection=_selection_for(
+            spans,
+            {"date_local": date_span.span_id, "total": total_span.span_id},
+        ),
+        family="receipt",
+        target_schema="receipt",
+    )
+    assert extraction.fact_count == 1  # only the total
+    assert extraction.unmatched_key_count == 1
+
+
+def test_first_class_family_without_registry_facts_abstains_to_vision() -> None:
+    # 2026-06-10 E2 review: receipt expected keys that match no registry
+    # projection must not strand the region on dead-end dot-less claims.
+    elements = [
+        _element("Payment method: VISA 1111", 1),
+        _element("Auth code: 123456", 2),
+    ]
+    source = _source(elements)
+    task = _task(
+        source,
+        semantic_type="receipt_payment_summary",
+        expected=("payment_method", "authorization_code"),
+    )
+
+    def _pick(expected_keys, spans):  # noqa: ANN001
+        method = next(span for span in spans if span.label_text == "Payment method")
+        return {key: (method.span_id if key == "payment_method" else None) for key in expected_keys}
+
+    granite = _FakeGranite()
+    gateway = ModelRoutingExtractionGateway(
+        deterministic=_FakeGranite(),
+        granite=granite,
+        text_lane_kvp=TextLaneKvpExtractionGateway(selector=_StaticSelector(_pick)),
+    )
+    result = gateway.extract(
+        source,
+        schema_name="receipt",
+        route_profile="docling_plus_structured_extraction",
+        semantic_task=task,
+    )
+    assert granite.calls == 1
+    assert str(result.normalization_json["laneEligibility"]).startswith(
+        "text_lane_abstained:first_class_family_without_registry_facts"
+    )

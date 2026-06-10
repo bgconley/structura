@@ -8,6 +8,7 @@ shape. TextLaneAbstention falls back to the vision path with lane telemetry.
 
 from __future__ import annotations
 
+from lib.extraction.claim_registry import CLAIM_FAMILY_REGISTRIES
 from lib.extraction.contract_registry import resolved_document_type_from_task_metadata
 from lib.extraction.models import ExtractionSourceDocument, GatewayExtraction, ModelRoute
 from lib.extraction.region_envelope import (
@@ -26,6 +27,11 @@ from lib.extraction.text_lane.span_selection import (
 )
 from lib.model_runtime.http_client import ModelProtocolError
 from lib.semantic_annotations.models import SemanticExtractionTask
+
+
+def _family_is_first_class(family: str) -> bool:
+    registry = CLAIM_FAMILY_REGISTRIES.get(family)
+    return registry is not None and registry.aggregate_schema_name is not None
 
 
 class TextLaneKvpExtractionGateway:
@@ -79,6 +85,13 @@ class TextLaneKvpExtractionGateway:
         )
         if extraction.fact_count == 0 and extraction.observation_count == 0:
             raise TextLaneAbstention("no_extractable_values")
+        if extraction.fact_count == 0 and _family_is_first_class(family):
+            # First-class families (invoice/receipt/medical_eob) consume only
+            # registry-keyed claims: dot-less observations produce no
+            # candidates and no aggregate input for them, so an
+            # observations-only result would silently replace the vision
+            # path's value-bearing extraction with dead weight.
+            raise TextLaneAbstention("first_class_family_without_registry_facts")
         envelope = extraction.envelope
         normalization_json: dict[str, object] = {
             "mapper": TEXT_LANE_KVP_METHOD,

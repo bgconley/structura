@@ -2036,6 +2036,20 @@
         "aggregate-lineage",
         "baseline-inherited"
       ]
+    },
+    {
+      "date": "2026-06-10",
+      "error_message": "Pre-gate E2 review (16 agents): money regex matched mid-number ('12345.67' -> span '345.67' with a mechanically consistent anchor); dash/abbreviated date spans ('04-29-2024', 'Apr. 29, 2024') were counted in the envelope but silently dropped at claim minting (no abstention, fewer candidates than baseline); receipt KVP regions whose expected keys match no registry projection minted only dead-end dot-less claims (no candidates for first-class families) while suppressing the Granite fallback.",
+      "root_cause": "regex_money lacked boundary lookarounds and capped the symbol-less integer at three digits; _typed_span_value validated money but not dates, so unparseable dates passed envelope counting and died downstream in claims._typed_value; the no_extractable_values abstention only fired when facts AND observations were both empty, but first-class families (those with aggregate_schema_name) consume registry-keyed claims only.",
+      "fix": "Money regex now uses (?<![\\d.,])/(?![\\d.,]) boundaries and accepts comma-grouped or plain integer parts; _typed_span_value pre-validates dates via date_value (registry date keys count unmatched; observation dates degrade to verbatim text claims matching the vision baseline); the KVP gateway abstains with first_class_family_without_registry_facts when a first-class family yields zero registry facts. Regressions in test_kvp_lane.py.",
+      "tags": [
+        "phase8.5",
+        "adr-0006",
+        "text-lane",
+        "e2",
+        "kvp",
+        "review-workflow"
+      ]
     }
   ]
 }

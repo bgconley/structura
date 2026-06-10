@@ -44,8 +44,14 @@ _TYPED_PATTERNS: tuple[tuple[SpanKind, SpanValueType, re.Pattern[str]], ...] = (
     (
         "regex_money",
         "money",
+        # Boundary lookarounds keep the match from starting or ending inside
+        # a longer number ("12345.67" must not yield "345.67"), and the
+        # integer part accepts both comma-grouped and plain digit runs.
         re.compile(
-            r"\(?-?[$€£]\s?\d{1,3}(?:,\d{3})*(?:\.\d{2})?\)?|\(?-?\d{1,3}(?:,\d{3})*\.\d{2}\)?-?"
+            r"(?<![\d.,])"
+            r"(?:\(?-?[$€£]\s?(?:\d{1,3}(?:,\d{3})*|\d+)(?:\.\d{2})?\)?"
+            r"|\(?-?(?:\d{1,3}(?:,\d{3})*|\d+)\.\d{2}\)?-?)"
+            r"(?![\d.,])"
         ),
     ),
     (
