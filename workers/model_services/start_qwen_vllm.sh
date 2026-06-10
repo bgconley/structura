@@ -24,7 +24,7 @@ fi
 structured_outputs_config="${STRUCTURA_QWEN_STRUCTURED_OUTPUTS_CONFIG:-}"
 if [[ -z "$structured_outputs_config" ]]; then
   # Match the Granite service: forbid whitespace loops inside guided decoding.
-  structured_outputs_config='{"disable_any_whitespace": true}'
+  structured_outputs_config='{"backend": "xgrammar", "disable_any_whitespace": true}'
 fi
 
 args=(

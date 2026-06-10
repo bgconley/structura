@@ -35,7 +35,7 @@ if [[ -z "$structured_outputs_config" ]]; then
   # disable_any_whitespace stops degenerate whitespace loops inside guided
   # decoding: live truncation dead letters showed 45k-68k chars of whitespace
   # between JSON tokens, which content bounds cannot prevent.
-  structured_outputs_config='{"disable_any_whitespace": true}'
+  structured_outputs_config='{"backend": "xgrammar", "disable_any_whitespace": true}'
 fi
 
 args=(
