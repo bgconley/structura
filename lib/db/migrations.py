@@ -34,6 +34,7 @@ BASELINE_SQL_FILES = (
     "083_phase8_5_reliable_extraction_platform.sql",
     "084_phase8_5_plan_task_page_numbers.sql",
     "085_phase8_5_plan_task_visual_summary.sql",
+    "087_phase8_5_quality_outcome.sql",
 )
 
 
