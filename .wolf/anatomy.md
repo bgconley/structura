@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-10T02:14:15.729Z
-> Files: 413 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-10T05:15:11.912Z
+> Files: 431 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ./
 
@@ -30,6 +30,46 @@
 ## .claude/rules/
 
 - `openwolf.md` (~313 tok)
+
+## .claude/worktrees/agent-a86df2a212eebdab3/.wolf/
+
+- `anatomy.md` — anatomy.md (~11932 tok)
+
+## .claude/worktrees/agent-a86df2a212eebdab3/lib/config/
+
+- `settings.py` — Settings: reject_historical_live_semantic_profiles, canonical_objects_root, derived_objects_root, ex (~1120 tok)
+
+## .claude/worktrees/agent-a86df2a212eebdab3/lib/extraction/
+
+- `expected_field_coverage.py` — Expected-field vs produced-field coverage telemetry for region extractions. (~1766 tok)
+- `service.py` — ExtractionServiceError: create_job, classify_document, extract_document (~4278 tok)
+
+## .claude/worktrees/agent-a86df2a212eebdab3/lib/model_runtime/
+
+- `reliability_report.py` — build_phase85_reliability_report (~997 tok)
+- `reliability_summaries.py` — planner_summary, candidate_admission_summary, contract_summary, evidence_summary (~4539 tok)
+
+## .claude/worktrees/agent-a86df2a212eebdab3/lib/semantic_annotations/
+
+- `input_budget.py` — Pure Qwen semantic input-budget estimation shared by canary and live path. (~2558 tok)
+- `qwen_gateway.py` — SemanticVisionClientProtocol: generate, from_settings, generate, annotate (~7727 tok)
+
+## .claude/worktrees/agent-a86df2a212eebdab3/scripts/gpu/
+
+- `run_phase8_5_semantic_canary.py` — main, build_parser, parse_args (~8248 tok)
+
+## .claude/worktrees/agent-a86df2a212eebdab3/tests/unit/extraction/
+
+- `test_expected_field_coverage.py` — _EnvelopeGateway: test_normalized_field_name_collapses_to_snake_case, test_exact_and_dotted_fact_nam (~2916 tok)
+
+## .claude/worktrees/agent-a86df2a212eebdab3/tests/unit/model_runtime/
+
+- `test_reliability_expected_field_coverage.py` — test_expected_field_coverage_summary_aggregates_current_region_rows, test_expected_field_coverage_su (~1422 tok)
+
+## .claude/worktrees/agent-a86df2a212eebdab3/tests/unit/semantic_annotations/
+
+- `test_gateways.py` — class: generate, test_fixture_gateway_has_explicit_fixture_provenance, test_fixture_gateway_infers_t (~17607 tok)
+- `test_input_budget.py` — test_estimate_text_tokens_matches_canary_heuristic, test_image_dimensions_parses_png_and_jpeg_header (~1598 tok)
 
 ## Phase 0 implementation scaffold
 
@@ -339,14 +379,21 @@
 
 ## lib/extraction/
 
+- `canonical_promotion_policy.py` — candidate_auto_promotion_rejection_reason (~512 tok)
+- `canonical_repository.py` — promote_candidates, create_review_tasks, upsert_canonical_field, canonical_is_human_controlled (~3007 tok)
 - `claim_aggregate_reconciliation.py` — from: resolve_claim_regions_for_family, source_families_from_claims (~1046 tok)
 - `claims.py` — ClaimAnchor: as_json, identity_json, as_json, claims_from_region_envelope + 1 more (~5227 tok)
 - `docling_anchor_resolution.py` — resolve_docling_anchors_for_envelope (~938 tok)
 - `evidence.py` — from: for_value, first_page_evidence, has_concrete_evidence, has_structural_value_anchor + 3 more (~1620 tok)
+- `granite_budgets.py` — from: granite_budget_for_task, granite_length_retry_budget (~1045 tok)
 - `model_output_normalization.py` — normalize_granite_region_output, finalize, invoice_line_item_dicts_from_payload (~8666 tok)
 - `observation_repository.py` — insert_observation_candidate (~566 tok)
 - `reconciliation_repository.py` — aggregate: maybe_reconcile_semantic_annotation (~4998 tok)
 - `region_envelope_projection.py` — finalized_region_output (~652 tok)
+
+## lib/semantic_annotations/
+
+- `manifest_normalization.py` — normalize_result_for_planning, normalize_manifest_for_planning (~8248 tok)
 
 ## pro-merged-master-v.beta/
 
@@ -611,6 +658,10 @@
 ## qwen3-122/
 
 - `first-pass-plan.md` — DocVault: AI-Augmented Personal Document Management System (~30226 tok)
+
+## scripts/gpu/
+
+- `run_phase8_5_semantic_canary.py` — main, build_parser, parse_args (~9270 tok)
 
 ## tests/unit/extraction/
 

@@ -113,3 +113,44 @@
 | 22:16 | Session end: 216 writes across 102 files (repro_group_collapse.py, claims.py, model_output_value_parsing.py, candidate_value_parsing.py, claim_resolver.py) | 194 reads | ~88126 tok |
 | 22:35 | GPU validation iterations 1-4 complete | lib/extraction/{reconciliation_repository,docling_anchor_resolution,claims,claim_aggregate_reconciliation,observation_repository}.py, compose.yaml, docs/adr/0005 | Four corpus runs on P620-01 found and fixed: settled-job trigger blind spot (zero aggregates), page-only KVP evidence dropping all claims (Docling anchor resolution added), percent-style confidence overflowing numeric(5,4), dot-less observation keys skipped by family gate, unmapped embedding kill switch. Final run 20260610T021547Z: 6 aggregates incl. first receipt lane + partial aggregate with dead-letter coverage, KVP candidates restored, quality outcomes persisted, zero non-model failures | ~12000 |
 | 22:35 | Session end: 216 writes across 102 files (repro_group_collapse.py, claims.py, model_output_value_parsing.py, candidate_value_parsing.py, claim_resolver.py) | 194 reads | ~88126 tok |
+| 22:45 | Session end: 216 writes across 102 files (repro_group_collapse.py, claims.py, model_output_value_parsing.py, candidate_value_parsing.py, claim_resolver.py) | 194 reads | ~88126 tok |
+| 00:57 | Edited lib/semantic_annotations/manifest_normalization.py | removed 6 lines | ~11 |
+| 00:57 | Edited lib/semantic_annotations/manifest_normalization.py | 22→22 lines | ~323 |
+| 00:58 | Edited lib/semantic_annotations/manifest_normalization.py | modified _normalize_region() | ~147 |
+| 00:58 | Edited lib/semantic_annotations/manifest_normalization.py | 6→4 lines | ~43 |
+| 01:03 | Edited scripts/gpu/run_phase8_5_semantic_canary.py | modified _semantic_report() | ~153 |
+| 01:04 | Edited scripts/gpu/run_phase8_5_semantic_canary.py | 2→5 lines | ~84 |
+| 01:04 | Edited scripts/gpu/run_phase8_5_semantic_canary.py | 2→6 lines | ~71 |
+| 01:06 | Created .claude/worktrees/agent-a86df2a212eebdab3/lib/extraction/expected_field_coverage.py | — | ~1766 |
+| 01:06 | Edited .claude/worktrees/agent-a86df2a212eebdab3/lib/extraction/service.py | added 1 import(s) | ~57 |
+| 01:06 | Edited .claude/worktrees/agent-a86df2a212eebdab3/lib/extraction/service.py | added 1 condition(s) | ~208 |
+| 01:06 | Edited lib/extraction/granite_budgets.py | modified granite_length_retry_budget() | ~237 |
+| 01:06 | Edited .claude/worktrees/agent-a86df2a212eebdab3/lib/model_runtime/reliability_summaries.py | modified expected_field_coverage_summary() | ~760 |
+| 01:06 | Edited .claude/worktrees/agent-a86df2a212eebdab3/lib/model_runtime/reliability_report.py | 13→14 lines | ~102 |
+| 01:06 | Edited .claude/worktrees/agent-a86df2a212eebdab3/lib/model_runtime/reliability_report.py | 1→4 lines | ~82 |
+| 01:07 | Created .claude/worktrees/agent-a86df2a212eebdab3/tests/unit/extraction/test_expected_field_coverage.py | — | ~2916 |
+| 01:07 | Created .claude/worktrees/agent-a86df2a212eebdab3/tests/unit/model_runtime/test_reliability_expected_field_coverage.py | — | ~1422 |
+| 01:08 | Edited lib/extraction/canonical_repository.py | added 1 import(s) | ~103 |
+| 01:09 | Edited lib/extraction/canonical_repository.py | modified candidate_auto_promotion_rejection_reason() | ~161 |
+| 01:09 | Created .claude/worktrees/agent-a86df2a212eebdab3/lib/semantic_annotations/input_budget.py | — | ~2558 |
+| 01:09 | Edited lib/extraction/canonical_promotion_policy.py | added 1 import(s) | ~64 |
+| 01:09 | Edited lib/extraction/canonical_promotion_policy.py | modified candidate_auto_promotion_rejection_reason() | ~184 |
+| 01:09 | Edited .claude/worktrees/agent-a86df2a212eebdab3/scripts/gpu/run_phase8_5_semantic_canary.py | 23→28 lines | ~274 |
+| 01:09 | Edited .claude/worktrees/agent-a86df2a212eebdab3/scripts/gpu/run_phase8_5_semantic_canary.py | _estimate_text_tokens() → estimate_text_tokens() | ~70 |
+| 01:09 | Edited lib/extraction/canonical_repository.py | modified candidate_auto_promotion_rejection_reason() | ~39 |
+| 01:10 | Edited .claude/worktrees/agent-a86df2a212eebdab3/scripts/gpu/run_phase8_5_semantic_canary.py | _estimate_text_tokens() → estimate_text_tokens() | ~73 |
+| 01:10 | Edited .claude/worktrees/agent-a86df2a212eebdab3/scripts/gpu/run_phase8_5_semantic_canary.py | _image_dimensions() → image_dimensions() | ~69 |
+| 01:10 | Edited .claude/worktrees/agent-a86df2a212eebdab3/scripts/gpu/run_phase8_5_semantic_canary.py | 14→14 lines | ~124 |
+| 01:10 | Edited .claude/worktrees/agent-a86df2a212eebdab3/scripts/gpu/run_phase8_5_semantic_canary.py | _estimate_text_tokens() → estimate_text_tokens() | ~55 |
+| 01:10 | Edited .claude/worktrees/agent-a86df2a212eebdab3/scripts/gpu/run_phase8_5_semantic_canary.py | removed 98 lines | ~8 |
+| 01:10 | Edited .claude/worktrees/agent-a86df2a212eebdab3/lib/config/settings.py | 2→6 lines | ~110 |
+| 01:11 | Edited .claude/worktrees/agent-a86df2a212eebdab3/lib/semantic_annotations/qwen_gateway.py | expanded (+6 lines) | ~220 |
+| 01:11 | Edited .claude/worktrees/agent-a86df2a212eebdab3/lib/semantic_annotations/qwen_gateway.py | 2→4 lines | ~42 |
+| 01:11 | Edited .claude/worktrees/agent-a86df2a212eebdab3/lib/semantic_annotations/qwen_gateway.py | modified _generate_manifest_for_source() | ~830 |
+| 01:11 | Edited .claude/worktrees/agent-a86df2a212eebdab3/lib/semantic_annotations/qwen_gateway.py | modified _timeout_seconds_for_profile() | ~290 |
+| 01:12 | Edited .claude/worktrees/agent-a86df2a212eebdab3/lib/semantic_annotations/qwen_gateway.py | modified _manifest_from_response() | ~64 |
+| 01:12 | Edited .claude/worktrees/agent-a86df2a212eebdab3/lib/semantic_annotations/qwen_gateway.py | 5→10 lines | ~149 |
+| 01:12 | Created .claude/worktrees/agent-a86df2a212eebdab3/tests/unit/semantic_annotations/test_input_budget.py | — | ~1596 |
+| 01:13 | Edited .claude/worktrees/agent-a86df2a212eebdab3/tests/unit/semantic_annotations/test_input_budget.py | modified _estimate() | ~36 |
+| 01:13 | Edited .claude/worktrees/agent-a86df2a212eebdab3/tests/unit/semantic_annotations/test_gateways.py | modified test_live_qwen_gateway_attaches_input_budget_warning_when_estimate_exceeds_budget() | ~666 |
+| 01:15 | Edited .claude/worktrees/agent-a86df2a212eebdab3/.wolf/anatomy.md | expanded (+8 lines) | ~402 |

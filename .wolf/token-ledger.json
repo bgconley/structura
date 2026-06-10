@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-04-24T01:42:51.225Z",
   "lifetime": {
-    "total_tokens_estimated": 1029458,
-    "total_reads": 5678,
-    "total_writes": 1792,
+    "total_tokens_estimated": 1117584,
+    "total_reads": 5872,
+    "total_writes": 2008,
     "total_sessions": 2,
-    "anatomy_hits": 52,
-    "anatomy_misses": 5583,
-    "repeated_reads_blocked": 25161,
-    "estimated_savings_vs_bare_cli": 1147244
+    "anatomy_hits": 55,
+    "anatomy_misses": 5773,
+    "repeated_reads_blocked": 25396,
+    "estimated_savings_vs_bare_cli": 1194944
   },
   "sessions": [
     {
@@ -41240,6 +41240,2267 @@
       "id": "session-2026-06-09-1915",
       "started": "2026-06-09T23:15:41.328Z",
       "ended": "2026-06-10T02:35:29.401Z",
+      "reads": [
+        {
+          "file": "/Users/brennanconley/vibecode/structura/docs/adr/0005-deterministic-extraction-and-reconciliation.md",
+          "tokens_estimated": 1884,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/model_runtime/profiles.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/compose.yaml",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claims.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claim_registry.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/docs/superpowers/specs/2026-04-29-phase-8-5-qwen-semantic-planner-optimization-spec.md",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/model_runtime/clients/_openai_vision.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/docs/superpowers/specs/2026-04-29-phase-8-5-qwen-semantic-planner-generalization-spec.md",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/workers/docling/worker.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/STRUCTURA_PHASE_8_5_IMPLEMENTATION_PLAN.md",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/gateways/routing.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/gateways/_vision.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/workers/semantic_annotations/worker.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/semantic_annotations/service.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/STRUCTURA_PHASE_8_5_SEMANTIC_ANNOTATION_PLAN.md",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/semantic_annotations/extraction_plan.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/semantic_annotations/manifest_merge.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/service.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/model_runtime/settings.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/model_runtime/health.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claim_resolver.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claim_invariants.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/semantic_annotations/qwen_gateway.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/reconciliation.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/apps/api/structura_api/routes_admin.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/classification.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claim_aggregate_reconciliation.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/medical_eob_reconciliation.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/observation_reconciliation.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/region_reconciliation.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/quality_outcomes.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claim_projection.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/config/settings.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/workers/extraction/worker.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/reconciliation_repository.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/semantic_annotations/service_record_normalization.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/documents/analysis_quality.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/semantic_annotations/real_estate_title_normalization.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claim_decisions.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claim_candidates.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/evidence_locator.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/workers/runtime.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/extraction_repository.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/semantic_annotations/prompting.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/model_failure_policy.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/semantic_annotations/semantic_family.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/semantic_annotations/manifest_normalization.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/candidate_value_parsing.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/candidate_deduplication.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/model_output_contract_boundary.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/jobs/removed_semantic_controls.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/jobs/failure_taxonomy.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/model_output_value_parsing.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/canonical_promotion_policy.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/model_runtime/http_client.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/model_runtime/redaction.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/model_runtime/clients/granite_vision.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/model_output_normalization.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/model_runtime/clients/qwen_vl.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/scripts/gpu/run_phase8_5_semantic_canary.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/model_output_payments.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/model_output_line_items.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/model_runtime/clients/visual_embeddings.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/semantic_annotations/retry_policy.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/model_runtime/clients/_embedding.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/apps/web/src/components/ReviewQueue.tsx",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/contracts/model_outputs/granite_invoice_line_items.v1.schema.json",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/jobs/service.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/apps/web/src/reviewApi.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/apps/web/src/reviewActions.ts",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/semantic_annotations/schema_fit.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/semantic_annotations/task_routing.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/semantic_annotations/qwen_output_scope.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/line_item_provenance.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/evidence_concretizer.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/apps/api/structura_api/routes_review.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/region_envelope.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/canonical_repository.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/apps/api/structura_api/routes_documents.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/apps/web/src/semanticAnnotationApi.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/apps/web/src/components/Viewer.tsx",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/candidate_source_policy.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/candidate_admission_boundary.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/candidate_admission_evidence.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/workers/docling/service.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/apps/web/src/types.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/apps/web/src/components/DocumentInspector.tsx",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/candidate_admission.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/candidate_admission_fingerprints.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/documents/read_model.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/evidence.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/candidate_schema_policy.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/validators.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/model_output_schemas.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/candidate_quality.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/semantic_annotations/docling_targets.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/candidate_admission_policy.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/review/read_repository.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/review/task_repository.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/apps/web/src/components/ReviewDecisionPanel.tsx",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/semantic_annotations/qwen_output_normalization.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/apps/web/src/components/ParseDebugPanel.tsx",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/semantic_annotations/repository.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/apps/web/src/components/PipelineSummary.tsx",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/model_output_observations.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/contracts/registry.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/region_envelope_candidates.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/semantic_annotations/extraction_plan_repository.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/model_runtime/contracts.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/visual_input_planning.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/apps/web/src/App.tsx",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/gateway.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/evidence_context.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/model_runtime/reliability_summaries.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/jobs/event_payloads.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/contract_registry.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/contracts/model_outputs/granite_receipt_line_items.v1.schema.json",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/contracts/model_outputs/granite_receipt_payment_summary.v1.schema.json",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/review/service.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/review/mappers.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/normalization.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/region_envelope_projection.py",
+          "tokens_estimated": 0,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/search/embedding_defaults.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/tests/unit/extraction/test_reconciliation.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/tests/unit/extraction/test_claims.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/candidate_admission_payloads.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/extraction/model_failure_policy.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/http_client.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/profiles.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/workers/extraction/worker.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/workers/semantic_annotations/worker.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/clients/_embedding.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/search/jobs.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/config/settings.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/semantic_annotations/qwen_gateway.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/workers/docling/worker.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/health.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/documents/analysis_quality.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/scripts/gpu/phase8_5_live_runtime_preflight.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/extraction/gateways/routing.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/scripts/gpu/run_phase8_5_semantic_canary.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/test_migrations.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/apps/api/structura_api/routes_admin.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/model_runtime/test_health.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/models.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/workers/model_services/start_granite_vllm.sh",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/model_runtime/test_profiles.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/test_compose_model_profiles.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/test_model_service_scripts.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/tests/unit/extraction/test_model_output_value_parsing.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/model_runtime/test_text_embedding_client.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/documents/maintenance.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/workers/model_services/start_text_embed.sh",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/test_docling_worker_lifecycle.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/tests/unit/extraction/test_reconciliation_repository.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/scripts/test_phase8_5_semantic_canary.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/.wolf/anatomy.md",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/extraction/claim_aggregate_reconciliation.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/extraction/extraction_repository.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/extraction/reconciliation_repository.py",
+          "tokens_estimated": 4803,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/documents/read_model.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/service.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/semantic_annotations/jobs.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/extraction/service.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/read_repository.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/mappers.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/api/structura_api/routes_review.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/types.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/Viewer.tsx",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/ReviewQueue.tsx",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/reviewActions.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/ReviewDecisionPanel.tsx",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/extraction/evidence_locator.py",
+          "tokens_estimated": 896,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/extraction/quality_outcomes.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/DocumentInspector.tsx",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/PipelineSummary.tsx",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/InboxMetrics.tsx",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/Status.tsx",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/reviewApi.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/repository.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/action_repository.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/extraction/observation_repository.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/audit_repository.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/jobs/event_payloads.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/api/structura_api/routes_documents.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/Inbox.tsx",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/App.tsx",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/tests/e2e/support/structuraMock.ts",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/api/structura_api/openapi_contract.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/extraction/claim_decisions.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/tests/integration/test_phase4_extraction_review.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/semantic_annotations/fixture_gateway.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/tests/unit/extraction/test_semantic_region_routing.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/extraction/candidate_admission_evidence.py",
+          "tokens_estimated": 0,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/tmp/repro_group_collapse.py",
+          "tokens_estimated": 1131,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claims.py",
+          "tokens_estimated": 305,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claims.py",
+          "tokens_estimated": 140,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claims.py",
+          "tokens_estimated": 92,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claims.py",
+          "tokens_estimated": 744,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claims.py",
+          "tokens_estimated": 37,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claims.py",
+          "tokens_estimated": 69,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claims.py",
+          "tokens_estimated": 78,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claims.py",
+          "tokens_estimated": 0,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/model_output_value_parsing.py",
+          "tokens_estimated": 711,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/candidate_value_parsing.py",
+          "tokens_estimated": 86,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/candidate_value_parsing.py",
+          "tokens_estimated": 55,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claim_resolver.py",
+          "tokens_estimated": 358,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claim_resolver.py",
+          "tokens_estimated": 290,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claim_invariants.py",
+          "tokens_estimated": 528,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claim_invariants.py",
+          "tokens_estimated": 38,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/reconciliation.py",
+          "tokens_estimated": 30,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/reconciliation.py",
+          "tokens_estimated": 75,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/candidate_deduplication.py",
+          "tokens_estimated": 250,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/evidence_locator.py",
+          "tokens_estimated": 283,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/model_output_contract_boundary.py",
+          "tokens_estimated": 134,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/model_output_contract_boundary.py",
+          "tokens_estimated": 58,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/database/088_phase8_5_line_item_payer_amounts.sql",
+          "tokens_estimated": 123,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claim_candidates.py",
+          "tokens_estimated": 282,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/models.py",
+          "tokens_estimated": 142,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/candidate_repository.py",
+          "tokens_estimated": 170,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/candidate_repository.py",
+          "tokens_estimated": 73,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claim_resolver.py",
+          "tokens_estimated": 56,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claim_resolver.py",
+          "tokens_estimated": 122,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/extraction/model_failure_policy.py",
+          "tokens_estimated": 415,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/workers/semantic_annotations/worker.py",
+          "tokens_estimated": 72,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/workers/semantic_annotations/worker.py",
+          "tokens_estimated": 87,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/candidate_deduplication.py",
+          "tokens_estimated": 338,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/extraction/test_worker_failures.py",
+          "tokens_estimated": 360,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/extraction/test_worker_failures.py",
+          "tokens_estimated": 90,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/extraction/test_worker_failures.py",
+          "tokens_estimated": 125,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/extraction/test_worker_failures.py",
+          "tokens_estimated": 478,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/semantic_annotations/test_worker.py",
+          "tokens_estimated": 445,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claim_invariants.py",
+          "tokens_estimated": 282,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/profiles.py",
+          "tokens_estimated": 56,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/profiles.py",
+          "tokens_estimated": 62,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/workers/model_services/start_granite_vllm.sh",
+          "tokens_estimated": 17,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/scripts/gpu/phase8_5_live_runtime_preflight.py",
+          "tokens_estimated": 618,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/scripts/gpu/phase8_5_live_runtime_preflight.py",
+          "tokens_estimated": 182,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/scripts/gpu/phase8_5_live_runtime_preflight.py",
+          "tokens_estimated": 740,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/candidate_deduplication.py",
+          "tokens_estimated": 414,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/model_runtime/test_profiles.py",
+          "tokens_estimated": 184,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/test_compose_model_profiles.py",
+          "tokens_estimated": 87,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/test_compose_model_profiles.py",
+          "tokens_estimated": 385,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/test_model_service_scripts.py",
+          "tokens_estimated": 613,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/tests/unit/extraction/test_model_output_value_parsing.py",
+          "tokens_estimated": 556,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/http_client.py",
+          "tokens_estimated": 210,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/http_client.py",
+          "tokens_estimated": 160,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/clients/_embedding.py",
+          "tokens_estimated": 3937,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/tests/unit/extraction/test_claims_line_item_grouping.py",
+          "tokens_estimated": 2307,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/clients/_embedding.py",
+          "tokens_estimated": 330,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/clients/_embedding.py",
+          "tokens_estimated": 44,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/tests/unit/extraction/test_claims_line_item_grouping.py",
+          "tokens_estimated": 135,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/tests/unit/extraction/test_claims_line_item_grouping.py",
+          "tokens_estimated": 20,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/model_runtime/test_text_embedding_client.py",
+          "tokens_estimated": 1802,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/model_runtime/test_visual_embedding_client.py",
+          "tokens_estimated": 194,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/model_runtime/test_visual_embedding_client.py",
+          "tokens_estimated": 311,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/config/settings.py",
+          "tokens_estimated": 36,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/search/jobs.py",
+          "tokens_estimated": 208,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/search/jobs.py",
+          "tokens_estimated": 36,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/search/jobs.py",
+          "tokens_estimated": 67,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/search/projection.py",
+          "tokens_estimated": 47,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/documents/maintenance.py",
+          "tokens_estimated": 115,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/workers/model_services/start_text_embed.sh",
+          "tokens_estimated": 362,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/search/test_embedding_jobs.py",
+          "tokens_estimated": 649,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/test_model_service_scripts.py",
+          "tokens_estimated": 192,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/test_config.py",
+          "tokens_estimated": 125,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/receipt_reconciliation.py",
+          "tokens_estimated": 297,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/semantic_annotations/qwen_gateway.py",
+          "tokens_estimated": 177,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/semantic_annotations/qwen_gateway.py",
+          "tokens_estimated": 67,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/reconciliation_repository.py",
+          "tokens_estimated": 1084,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/reconciliation_repository.py",
+          "tokens_estimated": 301,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/semantic_annotations/test_gateways.py",
+          "tokens_estimated": 449,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/reconciliation_repository.py",
+          "tokens_estimated": 122,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/reconciliation_repository.py",
+          "tokens_estimated": 183,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/semantic_annotations/test_gateways.py",
+          "tokens_estimated": 120,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/reconciliation_repository.py",
+          "tokens_estimated": 1053,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/reconciliation_repository.py",
+          "tokens_estimated": 209,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/reconciliation_repository.py",
+          "tokens_estimated": 30,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/workers/docling/worker.py",
+          "tokens_estimated": 1061,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/workers/docling/worker.py",
+          "tokens_estimated": 143,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/workers/extraction/worker.py",
+          "tokens_estimated": 499,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/semantic_annotations/extraction_plan.py",
+          "tokens_estimated": 361,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/semantic_annotations/extraction_plan.py",
+          "tokens_estimated": 96,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/test_docling_worker_lifecycle.py",
+          "tokens_estimated": 1738,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/extraction/gateways/routing.py",
+          "tokens_estimated": 321,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/extraction/test_routing_gateway.py",
+          "tokens_estimated": 338,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/health.py",
+          "tokens_estimated": 101,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/health.py",
+          "tokens_estimated": 86,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/health.py",
+          "tokens_estimated": 407,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/reconciliation_repository.py",
+          "tokens_estimated": 160,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/health.py",
+          "tokens_estimated": 79,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/health.py",
+          "tokens_estimated": 184,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/apps/api/structura_api/routes_admin.py",
+          "tokens_estimated": 85,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/database/086_phase8_5_service_health.sql",
+          "tokens_estimated": 204,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/db/migrations.py",
+          "tokens_estimated": 26,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/test_migrations.py",
+          "tokens_estimated": 53,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/test_migrations.py",
+          "tokens_estimated": 317,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/model_runtime/test_health.py",
+          "tokens_estimated": 73,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/model_runtime/test_health.py",
+          "tokens_estimated": 1047,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/documents/analysis_quality.py",
+          "tokens_estimated": 41,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/documents/analysis_quality.py",
+          "tokens_estimated": 422,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/documents/test_analysis_intake.py",
+          "tokens_estimated": 905,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/scripts/gpu/run_phase8_5_semantic_canary.py",
+          "tokens_estimated": 207,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/scripts/test_phase8_5_semantic_canary.py",
+          "tokens_estimated": 64,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/scripts/test_phase8_5_semantic_canary.py",
+          "tokens_estimated": 169,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/config/settings.py",
+          "tokens_estimated": 23,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/extraction/reconciliation.py",
+          "tokens_estimated": 18,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/extraction/gateways/_vision.py",
+          "tokens_estimated": 26,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claim_resolver.py",
+          "tokens_estimated": 152,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claim_resolver.py",
+          "tokens_estimated": 134,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claim_resolver.py",
+          "tokens_estimated": 139,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claim_resolver.py",
+          "tokens_estimated": 152,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claims.py",
+          "tokens_estimated": 94,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/candidate_quality.py",
+          "tokens_estimated": 62,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/candidate_quality.py",
+          "tokens_estimated": 135,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claim_resolver.py",
+          "tokens_estimated": 53,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/candidate_quality.py",
+          "tokens_estimated": 533,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claim_resolver.py",
+          "tokens_estimated": 26,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claim_resolver.py",
+          "tokens_estimated": 24,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/.claude/projects/-Users-brennanconley-vibecode-structura/memory/structura-prod-readiness-push.md",
+          "tokens_estimated": 707,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/.claude/projects/-Users-brennanconley-vibecode-structura/memory/structura-gpu-node-facts.md",
+          "tokens_estimated": 340,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/.claude/projects/-Users-brennanconley-vibecode-structura/memory/MEMORY.md",
+          "tokens_estimated": 73,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/database/087_phase8_5_quality_outcome.sql",
+          "tokens_estimated": 433,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/db/migrations.py",
+          "tokens_estimated": 26,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/extraction/extraction_repository.py",
+          "tokens_estimated": 200,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/extraction/extraction_repository.py",
+          "tokens_estimated": 79,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/extraction/extraction_repository.py",
+          "tokens_estimated": 238,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/tests/unit/test_migrations.py",
+          "tokens_estimated": 20,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/tests/unit/extraction/test_extraction_persistence_policy.py",
+          "tokens_estimated": 68,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/tests/unit/extraction/test_extraction_persistence_policy.py",
+          "tokens_estimated": 427,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/documents/read_model.py",
+          "tokens_estimated": 221,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/documents/read_model.py",
+          "tokens_estimated": 708,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/contracts/api/openapi.yaml",
+          "tokens_estimated": 687,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/tests/unit/documents/test_read_model_payloads.py",
+          "tokens_estimated": 1135,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/documents/read_model.py",
+          "tokens_estimated": 170,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/types.ts",
+          "tokens_estimated": 822,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/service.py",
+          "tokens_estimated": 158,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/service.py",
+          "tokens_estimated": 458,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/service.py",
+          "tokens_estimated": 102,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/service.py",
+          "tokens_estimated": 6,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/action_repository.py",
+          "tokens_estimated": 261,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/tests/unit/review/__init__.py",
+          "tokens_estimated": 0,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/tests/unit/review/test_review_rerun.py",
+          "tokens_estimated": 1052,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/tests/integration/test_phase4_extraction_review.py",
+          "tokens_estimated": 263,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/reviewActions.ts",
+          "tokens_estimated": 0,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/ReviewQueue.tsx",
+          "tokens_estimated": 33,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/ReviewQueue.tsx",
+          "tokens_estimated": 78,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/extraction/service.py",
+          "tokens_estimated": 217,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/extraction/service.py",
+          "tokens_estimated": 212,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/tests/unit/extraction/test_semantic_region_routing.py",
+          "tokens_estimated": 736,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/contracts/models.py",
+          "tokens_estimated": 112,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/contracts/models.py",
+          "tokens_estimated": 596,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/mappers.py",
+          "tokens_estimated": 2728,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/tests/unit/test_contract_registry.py",
+          "tokens_estimated": 104,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/read_repository.py",
+          "tokens_estimated": 162,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/read_repository.py",
+          "tokens_estimated": 528,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/candidate_decision_repository.py",
+          "tokens_estimated": 1410,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/service.py",
+          "tokens_estimated": 405,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/service.py",
+          "tokens_estimated": 305,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/service.py",
+          "tokens_estimated": 115,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/repository.py",
+          "tokens_estimated": 263,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/api/structura_api/routes_review.py",
+          "tokens_estimated": 59,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/api/structura_api/routes_review.py",
+          "tokens_estimated": 473,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/contracts/api/openapi.yaml",
+          "tokens_estimated": 616,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/contracts/api/openapi.yaml",
+          "tokens_estimated": 819,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/contracts/api/openapi.yaml",
+          "tokens_estimated": 108,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/tests/unit/review/test_review_mappers.py",
+          "tokens_estimated": 1369,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/tests/unit/review/test_candidate_decisions.py",
+          "tokens_estimated": 1048,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/types.ts",
+          "tokens_estimated": 516,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/reviewApi.ts",
+          "tokens_estimated": 56,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/reviewApi.ts",
+          "tokens_estimated": 275,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/evidence.ts",
+          "tokens_estimated": 822,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/reviewActions.ts",
+          "tokens_estimated": 212,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/ReviewQueue.tsx",
+          "tokens_estimated": 5241,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/ReviewDecisionPanel.tsx",
+          "tokens_estimated": 336,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/ReviewDecisionPanel.tsx",
+          "tokens_estimated": 49,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/ReviewDecisionPanel.tsx",
+          "tokens_estimated": 46,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/ReviewDecisionPanel.tsx",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/Viewer.tsx",
+          "tokens_estimated": 4764,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/Status.tsx",
+          "tokens_estimated": 90,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/PipelineSummary.tsx",
+          "tokens_estimated": 391,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/Inbox.tsx",
+          "tokens_estimated": 50,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/InboxMetrics.tsx",
+          "tokens_estimated": 214,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/DocumentInspector.tsx",
+          "tokens_estimated": 157,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/DocumentInspector.tsx",
+          "tokens_estimated": 135,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/DocumentInspector.tsx",
+          "tokens_estimated": 251,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/App.tsx",
+          "tokens_estimated": 118,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/docs/adr/0005-deterministic-extraction-and-reconciliation.md",
+          "tokens_estimated": 612,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a74ddaaebdf9d2a08/.wolf/anatomy.md",
+          "tokens_estimated": 299,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/reconciliation_repository.py",
+          "tokens_estimated": 681,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/reconciliation_repository.py",
+          "tokens_estimated": 215,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/workers/extraction/worker.py",
+          "tokens_estimated": 142,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/docling_anchor_resolution.py",
+          "tokens_estimated": 938,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/docling_anchor_resolution.py",
+          "tokens_estimated": 37,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/docling_anchor_resolution.py",
+          "tokens_estimated": 34,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/evidence.py",
+          "tokens_estimated": 16,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/evidence.py",
+          "tokens_estimated": 12,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/region_envelope_projection.py",
+          "tokens_estimated": 563,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/model_output_normalization.py",
+          "tokens_estimated": 428,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/model_output_normalization.py",
+          "tokens_estimated": 215,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/model_output_normalization.py",
+          "tokens_estimated": 60,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/tests/unit/extraction/test_docling_anchor_resolution.py",
+          "tokens_estimated": 1253,
+          "action": "create"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/tests/unit/extraction/test_docling_anchor_resolution.py",
+          "tokens_estimated": 23,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/tests/unit/extraction/test_docling_anchor_resolution.py",
+          "tokens_estimated": 249,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claims.py",
+          "tokens_estimated": 160,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claims.py",
+          "tokens_estimated": 96,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claims.py",
+          "tokens_estimated": 187,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/observation_repository.py",
+          "tokens_estimated": 36,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/observation_repository.py",
+          "tokens_estimated": 65,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claim_aggregate_reconciliation.py",
+          "tokens_estimated": 112,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 7583,
+        "output_tokens_estimated": 80543,
+        "reads_count": 194,
+        "writes_count": 216,
+        "repeated_reads_blocked": 235,
+        "anatomy_lookups": 3
+      }
+    },
+    {
+      "id": "session-2026-06-09-1915",
+      "started": "2026-06-09T23:15:41.328Z",
+      "ended": "2026-06-10T02:45:57.944Z",
       "reads": [
         {
           "file": "/Users/brennanconley/vibecode/structura/docs/adr/0005-deterministic-extraction-and-reconciliation.md",

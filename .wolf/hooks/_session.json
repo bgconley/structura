@@ -233,7 +233,7 @@
       "first_read": "2026-06-09T23:27:32.733Z"
     },
     "/Users/brennanconley/vibecode/structura/lib/semantic_annotations/manifest_normalization.py": {
-      "count": 8,
+      "count": 9,
       "tokens": 0,
       "first_read": "2026-06-09T23:27:33.495Z"
     },
@@ -268,7 +268,7 @@
       "first_read": "2026-06-09T23:28:04.780Z"
     },
     "/Users/brennanconley/vibecode/structura/lib/extraction/canonical_promotion_policy.py": {
-      "count": 3,
+      "count": 4,
       "tokens": 0,
       "first_read": "2026-06-09T23:28:09.868Z"
     },
@@ -478,7 +478,7 @@
       "first_read": "2026-06-09T23:32:28.482Z"
     },
     "/Users/brennanconley/vibecode/structura/lib/semantic_annotations/docling_targets.py": {
-      "count": 5,
+      "count": 6,
       "tokens": 0,
       "first_read": "2026-06-09T23:32:29.664Z"
     },
@@ -971,6 +971,81 @@
       "count": 1,
       "tokens": 0,
       "first_read": "2026-06-10T00:51:36.286Z"
+    },
+    "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/.wolf/anatomy.md": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-06-10T04:55:12.143Z"
+    },
+    "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/docs/adr/0005-deterministic-extraction-and-reconciliation.md": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-06-10T04:55:18.953Z"
+    },
+    "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/lib/extraction/service.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-06-10T04:55:54.547Z"
+    },
+    "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/lib/model_runtime/reliability_report.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-06-10T04:56:03.531Z"
+    },
+    "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/lib/semantic_annotations/models.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-06-10T04:56:23.750Z"
+    },
+    "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/lib/extraction/region_envelope.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-06-10T04:56:29.860Z"
+    },
+    "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/lib/semantic_annotations/qwen_gateway.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-06-10T04:57:08.583Z"
+    },
+    "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/scripts/gpu/run_phase8_5_semantic_canary.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-06-10T04:57:18.072Z"
+    },
+    "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/lib/semantic_annotations/manifest_merge.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-06-10T04:57:52.275Z"
+    },
+    "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/lib/semantic_annotations/service.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-06-10T04:58:26.304Z"
+    },
+    "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/lib/model_runtime/reliability_summaries.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-06-10T04:58:51.641Z"
+    },
+    "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/lib/extraction/region_envelope_projection.py": {
+      "count": 1,
+      "tokens": 652,
+      "first_read": "2026-06-10T04:59:27.904Z"
+    },
+    "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/tests/unit/extraction/test_region_envelope_validation.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-06-10T05:00:26.426Z"
+    },
+    "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/lib/config/settings.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-06-10T05:01:18.406Z"
+    },
+    "/Users/brennanconley/vibecode/structura/lib/extraction/granite_budgets.py": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-06-10T05:05:44.092Z"
     }
   },
   "files_written": [
@@ -2269,6 +2344,246 @@
       "action": "edit",
       "tokens": 112,
       "at": "2026-06-10T02:14:15.740Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/semantic_annotations/manifest_normalization.py",
+      "action": "edit",
+      "tokens": 11,
+      "at": "2026-06-10T04:57:45.770Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/semantic_annotations/manifest_normalization.py",
+      "action": "edit",
+      "tokens": 323,
+      "at": "2026-06-10T04:57:53.820Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/semantic_annotations/manifest_normalization.py",
+      "action": "edit",
+      "tokens": 147,
+      "at": "2026-06-10T04:58:06.200Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/semantic_annotations/manifest_normalization.py",
+      "action": "edit",
+      "tokens": 43,
+      "at": "2026-06-10T04:58:17.889Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/scripts/gpu/run_phase8_5_semantic_canary.py",
+      "action": "edit",
+      "tokens": 153,
+      "at": "2026-06-10T05:03:26.517Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/scripts/gpu/run_phase8_5_semantic_canary.py",
+      "action": "edit",
+      "tokens": 84,
+      "at": "2026-06-10T05:04:04.937Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/scripts/gpu/run_phase8_5_semantic_canary.py",
+      "action": "edit",
+      "tokens": 71,
+      "at": "2026-06-10T05:04:27.949Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/lib/extraction/expected_field_coverage.py",
+      "action": "create",
+      "tokens": 1766,
+      "at": "2026-06-10T05:06:04.387Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/lib/extraction/service.py",
+      "action": "edit",
+      "tokens": 57,
+      "at": "2026-06-10T05:06:12.033Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/lib/extraction/service.py",
+      "action": "edit",
+      "tokens": 208,
+      "at": "2026-06-10T05:06:20.860Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/extraction/granite_budgets.py",
+      "action": "edit",
+      "tokens": 237,
+      "at": "2026-06-10T05:06:25.514Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/lib/model_runtime/reliability_summaries.py",
+      "action": "edit",
+      "tokens": 760,
+      "at": "2026-06-10T05:06:36.524Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/lib/model_runtime/reliability_report.py",
+      "action": "edit",
+      "tokens": 102,
+      "at": "2026-06-10T05:06:45.181Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/lib/model_runtime/reliability_report.py",
+      "action": "edit",
+      "tokens": 82,
+      "at": "2026-06-10T05:06:53.475Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/tests/unit/extraction/test_expected_field_coverage.py",
+      "action": "create",
+      "tokens": 2916,
+      "at": "2026-06-10T05:07:31.985Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/tests/unit/model_runtime/test_reliability_expected_field_coverage.py",
+      "action": "create",
+      "tokens": 1422,
+      "at": "2026-06-10T05:07:57.059Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/extraction/canonical_repository.py",
+      "action": "edit",
+      "tokens": 103,
+      "at": "2026-06-10T05:08:58.383Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/extraction/canonical_repository.py",
+      "action": "edit",
+      "tokens": 161,
+      "at": "2026-06-10T05:09:01.419Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/lib/semantic_annotations/input_budget.py",
+      "action": "create",
+      "tokens": 2558,
+      "at": "2026-06-10T05:09:32.776Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/extraction/canonical_promotion_policy.py",
+      "action": "edit",
+      "tokens": 64,
+      "at": "2026-06-10T05:09:42.047Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/extraction/canonical_promotion_policy.py",
+      "action": "edit",
+      "tokens": 184,
+      "at": "2026-06-10T05:09:45.462Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/scripts/gpu/run_phase8_5_semantic_canary.py",
+      "action": "edit",
+      "tokens": 274,
+      "at": "2026-06-10T05:09:46.064Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/scripts/gpu/run_phase8_5_semantic_canary.py",
+      "action": "edit",
+      "tokens": 70,
+      "at": "2026-06-10T05:09:53.997Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/extraction/canonical_repository.py",
+      "action": "edit",
+      "tokens": 39,
+      "at": "2026-06-10T05:09:59.468Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/scripts/gpu/run_phase8_5_semantic_canary.py",
+      "action": "edit",
+      "tokens": 73,
+      "at": "2026-06-10T05:10:02.668Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/scripts/gpu/run_phase8_5_semantic_canary.py",
+      "action": "edit",
+      "tokens": 69,
+      "at": "2026-06-10T05:10:11.684Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/scripts/gpu/run_phase8_5_semantic_canary.py",
+      "action": "edit",
+      "tokens": 124,
+      "at": "2026-06-10T05:10:21.093Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/scripts/gpu/run_phase8_5_semantic_canary.py",
+      "action": "edit",
+      "tokens": 55,
+      "at": "2026-06-10T05:10:30.451Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/scripts/gpu/run_phase8_5_semantic_canary.py",
+      "action": "edit",
+      "tokens": 8,
+      "at": "2026-06-10T05:10:47.438Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/lib/config/settings.py",
+      "action": "edit",
+      "tokens": 110,
+      "at": "2026-06-10T05:10:58.314Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/lib/semantic_annotations/qwen_gateway.py",
+      "action": "edit",
+      "tokens": 220,
+      "at": "2026-06-10T05:11:11.412Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/lib/semantic_annotations/qwen_gateway.py",
+      "action": "edit",
+      "tokens": 42,
+      "at": "2026-06-10T05:11:19.026Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/lib/semantic_annotations/qwen_gateway.py",
+      "action": "edit",
+      "tokens": 830,
+      "at": "2026-06-10T05:11:40.194Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/lib/semantic_annotations/qwen_gateway.py",
+      "action": "edit",
+      "tokens": 290,
+      "at": "2026-06-10T05:11:50.691Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/lib/semantic_annotations/qwen_gateway.py",
+      "action": "edit",
+      "tokens": 64,
+      "at": "2026-06-10T05:12:00.222Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/lib/semantic_annotations/qwen_gateway.py",
+      "action": "edit",
+      "tokens": 149,
+      "at": "2026-06-10T05:12:12.511Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/tests/unit/semantic_annotations/test_input_budget.py",
+      "action": "create",
+      "tokens": 1596,
+      "at": "2026-06-10T05:12:39.750Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/tests/unit/semantic_annotations/test_input_budget.py",
+      "action": "edit",
+      "tokens": 36,
+      "at": "2026-06-10T05:13:01.032Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/tests/unit/semantic_annotations/test_gateways.py",
+      "action": "edit",
+      "tokens": 666,
+      "at": "2026-06-10T05:13:24.632Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/.claude/worktrees/agent-a86df2a212eebdab3/.wolf/anatomy.md",
+      "action": "edit",
+      "tokens": 430,
+      "at": "2026-06-10T05:15:11.924Z"
     }
   ],
   "edit_counts": {
@@ -2380,11 +2695,29 @@
     "lib/extraction/model_output_normalization.py": 3,
     "tests/unit/extraction/test_docling_anchor_resolution.py": 3,
     "lib/extraction/observation_repository.py": 2,
-    "lib/extraction/claim_aggregate_reconciliation.py": 1
+    "lib/extraction/claim_aggregate_reconciliation.py": 1,
+    "lib/semantic_annotations/manifest_normalization.py": 4,
+    "scripts/gpu/run_phase8_5_semantic_canary.py": 3,
+    ".claude/worktrees/agent-a86df2a212eebdab3/lib/extraction/expected_field_coverage.py": 1,
+    ".claude/worktrees/agent-a86df2a212eebdab3/lib/extraction/service.py": 2,
+    "lib/extraction/granite_budgets.py": 1,
+    ".claude/worktrees/agent-a86df2a212eebdab3/lib/model_runtime/reliability_summaries.py": 1,
+    ".claude/worktrees/agent-a86df2a212eebdab3/lib/model_runtime/reliability_report.py": 2,
+    ".claude/worktrees/agent-a86df2a212eebdab3/tests/unit/extraction/test_expected_field_coverage.py": 1,
+    ".claude/worktrees/agent-a86df2a212eebdab3/tests/unit/model_runtime/test_reliability_expected_field_coverage.py": 1,
+    "lib/extraction/canonical_repository.py": 3,
+    ".claude/worktrees/agent-a86df2a212eebdab3/lib/semantic_annotations/input_budget.py": 1,
+    "lib/extraction/canonical_promotion_policy.py": 2,
+    ".claude/worktrees/agent-a86df2a212eebdab3/scripts/gpu/run_phase8_5_semantic_canary.py": 7,
+    ".claude/worktrees/agent-a86df2a212eebdab3/lib/config/settings.py": 1,
+    ".claude/worktrees/agent-a86df2a212eebdab3/lib/semantic_annotations/qwen_gateway.py": 6,
+    ".claude/worktrees/agent-a86df2a212eebdab3/tests/unit/semantic_annotations/test_input_budget.py": 2,
+    ".claude/worktrees/agent-a86df2a212eebdab3/tests/unit/semantic_annotations/test_gateways.py": 1,
+    ".claude/worktrees/agent-a86df2a212eebdab3/.wolf/anatomy.md": 1
   },
-  "anatomy_hits": 3,
-  "anatomy_misses": 190,
-  "repeated_reads_warned": 235,
+  "anatomy_hits": 4,
+  "anatomy_misses": 204,
+  "repeated_reads_warned": 238,
   "cerebrum_warnings": 0,
-  "stop_count": 11
+  "stop_count": 12
 }
