@@ -82,3 +82,158 @@
 | 22:45 | Swapped Smart Parse semantic runtime to Qwen3-VL-8B FP8 | lib/model_runtime/profiles.py, compose.yaml, workers/model_services/start_qwen_vllm.sh, STRUCTURA_PHASE_8_5_*.md, docs/adr/0004-phase-8-5-local-model-runtime.md, AGENTS.md, .wolf/* | Replaced the default Qwen3-VL-4B semantic service with the bakeoff-winning Qwen/Qwen3-VL-8B-Instruct-FP8 profile on model-qwen-semantic:8104 while preserving the same semantic contract, prompt path, four-image fan-in, planner-resolution visual-token bounds, and Granite handoff; set vLLM max_model_len=32768, max_num_seqs=1, gpu_memory_utilization=0.88, kv_cache_dtype=fp8, mm processor cache 0, and disabled prefix caching; kept 4B as historical/canary only and left separate model-qwen HQ/rescue disabled/deferred | ~1500 |
 | 07:20 | Removed legacy separate Qwen HQ/rescue runtime path | compose.yaml, lib/config/settings.py, lib/semantic_annotations, lib/extraction, apps/api, apps/web, scripts/gpu, tests, docs/adr, docs/model-runtime, agents.md, .wolf/* | Removed `STRUCTURA_QWEN8_ENABLED`, the inactive `model-qwen`/placeholder services, High Quality/Allow 8B Rescue API and UI paths, private-corpus HQ/rescue flags, and rescue enqueue behavior. Smart Parse now has one active Qwen path: Qwen3-VL-8B-Instruct-FP8 on `model-qwen-semantic:8104`; uncertainty routes to review instead of a second semantic pass. | ~1300 |
 | 11:31 | Persisted latest Phase 8.5 model-pipeline state and review findings | .wolf/cerebrum.md, .wolf/anatomy.md, .wolf/memory.md, artifacts/structura-model-prompts-contracts-behaviors-20260501T082453Z-v2.zip | Recorded the active Docling -> Qwen3-VL-8B FP8 -> Granite -> validators/review pipeline, Qwen semantic-understanding role, resident corpus run `20260501T080539Z`, removed Phase 4 auto-classify/default overwrite risk, production-style no-heredoc runner preference, v2 share pack path, and remaining hardening risks from the external review validity check | ~1600 |
+
+## Session: 2026-06-05 00:22
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:31 | Created .runtime/phase85_review.workflow.js | — | ~5792 |
+| 00:39 | Session end: 1 writes across 1 files (phase85_review.workflow.js) | 127 reads | ~5792 tok |
+| 01:00 | Session end: 1 writes across 1 files (phase85_review.workflow.js) | 200 reads | ~16092 tok |
+| 01:20 | Session end: 1 writes across 1 files (phase85_review.workflow.js) | 206 reads | ~16092 tok |
+| 16:01 | Session end: 1 writes across 1 files (phase85_review.workflow.js) | 214 reads | ~16092 tok |
+| 16:19 | Session end: 1 writes across 1 files (phase85_review.workflow.js) | 228 reads | ~16092 tok |
+| 16:26 | Session end: 1 writes across 1 files (phase85_review.workflow.js) | 228 reads | ~16092 tok |
+| 16:28 | Session end: 1 writes across 1 files (phase85_review.workflow.js) | 228 reads | ~16092 tok |
+| 16:30 | Created docs/adr/0005-deterministic-extraction-and-reconciliation.md | — | ~2010 |
+| 16:31 | Session end: 2 writes across 2 files (phase85_review.workflow.js, 0005-deterministic-extraction-and-reconciliation.md) | 228 reads | ~18246 tok |
+| 17:54 | Edited .runtime/phase85_review.workflow.js | expanded (+13 lines) | ~820 |
+| 17:54 | Edited .runtime/phase85_review.workflow.js | expanded (+20 lines) | ~1347 |
+| 17:55 | Session end: 4 writes across 2 files (phase85_review.workflow.js, 0005-deterministic-extraction-and-reconciliation.md) | 234 reads | ~22297 tok |
+| 17:58 | Session end: 4 writes across 2 files (phase85_review.workflow.js, 0005-deterministic-extraction-and-reconciliation.md) | 237 reads | ~22297 tok |
+| 18:01 | Session end: 4 writes across 2 files (phase85_review.workflow.js, 0005-deterministic-extraction-and-reconciliation.md) | 247 reads | ~22297 tok |
+| 18:18 | Session end: 4 writes across 2 files (phase85_review.workflow.js, 0005-deterministic-extraction-and-reconciliation.md) | 267 reads | ~22297 tok |
+| 20:08 | Session end: 4 writes across 2 files (phase85_review.workflow.js, 0005-deterministic-extraction-and-reconciliation.md) | 271 reads | ~22297 tok |
+| 20:30 | Session end: 4 writes across 2 files (phase85_review.workflow.js, 0005-deterministic-extraction-and-reconciliation.md) | 289 reads | ~22297 tok |
+| 23:40 | Session end: 4 writes across 2 files (phase85_review.workflow.js, 0005-deterministic-extraction-and-reconciliation.md) | 293 reads | ~22297 tok |
+| 00:02 | Session end: 4 writes across 2 files (phase85_review.workflow.js, 0005-deterministic-extraction-and-reconciliation.md) | 306 reads | ~22297 tok |
+
+## Session: 2026-06-09 19:15
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:48 | Created ../../../../tmp/repro_group_collapse.py | — | ~1131 |
+| 20:00 | Edited lib/extraction/claims.py | modified as_json() | ~305 |
+| 20:00 | Edited lib/extraction/claims.py | modified zip() | ~140 |
+| 20:00 | Edited lib/extraction/claims.py | modified _claims_from_line_item() | ~92 |
+| 20:01 | Edited lib/extraction/claims.py | modified _line_item_group_ids() | ~744 |
+| 20:01 | Edited lib/extraction/claims.py | as_json() → identity_json() | ~37 |
+| 20:01 | Edited lib/extraction/claims.py | modified isinstance() | ~69 |
+| 20:01 | Edited lib/extraction/claims.py | 10→10 lines | ~78 |
+| 20:02 | Edited lib/extraction/claims.py | — | ~0 |
+| 20:02 | Edited lib/extraction/model_output_value_parsing.py | modified money_value() | ~711 |
+| 20:02 | Edited lib/extraction/candidate_value_parsing.py | modified number_value() | ~86 |
+| 20:02 | Edited lib/extraction/candidate_value_parsing.py | added 1 import(s) | ~55 |
+| 20:03 | Edited lib/extraction/claim_resolver.py | modified startswith() | ~358 |
+| 20:03 | Edited lib/extraction/claim_resolver.py | modified _anchor_group_id() | ~290 |
+| 20:03 | Edited lib/extraction/claim_invariants.py | modified _has_currency_conflict() | ~528 |
+| 20:03 | Edited lib/extraction/claim_invariants.py | 3→3 lines | ~38 |
+| 20:03 | Edited lib/extraction/reconciliation.py | 4→2 lines | ~30 |
+| 20:04 | Edited lib/extraction/reconciliation.py | modified _line_item_locator_key() | ~75 |
+| 20:04 | Edited lib/extraction/candidate_deduplication.py | modified evidence_locator_key() | ~250 |
+| 20:05 | Edited lib/extraction/evidence_locator.py | modified _evidence_selection_key() | ~283 |
+| 20:05 | Edited lib/extraction/model_output_contract_boundary.py | modified except() | ~134 |
+| 20:05 | Edited lib/extraction/model_output_contract_boundary.py | 5→5 lines | ~58 |
+| 20:06 | Created database/088_phase8_5_line_item_payer_amounts.sql | — | ~115 |
+| 20:07 | Edited lib/extraction/claim_candidates.py | 18→20 lines | ~282 |
+| 20:07 | Edited lib/extraction/models.py | 11→13 lines | ~142 |
+| 20:07 | Edited lib/extraction/candidate_repository.py | 10→11 lines | ~170 |
+| 20:07 | Edited lib/extraction/candidate_repository.py | 5→7 lines | ~73 |
+| 20:07 | Edited lib/extraction/claim_resolver.py | modified _line_item_has_value() | ~56 |
+| 20:08 | Edited lib/extraction/claim_resolver.py | modified _line_item_has_value() | ~122 |
+| 20:09 | Created .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/extraction/model_failure_policy.py | — | ~415 |
+| 20:09 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/workers/semantic_annotations/worker.py | added 1 import(s) | ~72 |
+| 20:09 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/workers/semantic_annotations/worker.py | 9→9 lines | ~87 |
+| 20:09 | Edited lib/extraction/candidate_deduplication.py | modified evidence_locator_key() | ~338 |
+| 20:09 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/extraction/test_worker_failures.py | modified test_extraction_worker_retries_granite_model_timeout_on_all_routes() | ~360 |
+| 20:09 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/extraction/test_worker_failures.py | added 1 import(s) | ~90 |
+| 20:09 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/extraction/test_worker_failures.py | 6→10 lines | ~125 |
+| 20:09 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/extraction/test_worker_failures.py | modified test_extraction_failure_policy_follows_model_exception_retryability_contract() | ~478 |
+| 20:10 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/semantic_annotations/test_worker.py | modified test_semantic_annotation_worker_classifies_model_failures_by_exception_contract() | ~445 |
+| 20:10 | Edited lib/extraction/claim_invariants.py | 15→20 lines | ~282 |
+| 20:10 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/profiles.py | 5→6 lines | ~56 |
+| 20:10 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/profiles.py | 5→5 lines | ~62 |
+| 20:11 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/workers/model_services/start_granite_vllm.sh | "${STRUCTURA_GRANITE_MAX_M" → "${STRUCTURA_GRANITE_MAX_M" | ~16 |
+| 20:11 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/scripts/gpu/phase8_5_live_runtime_preflight.py | expanded (+35 lines) | ~618 |
+| 20:11 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/scripts/gpu/phase8_5_live_runtime_preflight.py | modified items() | ~182 |
+| 20:11 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/scripts/gpu/phase8_5_live_runtime_preflight.py | modified _check_required_live_profiles_registered() | ~740 |
+| 20:12 | Edited lib/extraction/candidate_deduplication.py | modified dedupe_observation_candidates() | ~414 |
+| 20:12 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/model_runtime/test_profiles.py | modified test_granite_profile_limits_match_deployed_server_flags() | ~184 |
+| 20:12 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/test_compose_model_profiles.py | modified test_app_runtime_services_include_host_operator_group() | ~87 |
+| 20:12 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/test_compose_model_profiles.py | modified test_compose_and_start_script_limits_match_profile_registry() | ~385 |
+| 20:13 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/test_model_service_scripts.py | modified test_phase8_5_live_runtime_preflight_checks_profile_registry_limits() | ~613 |
+| 20:13 | Created tests/unit/extraction/test_model_output_value_parsing.py | — | ~556 |
+| 20:13 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/http_client.py | modified post_json() | ~210 |
+| 20:13 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/http_client.py | modified isinstance() | ~160 |
+| 20:14 | Created .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/clients/_embedding.py | — | ~3937 |
+| 20:14 | Created tests/unit/extraction/test_claims_line_item_grouping.py | — | ~2307 |
+| 20:15 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/clients/_embedding.py | _validate_image_input() → _validated_image_bytes() | ~330 |
+| 20:15 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/clients/_embedding.py | _validate_image_input() → _validated_image_bytes() | ~44 |
+| 20:15 | Edited tests/unit/extraction/test_claims_line_item_grouping.py | 12→12 lines | ~135 |
+| 20:15 | Edited tests/unit/extraction/test_claims_line_item_grouping.py | "receipt.line_item.service" → "invoice.line_item.service" | ~20 |
+| 20:16 | Created .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/model_runtime/test_text_embedding_client.py | — | ~1802 |
+| 20:16 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/model_runtime/test_visual_embedding_client.py | test_visual_embedding_client_falls_back_to_openai_multimodal_embedding_endpoint() → test_visual_embedding_client_uses_openai_multimodal_embedding_endpoint_primarily() | ~194 |
+| 20:16 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/model_runtime/test_visual_embedding_client.py | test_visual_embedding_client_falls_back_one_image_at_a_time_for_batches() → test_visual_embedding_client_embeds_one_image_per_request_for_batches() | ~311 |
+| 20:16 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/config/settings.py | 2→3 lines | ~36 |
+| 20:16 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/search/jobs.py | modified enqueue_embed_document_job() | ~208 |
+| 20:17 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/search/jobs.py | 5→4 lines | ~36 |
+| 20:17 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/search/jobs.py | modified enqueue_visual_embed_document_job() | ~67 |
+| 20:17 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/search/projection.py | modified refresh_projection_and_enqueue_embedding() | ~47 |
+| 20:17 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/documents/maintenance.py | 9→10 lines | ~115 |
+| 20:18 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/workers/model_services/start_text_embed.sh | expanded (+18 lines) | ~338 |
+| 20:18 | Created .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/search/test_embedding_jobs.py | — | ~649 |
+| 20:18 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/test_model_service_scripts.py | modified test_granite_start_script_default_max_model_len_matches_compose() | ~192 |
+| 20:18 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/test_config.py | modified test_settings_enable_text_and_visual_embeddings_by_default() | ~125 |
+| 20:19 | Created lib/extraction/receipt_reconciliation.py | — | ~297 |
+| 20:19 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/semantic_annotations/qwen_gateway.py | modified __init__() | ~177 |
+| 20:19 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/semantic_annotations/qwen_gateway.py | modified _active_profile() | ~67 |
+| 20:20 | Edited lib/extraction/reconciliation_repository.py | modified maybe_reconcile_semantic_annotation() | ~1084 |
+| 20:20 | Edited lib/extraction/reconciliation_repository.py | modified in() | ~301 |
+| 20:20 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/semantic_annotations/test_gateways.py | modified test_qwen_semantic_client_builds_from_settings_qwen_semantic_profile() | ~449 |
+| 20:20 | Edited lib/extraction/reconciliation_repository.py | 8→11 lines | ~122 |
+| 20:20 | Edited lib/extraction/reconciliation_repository.py | expanded (+6 lines) | ~183 |
+| 20:20 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/semantic_annotations/test_gateways.py | 9→9 lines | ~120 |
+| 20:20 | Edited lib/extraction/reconciliation_repository.py | modified _region_job_status_counts() | ~1053 |
+| 20:21 | Edited lib/extraction/reconciliation_repository.py | modified _flag_incomplete_region_coverage() | ~209 |
+| 20:21 | Edited lib/extraction/reconciliation_repository.py | 2→2 lines | ~30 |
+| 20:21 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/workers/docling/worker.py | modified _cancel_semantic_annotation_job() | ~1061 |
+| 20:21 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/workers/docling/worker.py | modified _enqueue_semantic_annotation() | ~143 |
+| 20:21 | Edited workers/extraction/worker.py | modified _maybe_reconcile_after_failure() | ~499 |
+| 20:21 | Edited lib/semantic_annotations/extraction_plan.py | modified select_if_allowed() | ~361 |
+| 20:22 | Edited lib/semantic_annotations/extraction_plan.py | modified _line_item_coverage_rescue_eligible() | ~96 |
+| 20:22 | Created .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/test_docling_worker_lifecycle.py | — | ~1738 |
+| 20:23 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/extraction/gateways/routing.py | 19→23 lines | ~321 |
+| 20:23 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/extraction/test_routing_gateway.py | modified test_routing_structured_schemas_cover_every_target_extraction_schema() | ~338 |
+| 20:23 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/health.py | added 1 import(s) | ~101 |
+| 20:23 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/health.py | modified probed_model_health_snapshots() | ~86 |
+| 20:24 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/health.py | modified persist_model_health_snapshots() | ~407 |
+| 20:24 | Edited lib/extraction/reconciliation_repository.py | modified _aggregate_schema_name() | ~160 |
+| 20:24 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/health.py | 8→9 lines | ~79 |
+| 20:24 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/health.py | modified _health_response() | ~184 |
+| 20:24 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/apps/api/structura_api/routes_admin.py | 5→9 lines | ~85 |
+| 20:24 | Created .claude/worktrees/agent-ae7e1c2e42dcbc2f2/database/086_phase8_5_service_health.sql | — | ~190 |
+| 20:24 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/db/migrations.py | 2→3 lines | ~26 |
+| 20:24 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/test_migrations.py | 3→3 lines | ~53 |
+| 20:24 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/test_migrations.py | modified test_phase8_5_plan_task_visual_summary_migration_is_baseline_migration() | ~317 |
+| 20:25 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/model_runtime/test_health.py | added 1 import(s) | ~73 |
+| 20:25 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/model_runtime/test_health.py | modified test_model_health_probe_records_probed_service_url_without_credentials() | ~1047 |
+| 20:25 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/documents/analysis_quality.py | 1→2 lines | ~41 |
+| 20:25 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/documents/analysis_quality.py | modified _operational_status() | ~422 |
+| 20:26 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/documents/test_analysis_intake.py | modified test_phase9_intake_treats_retryable_failed_jobs_as_in_progress() | ~905 |
+| 20:26 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/scripts/gpu/run_phase8_5_semantic_canary.py | modified main() | ~207 |
+| 20:27 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/scripts/test_phase8_5_semantic_canary.py | added 1 import(s) | ~64 |
+| 20:27 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/scripts/test_phase8_5_semantic_canary.py | modified test_semantic_canary_rejects_historical_modes_the_runtime_cannot_serve() | ~169 |
+| 20:27 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/config/settings.py | 3→2 lines | ~23 |
+| 20:27 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/extraction/reconciliation.py | modified _clean_canonical_scalar() | ~18 |
+| 20:28 | Edited .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/extraction/gateways/_vision.py | removed 29 lines | ~26 |
+| 20:29 | Edited lib/extraction/claim_resolver.py | 8→13 lines | ~152 |
+| 20:29 | Edited lib/extraction/claim_resolver.py | modified _line_item_has_value() | ~134 |
+| 20:29 | Edited lib/extraction/claim_resolver.py | modified sorted() | ~139 |
+| 20:29 | Edited lib/extraction/claim_resolver.py | modified _observation_is_low_signal() | ~152 |
+| 20:29 | Edited lib/extraction/claims.py | modified _planner_only_method() | ~94 |
+| 20:31 | Edited lib/extraction/candidate_quality.py | modified reject_line_item() | ~62 |
+| 20:31 | Edited lib/extraction/candidate_quality.py | modified is_placeholder_token() | ~135 |
+| 20:31 | Edited lib/extraction/claim_resolver.py | modified _line_item_has_value() | ~53 |
+| 20:32 | Edited lib/extraction/candidate_quality.py | modified reject_line_item_content() | ~533 |
+| 20:32 | Edited lib/extraction/claim_resolver.py | inline fix | ~26 |
+| 20:33 | Edited lib/extraction/claim_resolver.py | reject_line_item() → reject_line_item_content() | ~24 |

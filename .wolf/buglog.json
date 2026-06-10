@@ -8,7 +8,12 @@
       "file": "STRUCTURA_UI_FIGMA_QA_PLAN.md",
       "root_cause": "The user-provided Figma node ids 14:2 and 35:2 are page nodes, not concrete screen frames for design context extraction.",
       "fix": "Inspected the Figma file structure with use_figma and documented that implementation should target concrete child frames such as 17:2, 14:434, 14:611, 14:797, and 14:990.",
-      "tags": ["figma", "design-context", "page-node", "ui-qa"],
+      "tags": [
+        "figma",
+        "design-context",
+        "page-node",
+        "ui-qa"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-24T00:13:00-04:00"
@@ -20,7 +25,12 @@
       "file": "scripts/validate_contracts.py",
       "root_cause": "Directly executed scripts start with the scripts directory on sys.path, so the repository root was not importable.",
       "fix": "Inserted the repository root into sys.path at startup in scripts/validate_contracts.py and scripts/migrate.py.",
-      "tags": ["python", "scripts", "imports", "phase-0"],
+      "tags": [
+        "python",
+        "scripts",
+        "imports",
+        "phase-0"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-24T00:57:05-04:00"
@@ -32,7 +42,12 @@
       "file": "apps/web/src/App.tsx",
       "root_cause": "The Vite web scaffold did not include vite/client ambient type declarations.",
       "fix": "Added apps/web/src/vite-env.d.ts with a Vite client types reference.",
-      "tags": ["typescript", "vite", "web-build", "phase-0"],
+      "tags": [
+        "typescript",
+        "vite",
+        "web-build",
+        "phase-0"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-24T00:57:56-04:00"
@@ -44,7 +59,12 @@
       "file": "compose.yaml",
       "root_cause": "The Compose scaffold used the floating latest ParadeDB image, which had moved to PostgreSQL 18 while the project baseline targets PostgreSQL 17.",
       "fix": "Pinned the default image to paradedb/paradedb:0.21.5-pg17 and documented the decision in README.md and ADR 0000.",
-      "tags": ["docker", "postgres", "paradedb", "phase-0"],
+      "tags": [
+        "docker",
+        "postgres",
+        "paradedb",
+        "phase-0"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-24T00:59:03-04:00"
@@ -56,7 +76,12 @@
       "file": "apps/api/requirements.txt",
       "root_cause": "The host Python environment had not been bootstrapped with the API runtime dependencies yet.",
       "fix": "Installed apps/api/requirements.txt before rerunning migration verification.",
-      "tags": ["python", "dependency", "psycopg", "phase-0"],
+      "tags": [
+        "python",
+        "dependency",
+        "psycopg",
+        "phase-0"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-24T01:01:53-04:00"
@@ -67,8 +92,14 @@
       "error_message": "psycopg.errors.InternalError_: invalid postgres oid passed to search index schema: Custom(21878)",
       "file": "database/040_indexes_bm25_pgvector.sql",
       "root_cause": "The pinned ParadeDB/PostgreSQL 17 image rejected the citext normalized_name column inside the parties BM25 index.",
-            "fix": "Cast normalized_name through pdb.simple inside parties_bm25_idx and kept address_json so the Phase 0 baseline preserves the artifact-pack search inputs while remaining compatible with the pinned ParadeDB image.",
-      "tags": ["postgres", "paradedb", "bm25", "citext", "phase-0"],
+      "fix": "Cast normalized_name through pdb.simple inside parties_bm25_idx and kept address_json so the Phase 0 baseline preserves the artifact-pack search inputs while remaining compatible with the pinned ParadeDB image.",
+      "tags": [
+        "postgres",
+        "paradedb",
+        "bm25",
+        "citext",
+        "phase-0"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-24T01:01:53-04:00"
@@ -80,7 +111,13 @@
       "file": "apps/api/requirements.txt",
       "root_cause": "Phase 0E password auth introduced Argon2id hashing but the host environment and API requirements did not yet include argon2-cffi.",
       "fix": "Added argon2-cffi to apps/api/requirements.txt and pyproject.toml, then installed apps/api/requirements.txt before rerunning tests.",
-      "tags": ["python", "dependency", "argon2", "auth", "phase-0"],
+      "tags": [
+        "python",
+        "dependency",
+        "argon2",
+        "auth",
+        "phase-0"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-24T01:42:00-04:00"
@@ -92,7 +129,13 @@
       "file": "tests/integration/test_phase0_auth_jobs.py",
       "root_cause": "The live auth integration test used an example.test address, but Pydantic EmailStr rejects special-use/reserved domains during API request validation.",
       "fix": "Changed the integration fixture email to example.com so API validation and service setup exercise the same accepted email shape.",
-      "tags": ["pydantic", "email-validation", "auth", "tests", "phase-0"],
+      "tags": [
+        "pydantic",
+        "email-validation",
+        "auth",
+        "tests",
+        "phase-0"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-24T01:47:00-04:00"
@@ -104,7 +147,13 @@
       "file": "apps/api/structura_api/routes_auth.py",
       "root_cause": "The logout route returned FastAPI's injected Response object without explicitly setting its status code, so the decorator status was not preserved on that Response instance.",
       "fix": "Set response.status_code to HTTP_204_NO_CONTENT before returning the cookie-clearing logout response.",
-      "tags": ["fastapi", "auth", "logout", "tests", "phase-0"],
+      "tags": [
+        "fastapi",
+        "auth",
+        "logout",
+        "tests",
+        "phase-0"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-24T01:48:00-04:00"
@@ -116,7 +165,12 @@
       "file": "lib/db/migrations.py",
       "root_cause": "The migration runner replayed every baseline SQL file on every run and had no schema_migrations tracking or legacy-adoption path for an already-migrated Phase 0 database.",
       "fix": "Added structura.schema_migrations with checksums, legacy object detection for existing Phase 0 schemas, and integration coverage that repeated migration runs are no-ops.",
-      "tags": ["postgres", "migrations", "idempotency", "phase-0"],
+      "tags": [
+        "postgres",
+        "migrations",
+        "idempotency",
+        "phase-0"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-24T01:50:00-04:00"
@@ -128,7 +182,13 @@
       "file": "apps/api/structura_api/routes_auth.py",
       "root_cause": "The route accepted a raw dict and manually invoked TypeAdapter validation, allowing Pydantic ValidationError to escape FastAPI request handling.",
       "fix": "Changed the route body to the discriminated CreateSessionRequest type and added integration coverage for 422 validation responses.",
-      "tags": ["fastapi", "pydantic", "auth", "validation", "phase-0"],
+      "tags": [
+        "fastapi",
+        "pydantic",
+        "auth",
+        "validation",
+        "phase-0"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-24T02:20:00-04:00"
@@ -140,7 +200,13 @@
       "file": "apps/api/structura_api/dependencies.py",
       "root_cause": "Cookie writes used Settings.session_cookie_name while route/dependency reads used hardcoded structura_session aliases.",
       "fix": "Centralized session-cookie reads through Settings.session_cookie_name and added integration coverage for custom session and CSRF cookie names.",
-      "tags": ["fastapi", "cookies", "auth", "configuration", "phase-0"],
+      "tags": [
+        "fastapi",
+        "cookies",
+        "auth",
+        "configuration",
+        "phase-0"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-24T02:21:00-04:00"
@@ -152,7 +218,12 @@
       "file": "lib/jobs/service.py",
       "root_cause": "fail_job did not move scheduled_at forward for retryable failures even though claim_next_job only checks scheduled_at.",
       "fix": "Added bounded exponential retry delay metadata and scheduled_at updates for retryable failed jobs, with integration coverage that immediate re-claim is blocked.",
-      "tags": ["jobs", "retry", "backoff", "phase-0"],
+      "tags": [
+        "jobs",
+        "retry",
+        "backoff",
+        "phase-0"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-24T02:22:00-04:00"
@@ -164,7 +235,13 @@
       "file": "lib/jobs/service.py",
       "root_cause": "JobService always operated as an implicit pipeline_jobs-only service without resolving the configured queue transport profile or documenting fallback.",
       "fix": "Added queue transport profile resolution for pgmq, pipeline_jobs, and redis, with explicit Phase 0 fallback reasons and unit coverage.",
-      "tags": ["jobs", "queue", "pgmq", "redis", "phase-0"],
+      "tags": [
+        "jobs",
+        "queue",
+        "pgmq",
+        "redis",
+        "phase-0"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-24T02:23:00-04:00"
@@ -176,7 +253,12 @@
       "file": "contracts/api/openapi.yaml",
       "root_cause": "Runtime diagnostics were added after the copied OpenAPI contract and /api/v1/migrations/baseline was tagged Admin without requiring a principal.",
       "fix": "Added the diagnostic paths to OpenAPI and protected the migration manifest with the current-principal dependency.",
-      "tags": ["openapi", "admin", "auth", "phase-0"],
+      "tags": [
+        "openapi",
+        "admin",
+        "auth",
+        "phase-0"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-24T02:24:00-04:00"
@@ -188,8 +270,15 @@
       "file": "apps/api/structura_api/routes_documents.py",
       "root_cause": "Phase 0 implemented only a subset of protected route skeletons even though the implementation plan requires contract path coverage and protected skeletons before product workflows.",
       "fix": "Added protected skeleton routes for the active contract path set, switched path templates to exact OpenAPI names, hid /healthz from generated API docs, and added an OpenAPI path parity regression test.",
-      "tags": ["openapi", "fastapi", "contracts", "phase-0"],
-      "related_bugs": ["bug-015"],
+      "tags": [
+        "openapi",
+        "fastapi",
+        "contracts",
+        "phase-0"
+      ],
+      "related_bugs": [
+        "bug-015"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-24T16:05:00-04:00"
     },
@@ -200,7 +289,13 @@
       "file": "lib/db/connection.py",
       "root_cause": "The psycopg dict-row connection boundary and migration cursors were under-typed, causing downstream row access to be treated as tuple/object access.",
       "fix": "Typed the shared DB connection as dict-row based, added explicit non-null checks for database RETURNING rows, tightened contract/job helper return types, and added mypy/Pyright to the SAST target.",
-      "tags": ["typing", "mypy", "pyright", "psycopg", "phase-0"],
+      "tags": [
+        "typing",
+        "mypy",
+        "pyright",
+        "psycopg",
+        "phase-0"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-24T16:05:00-04:00"
@@ -212,7 +307,11 @@
       "file": "lib/auth/__init__.py",
       "root_cause": "Phase 0 lint ran ruff check but had not enforced ruff format conformance on all Python files.",
       "fix": "Applied ruff formatting and verified the full repository with ruff format --check.",
-      "tags": ["formatting", "ruff", "phase-0"],
+      "tags": [
+        "formatting",
+        "ruff",
+        "phase-0"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-24T16:05:00-04:00"
@@ -224,7 +323,14 @@
       "file": "Makefile",
       "root_cause": "The repository had no codified SAST target and the Phase 0 Dockerfiles did not set non-root runtime users.",
       "fix": "Added a make sast target with Bandit, Semgrep, Pyright, and mypy; added dev dependencies; made Docker images run as non-root users; changed default bind hosts to localhost unless Compose explicitly opts into container binding; and rewrote dynamic job-list SQL as fixed query branches.",
-      "tags": ["sast", "security", "docker", "bandit", "semgrep", "phase-0"],
+      "tags": [
+        "sast",
+        "security",
+        "docker",
+        "bandit",
+        "semgrep",
+        "phase-0"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-24T16:05:00-04:00"
@@ -236,7 +342,13 @@
       "file": "agents.md",
       "root_cause": "The GPU node completion policy in STRUCTURA_PLAN_INDEX.md was not carried forward into the active agent guidance before running milestone validation.",
       "fix": "Persisted the GPU node policy in agents.md and OpenWolf: commit and push locally, SSH to bgconley@10.25.0.50 with the configured key, pull into /tank/repos/structura, keep venvs under /tank/venvs, and run milestone build/test evidence on the GPU node using /srv/structura runtime mounts.",
-      "tags": ["process", "gpu-node", "testing", "runtime", "phase-1"],
+      "tags": [
+        "process",
+        "gpu-node",
+        "testing",
+        "runtime",
+        "phase-1"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-25T03:19:47-04:00"
@@ -248,8 +360,16 @@
       "file": "agents.md",
       "root_cause": "The guidance included conditional create language before verifying the live GPU-node filesystem and ZFS dataset state.",
       "fix": "Inspected the GPU node with zfs list, zpool list, findmnt, df, ls, and docker info; updated agents.md and OpenWolf to require inspection before creation and recorded the observed state: tank/repos exists, /tank/repos/structura exists, /tank/venvs exists on root ext4, /srv/structura and tank/structura runtime datasets are absent.",
-      "tags": ["process", "zfs", "gpu-node", "runtime", "paths"],
-      "related_bugs": ["bug-020"],
+      "tags": [
+        "process",
+        "zfs",
+        "gpu-node",
+        "runtime",
+        "paths"
+      ],
+      "related_bugs": [
+        "bug-020"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-25T03:24:29-04:00"
     },
@@ -260,8 +380,16 @@
       "file": "infrastructure/zfs/create_gpu_runtime_datasets.sh",
       "root_cause": "The script used the host operator owner for writable app paths, but apps/api/Dockerfile runs API, worker, and model containers as non-root UID 10001 on Linux bind mounts.",
       "fix": "Updated the script to chown objects, models, staging, cache, logs, and tmp to 10001:bgconley with group-write permissions while preserving repo and venv host conventions.",
-      "tags": ["zfs", "docker", "permissions", "gpu-node", "bind-mounts"],
-      "related_bugs": ["bug-021"],
+      "tags": [
+        "zfs",
+        "docker",
+        "permissions",
+        "gpu-node",
+        "bind-mounts"
+      ],
+      "related_bugs": [
+        "bug-021"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-25T03:34:56-04:00"
     },
@@ -272,7 +400,13 @@
       "file": "pyproject.toml",
       "root_cause": "The project used setuptools auto-discovery in a flat repository containing non-package top-level directories such as database, contracts, and infrastructure.",
       "fix": "Configured setuptools package discovery to include only apps*, lib*, and workers* so editable installs can be used for GPU-node test environments.",
-      "tags": ["python", "packaging", "setuptools", "gpu-node", "bootstrap"],
+      "tags": [
+        "python",
+        "packaging",
+        "setuptools",
+        "gpu-node",
+        "bootstrap"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-25T03:44:00-04:00"
@@ -284,8 +418,16 @@
       "file": "pyproject.toml",
       "root_cause": "The dev extra included types-jsonschema but omitted types-PyYAML even though lib/contracts/registry.py imports yaml.",
       "fix": "Added types-PyYAML to the dev optional dependencies so GPU-node venv bootstrap installs the stubs required by mypy.",
-      "tags": ["mypy", "typing", "pyyaml", "gpu-node", "sast"],
-      "related_bugs": ["bug-023"],
+      "tags": [
+        "mypy",
+        "typing",
+        "pyyaml",
+        "gpu-node",
+        "sast"
+      ],
+      "related_bugs": [
+        "bug-023"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-25T03:46:00-04:00"
     },
@@ -296,7 +438,13 @@
       "file": "tests/e2e/phase1.spec.ts",
       "root_cause": "The E2E test wrote screenshots directly to committed reference paths instead of Playwright's per-run test output directory.",
       "fix": "Changed screenshots to use testInfo.outputPath so runtime screenshots are captured as ignored test artifacts and committed reference screenshots remain stable.",
-      "tags": ["playwright", "e2e", "screenshots", "git", "gpu-node"],
+      "tags": [
+        "playwright",
+        "e2e",
+        "screenshots",
+        "git",
+        "gpu-node"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-25T03:52:00-04:00"
@@ -308,7 +456,13 @@
       "file": "tests/e2e/phase1-live.spec.ts",
       "root_cause": "The existing Playwright workflow mocked API responses, while live API/storage/database behavior was verified separately by integration tests.",
       "fix": "Added an opt-in STRUCTURA_E2E_LIVE=1 Playwright test that logs in, uploads a document, opens the viewer, and asserts protected asset URLs through the real web/API/Postgres stack.",
-      "tags": ["playwright", "e2e", "compose", "phase-1", "gpu-node"],
+      "tags": [
+        "playwright",
+        "e2e",
+        "compose",
+        "phase-1",
+        "gpu-node"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-25T04:05:00-04:00"
@@ -320,8 +474,16 @@
       "file": "compose.yaml",
       "root_cause": "The web healthcheck used localhost, which can resolve to IPv6 inside the Alpine container while the Node static server listens on IPv4 0.0.0.0.",
       "fix": "Changed the web healthcheck URL to http://127.0.0.1:3000 so it checks the IPv4 listener directly.",
-      "tags": ["docker", "compose", "healthcheck", "web", "gpu-node"],
-      "related_bugs": ["bug-026"],
+      "tags": [
+        "docker",
+        "compose",
+        "healthcheck",
+        "web",
+        "gpu-node"
+      ],
+      "related_bugs": [
+        "bug-026"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-25T04:09:00-04:00"
     },
@@ -332,8 +494,17 @@
       "file": "apps/api/structura_api/routes_jobs.py",
       "root_cause": "Job/admin routes used authenticated principals without enforcing household ownership and admin role/scope rules across job read/list/retry surfaces.",
       "fix": "Added household role to auth principals, added admin dependencies, scoped job create/read/list/retry by household, updated upload job creation to carry household_id, and added cross-household/admin regression coverage.",
-      "tags": ["security", "authz", "household", "jobs", "admin", "phase-2"],
-      "related_bugs": ["bug-020"],
+      "tags": [
+        "security",
+        "authz",
+        "household",
+        "jobs",
+        "admin",
+        "phase-2"
+      ],
+      "related_bugs": [
+        "bug-020"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-26T20:30:00-04:00"
     },
@@ -344,7 +515,13 @@
       "file": "lib/jobs/service.py",
       "root_cause": "retry_job cleared dead-letter status but did not reset attempt_count or stale worker/lease/error fields, while claim_next_job requires attempt_count < max_attempts.",
       "fix": "Changed manual retry to reset attempt_count to 0, clear lease/worker/start/finish/error fields, schedule the job immediately, and added regression coverage proving retried dead-letter jobs are claimable.",
-      "tags": ["reliability", "jobs", "dead-letter", "retry", "phase-2"],
+      "tags": [
+        "reliability",
+        "jobs",
+        "dead-letter",
+        "retry",
+        "phase-2"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-26T20:30:00-04:00"
@@ -356,7 +533,14 @@
       "file": "apps/web/server.mjs",
       "root_cause": "The static web proxy used Buffer.concat for incoming requests and arrayBuffer() for upstream responses, defeating streaming/backpressure expectations for large uploads/downloads.",
       "fix": "Reworked the proxy to stream request bodies into fetch with duplex half mode, pipe upstream response streams back to the client, preserve headers safely, and keep explicit body-size guarding.",
-      "tags": ["performance", "reliability", "web", "proxy", "streaming", "phase-2"],
+      "tags": [
+        "performance",
+        "reliability",
+        "web",
+        "proxy",
+        "streaming",
+        "phase-2"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-26T20:30:00-04:00"
@@ -368,8 +552,17 @@
       "file": "workers/previews/worker.py",
       "root_cause": "The Phase 1/2 preview pipeline had queue records but no active consumer, so recovery depended on API upload-side side effects rather than worker claim/complete/fail semantics.",
       "fix": "Added a real preview worker loop and shared worker runtime health server, moved preview generation to the worker path, changed upload to enqueue preview jobs only, and updated integration tests to process the matching document's preview job deterministically.",
-      "tags": ["workers", "previews", "jobs", "reliability", "phase-1", "phase-2"],
-      "related_bugs": ["bug-029"],
+      "tags": [
+        "workers",
+        "previews",
+        "jobs",
+        "reliability",
+        "phase-1",
+        "phase-2"
+      ],
+      "related_bugs": [
+        "bug-029"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-26T20:30:00-04:00"
     },
@@ -380,8 +573,16 @@
       "file": "docs/ui-reference/figma/folder-tag-filing/figma-context.json",
       "root_cause": "Phase 1/2 Playwright tests used procedural screenshots without complete committed reference coverage for the folder/tag filing composite Figma source set.",
       "fix": "Added Playwright toHaveScreenshot assertions and Linux baselines, captured Phase 2 folder/tag filing Figma and handoff artifacts, documented the composite source set, and committed the Playwright comparison screenshot.",
-      "tags": ["playwright", "figma", "ui-reference", "screenshots", "phase-2"],
-      "related_bugs": ["bug-025"],
+      "tags": [
+        "playwright",
+        "figma",
+        "ui-reference",
+        "screenshots",
+        "phase-2"
+      ],
+      "related_bugs": [
+        "bug-025"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-26T20:30:00-04:00"
     },
@@ -392,7 +593,14 @@
       "file": "workers/docling/Dockerfile",
       "root_cause": "The Python Docling dependency stack installed successfully, but the slim worker image did not include native OpenCV/PDF pipeline shared libraries required by Docling's table model path.",
       "fix": "Added the required native runtime libraries to the worker-docling image while keeping Docling/Torch isolated from API and preview images.",
-      "tags": ["docker", "docling", "opencv", "worker-docling", "phase-3", "gpu-node"],
+      "tags": [
+        "docker",
+        "docling",
+        "opencv",
+        "worker-docling",
+        "phase-3",
+        "gpu-node"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-26T22:05:00-04:00"
@@ -404,8 +612,17 @@
       "file": "workers/docling/converter.py",
       "root_cause": "The worker relied on Docling's default PDF pipeline, which initializes OCR and RapidOCR model downloads even for the simple digital-PDF smoke, and RapidOCR's default model root was inside the installed package path.",
       "fix": "Configured Docling's PDF pipeline explicitly, disabled OCR by default for Phase 3 digital-PDF conversion, and set runtime cache environment paths under /srv/structura/cache for future OCR/model enablement.",
-      "tags": ["docling", "rapidocr", "cache", "permissions", "phase-3", "gpu-node"],
-      "related_bugs": ["bug-033"],
+      "tags": [
+        "docling",
+        "rapidocr",
+        "cache",
+        "permissions",
+        "phase-3",
+        "gpu-node"
+      ],
+      "related_bugs": [
+        "bug-033"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-26T22:20:00-04:00"
     },
@@ -416,7 +633,13 @@
       "file": "lib/documents/read_model.py",
       "root_cause": "Document and asset read queries enforced household membership only and did not apply the documented folder/document/sensitivity ACL predicate.",
       "fix": "Added the baseline database function document_is_readable, applied it to document list/detail/assets and organization write locking, and added same-household private-folder negative integration coverage.",
-      "tags": ["security", "acl", "documents", "assets", "phase-3"],
+      "tags": [
+        "security",
+        "acl",
+        "documents",
+        "assets",
+        "phase-3"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-26T23:25:00-04:00"
@@ -428,7 +651,13 @@
       "file": "database/040_indexes_bm25_pgvector.sql",
       "root_cause": "The original folders_parent_name_uniq index scoped uniqueness by parent/name only and ignored household_id.",
       "fix": "Added a forward migration that replaces the global index with household-scoped and system-folder-scoped unique indexes, plus deterministic 409 handling for unique races.",
-      "tags": ["database", "folders", "multi-tenant", "phase-2", "phase-3"],
+      "tags": [
+        "database",
+        "folders",
+        "multi-tenant",
+        "phase-2",
+        "phase-3"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-26T23:25:00-04:00"
@@ -440,8 +669,16 @@
       "file": "lib/jobs/service.py",
       "root_cause": "claim_next_job_record only considered queued/failed jobs and retry_job rejected running jobs even when their leases had expired.",
       "fix": "Added stale running-job recovery before claim, dead-lettering when attempts are exhausted, and allowed admin retry of expired running jobs only; added integration regression coverage.",
-      "tags": ["jobs", "leases", "retry", "reliability", "phase-3"],
-      "related_bugs": ["bug-029"],
+      "tags": [
+        "jobs",
+        "leases",
+        "retry",
+        "reliability",
+        "phase-3"
+      ],
+      "related_bugs": [
+        "bug-029"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-26T23:25:00-04:00"
     },
@@ -452,8 +689,15 @@
       "file": "tests/e2e/phase3.spec.ts",
       "root_cause": "The parse-debug browser test asserted text only and docs/ui-reference lacked a parse-debug reference folder.",
       "fix": "Added deterministic Playwright screenshot assertion, committed the Linux snapshot, added parse-debug comparison notes/context, and refreshed viewer/folder filing screenshots after the Phase 3 panel changed current UI height.",
-      "tags": ["playwright", "figma", "ui-reference", "phase-3"],
-      "related_bugs": ["bug-032"],
+      "tags": [
+        "playwright",
+        "figma",
+        "ui-reference",
+        "phase-3"
+      ],
+      "related_bugs": [
+        "bug-032"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-26T23:25:00-04:00"
     },
@@ -464,8 +708,16 @@
       "file": "apps/web/src/api.ts",
       "root_cause": "The backend already supported configurable cookie names, but SessionInfo did not expose them and the frontend always read the default CSRF cookie.",
       "fix": "Extended SessionInfo/OpenAPI with sessionCookieName and csrfCookieName, configured the web client from the session response, and added mocked browser coverage for a custom CSRF cookie name.",
-      "tags": ["csrf", "cookies", "frontend", "configuration", "phase-3"],
-      "related_bugs": ["bug-012"],
+      "tags": [
+        "csrf",
+        "cookies",
+        "frontend",
+        "configuration",
+        "phase-3"
+      ],
+      "related_bugs": [
+        "bug-012"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-26T23:25:00-04:00"
     },
@@ -476,8 +728,16 @@
       "file": "tests/e2e/phase3-live.spec.ts",
       "root_cause": "Phase 3 had GPU backend integration coverage and mocked Playwright screenshot coverage, but no live browser spec was added to exercise the GPU-hosted web/API/DB/Docling path.",
       "fix": "Added tests/e2e/phase3-live.spec.ts with deterministic PDF upload, live Docling parse polling, and Viewer Parse Debug assertions; added tests/e2e/support/pdf.ts; updated README/agents guidance and OpenWolf memory so all implemented phase live specs must be included.",
-      "tags": ["playwright", "gpu-node", "phase-3", "live-tests", "validation"],
-      "related_bugs": ["bug-038"],
+      "tags": [
+        "playwright",
+        "gpu-node",
+        "phase-3",
+        "live-tests",
+        "validation"
+      ],
+      "related_bugs": [
+        "bug-038"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-26T13:38:00-04:00"
     },
@@ -488,7 +748,13 @@
       "file": "lib/search/repository.py",
       "root_cause": "Phase 5 search SQL used f-string query construction for internal filter predicate composition and vector casts, which Bandit flags even when values are parameterized.",
       "fix": "Refactored search repository queries to use psycopg.sql composition for internal predicates, removed dynamic vector dimension casts from SQL text, and preserved parameterized user/filter values.",
-      "tags": ["sast", "bandit", "sql", "search", "phase-5"],
+      "tags": [
+        "sast",
+        "bandit",
+        "sql",
+        "search",
+        "phase-5"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-26T18:24:00-04:00"
@@ -500,8 +766,15 @@
       "file": "tests/e2e/phase5.spec.ts",
       "root_cause": "The sidebar button's accessible name includes the icon letter, so /^Search$/ did not match; the screenshot assertion was placed after the evidence-jump navigation to the viewer.",
       "fix": "Changed the locator to match /Search/, moved the screenshot assertion before the evidence jump, added explicit filter selection, and generated the Linux Phase 5 search snapshot.",
-      "tags": ["playwright", "screenshot", "ui-reference", "phase-5"],
-      "related_bugs": ["bug-040"],
+      "tags": [
+        "playwright",
+        "screenshot",
+        "ui-reference",
+        "phase-5"
+      ],
+      "related_bugs": [
+        "bug-040"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-26T18:29:00-04:00"
     },
@@ -512,8 +785,18 @@
       "file": "tests/integration/test_phase4_extraction_review.py",
       "root_cause": "The integration tests assumed an idle queue and asserted process_next_extraction_job returned true, which is brittle when the canonical GPU stack has background extraction workers running.",
       "fix": "Changed Phase 4 integration tests to drain jobs opportunistically and wait for persisted candidates/canonical fields/job success, making them valid against both idle test DBs and live worker stacks.",
-      "tags": ["tests", "integration", "workers", "race", "gpu-node", "phase-4", "phase-5"],
-      "related_bugs": ["bug-042"],
+      "tags": [
+        "tests",
+        "integration",
+        "workers",
+        "race",
+        "gpu-node",
+        "phase-4",
+        "phase-5"
+      ],
+      "related_bugs": [
+        "bug-042"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-26T14:40:00-04:00"
     },
@@ -524,8 +807,16 @@
       "file": "tests/integration/test_phase5_search.py",
       "root_cause": "The fixture marked the document user_confirmed while also sending reviewedOnly=false, so the ACL/filter path could correctly exclude it until a concurrent extraction worker changed review_status.",
       "fix": "Removed the contradictory reviewedOnly filter from the lexical assertion, included the unique marker in semantic search, and asserted target presence by document ID instead of assuming rank 1 in a shared live DB.",
-      "tags": ["tests", "search", "filters", "gpu-node", "phase-5"],
-      "related_bugs": ["bug-043"],
+      "tags": [
+        "tests",
+        "search",
+        "filters",
+        "gpu-node",
+        "phase-5"
+      ],
+      "related_bugs": [
+        "bug-043"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-26T14:44:00-04:00"
     },
@@ -536,8 +827,17 @@
       "file": "apps/web/src/components/ParseDebugPanel.tsx",
       "root_cause": "Phase 5 added downstream classify/extract/embed jobs, so a recency-only parse-debug job list could omit the Phase 3 canonical parse job even though parse artifacts were present and healthy.",
       "fix": "Changed the Parse Debug panel display helper to always preserve a docling_convert job in the visible list while still capping the list to six rows.",
-      "tags": ["playwright", "live-tests", "parse-debug", "jobs", "phase-3", "phase-5"],
-      "related_bugs": ["bug-040"],
+      "tags": [
+        "playwright",
+        "live-tests",
+        "parse-debug",
+        "jobs",
+        "phase-3",
+        "phase-5"
+      ],
+      "related_bugs": [
+        "bug-040"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-26T15:05:00-04:00"
     },
@@ -548,8 +848,17 @@
       "file": "tests/e2e/phase5-live.spec.ts",
       "root_cause": "The live shared GPU database and Phase 5 retrieval sidebar can contain previous or duplicate search/evidence labels, so page-wide result/evidence locators are ambiguous even when the target result is present.",
       "fix": "Scoped Phase 5 mocked and live result/evidence locators to the matching search-result card before asserting or clicking target actions.",
-      "tags": ["playwright", "live-tests", "search", "strict-mode", "phase-5"],
-      "related_bugs": ["bug-042", "bug-044"],
+      "tags": [
+        "playwright",
+        "live-tests",
+        "search",
+        "strict-mode",
+        "phase-5"
+      ],
+      "related_bugs": [
+        "bug-042",
+        "bug-044"
+      ],
       "occurrences": 2,
       "last_seen": "2026-04-26T15:24:00-04:00"
     },
@@ -560,8 +869,16 @@
       "file": "tests/e2e/phase5-live.spec.ts",
       "root_cause": "The search evidence snippet is generated from tokenized/highlighted search text, and ParadeDB can return highlight tags that should not be exposed as literal client text.",
       "fix": "Normalized ParadeDB highlight markup out of search snippets at the service boundary, added unit/integration coverage, and changed the live evidence assertion to verify the unique run id and stable evidence text rather than the exact hyphenated query marker.",
-      "tags": ["playwright", "live-tests", "search", "evidence", "phase-5"],
-      "related_bugs": ["bug-046"],
+      "tags": [
+        "playwright",
+        "live-tests",
+        "search",
+        "evidence",
+        "phase-5"
+      ],
+      "related_bugs": [
+        "bug-046"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-26T15:14:00-04:00"
     },
@@ -572,8 +889,16 @@
       "file": "lib/search/saved_query.py",
       "root_cause": "Smart-folder document listing used a database helper with a small recognized-key set, while saved-query validation only checked JSON shape and did not reject unsupported semantic keys.",
       "fix": "Added canonical saved-query parsing in lib/search/saved_query.py, routed smart-folder list resolution through lib/documents/list_repository.py and shared document_filter_sql predicates, rejected unknown saved-query keys on folder writes, and added database/071_phase5_search_guardrails.sql as a compatibility guardrail.",
-      "tags": ["phase-5", "smart-folders", "search", "planner-parity", "data-integrity"],
-      "related_bugs": ["bug-044"],
+      "tags": [
+        "phase-5",
+        "smart-folders",
+        "search",
+        "planner-parity",
+        "data-integrity"
+      ],
+      "related_bugs": [
+        "bug-044"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-26T17:05:00-04:00"
     },
@@ -584,8 +909,16 @@
       "file": "workers/ingest/worker.py",
       "root_cause": "The upload route enqueued ingest jobs, but compose.yaml still ran the generic placeholder worker for the ingest service, so no process claimed or completed queue_name='ingest' jobs.",
       "fix": "Implemented workers/ingest/worker.py to claim ingest jobs, verify the original asset, complete or fail jobs, and record worker health; updated compose.yaml so worker-ingest runs the real consumer; added live DB integration coverage for ingest job consumption.",
-      "tags": ["phase-5", "ingest", "workers", "jobs", "reliability"],
-      "related_bugs": ["bug-043"],
+      "tags": [
+        "phase-5",
+        "ingest",
+        "workers",
+        "jobs",
+        "reliability"
+      ],
+      "related_bugs": [
+        "bug-043"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-26T17:05:00-04:00"
     },
@@ -596,7 +929,13 @@
       "file": "contracts/api/openapi.yaml",
       "root_cause": "Future-phase mutation endpoints were exposed in the active contract as if implemented, while routes_placeholders.py intentionally returned HTTP 501 until Phase 6.",
       "fix": "Changed active OpenAPI POST contracts for contacts, filing rules, and watched folders to advertise 501 placeholder responses and added unit coverage comparing runtime OpenAPI response status sets against the contract.",
-      "tags": ["phase-5", "phase-6", "openapi", "contract-parity", "placeholders"],
+      "tags": [
+        "phase-5",
+        "phase-6",
+        "openapi",
+        "contract-parity",
+        "placeholders"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-26T17:05:00-04:00"
@@ -608,8 +947,16 @@
       "file": "apps/web/src/components/SearchFilterPanel.tsx",
       "root_cause": "The initial search UI and facet repository only covered family/tag/review basics and lacked planned folder, sensitivity, date-bucket, amount, and review-status filter breadth.",
       "fix": "Expanded SearchFilters/OpenAPI/search repository facets, added folder/tag/review-status/sensitivity/date/amount UI controls in SearchFilterPanel.tsx, preserved saved-search filter payloads, and regenerated the Phase 5 Playwright screenshot baseline.",
-      "tags": ["phase-5", "search-ui", "facets", "playwright", "figma"],
-      "related_bugs": ["bug-042"],
+      "tags": [
+        "phase-5",
+        "search-ui",
+        "facets",
+        "playwright",
+        "figma"
+      ],
+      "related_bugs": [
+        "bug-042"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-26T17:05:00-04:00"
     },
@@ -620,7 +967,12 @@
       "file": ".github/workflows/ci.yml",
       "root_cause": "Quality gates were reproducible manually and on the GPU node, but the repository did not codify those checks as CI workflow files.",
       "fix": "Added .github/workflows/ci.yml for Python quality gates, contracts, tests, SAST, web lint/build, and Compose config; added .github/workflows/gpu-live-smoke.yml for manual self-hosted live Playwright smoke against the GPU-hosted app.",
-      "tags": ["phase-5", "ci", "github-actions", "operability"],
+      "tags": [
+        "phase-5",
+        "ci",
+        "github-actions",
+        "operability"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-26T17:05:00-04:00"
@@ -632,7 +984,13 @@
       "file": "scripts/structura.py",
       "root_cause": "The initial Phase 6 maintenance CLI used a placeholder admin HTTP check instead of the intended local durable-job enqueue path, and urlopen accepts more schemes than the CLI should trust.",
       "fix": "Added lib/documents/maintenance.py and changed reprocess/rebuild CLI commands to enqueue normal preview/docling/embedding jobs through the database-backed job ledger, removing urlopen entirely.",
-      "tags": ["phase-6", "cli", "sast", "bandit", "jobs"],
+      "tags": [
+        "phase-6",
+        "cli",
+        "sast",
+        "bandit",
+        "jobs"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-26T22:03:00-04:00"
@@ -644,7 +1002,13 @@
       "file": "apps/web/src/components/AutomationWorkbench.tsx",
       "root_cause": "The first Automation Workbench slice implemented the happy-path suggestion action before wiring the full reviewable decision matrix.",
       "fix": "Added a defer endpoint, extended filing_rule_runs decision_status, exposed reject/defer in the web API client and UI, updated OpenAPI/contract parity coverage, and expanded the Phase 6 Playwright workflow.",
-      "tags": ["phase-6", "ui", "filing-suggestions", "openapi", "playwright"],
+      "tags": [
+        "phase-6",
+        "ui",
+        "filing-suggestions",
+        "openapi",
+        "playwright"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-26T22:12:00-04:00"
@@ -656,7 +1020,13 @@
       "file": "tests/e2e/phase6.spec.ts-snapshots/phase6-automation-workbench-chromium-linux.png",
       "root_cause": "The pinned Linux Playwright container attempted to reuse/remove the Mac host node_modules and wrote npm cache under an unwritable container home.",
       "fix": "Generated the Linux snapshot from a container-local copy of the repo and copied only the intended PNG artifact back to the working tree.",
-      "tags": ["phase-6", "playwright", "snapshots", "node", "docker"],
+      "tags": [
+        "phase-6",
+        "playwright",
+        "snapshots",
+        "node",
+        "docker"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-26T22:00:00-04:00"
@@ -668,7 +1038,13 @@
       "file": "lib/automation/repository.py",
       "root_cause": "insert_rule_run executed INSERT ... RETURNING, then updated filing_rules.last_run_at before fetching the returned insert row, so fetchone observed the UPDATE command result.",
       "fix": "Fetch the rule-run row immediately after INSERT ... RETURNING, then update filing_rules.last_run_at and return the saved row.",
-      "tags": ["phase-6", "postgres", "repository", "integration-tests", "gpu-node"],
+      "tags": [
+        "phase-6",
+        "postgres",
+        "repository",
+        "integration-tests",
+        "gpu-node"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-26T22:35:00-04:00"
@@ -680,7 +1056,13 @@
       "file": "tests/integration/test_phase1_documents.py",
       "root_cause": "Phase 6 moved upload orchestration from the document route into lib/documents/ingestion.py, but the rollback regression test still monkeypatched the old route-level import seam.",
       "fix": "Updated the rollback test to monkeypatch lib.documents.ingestion.create_job_with_cursor, preserving the rollback failure injection at the actual enqueue boundary.",
-      "tags": ["phase-6", "phase-1", "tests", "refactor", "gpu-node"],
+      "tags": [
+        "phase-6",
+        "phase-1",
+        "tests",
+        "refactor",
+        "gpu-node"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-26T22:35:00-04:00"
@@ -692,8 +1074,16 @@
       "file": "tests/e2e/phase6-live.spec.ts",
       "root_cause": "The live spec used page-wide getByText after saving a rule, but the UI intentionally echoes the saved rule name in the status banner and the row.",
       "fix": "Scoped the assertion and dry-run click to the matching .rule-row, following the shared-GPU live locator rule.",
-      "tags": ["phase-6", "playwright", "live-tests", "strict-mode", "gpu-node"],
-      "related_bugs": ["bug-046"],
+      "tags": [
+        "phase-6",
+        "playwright",
+        "live-tests",
+        "strict-mode",
+        "gpu-node"
+      ],
+      "related_bugs": [
+        "bug-046"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-26T22:45:00-04:00"
     },
@@ -704,8 +1094,16 @@
       "file": "tests/e2e/phase6-live.spec.ts",
       "root_cause": "The live spec used page-wide getByText for dry-run status after the UI intentionally rendered the same result in the global status banner and the explanatory panel.",
       "fix": "Scoped the matched-count assertion to the Rule dry-run result panel.",
-      "tags": ["phase-6", "playwright", "live-tests", "strict-mode", "gpu-node"],
-      "related_bugs": ["bug-058"],
+      "tags": [
+        "phase-6",
+        "playwright",
+        "live-tests",
+        "strict-mode",
+        "gpu-node"
+      ],
+      "related_bugs": [
+        "bug-058"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-26T22:50:00-04:00"
     },
@@ -716,7 +1114,13 @@
       "file": "lib/automation/action_application.py",
       "root_cause": "The rule policy and contract accepted a broader action set than the apply/accept execution path, which only mutated folder/tag state.",
       "fix": "Added cursor-based action application for folder, tag, sensitivity, document family, and review-task actions; updated policy validation; and added integration coverage for direct apply and suggestion accept.",
-      "tags": ["phase-6", "automation", "filing-rules", "correctness", "contracts"],
+      "tags": [
+        "phase-6",
+        "automation",
+        "filing-rules",
+        "correctness",
+        "contracts"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-26T23:05:00-04:00"
@@ -728,8 +1132,16 @@
       "file": "lib/automation/service.py",
       "root_cause": "Automation called the independently committing manual filing service before writing filing_rule_runs and suggestion decisions, so partial failure could leave document mutations without matching automation audit state.",
       "fix": "Extracted cursor-based organization mutation into lib/organization/document_organization.py and made automation apply/accept share one transaction for document actions, run persistence, and suggestion decisions, with projection refresh after commit.",
-      "tags": ["phase-6", "transactions", "data-integrity", "automation", "postgres"],
-      "related_bugs": ["bug-060"],
+      "tags": [
+        "phase-6",
+        "transactions",
+        "data-integrity",
+        "automation",
+        "postgres"
+      ],
+      "related_bugs": [
+        "bug-060"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-26T23:05:00-04:00"
     },
@@ -740,8 +1152,16 @@
       "file": "contracts/api/openapi.yaml",
       "root_cause": "Relationship, analysis-note, and export mutation contracts were prematurely documented as implemented even though routes_placeholders.py still returned HTTP 501 until later phases.",
       "fix": "Changed active OpenAPI responses for deferred mutation endpoints to advertise 501/422 placeholder behavior and added runtime/contract status parity tests.",
-      "tags": ["phase-6", "phase-7", "openapi", "contract-parity", "placeholders"],
-      "related_bugs": ["bug-050"],
+      "tags": [
+        "phase-6",
+        "phase-7",
+        "openapi",
+        "contract-parity",
+        "placeholders"
+      ],
+      "related_bugs": [
+        "bug-050"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-26T23:05:00-04:00"
     },
@@ -752,7 +1172,13 @@
       "file": "lib/automation/watched_folders.py",
       "root_cause": "The policy layer supported allowed_roots, but the API service and worker did not pass a configured root, widening the filesystem trust boundary.",
       "fix": "Added STRUCTURA_WATCHED_FOLDER_ROOT, passed it through Compose to API and worker services, enforced allowed roots in watched-folder validation and worker scans, and rejected symlinked candidate files.",
-      "tags": ["phase-6", "watched-folders", "security", "filesystem", "policy"],
+      "tags": [
+        "phase-6",
+        "watched-folders",
+        "security",
+        "filesystem",
+        "policy"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-26T23:05:00-04:00"
@@ -764,8 +1190,16 @@
       "file": "apps/web/src/components/AutomationWorkbench.tsx",
       "root_cause": "The initial component concentrated multiple UI responsibilities in one surface and did not expose richer contact merge, rule edit, watcher policy, pause/resume, and explanation controls.",
       "fix": "Split Automation Workbench into focused panel components, added contact merge suggestion display, richer rule builder/dry-run explanations, watched-folder policy and pause/resume controls, and regenerated the Linux screenshot baseline.",
-      "tags": ["phase-6", "ui", "architecture", "playwright", "figma"],
-      "related_bugs": ["bug-054"],
+      "tags": [
+        "phase-6",
+        "ui",
+        "architecture",
+        "playwright",
+        "figma"
+      ],
+      "related_bugs": [
+        "bug-054"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-26T23:05:00-04:00"
     },
@@ -776,8 +1210,16 @@
       "file": ".github/workflows/gpu-live-smoke.yml",
       "root_cause": "The manual GPU live-smoke workflow was not extended when Phase 6 added a live browser spec.",
       "fix": "Added tests/e2e/phase6-live.spec.ts to the GPU live-smoke workflow so canonical live validation covers all implemented UI/runtime phases.",
-      "tags": ["phase-6", "github-actions", "playwright", "gpu-node", "operability"],
-      "related_bugs": ["bug-046"],
+      "tags": [
+        "phase-6",
+        "github-actions",
+        "playwright",
+        "gpu-node",
+        "operability"
+      ],
+      "related_bugs": [
+        "bug-046"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-26T23:05:00-04:00"
     },
@@ -788,8 +1230,16 @@
       "file": "scripts/structura.py",
       "root_cause": "The CLI implemented dry-run validation and maintenance helpers first, leaving execute mode as guidance text rather than a real ingestion path.",
       "fix": "Implemented dependency-free authenticated upload posting for stable PDF files using explicit API URL/token validation and added unit coverage for token-required and upload execution paths.",
-      "tags": ["phase-6", "cli", "bulk-import", "api-upload", "operability"],
-      "related_bugs": ["bug-053"],
+      "tags": [
+        "phase-6",
+        "cli",
+        "bulk-import",
+        "api-upload",
+        "operability"
+      ],
+      "related_bugs": [
+        "bug-053"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-26T23:05:00-04:00"
     },
@@ -800,8 +1250,16 @@
       "file": "apps/web/package.json",
       "root_cause": "Mac host node_modules had been affected by containerized npm operations and Rollup optional native dependencies were not in a reliable host-local state.",
       "fix": "Treated host npm as a non-canonical preflight only and verified web lint/build with the pinned node:20-alpine container locally and on the GPU node.",
-      "tags": ["phase-6", "npm", "node", "web-build", "containers"],
-      "related_bugs": ["bug-055"],
+      "tags": [
+        "phase-6",
+        "npm",
+        "node",
+        "web-build",
+        "containers"
+      ],
+      "related_bugs": [
+        "bug-055"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-26T23:05:00-04:00"
     },
@@ -812,7 +1270,13 @@
       "file": "lib/relationships/service.py",
       "root_cause": "The canonical_fields table does not own confidence; selected candidate confidence lives on field_candidates and human/system canonical fields may legitimately have no candidate confidence.",
       "fix": "Changed deadline refresh to left join field_candidates through selected_candidate_id and preserve null confidence, while accepting canonical evidence_json objects as evidence lists.",
-      "tags": ["phase-7", "relationships", "deadlines", "postgres", "gpu-node"],
+      "tags": [
+        "phase-7",
+        "relationships",
+        "deadlines",
+        "postgres",
+        "gpu-node"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-27T03:38:00-04:00"
@@ -824,8 +1288,17 @@
       "file": "tests/e2e/phase7-live.spec.ts",
       "root_cause": "The live spec used page-wide text/role locators in a database that retains prior live test artifacts, so titles and relationship labels appeared in multiple widgets.",
       "fix": "Scoped assertions to the target Viewer relationship list, relationship workbench card, and timeline card rather than asserting page-wide text.",
-      "tags": ["phase-7", "playwright", "gpu-node", "shared-db", "selectors"],
-      "related_bugs": ["bug-039", "bug-058"],
+      "tags": [
+        "phase-7",
+        "playwright",
+        "gpu-node",
+        "shared-db",
+        "selectors"
+      ],
+      "related_bugs": [
+        "bug-039",
+        "bug-058"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-27T03:40:00-04:00"
     },
@@ -836,8 +1309,16 @@
       "file": "tests/integration/test_phase4_extraction_review.py",
       "root_cause": "The live Compose extraction worker can claim durable extraction jobs while integration tests run against the shared GPU database, so the test's in-process drain helper does not always own the job lifecycle.",
       "fix": "Changed the test to drain opportunistically and then poll the queued job until terminal success or failure, making it safe when the live worker claims the job first.",
-      "tags": ["phase-4", "phase-7", "jobs", "gpu-node", "integration-tests"],
-      "related_bugs": ["bug-040"],
+      "tags": [
+        "phase-4",
+        "phase-7",
+        "jobs",
+        "gpu-node",
+        "integration-tests"
+      ],
+      "related_bugs": [
+        "bug-040"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-27T03:43:00-04:00"
     },
@@ -848,7 +1329,11 @@
       "file": "tests/integration/test_phase8_difficult_documents.py",
       "root_cause": "Pytest imported the integration module as test_phase8_difficult_documents first, then rejected the unit module with the same import name.",
       "fix": "Renamed the integration file to tests/integration/test_phase8_difficult_documents_integration.py so full-suite collection is stable.",
-      "tags": ["phase-8", "pytest", "test-collection"],
+      "tags": [
+        "phase-8",
+        "pytest",
+        "test-collection"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-27T02:37:00-04:00"
@@ -860,8 +1345,17 @@
       "file": "tests/e2e/phase8.spec.ts",
       "root_cause": "The test used a broad page-wide Review button locator after navigating to Viewer, where multiple review-related controls are visible.",
       "fix": "Scoped the navigation action to the exact sidebar Review Queue button before asserting document-quality review tasks.",
-      "tags": ["phase-8", "playwright", "selectors", "ui"],
-      "related_bugs": ["bug-039", "bug-058", "bug-069"],
+      "tags": [
+        "phase-8",
+        "playwright",
+        "selectors",
+        "ui"
+      ],
+      "related_bugs": [
+        "bug-039",
+        "bug-058",
+        "bug-069"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-27T02:38:00-04:00"
     },
@@ -872,7 +1366,13 @@
       "file": "lib/documents/quality.py",
       "root_cause": "Postgres jsonb_set with path {phase8,quality} and create_missing=true does not create the missing intermediate phase8 object on new metadata_json values.",
       "fix": "Updated quality persistence to set the top-level phase8 object while merging an inner quality object, preserving existing sibling Phase 8 metadata and creating phase8 when absent.",
-      "tags": ["phase-8", "postgres", "jsonb", "gpu-node", "integration-tests"],
+      "tags": [
+        "phase-8",
+        "postgres",
+        "jsonb",
+        "gpu-node",
+        "integration-tests"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-27T02:44:00-04:00"
@@ -884,7 +1384,13 @@
       "file": "lib/search/visual_repository.py",
       "root_cause": "The visual retrieval SQL is formatted with psycopg.sql.SQL(...).format(), and the JSON path literal {phase8,quality,summary} was interpreted as a named format placeholder.",
       "fix": "Escaped the JSON path braces as {{phase8,quality,summary}} inside the SQL template.",
-      "tags": ["phase-8", "postgres", "psycopg", "visual-search", "gpu-node"],
+      "tags": [
+        "phase-8",
+        "postgres",
+        "psycopg",
+        "visual-search",
+        "gpu-node"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-27T02:47:00-04:00"
@@ -896,8 +1402,16 @@
       "file": "apps/web/src/App.tsx",
       "root_cause": "handleSearch set viewMode to search after the asynchronous search request completed, so a user could open an evidence result while a repeated search was still in flight and then be pulled back to Search by the late response.",
       "fix": "Moved Search navigation to the start of handleSearch and stopped late success/error responses from changing viewMode; added a mocked Phase 8 regression for stale visual-search completion after opening evidence.",
-      "tags": ["phase-8", "playwright", "ui-state", "search", "gpu-node"],
-      "related_bugs": ["bug-069"],
+      "tags": [
+        "phase-8",
+        "playwright",
+        "ui-state",
+        "search",
+        "gpu-node"
+      ],
+      "related_bugs": [
+        "bug-069"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-27T03:00:00-04:00"
     },
@@ -908,8 +1422,16 @@
       "file": "apps/web/src/App.tsx",
       "root_cause": "The document was selected immediately after upload before Docling quality metadata existed. Later visual search opened the same selected document ID, so React did not refetch detail and the Viewer rendered stale pre-quality state.",
       "fix": "Centralized document opening through openDocument; when the requested document is already selected, the app clears stale detail and refetches /api/v1/documents/{id}. Added a mocked Phase 8 regression for stale selected-detail refresh.",
-      "tags": ["phase-8", "playwright", "ui-state", "worker-race", "gpu-node"],
-      "related_bugs": ["bug-075"],
+      "tags": [
+        "phase-8",
+        "playwright",
+        "ui-state",
+        "worker-race",
+        "gpu-node"
+      ],
+      "related_bugs": [
+        "bug-075"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-27T03:06:00-04:00"
     },
@@ -920,7 +1442,14 @@
       "file": "lib/extraction/model_output_normalization.py",
       "root_cause": "Qwen labeled invoice_line_item_table regions with granite_task=kvp, the gateway only selected the line-item model-output schema for table Granite tasks, and the normalizer did not map useful wrapped data.invoice_line_items or BMW flat service fields into canonical invoice line items.",
       "fix": "Made semantic type drive Granite line-item schema/prompt selection, added granite_invoice_line_items.v1 routing, mapped BMW flat and data.invoice_line_items payloads into line_item_candidates, and kept results in needs_review.",
-      "tags": ["phase-8.5", "granite", "invoice", "line-items", "gpu-node", "normalization"],
+      "tags": [
+        "phase-8.5",
+        "granite",
+        "invoice",
+        "line-items",
+        "gpu-node",
+        "normalization"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-29T00:00:00-04:00"
@@ -932,8 +1461,16 @@
       "file": "lib/extraction/reconciliation.py",
       "root_cause": "The model-output mapper accepted obvious section headings as line items and aggregate reconciliation only merged region rows, ignoring useful current document-level Granite fallback fields such as invoice number/date.",
       "fix": "Filtered known non-line-item headings, added document-level invoice fallback for invoice number/date/totals, and persisted a schema-valid aggregate invoice with review warning.",
-      "tags": ["phase-8.5", "granite", "invoice", "reconciliation", "line-items"],
-      "related_bugs": ["bug-077"],
+      "tags": [
+        "phase-8.5",
+        "granite",
+        "invoice",
+        "reconciliation",
+        "line-items"
+      ],
+      "related_bugs": [
+        "bug-077"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-29T00:00:00-04:00"
     },
@@ -944,8 +1481,15 @@
       "file": "lib/extraction/model_output_normalization.py",
       "root_cause": "Inline dict-or-empty expressions were not narrowed by mypy/pyright before payment_summary/totals/invoice .get calls.",
       "fix": "Introduced explicit typed dict variables before reading normalized payment summary fallback fields.",
-      "tags": ["phase-8.5", "typing", "mypy", "pyright"],
-      "related_bugs": ["bug-077"],
+      "tags": [
+        "phase-8.5",
+        "typing",
+        "mypy",
+        "pyright"
+      ],
+      "related_bugs": [
+        "bug-077"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-29T00:00:00-04:00"
     },
@@ -956,7 +1500,13 @@
       "file": "lib/model_runtime/profiles.py",
       "root_cause": "The Qwen3-VL-4B smart profile allowed two page images per semantic request. The model returned valid JSON for only one of the two Docling pages, so the existing page-coverage policy correctly rejected the manifest.",
       "fix": "Kept the same semantic manifest contract and page-coverage validation. The initial mitigation capped Qwen3-VL-4B Smart Parse to one image per request; the later realignment restored four-image smart fan-in to match the historical 2B path and added one-page fallback only when multi-image output fails Docling page coverage.",
-      "tags": ["phase-8.5", "qwen3-vl-4b", "semantic-annotations", "page-coverage", "gpu-node"],
+      "tags": [
+        "phase-8.5",
+        "qwen3-vl-4b",
+        "semantic-annotations",
+        "page-coverage",
+        "gpu-node"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-29T03:15:26-04:00"
@@ -968,8 +1518,16 @@
       "file": "lib/semantic_annotations/qwen_gateway.py",
       "root_cause": "The page-window fallback filtered Docling pages/elements/tables down to the current image chunk, then _merge_partial_manifests selected the first non-empty document_type. Multi-page title, escrow, order, and form documents could be routed by whichever page completed first rather than whole-document evidence.",
       "fix": "Added whole-document Docling audit/context with focused page sections, restored Qwen3-VL-4B four-image fan-in with one-page fallback only for page-coverage failures, replaced first-page merge with weighted page votes plus Docling anchors, and added schema-fit gates before Granite.",
-      "tags": ["phase-8.5", "qwen3-vl-4b", "docling", "semantic-routing", "granite"],
-      "related_bugs": ["bug-080"],
+      "tags": [
+        "phase-8.5",
+        "qwen3-vl-4b",
+        "docling",
+        "semantic-routing",
+        "granite"
+      ],
+      "related_bugs": [
+        "bug-080"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-29T04:20:00-04:00"
     },
@@ -980,7 +1538,13 @@
       "file": "lib/storage/service.py",
       "root_cause": "ObjectStorage wrote mkstemp-created blobs with 0600 and content-addressed directories were created as 10001:10001 without setgid inheritance, so the host operator group could not inspect or read derived artifacts despite the runtime bootstrap intending 10001:bgconley group access.",
       "fix": "ObjectStorage now chmods writable storage roots, temporary directories, content-addressed directories, and stored blobs to setgid group-readable modes; GPU runtime bootstrap now sets g+s on writable runtime directories so new content inherits the host group.",
-      "tags": ["phase-8.5", "storage", "permissions", "gpu-node", "object-store"],
+      "tags": [
+        "phase-8.5",
+        "storage",
+        "permissions",
+        "gpu-node",
+        "object-store"
+      ],
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-04-29T05:00:00-04:00"
@@ -992,8 +1556,16 @@
       "file": "infrastructure/zfs/create_gpu_runtime_datasets.sh",
       "root_cause": "The bootstrap script unconditionally reapplied ZFS mountpoint and mount operations for existing mounted datasets. On a live busy runtime tree, re-setting the current mountpoint can trigger a ZFS remount path and fail before permission repair runs.",
       "fix": "Made the GPU runtime bootstrap idempotent: it now sets ZFS properties only when the current value differs, mounts datasets only when they are not already mounted, and exposes functions for a regression test that verifies unchanged mountpoints are not reapplied.",
-      "tags": ["phase-8.5", "zfs", "permissions", "gpu-node", "bootstrap"],
-      "related_bugs": ["bug-082"],
+      "tags": [
+        "phase-8.5",
+        "zfs",
+        "permissions",
+        "gpu-node",
+        "bootstrap"
+      ],
+      "related_bugs": [
+        "bug-082"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-29T09:35:00-04:00"
     },
@@ -1004,8 +1576,16 @@
       "file": "infrastructure/zfs/create_gpu_runtime_datasets.sh",
       "root_cause": "print_result quoted the child dataset glob, so shell expansion never happened and ZFS attempted to open a dataset name containing '*'.",
       "fix": "Changed print_result to use zfs list -r -d 1 against the base dataset and added a script regression test proving the bootstrap does not pass literal shell globs to ZFS.",
-      "tags": ["phase-8.5", "zfs", "permissions", "gpu-node", "bootstrap"],
-      "related_bugs": ["bug-083"],
+      "tags": [
+        "phase-8.5",
+        "zfs",
+        "permissions",
+        "gpu-node",
+        "bootstrap"
+      ],
+      "related_bugs": [
+        "bug-083"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-29T09:45:00-04:00"
     },
@@ -1016,8 +1596,16 @@
       "file": "compose.yaml",
       "root_cause": "The runtime tree was repaired to 10001:bgconley, but app containers ran as UID/GID 10001 without host group 1000 as a supplementary group. Linux cleared setgid when that non-root process chmodded bgconley-group directories, and mkstemp output was later moved into object storage with group 10001.",
       "fix": "Added Compose group_add for the Structura app, worker, and placeholder services using STRUCTURA_RUNTIME_HOST_GID so UID 10001 can preserve setgid inheritance and create group-readable objects for the host operator group.",
-      "tags": ["phase-8.5", "storage", "permissions", "gpu-node", "compose"],
-      "related_bugs": ["bug-082"],
+      "tags": [
+        "phase-8.5",
+        "storage",
+        "permissions",
+        "gpu-node",
+        "compose"
+      ],
+      "related_bugs": [
+        "bug-082"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-29T09:55:00-04:00"
     },
@@ -1028,8 +1616,16 @@
       "file": "lib/semantic_annotations/qwen_gateway.py",
       "root_cause": "Smart semantic prompts retained the historical multi-image fan-in shape but still requested 3,840 output tokens. BH Photo produced about 12,545 prompt tokens, so the fixed output budget pushed the request one token over the active 16K Qwen3-VL-4B service limit.",
       "fix": "Raised the active Qwen3-VL-4B Smart Parse context window to 24K while keeping the 3,840-token semantic output budget, and added a context-length fallback path that retries multi-image semantic requests as single-page windows while preserving whole-document Docling context.",
-      "tags": ["phase-8.5", "qwen3-vl-4b", "semantic-routing", "vllm", "context-length"],
-      "related_bugs": ["bug-081"],
+      "tags": [
+        "phase-8.5",
+        "qwen3-vl-4b",
+        "semantic-routing",
+        "vllm",
+        "context-length"
+      ],
+      "related_bugs": [
+        "bug-081"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-29T10:05:00-04:00"
     },
@@ -1040,8 +1636,17 @@
       "file": "lib/semantic_annotations/prompting.py",
       "root_cause": "The semantic planner contract was sparse by design: prompt wording asked for only the highest-value Granite routing targets, the model-output schema capped regions at six total, and Smart Parse Granite enqueue capped execution at four jobs. This caused useful service-line, continuation, and payment regions to be easy to omit or discard.",
       "fix": "Introduced Smart Parse prompt version phase8_5-semantic-smart-v3 as a bounded-recall planner, raised semantic model-output regions to 12, preserved planner metadata through normalization/manifest serialization, enriched Docling context with weak-table/family-tension clues, expanded semantic canary expectations, and raised smart Granite fanout to six with line-item/payment priority.",
-      "tags": ["phase-8.5", "qwen3-vl-4b", "semantic-routing", "bmw", "granite-fanout"],
-      "related_bugs": ["bug-081", "bug-086"],
+      "tags": [
+        "phase-8.5",
+        "qwen3-vl-4b",
+        "semantic-routing",
+        "bmw",
+        "granite-fanout"
+      ],
+      "related_bugs": [
+        "bug-081",
+        "bug-086"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-29T15:55:00-04:00"
     },
@@ -1052,8 +1657,17 @@
       "file": "lib/semantic_annotations/qwen_gateway.py",
       "root_cause": "The high-recall phase8_5-semantic-smart-v3 planner contract can emit richer page and region metadata than the previous sparse prompt, but the active profile still used a 24K serving window and a 3,840-token response budget. Multi-image requests completed at vLLM but hit the completion budget before the structured JSON closed.",
       "fix": "Raised Qwen3-VL-4B Smart Parse to a 32K serving/profile window, increased the smart semantic response budget to 6,144 tokens with a 300-second timeout, and added a multi-image truncated-output fallback that retries as one-page windows while preserving whole-document Docling context.",
-      "tags": ["phase-8.5", "qwen3-vl-4b", "semantic-routing", "vllm", "structured-output"],
-      "related_bugs": ["bug-086", "bug-087"],
+      "tags": [
+        "phase-8.5",
+        "qwen3-vl-4b",
+        "semantic-routing",
+        "vllm",
+        "structured-output"
+      ],
+      "related_bugs": [
+        "bug-086",
+        "bug-087"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-29T16:35:00-04:00"
     },
@@ -1064,8 +1678,17 @@
       "file": "lib/semantic_annotations/qwen_output_normalization.py",
       "root_cause": "One-page fallback prompts correctly preserved whole-document Docling context, but canonical model-output normalization accepted all Qwen pages and regions verbatim. When Qwen annotated both the focused page and context-only pages, the strict page-coverage validator saw out-of-window Docling page IDs in a one-page manifest.",
       "fix": "Canonical semantic model-output normalization now filters pages and regions to the requested Docling source window before manifest construction, records dropped out-of-window pages/regions in normalization telemetry, and preserves strict manifest page-coverage validation.",
-      "tags": ["phase-8.5", "qwen3-vl-4b", "semantic-routing", "docling", "page-coverage"],
-      "related_bugs": ["bug-081", "bug-088"],
+      "tags": [
+        "phase-8.5",
+        "qwen3-vl-4b",
+        "semantic-routing",
+        "docling",
+        "page-coverage"
+      ],
+      "related_bugs": [
+        "bug-081",
+        "bug-088"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-29T17:10:00-04:00"
     },
@@ -1076,8 +1699,16 @@
       "file": "lib/semantic_annotations/docling_audit.py",
       "root_cause": "The Docling audit had no service_record anchor family, while real_estate_title could become a suggested family from one title/seller-like hit. Qwen therefore saw weak or conflicting family evidence for a vehicle service record and stayed with generic invoice semantics despite the Smart Parse v3 few-shot.",
       "fix": "Added broad service_record anchors for repair orders, R/O, labor, parts, mileage/VIN, vehicle, and motorcycle language; tightened real_estate_title suggested/conflict thresholds to require stronger evidence; mapped service_record semantic types to receipt target schema; then superseded the narrow service-record prompt rules and service-line metadata repair with the generalized Qwen semantic-understanding contract so service examples remain representative rather than bespoke.",
-      "tags": ["phase-8.5", "qwen3-vl-4b", "semantic-routing", "docling", "bmw"],
-      "related_bugs": ["bug-087"],
+      "tags": [
+        "phase-8.5",
+        "qwen3-vl-4b",
+        "semantic-routing",
+        "docling",
+        "bmw"
+      ],
+      "related_bugs": [
+        "bug-087"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-29T17:35:00-04:00"
     },
@@ -1088,8 +1719,17 @@
       "file": "lib/semantic_annotations/prompting.py",
       "root_cause": "The follow-on Smart Parse v3 pass correctly moved Qwen toward higher recall, but it also added document-instance example names, service-record-specific imperative prompt text, and normalization that injected continuation/full-page-image intent for one semantic family.",
       "fix": "Reframed Qwen3-VL-4B as a semantic document-understanding layer rather than a minor router, replaced document-instance examples with document-class examples, removed semantic-intent injection from normalization, and expanded the semantic canary scorecard to check document-family candidates, page roles, source signals, and extraction scopes.",
-      "tags": ["phase-8.5", "qwen3-vl-4b", "semantic-understanding", "anti-overfit", "normalization"],
-      "related_bugs": ["bug-087", "bug-090"],
+      "tags": [
+        "phase-8.5",
+        "qwen3-vl-4b",
+        "semantic-understanding",
+        "anti-overfit",
+        "normalization"
+      ],
+      "related_bugs": [
+        "bug-087",
+        "bug-090"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-29T18:20:00-04:00"
     },
@@ -1100,10 +1740,356 @@
       "file": "lib/semantic_annotations/qwen_gateway.py",
       "root_cause": "The fallback path hid the primary Smart Parse contract issue. Qwen was allowed to see full-document pageOutline while returning focused-window pages, and the prompt did not explicitly require output pages/regions to match focusPages or require blank/no-target pages to be represented.",
       "fix": "Removed one-page fallback from Smart Parse, added an explicit focusPageContract to Docling context, tightened the Qwen prompt so document.pageOutline is context-only, and added bounded structural normalization that fills only Docling-proven blank/no-signal omitted focus pages as no-target page annotations with telemetry. Coverage/context/truncation failures no longer degrade into fallback behavior.",
-      "tags": ["phase-8.5", "qwen3-vl-4b", "semantic-routing", "docling", "page-coverage"],
-      "related_bugs": ["bug-088", "bug-089", "bug-091"],
+      "tags": [
+        "phase-8.5",
+        "qwen3-vl-4b",
+        "semantic-routing",
+        "docling",
+        "page-coverage"
+      ],
+      "related_bugs": [
+        "bug-088",
+        "bug-089",
+        "bug-091"
+      ],
       "occurrences": 1,
       "last_seen": "2026-04-29T20:25:00-04:00"
+    },
+    {
+      "id": "bug-093",
+      "timestamp": "2026-06-10T00:00:32.942Z",
+      "error_message": "Significant refactor of ",
+      "file": "lib/extraction/claims.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 10→13 lines (2 removed) | Also: def _group_id(document_id: str, anchor: ClaimAncho; payload: dict[str, Any] = { | Also: if not isinstance(value, str) or not _is_date_like; return \"date\", value",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-06-10T00:01:51.063Z"
+    },
+    {
+      "id": "bug-094",
+      "timestamp": "2026-06-10T00:01:41.088Z",
+      "error_message": "Wrong reference: as_json should be identity_json",
+      "file": "lib/extraction/claims.py",
+      "root_cause": "Used \"as_json\" instead of \"identity_json\"",
+      "fix": "Changed as_json → identity_json",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-10T00:01:41.088Z"
+    },
+    {
+      "id": "bug-095",
+      "timestamp": "2026-06-10T00:02:29.198Z",
+      "error_message": "Significant refactor of ",
+      "file": "lib/extraction/model_output_value_parsing.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 17→75 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-10T00:02:29.198Z"
+    },
+    {
+      "id": "bug-096",
+      "timestamp": "2026-06-10T00:03:23.530Z",
+      "error_message": "Wrong return value",
+      "file": "lib/extraction/claim_resolver.py",
+      "root_cause": "Was returning: _stable_value_key(claim.anchor.as_json())",
+      "fix": "Now returns: _stable_value_key(claim.anchor.identity_json())",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-10T00:03:23.530Z"
+    },
+    {
+      "id": "bug-097",
+      "timestamp": "2026-06-10T00:03:41.373Z",
+      "error_message": "Wrong operator: == should be <=",
+      "file": "lib/extraction/claim_invariants.py",
+      "root_cause": "Used \"==\" instead of \"<=\"",
+      "fix": "Changed operator == → <=",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-10T00:03:49.291Z"
+    },
+    {
+      "id": "bug-098",
+      "timestamp": "2026-06-10T00:05:50.120Z",
+      "error_message": "Wrong return value",
+      "file": "lib/extraction/model_output_contract_boundary.py",
+      "root_cause": "Was returning: []",
+      "fix": "Now returns: [f\"model_output_schema_invalid: {exc.message}\"]",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-10T00:05:50.120Z"
+    },
+    {
+      "id": "bug-099",
+      "timestamp": "2026-06-10T00:10:32.514Z",
+      "error_message": "Significant refactor of ",
+      "file": "lib/extraction/claim_invariants.py",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 15→20 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-10T00:10:32.514Z"
+    },
+    {
+      "id": "bug-100",
+      "timestamp": "2026-06-10T00:11:04.977Z",
+      "error_message": "Incorrect value in code",
+      "file": ".claude/worktrees/agent-ae7e1c2e42dcbc2f2/workers/model_services/start_granite_vllm.sh",
+      "root_cause": "Had \"${STRUCTURA_GRANITE_MAX_MODEL_LEN:-32768}\"",
+      "fix": "Changed to \"${STRUCTURA_GRANITE_MAX_MODEL_LEN:-16384}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "sh"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-10T00:11:04.977Z"
+    },
+    {
+      "id": "bug-101",
+      "timestamp": "2026-06-10T00:15:04.949Z",
+      "error_message": "Significant refactor of ",
+      "file": ".claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/clients/_embedding.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 4→3 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-10T00:15:04.949Z"
+    },
+    {
+      "id": "bug-102",
+      "timestamp": "2026-06-10T00:15:36.553Z",
+      "error_message": "Incorrect value in code",
+      "file": "tests/unit/extraction/test_claims_line_item_grouping.py",
+      "root_cause": "Had \"receipt.line_item.service_date\"",
+      "fix": "Changed to \"invoice.line_item.service_date\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-10T00:15:36.553Z"
+    },
+    {
+      "id": "bug-103",
+      "timestamp": "2026-06-10T00:16:54.919Z",
+      "error_message": "Wrong reference: embedding_visual_enabled should be embedding_text_enabled",
+      "file": ".claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/config/settings.py",
+      "root_cause": "Used \"embedding_visual_enabled\" instead of \"embedding_text_enabled\"",
+      "fix": "Changed embedding_visual_enabled → embedding_text_enabled",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-10T00:16:54.919Z"
+    },
+    {
+      "id": "bug-104",
+      "timestamp": "2026-06-10T00:19:45.183Z",
+      "error_message": "Wrong return value",
+      "file": ".claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/semantic_annotations/qwen_gateway.py",
+      "root_cause": "Was returning: QWEN_SEMANTIC_PROFILE",
+      "fix": "Now returns: get_settings().qwen_semantic_profile",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-10T00:19:45.183Z"
+    },
+    {
+      "id": "bug-105",
+      "timestamp": "2026-06-10T00:20:00.099Z",
+      "error_message": "Significant refactor of ",
+      "file": "lib/extraction/reconciliation_repository.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 43→96 lines (3 removed) | Also: def _expected_region_job_count(; ) -> int:",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-06-10T00:20:57.873Z"
+    },
+    {
+      "id": "bug-106",
+      "timestamp": "2026-06-10T00:21:19.943Z",
+      "error_message": "Incorrect value in code",
+      "file": "lib/extraction/reconciliation_repository.py",
+      "root_cause": "Had 'skipped_%%'",
+      "fix": "Changed to 'skipped_budget_exceeded'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-10T00:21:19.943Z"
+    },
+    {
+      "id": "bug-107",
+      "timestamp": "2026-06-10T00:21:24.456Z",
+      "error_message": "Significant refactor of ",
+      "file": ".claude/worktrees/agent-ae7e1c2e42dcbc2f2/workers/docling/worker.py",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 68→104 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-10T00:21:24.456Z"
+    },
+    {
+      "id": "bug-108",
+      "timestamp": "2026-06-10T00:24:47.882Z",
+      "error_message": "Incorrect value in code",
+      "file": ".claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/test_migrations.py",
+      "root_cause": "Had \"085_phase8_5_plan_task_visual_summary.sql\"",
+      "fix": "Changed to \"086_phase8_5_service_health.sql\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-10T00:24:47.882Z"
+    },
+    {
+      "id": "bug-109",
+      "timestamp": "2026-06-10T00:25:54.504Z",
+      "error_message": "Significant refactor of ",
+      "file": ".claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/documents/analysis_quality.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 13→31 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-10T00:25:54.505Z"
+    },
+    {
+      "id": "bug-110",
+      "timestamp": "2026-06-10T00:26:39.696Z",
+      "error_message": "Wrong operator: == should be !=",
+      "file": ".claude/worktrees/agent-ae7e1c2e42dcbc2f2/scripts/gpu/run_phase8_5_semantic_canary.py",
+      "root_cause": "Used \"==\" instead of \"!=\"",
+      "fix": "Changed operator == → !=",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-10T00:26:39.696Z"
+    },
+    {
+      "id": "bug-111",
+      "timestamp": "2026-06-10T00:29:35.884Z",
+      "error_message": "Wrong return value",
+      "file": "lib/extraction/claims.py",
+      "root_cause": "Was returning: normalized.startswith(\"qwen\")",
+      "fix": "Now returns: normalized.startswith((\"qwen\", \"semantic_annotatio",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-10T00:29:35.884Z"
+    },
+    {
+      "id": "bug-112",
+      "timestamp": "2026-06-10T00:32:48.020Z",
+      "error_message": "Significant refactor of ",
+      "file": "lib/extraction/candidate_quality.py",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 43→51 lines (7 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-10T00:32:48.020Z"
+    },
+    {
+      "id": "bug-113",
+      "timestamp": "2026-06-10T00:32:56.245Z",
+      "error_message": "Wrong reference: reject_line_item should be reject_line_item_content",
+      "file": "lib/extraction/claim_resolver.py",
+      "root_cause": "Used \"reject_line_item\" instead of \"reject_line_item_content\"",
+      "fix": "Changed reject_line_item → reject_line_item_content",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-10T00:32:56.245Z"
     }
   ]
 }

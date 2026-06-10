@@ -1,60 +1,209 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-04-24T01:42:51.307Z
-> Files: 325 tracked | Anatomy hits: 0 | Misses: 0 | Manually updated: 2026-04-26
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-10T00:33:03.226Z
+> Files: 460 tracked | Anatomy hits: 0 | Misses: 0
+
+## ../../../../tmp/
+
+- `repro_group_collapse.py` — Repro: distinct receipt line items with null row_index + region-level evidence context. (~1131 tok)
+
+## ./
+
+- `.DS_Store` (~3824 tok)
+- `CLAUDE.md` — OpenWolf (~57 tok)
+- `STRUCTURA_IMPLEMENTATION_PLAN.md` — Canonical end-to-end implementation plan; phase gates, mandatory per-phase artifact lists, API/database/event coverage, Markdown-first duplicate-artifact handling with DOCX parity note, GPU sync policy (~15500 tok)
+- `STRUCTURA_PHASE_1_IMPLEMENTATION_PLAN.md` — Phase 1 execution plan; upload, object storage, Inbox, protected asset streaming, preview, Viewer, fresh-context rereads, Firecrawl evidence rules, validation gate (~5700 tok)
+- `STRUCTURA_PHASE_10_IMPLEMENTATION_PLAN.md` — Phase 10 execution plan; exports, manifest/provenance, export authorization/audit, WebAuthn/passkeys, session hardening, API token lifecycle, folder ACL management, backup/restore, admin jobs, service/storage/model/extraction health, settings/admin UI, SAST, phase gate, fresh-context rereads, Firecrawl evidence rules (~11600 tok)
+- `STRUCTURA_PHASE_11_IMPLEMENTATION_PLAN.md` — Phase 11 execution plan; golden corpus governance, expected answers, deterministic evaluation harness, extraction/search scoring, E2E and Playwright smoke tests, migration/contract regression, restore rehearsal, SAST/data-flow gate, performance measurements, release-candidate evidence pack, fresh-context rereads, Firecrawl evidence rules (~13200 tok)
+- `STRUCTURA_PHASE_12_IMPLEMENTATION_PLAN.md` — Final derived Phase 12 execution plan; internal-GA/release handoff, Phase 11 evidence intake, blocker closure, contract/schema freeze, runtime config, operator runbooks, benchmark threshold approval, UI/security/restore/performance signoff, release notes/tagging, go/no-go, post-release cadence, fresh-context rereads, Firecrawl evidence rules (~13200 tok)
+- `STRUCTURA_PHASE_2_IMPLEMENTATION_PLAN.md` — Phase 2 execution plan; manual filing, folders, tags, document organization, ACL/audit, smart-folder records, UI filing workflow, fresh-context rereads, Firecrawl evidence rules, validation gate (~6100 tok)
+- `STRUCTURA_PHASE_3_IMPLEMENTATION_PLAN.md` — Phase 3 execution plan; preview/page-asset hardening, Docling worker, canonical artifacts, page/element/table/chunk relational rows, parse quality, debug surfaces, Gate B, fresh-context rereads, Firecrawl evidence rules (~6400 tok)
+- `STRUCTURA_PHASE_4_IMPLEMENTATION_PLAN.md` — Phase 4 execution plan; classification, extraction validators, evidence resolver, model gateway, extraction workers, candidate normalization, canonical promotion, review APIs/UI, golden fixtures, Gate C, fresh-context rereads, Firecrawl evidence rules (~7600 tok)
+- `STRUCTURA_PHASE_5_IMPLEMENTATION_PLAN.md` — Phase 5 execution plan; lexical BM25 search, embedding gateway/worker, semantic retrieval, filter-aware planner, hybrid RRF, facets/saved searches, search UI, golden benchmarks, Gate D, fresh-context rereads, Firecrawl evidence rules (~8200 tok)
+- `STRUCTURA_PHASE_6_IMPLEMENTATION_PLAN.md` — Phase 6 execution plan; contacts, document-contact links, folder ACL guardrails, watched-folder API/worker, filing rules, dry-run explanations, rule suggestions/application, contacts dedupe, UI, CLI import/maintenance, phase gate, fresh-context rereads, Firecrawl evidence rules (~8800 tok)
+- `STRUCTURA_PHASE_7_IMPLEMENTATION_PLAN.md` — Phase 7 execution plan; relationships, review actions, suggestion worker, related-document panel, entity/document timelines, deadlines, smart views, search/filing integration, quality fixtures, phase gate, fresh-context rereads, Firecrawl evidence rules (~8300 tok)
+- `STRUCTURA_PHASE_8_IMPLEMENTATION_PLAN.md` — Phase 8 execution plan; difficult-document detection, selective visual embeddings, Qwen handwriting route, review-required uncertainty, visual retrieval contract/policy, mixed hybrid retrieval, low-text fallbacks, benchmarks, runtime observability, phase gate, fresh-context rereads, Firecrawl evidence rules (~9400 tok)
+- `STRUCTURA_PHASE_9_IMPLEMENTATION_PLAN.md` — Phase 9 execution plan; optional analysis workspace, analysis contracts, ACL/sensitivity/citation policy, analysis request API, context builder, prompt/model validation, worker-analysis, note persistence, Figma frame 14:990, core analysis actions, disable mode, observability, Gate E, fresh-context rereads, Firecrawl evidence rules (~10300 tok)
+- `STRUCTURA_PLAN_INDEX.md` — Canonical planning index; source alignment policy, Markdown-first duplicate-artifact handling with DOCX parity note, UI source of truth, GPU node sync policy, stop rule (~1000 tok)
+- `STRUCTURA_UI_FIGMA_QA_PLAN.md` — Canonical Figma and Playwright UI QA plan; frame ids, pixel-match rules, workflow QA, UI stop rule (~3000 tok)
+
+## .claude/
+
+- `settings.json` (~441 tok)
+
+## .claude/rules/
+
+- `openwolf.md` (~313 tok)
+
+## .claude/worktrees/agent-ae7e1c2e42dcbc2f2/apps/api/structura_api/
+
+- `routes_admin.py` — API: 1 endpoints (~435 tok)
+
+## .claude/worktrees/agent-ae7e1c2e42dcbc2f2/database/
+
+- `086_phase8_5_service_health.sql` (~190 tok)
+
+## .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/config/
+
+- `settings.py` — Settings: reject_historical_live_semantic_profiles, canonical_objects_root, derived_objects_root, ex (~1042 tok)
+
+## .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/db/
+
+- `migrations.py` — from: sql_batches, baseline_migration_plan, apply_baseline_migrations (~1591 tok)
+
+## .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/documents/
+
+- `analysis_quality.py` — phase9_document_eligibility, build_document_quality (~2294 tok)
+- `maintenance.py` — from: enqueue_document_reprocess, enqueue_search_projection_rebuild (~1240 tok)
+
+## .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/extraction/
+
+- `model_failure_policy.py` — from: model_exception_retryable, extraction_failure_policy (~415 tok)
+- `reconciliation.py` — reconcile_invoice_region_extractions (~1681 tok)
+
+## .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/extraction/gateways/
+
+- `_vision.py` — VisionClientProtocol: generate, extract (~4994 tok)
+- `routing.py` — ModelRoutingExtractionGateway: extract, default_extraction_gateway (~949 tok)
+
+## .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/
+
+- `health.py` — configured_model_health_snapshots, probed_model_health_snapshots, persist_model_health_snapshots (~2736 tok)
+- `http_client.py` — ModelRuntimeError: post_json, post_json_value (~1592 tok)
+- `profiles.py` — QWEN_VL_PROFILE: required_live_profile_names, get_model_profile (~1341 tok)
+
+## .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/model_runtime/clients/
+
+- `_embedding.py` — EmbeddingHttpClient: embedding_api_flavor, embed (~3908 tok)
+
+## .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/search/
+
+- `jobs.py` — enqueue_embed_document_job, enqueue_visual_embed_document_job (~911 tok)
+- `projection.py` — refresh_projection_and_enqueue_embedding (~221 tok)
+
+## .claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/semantic_annotations/
+
+- `qwen_gateway.py` — SemanticVisionClientProtocol: generate, from_settings, generate, annotate (~7298 tok)
+
+## .claude/worktrees/agent-ae7e1c2e42dcbc2f2/scripts/gpu/
+
+- `phase8_5_live_runtime_preflight.py` — from: main (~2980 tok)
+- `run_phase8_5_semantic_canary.py` — main, build_parser, parse_args (~9121 tok)
+
+## .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/
+
+- `test_compose_model_profiles.py` — test_app_runtime_services_include_host_operator_group, test_model_profiles_are_safe_and_gpu_placed, (~2395 tok)
+- `test_config.py` — test_settings_exposes_structura_runtime_roots, test_settings_exposes_phase8_5_model_runtime_defaults (~398 tok)
+- `test_docling_worker_lifecycle.py` — RecordingJobService: test_docling_worker_fails_job_retryably_when_semantic_enqueue_fails, fail_seman (~1738 tok)
+- `test_migrations.py` — test_baseline_migration_plan_excludes_query_examples, test_baseline_migration_scripts_are_present_an (~3128 tok)
+- `test_model_service_scripts.py` — test_qwen_vllm_start_script_forwards_mm_processor_kwargs, test_qwen_vllm_start_script_can_disable_pr (~2206 tok)
+
+## .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/documents/
+
+- `test_analysis_intake.py` — test_phase9_intake_disables_analysis_for_admitted_placeholder_artifacts, test_phase9_document_eligib (~3910 tok)
+
+## .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/extraction/
+
+- `test_routing_gateway.py` — from: extract, test_live_routing_gateway_has_no_qwen_extraction_dependency, test_routing_gateway_rej (~1586 tok)
+- `test_worker_failures.py` — RecordingJobService: test_extraction_worker_records_exception_details_for_failed_extract, test_extra (~2997 tok)
+
+## .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/model_runtime/
+
+- `test_health.py` — test_model_health_snapshots_report_mode_and_profiles_without_private_payloads, test_model_health_pro (~1618 tok)
+- `test_profiles.py` — test_phase8_5_required_live_profiles_are_registered, test_qwen_semantic_profile_uses_qwen3_vl_8b_fp8 (~1281 tok)
+- `test_text_embedding_client.py` — test_embedding_api_flavor_is_declared_by_profile_backend, test_text_embedding_client_speaks_tei_inpu (~1802 tok)
+- `test_visual_embedding_client.py` — test_visual_embedding_client_requires_image_bytes_and_validates_2048_dimensions, test_visual_embeddi (~2128 tok)
+
+## .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/scripts/
+
+- `test_phase8_5_semantic_canary.py` — test_semantic_canary_parser_supports_expected_modes_and_skip_granite, test_semantic_canary_rejects_h (~3918 tok)
+
+## .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/search/
+
+- `test_embedding_jobs.py` — test_enqueue_embed_document_job_skips_text_jobs_when_text_embeddings_disabled, capture_job, test_enq (~649 tok)
+
+## .claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/semantic_annotations/
+
+- `test_gateways.py` — class: generate, test_fixture_gateway_has_explicit_fixture_provenance, test_fixture_gateway_infers_t (~16971 tok)
+- `test_worker.py` — from: test_semantic_annotation_worker_processes_semantic_annotate_job, test_semantic_annotation_work (~2455 tok)
+
+## .claude/worktrees/agent-ae7e1c2e42dcbc2f2/workers/docling/
+
+- `worker.py` — parse_args, process_next_docling_job, main, handle_stop (~2539 tok)
+
+## .claude/worktrees/agent-ae7e1c2e42dcbc2f2/workers/model_services/
+
+- `start_granite_vllm.sh` (~468 tok)
+- `start_text_embed.sh` (~462 tok)
+
+## .claude/worktrees/agent-ae7e1c2e42dcbc2f2/workers/semantic_annotations/
+
+- `worker.py` — SemanticAnnotationWorkerError: annotate_document, claim_next_job_record, complete_job, fail_job + 4 (~2002 tok)
+
+## .runtime/
+
+- `phase85_review.workflow.js` — Exports meta (~7880 tok)
+
+## Phase 0 implementation scaffold
+
+
+## Phase 1/2 UI reference artifacts
+
+
+## Phase 3 canonical parse implementation
+
 
 ## Phase 5 search additions
 
-- `apps/api/structura_api/routes_search.py` — Thin FastAPI routes for corpus search and household-scoped saved searches (~450 tok)
 - `.github/workflows/ci.yml` — Repository CI workflow for Python quality gates, contracts, tests, SAST, web lint/build, and Compose config (~500 tok)
 - `.github/workflows/gpu-live-smoke.yml` — Manual self-hosted workflow for pinned-container Playwright live smoke against GPU-hosted web (~350 tok)
-- `apps/web/src/components/SearchResults.tsx` — Phase 5 Corpus Search shell with query card, ranked results, facets, evidence jumps, and saved-search action (~1500 tok)
+- `apps/api/structura_api/routes_search.py` — Thin FastAPI routes for corpus search and household-scoped saved searches (~450 tok)
 - `apps/web/src/components/SearchFilterPanel.tsx` — Phase 5 search filter panel and request-payload builder for mode, family, folder, tag, review status, sensitivity, date, amount, and reviewed-only filters (~1900 tok)
 - `apps/web/src/components/SearchResults.css` — Phase 5 search surface styles (~1900 tok)
+- `apps/web/src/components/SearchResults.tsx` — Phase 5 Corpus Search shell with query card, ranked results, facets, evidence jumps, and saved-search action (~1500 tok)
 - `apps/web/src/searchApi.ts` — Browser API client for search and saved-search calls (~250 tok)
 - `database/069_phase5_search.sql` — Search projection refresh, BM25 index refresh, embedding uniqueness, saved-search household columns, and smart-folder saved-query matcher (~1700 tok)
 - `database/071_phase5_search_guardrails.sql` — Phase 5 hardening migration replacing `document_matches_saved_query` with supported-key guardrails and broader filter handling (~1200 tok)
 - `lib/documents/list_repository.py` — Document-list read repository using shared search filter SQL for text search, manual folders, smart folders, ACLs, and pagination (~1900 tok)
 - `lib/documents/summary_mapping.py` — Small document summary row-to-contract mapper and list coercion helpers (~300 tok)
 - `lib/search/benchmark.py` — Tiny search benchmark metric helpers for hit-rate-at-k and MRR regression tracking (~350 tok)
-- `lib/search/query.py` — Search request parser and normalized filter DTOs (~550 tok)
-- `lib/search/repository.py` — ACL-aware lexical/semantic/facet SQL repository for Phase 5 search (~2200 tok)
-- `lib/search/saved_query.py` — Saved-query parser/validator that maps smart-folder JSON into canonical `SearchFilters` and rejects unsupported keys (~1200 tok)
-- `lib/search/service.py` — Search orchestration and result DTO mapping for lexical, semantic, and hybrid modes (~1300 tok)
 - `lib/search/embedding_gateway.py` — Deterministic local text embedding adapter and vector helpers (~700 tok)
 - `lib/search/embedding_repository.py` — Projection refresh and embedding persistence repository (~900 tok)
 - `lib/search/embedding_service.py` — Document embedding orchestration and idempotent refresh summary (~450 tok)
+- `lib/search/hybrid.py` — Reciprocal-rank fusion primitives (~450 tok)
 - `lib/search/jobs.py` — Embedding job enqueue helper for the `embeddings` queue (~300 tok)
 - `lib/search/projection.py` — Shared projection refresh and embedding enqueue seam for later phases (~200 tok)
+- `lib/search/query.py` — Search request parser and normalized filter DTOs (~550 tok)
+- `lib/search/repository.py` — ACL-aware lexical/semantic/facet SQL repository for Phase 5 search (~2200 tok)
+- `lib/search/saved_query.py` — Saved-query parser/validator that maps smart-folder JSON into canonical `SearchFilters` and rejects unsupported keys (~1200 tok)
 - `lib/search/saved_searches.py` — Household-scoped saved-search persistence API (~550 tok)
-- `lib/search/hybrid.py` — Reciprocal-rank fusion primitives (~450 tok)
-- `workers/embeddings/worker.py` — Phase 5 embedding worker loop and job handling (~750 tok)
-- `workers/ingest/worker.py` — Real ingest queue consumer that claims upload ingest jobs, verifies original assets, completes jobs, and records worker health (~900 tok)
-- `tests/e2e/phase5.spec.ts` — Mocked Phase 5 search UI and screenshot gate (~450 tok)
+- `lib/search/service.py` — Search orchestration and result DTO mapping for lexical, semantic, and hybrid modes (~1300 tok)
 - `tests/e2e/phase5-live.spec.ts` — GPU live upload/search/evidence browser smoke (~650 tok)
+- `tests/e2e/phase5.spec.ts` — Mocked Phase 5 search UI and screenshot gate (~450 tok)
 - `tests/integration/test_phase5_search.py` — Live DB integration coverage for search, embeddings, smart folders, saved searches, and ACL negatives (~2100 tok)
 - `tests/unit/test_phase5_search_units.py` — Unit coverage for parser, deterministic embeddings, and RRF (~550 tok)
-- `docs/ui-reference/figma/search/` — Phase 5 Figma context, source screenshot, comparison notes, and Playwright screenshot artifacts (~600 tok plus images)
+- `workers/embeddings/worker.py` — Phase 5 embedding worker loop and job handling (~750 tok)
+- `workers/ingest/worker.py` — Real ingest queue consumer that claims upload ingest jobs, verifies original assets, completes jobs, and records worker health (~900 tok)
 
 ## Phase 6 automation additions
 
-- `apps/api/structura_api/routes_contacts.py` — Thin contact and document-contact API routes with CSRF-protected writes (~700 tok)
 - `apps/api/structura_api/routes_automation.py` — Thin filing-rule, suggestion, watched-folder, and import-status API routes (~900 tok)
-- `apps/web/src/components/AutomationWorkbench.tsx` — Phase 6 automation UI shell that composes focused automation panels, tab state, and shared status handling (~700 tok)
+- `apps/api/structura_api/routes_contacts.py` — Thin contact and document-contact API routes with CSRF-protected writes (~700 tok)
+- `apps/web/src/automationApi.ts` — Browser API client for contacts, filing rules, suggestions, watched folders, and import status (~500 tok)
 - `apps/web/src/components/AutomationContactsPanel.tsx` — Contact/alias detail, duplicate merge suggestion display, and merge action UI (~900 tok)
+- `apps/web/src/components/automationFormatting.ts` — Automation UI formatting helpers for labels, statuses, and action/condition summaries (~250 tok)
+- `apps/web/src/components/AutomationImportsPanel.tsx` — Import-status summary cards for watched-folder intake status (~250 tok)
 - `apps/web/src/components/AutomationRulesPanel.tsx` — Filing-rule builder/editor controls, pause/resume, action/condition inputs, dry-run controls, and explanation display (~1700 tok)
 - `apps/web/src/components/AutomationSuggestionsPanel.tsx` — Reviewable filing suggestions with proposed/blocked action explanations and accept/reject/defer controls (~650 tok)
-- `apps/web/src/components/AutomationWatchedPanel.tsx` — Watched-folder policy/root/stability/processed-file controls plus pause/resume UI (~900 tok)
-- `apps/web/src/components/AutomationImportsPanel.tsx` — Import-status summary cards for watched-folder intake status (~250 tok)
 - `apps/web/src/components/AutomationTabs.tsx` — Small tab selector for Automation Workbench panel navigation (~250 tok)
-- `apps/web/src/components/automationFormatting.ts` — Automation UI formatting helpers for labels, statuses, and action/condition summaries (~250 tok)
-- `apps/web/src/automationApi.ts` — Browser API client for contacts, filing rules, suggestions, watched folders, and import status (~500 tok)
+- `apps/web/src/components/AutomationWatchedPanel.tsx` — Watched-folder policy/root/stability/processed-file controls plus pause/resume UI (~900 tok)
+- `apps/web/src/components/AutomationWorkbench.tsx` — Phase 6 automation UI shell that composes focused automation panels, tab state, and shared status handling (~700 tok)
 - `database/072_phase6_automation.sql` — Phase 6 state migration for watched-folder owner, filing-rule run decision state, blocked action state, indexes, and update trigger (~600 tok)
-- `lib/automation/rule_policy.py` — Filing-rule validation for supported fields/operators/actions and regex safety (~700 tok)
-- `lib/automation/rule_engine.py` — Pure rule evaluation, condition explanations, high-stakes review guardrails, and writable-folder action blocking (~1300 tok)
-- `lib/automation/repository.py` — Filing-rule and suggestion persistence plus automation audit writes (~1900 tok)
-- `lib/automation/service.py` — Filing-rule orchestration, dry-run/apply/suggest/accept/reject/defer behavior, atomic action application, and post-commit projection refresh (~2100 tok)
 - `lib/automation/action_application.py` — Cursor-based filing-rule action dispatcher for folder, tag, sensitivity, document-family, and review-task effects (~1200 tok)
+- `lib/automation/repository.py` — Filing-rule and suggestion persistence plus automation audit writes (~1900 tok)
+- `lib/automation/rule_engine.py` — Pure rule evaluation, condition explanations, high-stakes review guardrails, and writable-folder action blocking (~1300 tok)
+- `lib/automation/rule_policy.py` — Filing-rule validation for supported fields/operators/actions and regex safety (~700 tok)
+- `lib/automation/service.py` — Filing-rule orchestration, dry-run/apply/suggest/accept/reject/defer behavior, atomic action application, and post-commit projection refresh (~2100 tok)
 - `lib/automation/watched_folder_policy.py` — Watch-path validation, managed-runtime path blocking, file stability, and PDF candidate filtering (~800 tok)
 - `lib/automation/watched_folder_repository.py` — Watched-folder persistence, enabled watcher listing, scan metrics, and import-status reads (~700 tok)
 - `lib/automation/watched_folders.py` — Watched-folder API service, target-folder ACL validation, and DTO mapping (~800 tok)
@@ -64,14 +213,13 @@
 - `lib/documents/ingestion.py` — Shared document ingestion service extracted from document upload route for web/API/watched-folder reuse (~2300 tok)
 - `lib/documents/maintenance.py` — Operator maintenance enqueue helpers for document reprocess and search projection rebuild jobs (~650 tok)
 - `lib/organization/document_organization.py` — Cursor-based document organization mutation helper shared by manual filing and automation atomic apply flows (~1000 tok)
-- `workers/watched_folders/worker.py` — Dedicated watched-folder scanner that imports stable PDFs through shared ingestion and records scan counts (~1300 tok)
 - `scripts/structura.py` — Operator CLI for dry-run/bulk import validation, reprocess enqueue, search rebuild enqueue, evaluation guidance, and backup/restore checks (~800 tok)
-- `tests/e2e/phase6.spec.ts` — Mocked Phase 6 automation UI workflow and Linux screenshot gate (~700 tok)
 - `tests/e2e/phase6-live.spec.ts` — GPU live Phase 6 automation UI smoke (~500 tok)
+- `tests/e2e/phase6.spec.ts` — Mocked Phase 6 automation UI workflow and Linux screenshot gate (~700 tok)
 - `tests/integration/test_phase6_automation.py` — Live DB coverage for contacts, document contacts, all supported rule actions, atomic rollback, suggestions, watched-folder roots/symlinks, and dedupe/merge (~2400 tok)
 - `tests/unit/test_phase6_automation_units.py` — Unit coverage for rule engine and watched-folder path policy (~700 tok)
 - `tests/unit/test_phase6_cli.py` — CLI dry-run import validation and execute-mode upload coverage (~500 tok)
-- `docs/ui-reference/figma/automation/` — Phase 6 automation UI context, comparison notes, Playwright reference screenshot, and deterministic Linux snapshot linkage (~500 tok plus image)
+- `workers/watched_folders/worker.py` — Dedicated watched-folder scanner that imports stable PDFs through shared ingestion and records scan counts (~1300 tok)
 
 ## Phase 7 relationship additions
 
@@ -80,161 +228,70 @@
 - `apps/web/src/components/RelationshipWorkspace.tsx` — Relationships/Timelines workspace for links, deadlines, smart views, and timeline navigation (~800 tok)
 - `apps/web/src/relationshipsApi.ts` — Browser API client for relationship, deadline, timeline, and smart-view endpoints (~500 tok)
 - `database/073_phase7_relationships.sql` — Relationship status/review metadata, deadline guardrails, indexes, and saved-query relationship/deadline support (~1300 tok)
-- `lib/relationships/relationship_repository.py` — Relationship list/get/upsert/decision/review-task/audit/context persistence (~2100 tok)
 - `lib/relationships/deadline_repository.py` — Deadline list/upsert persistence (~450 tok)
-- `lib/relationships/timeline_repository.py` — Timeline and relationship/deadline smart-view projection SQL (~1000 tok)
+- `lib/relationships/jobs.py` — Relationship job enqueue helper for the `relationships` queue (~250 tok)
+- `lib/relationships/relationship_repository.py` — Relationship list/get/upsert/decision/review-task/audit/context persistence (~2100 tok)
 - `lib/relationships/repository.py` — Compatibility facade re-exporting focused relationship repositories (~200 tok)
 - `lib/relationships/service.py` — Relationship/deadline/timeline/smart-view orchestration and DTO mapping (~2200 tok)
 - `lib/relationships/suggestions.py` — Deterministic duplicate/contact/family relationship suggestion rules (~650 tok)
-- `lib/relationships/jobs.py` — Relationship job enqueue helper for the `relationships` queue (~250 tok)
-- `workers/relationships/worker.py` — Real relationship worker loop for deadline refresh and relationship suggestions (~750 tok)
-- `tests/e2e/phase7.spec.ts` — Mocked Phase 7 relationships/timelines UI workflow and Linux screenshot gate (~450 tok)
+- `lib/relationships/timeline_repository.py` — Timeline and relationship/deadline smart-view projection SQL (~1000 tok)
 - `tests/e2e/phase7-live.spec.ts` — GPU live Phase 7 relationship creation and relationship/timeline workspace smoke (~450 tok)
+- `tests/e2e/phase7.spec.ts` — Mocked Phase 7 relationships/timelines UI workflow and Linux screenshot gate (~450 tok)
 - `tests/integration/test_phase7_relationships.py` — Live DB coverage for manual relationships, timeline/search decisions, and idempotent worker suggestions (~1000 tok)
 - `tests/unit/test_phase7_relationship_units.py` — Unit coverage for relationship/deadline search filters, saved-query parsing, and self-link validation (~400 tok)
-- `docs/ui-reference/figma/relationships-timelines/` — Phase 7 relationship/timeline UI context, comparison notes, and Playwright screenshot artifact (~450 tok plus image)
+- `workers/relationships/worker.py` — Real relationship worker loop for deadline refresh and relationship suggestions (~750 tok)
 
 ## Phase 8 difficult-document additions
 
 - `lib/documents/quality.py` — Deterministic difficult-document quality detection, page/document metadata persistence, handwriting/review flags, and document-quality review-task creation (~1700 tok)
 - `lib/review/task_repository.py` — Shared review-task upsert helper used by extraction and document-quality workflows (~450 tok)
-- `lib/search/visual_repository.py` — ACL-aware visual vector retrieval SQL for page-level visual embeddings (~900 tok)
 - `lib/search/embedding_gateway.py` — Deterministic text and visual embedding profiles plus vector/content-hash helpers (~800 tok)
 - `lib/search/embedding_repository.py` — Text/visual embedding source lookup and active embedding persistence (~1500 tok)
 - `lib/search/embedding_service.py` — Text/visual/mixed embedding orchestration with modality counts and idempotent persistence (~900 tok)
 - `lib/search/service.py` — Search orchestration for lexical, semantic, visual, and hybrid-with-visual retrieval modes (~1700 tok)
-- `workers/embeddings/worker.py` — Embedding worker with validated text/visual/mixed modality payload handling and service-health modality metrics (~850 tok)
-- `tests/e2e/phase8.spec.ts` — Mocked Phase 8 difficult-document UI workflow and Linux screenshot gate (~500 tok)
+- `lib/search/visual_repository.py` — ACL-aware visual vector retrieval SQL for page-level visual embeddings (~900 tok)
 - `tests/e2e/phase8-live.spec.ts` — GPU live Phase 8 upload, quality cue, and visual search smoke (~550 tok)
+- `tests/e2e/phase8.spec.ts` — Mocked Phase 8 difficult-document UI workflow and Linux screenshot gate (~500 tok)
 - `tests/integration/test_phase8_difficult_documents_integration.py` — Live DB coverage for quality detection, review task creation, visual embeddings/search ACL, and Qwen handwriting review-required routing (~2400 tok)
 - `tests/unit/test_phase8_difficult_documents.py` — Unit coverage for quality classifier, visual search contract, visual embedding profile/modality validation, RRF visual fusion, and Phase 8 benchmark cases (~900 tok)
-- `docs/ui-reference/figma/difficult-documents/` — Phase 8 difficult-document UI context, comparison notes, Playwright reference screenshot, and deterministic Linux snapshot linkage (~450 tok plus image)
+- `workers/embeddings/worker.py` — Embedding worker with validated text/visual/mixed modality payload handling and service-health modality metrics (~850 tok)
 
 ## Phase 8.5 critical extraction closure additions
 
-- `database/078_phase8_5_region_extraction_scope.sql` — Adds scoped extraction persistence columns, JSON object checks, and current-row indexes for document, semantic-region, and aggregate extraction rows (~800 tok)
 - `contracts/model_outputs/granite_invoice_line_items.v1.schema.json` — Granite task contract for invoice service/line-item table output before Structura canonical normalization (~350 tok)
-- `contracts/model_outputs/granite_payment_summary.v1.schema.json` — Granite task contract for payment-summary KVP output before canonical invoice mapping (~250 tok)
 - `contracts/model_outputs/granite_medical_service_lines.v1.schema.json` — Granite task contract for EOB covered-service line output before canonical medical EOB mapping (~250 tok)
-- `lib/extraction/model_output_schemas.py` — Selects Granite model-output schema by canonical schema, semantic type, and Granite task; semantic type can override a mistaken `granite_task=kvp` for line-item regions (~450 tok)
+- `contracts/model_outputs/granite_payment_summary.v1.schema.json` — Granite task contract for payment-summary KVP output before canonical invoice mapping (~250 tok)
+- `database/078_phase8_5_region_extraction_scope.sql` — Adds scoped extraction persistence columns, JSON object checks, and current-row indexes for document, semantic-region, and aggregate extraction rows (~800 tok)
+- `docs/superpowers/plans/2026-04-29-phase-8-5-qwen-semantic-planner-generalization.md` — Follow-on implementation plan that reframes Qwen3-VL-4B as semantic document understanding plus extraction intent, rejects document-instance repair paths, and requires structural-only normalization plus class-level canary scoring (~1900 tok)
+- `docs/superpowers/plans/2026-04-29-phase-8-5-qwen-semantic-planner-optimization.md` — Qwen-only implementation plan that phases prompt/schema/context/merge/fanout/canary changes, maps each step to the current semantic code seams, and defines local plus GPU semantic-canary gates before more Granite tuning (~2600 tok)
+- `docs/superpowers/plans/2026-04-29-phase-8-5-qwen3-vl-4b-smart-parse-canary.md` — Qwen3-VL-4B Smart Parse implementation plan, Qwen8 disabled/deferred behavior, canary corpus gate, and runtime profile notes (~1500 tok)
+- `docs/superpowers/plans/2026-04-29-phase85-critical-extraction-closure.md` — Executed closure plan and verification checklist for scoped persistence, Granite contracts, normalization, reconciliation, and GPU proof (~1200 tok)
+- `docs/superpowers/specs/2026-04-29-phase-8-5-qwen-semantic-planner-generalization-spec.md` — Follow-on spec that makes Qwen3-VL-4B the semantic document-understanding layer for page/layout/table/visual inventory and extraction intent while keeping canonical facts behind Granite, validators, and review policy (~2500 tok)
+- `docs/superpowers/specs/2026-04-29-phase-8-5-qwen-semantic-planner-optimization-spec.md` — Qwen semantic-planner hardening spec covering recall-oriented prompt contracts, additive manifest fields, Docling context upgrades, merge/fanout rules, persistence strategy, and semantic-only definition of done (~2400 tok)
+- `docs/superpowers/specs/2026-04-29-phase-8-5-qwen3-vl-4b-smart-parse-canary-spec.md` — Qwen3-VL-4B Smart Parse spec, contract preservation rules, historical notes, and validation criteria; current runtime now uses four-image adaptive fan-in with one-page fallback (~1500 tok)
 - `lib/extraction/granite_prompting.py` — Builds Granite prompts for generic, table, and KVP semantic tasks with Docling table/page context and schema instructions (~1200 tok)
 - `lib/extraction/model_output_normalization.py` — Maps Granite task output, BMW-style flat fields, and wrapped `data.invoice_line_items` into canonical invoice/EOB payload fragments while recording repairs/rejected fields and filtering section headings (~2600 tok)
-- `lib/extraction/reconciliation.py` — Pure invoice region reconciliation that merges current semantic-region line items, totals, payment/document fallback fields, and provenance metadata into aggregate invoice JSON (~1300 tok)
+- `lib/extraction/model_output_schemas.py` — Selects Granite model-output schema by canonical schema, semantic type, and Granite task; semantic type can override a mistaken `granite_task=kvp` for line-item regions (~450 tok)
+- `lib/extraction/normalization.py` — Converts normalized extraction JSON into field, line-item, and observation candidates; includes current exact/sparse line-item dedupe and observation dedupe before persistence (~1400 tok)
 - `lib/extraction/reconciliation_repository.py` — DB orchestration for terminal-region aggregate persistence; loads current region rows and document-level fallback, then persists aggregate extraction/candidates (~1700 tok)
-- `docs/superpowers/plans/2026-04-29-phase85-critical-extraction-closure.md` — Executed closure plan and verification checklist for scoped persistence, Granite contracts, normalization, reconciliation, and GPU proof (~1200 tok)
-- `docs/superpowers/plans/2026-04-29-phase-8-5-qwen3-vl-4b-smart-parse-canary.md` — Qwen3-VL-4B Smart Parse implementation plan, Qwen8 disabled/deferred behavior, canary corpus gate, and runtime profile notes (~1500 tok)
-- `docs/superpowers/plans/2026-04-29-phase-8-5-qwen-semantic-planner-optimization.md` — Qwen-only implementation plan that phases prompt/schema/context/merge/fanout/canary changes, maps each step to the current semantic code seams, and defines local plus GPU semantic-canary gates before more Granite tuning (~2600 tok)
-- `docs/superpowers/plans/2026-04-29-phase-8-5-qwen-semantic-planner-generalization.md` — Follow-on implementation plan that reframes Qwen3-VL-4B as semantic document understanding plus extraction intent, rejects document-instance repair paths, and requires structural-only normalization plus class-level canary scoring (~1900 tok)
-- `docs/superpowers/specs/2026-04-29-phase-8-5-qwen3-vl-4b-smart-parse-canary-spec.md` — Qwen3-VL-4B Smart Parse spec, contract preservation rules, historical notes, and validation criteria; current runtime now uses four-image adaptive fan-in with one-page fallback (~1500 tok)
-- `docs/superpowers/specs/2026-04-29-phase-8-5-qwen-semantic-planner-optimization-spec.md` — Qwen semantic-planner hardening spec covering recall-oriented prompt contracts, additive manifest fields, Docling context upgrades, merge/fanout rules, persistence strategy, and semantic-only definition of done (~2400 tok)
-- `docs/superpowers/specs/2026-04-29-phase-8-5-qwen-semantic-planner-generalization-spec.md` — Follow-on spec that makes Qwen3-VL-4B the semantic document-understanding layer for page/layout/table/visual inventory and extraction intent while keeping canonical facts behind Granite, validators, and review policy (~2500 tok)
-- `lib/semantic_annotations/prompting.py` — Owns Qwen semantic prompt assembly and prompt-version constants; Smart Parse v3 is bounded-recall, forbids canonical facts, uses compact document-class examples, and keeps Docling context compact while asking for page/layout/table/visual inventory (~1300 tok)
-- `lib/semantic_annotations/docling_context.py` — Builds compact Docling context for Qwen, including full-document page outline/table inventory plus an explicit focus-page contract so multi-image windows treat `pageOutline` as context-only and keep output pages/regions scoped to input images (~1000 tok)
-- `tests/unit/semantic_annotations/test_prompting.py` — Prompt-contract regression tests proving Smart Parse asks for material-region recall, page inventory, Docling grounding, semantic metadata, Qwen visual/layout/table awareness, and excludes old sparse-target and document-instance wording (~500 tok)
-- `tests/fixtures/semantic_annotations/semantic_canary_expectations.example.json` — Committed class-level example shape for private semantic-canary expectations: required/forbidden document families, document-family candidates, page roles, semantic types, target schemas, source signals, extraction scopes, continuation groups, full-page flags, and region attributes (~700 tok)
-- `tests/unit/extraction/test_reconciliation.py` — Regression coverage for aggregate invoice merge, line-item/payment preservation, heading filtering, and document fallback fields (~800 tok)
+- `lib/extraction/reconciliation.py` — Pure invoice region reconciliation that merges current semantic-region line items, totals, payment/document fallback fields, and provenance metadata into aggregate invoice JSON (~1300 tok)
+- `lib/model_runtime/clients/_openai_vision.py` — Shared OpenAI-compatible vision client for Qwen/Granite; builds image+prompt payloads, enforces one structured-output mechanism per request, captures usage/finish reason, rejects truncated JSON, and falls back to JSON-object mode when allowed (~900 tok)
 - `lib/semantic_annotations/docling_audit.py` — Builds Docling-only audit summaries for page/table counts, page snippets, table signal strength/weakness, lexical anchor counts, family hints, and family-tension telemetry used by semantic canary/schema-fit checks (~900 tok)
+- `lib/semantic_annotations/docling_context.py` — Builds compact Docling context for Qwen, including full-document page outline/table inventory plus an explicit focus-page contract so multi-image windows treat `pageOutline` as context-only and keep output pages/regions scoped to input images (~1000 tok)
 - `lib/semantic_annotations/manifest_merge.py` — Merges Qwen page/window semantic manifests with weighted page votes, Docling anchor hints, conflict downgrade, planner metadata serialization, document-type candidates, and document-type resolution telemetry (~1400 tok)
+- `lib/semantic_annotations/prompting.py` — Owns Qwen semantic prompt assembly and prompt-version constants; Smart Parse v3 is bounded-recall, forbids canonical facts, uses compact document-class examples, and keeps Docling context compact while asking for page/layout/table/visual inventory (~1300 tok)
 - `lib/semantic_annotations/schema_fit.py` — Gates Granite target schema selection with Docling lexical family evidence so unanchored invoice/receipt/EOB guesses become `document_observation` (~700 tok)
-- `scripts/gpu/run_phase8_5_semantic_canary.py` — Semantic-only GPU canary harness for existing document IDs or PDFs; runs Docling audit plus Qwen semantic annotation and emits fan-in/fallback/schema-fit/token-budget telemetry plus optional expectation scorecards without Granite (~1400 tok)
-- `scripts/gpu/run_phase8_5_resident_corpus.py` — Production-style Phase 8.5 corpus harness that ingests PDFs, waits on resident live workers, cancels text embedding jobs by default for the model gate, and reports jobs, semantic annotations/regions, extractions, fields, line items, observations, and embeddings without heredoc startup (~1800 tok)
-- `lib/model_runtime/profiles.py` / `compose.yaml` / `workers/model_services/start_qwen_vllm.sh` — Current Smart Parse runtime profile is `qwen3-vl-8b-fp8-semantic:v1` served as `Qwen/Qwen3-VL-8B-Instruct-FP8` on `model-qwen-semantic:8104` with FP8 KV cache, 32K context, four image fan-in, planner-resolution Qwen image bounds, and prefix caching disabled; historical Qwen3-VL-4B remains registered for canary comparison only (~900 tok)
 - `lib/semantic_annotations/semantic_family.py` — Reconciles Qwen manifest document type with Docling anchor evidence and source family; writes Phase 8.5 semantic classification metadata and can supersede/downgrade Phase 4 family safely (~1200 tok)
 - `lib/semantic_annotations/target_schema_policy.py` — Canonical target-schema preference layer from semantic type, document hint, model target, Phase 4 fallback metadata, and source family into invoice/receipt/medical_eob/document_observation (~450 tok)
 - `lib/semantic_annotations/task_routing.py` — Repairs line-item semantic regions so table-oriented semantic types get Granite `tables_json` even when the model emitted a weaker task label (~200 tok)
-- `lib/model_runtime/clients/_openai_vision.py` — Shared OpenAI-compatible vision client for Qwen/Granite; builds image+prompt payloads, enforces one structured-output mechanism per request, captures usage/finish reason, rejects truncated JSON, and falls back to JSON-object mode when allowed (~900 tok)
-- `lib/extraction/normalization.py` — Converts normalized extraction JSON into field, line-item, and observation candidates; includes current exact/sparse line-item dedupe and observation dedupe before persistence (~1400 tok)
-- `artifacts/structura-model-prompts-contracts-behaviors-20260501T082453Z-v2.zip` — Untracked shareable review archive with Phase 8.5 prompts, contracts, runtime behavior, docs/RCAs, migrations, tests, Docling/extraction seams, API/UI semantic read paths, and manifest/readme; use v2 instead of the narrower first archive (~archive)
-- `artifacts/model-contract-pack-20260501T082453Z-v2/PACK_MANIFEST.txt` / `PACK_README.txt` — Manifest and explanation for the v2 share pack; the copied source files inside this directory are evidence-pack snapshots, not the active source of truth (~600 tok)
-
-## ./
-
-- `.DS_Store` (~3824 tok)
-- `CLAUDE.md` — OpenWolf (~57 tok)
-- `agents.md` / `AGENTS.md` — Agent operating guidance; root implementation plan as phase map, non-archive artifact references as required implementation depth, archive exclusion, Markdown-over-DOCX and chunked large-file review handling, conflict resolution, architecture stewardship, Phase 5/6/7 baselines and hardening records, Phase 8 implementation details, Phase 8.5 semantic/model runtime policy including Docling->Qwen3-VL-8B-Instruct-FP8->Granite pipeline, removed separate HQ/rescue runtime, scoped extraction persistence, Granite model-output contracts, aggregate reconciliation, final GPU proof at `9fd1534`, Phase 9 seams, Figma evidence, GPU-node runtime/test policy, all-phase live Playwright suite rule, and Docling worker dependency isolation (~7600 tok)
-- `STRUCTURA_PLAN_INDEX.md` — Canonical planning index; source alignment policy, Markdown-first duplicate-artifact handling with DOCX parity note, UI source of truth, GPU node sync policy, stop rule (~1000 tok)
-- `STRUCTURA_IMPLEMENTATION_PLAN.md` — Canonical end-to-end implementation plan; phase gates, mandatory per-phase artifact lists, API/database/event coverage, Markdown-first duplicate-artifact handling with DOCX parity note, GPU sync policy (~15500 tok)
-- `STRUCTURA_PHASE_1_IMPLEMENTATION_PLAN.md` — Phase 1 execution plan; upload, object storage, Inbox, protected asset streaming, preview, Viewer, fresh-context rereads, Firecrawl evidence rules, validation gate (~5700 tok)
-- `STRUCTURA_PHASE_2_IMPLEMENTATION_PLAN.md` — Phase 2 execution plan; manual filing, folders, tags, document organization, ACL/audit, smart-folder records, UI filing workflow, fresh-context rereads, Firecrawl evidence rules, validation gate (~6100 tok)
-- `STRUCTURA_PHASE_3_IMPLEMENTATION_PLAN.md` — Phase 3 execution plan; preview/page-asset hardening, Docling worker, canonical artifacts, page/element/table/chunk relational rows, parse quality, debug surfaces, Gate B, fresh-context rereads, Firecrawl evidence rules (~6400 tok)
-- `STRUCTURA_PHASE_4_IMPLEMENTATION_PLAN.md` — Phase 4 execution plan; classification, extraction validators, evidence resolver, model gateway, extraction workers, candidate normalization, canonical promotion, review APIs/UI, golden fixtures, Gate C, fresh-context rereads, Firecrawl evidence rules (~7600 tok)
-- `STRUCTURA_PHASE_5_IMPLEMENTATION_PLAN.md` — Phase 5 execution plan; lexical BM25 search, embedding gateway/worker, semantic retrieval, filter-aware planner, hybrid RRF, facets/saved searches, search UI, golden benchmarks, Gate D, fresh-context rereads, Firecrawl evidence rules (~8200 tok)
-- `STRUCTURA_PHASE_6_IMPLEMENTATION_PLAN.md` — Phase 6 execution plan; contacts, document-contact links, folder ACL guardrails, watched-folder API/worker, filing rules, dry-run explanations, rule suggestions/application, contacts dedupe, UI, CLI import/maintenance, phase gate, fresh-context rereads, Firecrawl evidence rules (~8800 tok)
-- `STRUCTURA_PHASE_7_IMPLEMENTATION_PLAN.md` — Phase 7 execution plan; relationships, review actions, suggestion worker, related-document panel, entity/document timelines, deadlines, smart views, search/filing integration, quality fixtures, phase gate, fresh-context rereads, Firecrawl evidence rules (~8300 tok)
-- `STRUCTURA_PHASE_8_IMPLEMENTATION_PLAN.md` — Phase 8 execution plan; difficult-document detection, selective visual embeddings, Qwen handwriting route, review-required uncertainty, visual retrieval contract/policy, mixed hybrid retrieval, low-text fallbacks, benchmarks, runtime observability, phase gate, fresh-context rereads, Firecrawl evidence rules (~9400 tok)
-- `STRUCTURA_PHASE_9_IMPLEMENTATION_PLAN.md` — Phase 9 execution plan; optional analysis workspace, analysis contracts, ACL/sensitivity/citation policy, analysis request API, context builder, prompt/model validation, worker-analysis, note persistence, Figma frame 14:990, core analysis actions, disable mode, observability, Gate E, fresh-context rereads, Firecrawl evidence rules (~10300 tok)
-- `STRUCTURA_PHASE_10_IMPLEMENTATION_PLAN.md` — Phase 10 execution plan; exports, manifest/provenance, export authorization/audit, WebAuthn/passkeys, session hardening, API token lifecycle, folder ACL management, backup/restore, admin jobs, service/storage/model/extraction health, settings/admin UI, SAST, phase gate, fresh-context rereads, Firecrawl evidence rules (~11600 tok)
-- `STRUCTURA_PHASE_11_IMPLEMENTATION_PLAN.md` — Phase 11 execution plan; golden corpus governance, expected answers, deterministic evaluation harness, extraction/search scoring, E2E and Playwright smoke tests, migration/contract regression, restore rehearsal, SAST/data-flow gate, performance measurements, release-candidate evidence pack, fresh-context rereads, Firecrawl evidence rules (~13200 tok)
-- `STRUCTURA_PHASE_12_IMPLEMENTATION_PLAN.md` — Final derived Phase 12 execution plan; internal-GA/release handoff, Phase 11 evidence intake, blocker closure, contract/schema freeze, runtime config, operator runbooks, benchmark threshold approval, UI/security/restore/performance signoff, release notes/tagging, go/no-go, post-release cadence, fresh-context rereads, Firecrawl evidence rules (~13200 tok)
-- `STRUCTURA_UI_FIGMA_QA_PLAN.md` — Canonical Figma and Playwright UI QA plan; frame ids, pixel-match rules, workflow QA, UI stop rule (~3000 tok)
-- `README.md` — Implementation status through Phase 7, canonical local/GPU verification commands including Phase 1-7 live Playwright specs, Compose/runtime notes, worker profile notes, migration baseline, and tracking behavior
-- `Makefile` — bootstrap, test, lint, format, contracts, migrate, API/web dev, Compose, and worker-placeholder tasks
-- `compose.yaml` — Postgres, API, web, default workers, profile-gated model placeholders, and Redis fallback services
-- `.env.example` — Local Structura environment defaults
-
-## Phase 0 implementation scaffold
-
-- `apps/api/structura_api/main.py` — FastAPI app factory, router registration, request-id middleware, JSON request logging
-- `apps/api/structura_api/dependencies.py` — Current-principal resolution from API token or session cookie, CSRF dependency for cookie-auth state changes
-- `apps/api/structura_api/routes_auth.py` — Password and magic-link session creation, current session lookup, logout, session/CSRF cookies
-- `apps/api/structura_api/routes_documents.py` — Phase 0 protected document list and asset route placeholders
-- `apps/api/structura_api/routes_jobs.py` — Protected job lookup, admin job list, CSRF-protected retry endpoint
-- `apps/api/structura_api/routes_admin.py` — Protected service-health snapshot endpoint
-- `apps/web/` — Vite React placeholder shell pointed at the API base URL
-- `contracts/` — v1.2 OpenAPI, shared schemas, and pipeline event schemas copied into active repo surface
-- `database/` — Baseline SQL 001-060 plus excluded 070 query examples; BM25 compatibility edit for pinned ParadeDB PG17 image
-- `docs/adr/0000-phase-0-baseline.md` — Phase 0 architecture decision record covering scaffold, auth, migrations, ParadeDB pin, and job fallback
-- `infrastructure/zfs/` — Active ZFS runtime dataset plan copied from v1.2 artifacts
-- `lib/auth/service.py` — Bootstrap admin, Argon2id password verification, session/magic-link/API-token service layer
-- `lib/config/settings.py` — Runtime settings, contract/database paths, cookie names, session and magic-link TTLs
-- `lib/contracts/` — Contract registry and generated/handwritten Pydantic DTOs for Phase 0 API routes
-- `lib/db/connection.py` — psycopg connection helper with `structura, public` search path
-- `lib/db/migrations.py` — Baseline migration plan, checksum tracking, legacy schema adoption, idempotent reruns
-- `lib/jobs/service.py` — Safe job payload validation, create/list/get/claim/heartbeat/complete/fail/retry, service health snapshots
-- `lib/observability/logging.py` — Minimal JSON request/event logging
-- `scripts/bootstrap_admin.py` — Local admin bootstrap/rotation CLI
-- `scripts/migrate.py` — Baseline migration entrypoint
-- `scripts/validate_contracts.py` — OpenAPI/schema/event contract validation entrypoint
-- `tests/unit/` — Config, contract registry, migrations, auth hashing, and job payload safety tests
-- `tests/integration/` — Live Postgres baseline schema, migration idempotency, auth/session/job/service-health tests
-- `workers/placeholder.py` — Placeholder worker heartbeat loop, internal health HTTP endpoint, service-health DB snapshots
-- `workers/model_placeholder.py` — Profile-gated model service placeholder
-
-## Phase 1/2 UI reference artifacts
-
-- `docs/ui-reference/figma/inbox/` — Phase 1 Inbox Figma context, source screenshot, Playwright comparison screenshot, and comparison notes for frame `17:2`
-- `docs/ui-reference/figma/viewer/` — Phase 1 Viewer Figma context, source screenshot, Playwright comparison screenshot, and comparison notes for frame `14:434`
-- `docs/ui-reference/figma/folder-tag-filing/` — Phase 2 folder/tag filing composite Figma evidence set; includes context JSON, primary Inbox screenshot, handoff interaction/edge/redline screenshots, extraction-workspace reference, Playwright comparison screenshot, and scope comparison notes
-
-## Phase 3 canonical parse implementation
-
-- `apps/api/structura_api/routes_parse_debug.py` — Admin-scoped parse-debug API for a document; returns bounded parse metadata, current Docling artifacts as protected asset URLs, page summaries, element/table samples, and chunk samples.
-- `apps/web/src/components/ParseDebugPanel.tsx` — Viewer parse-debug panel; loads bounded admin-only parse diagnostics and now shows enough recent jobs for Docling provenance to remain visible after Phase 4 extraction jobs.
-- `lib/documents/parse_models.py` — Dataclasses for canonical parse results, parsed pages, elements, tables, chunks, and persistence summaries.
-- `lib/documents/canonical_parse.py` — Orchestrates immutable derived Docling artifact storage, current asset upserts, relational parse replacement, document parse metadata update, and cleanup on failed persistence.
-- `lib/documents/parse_repository.py` — Persistence repository for replacing `document_pages`, `document_elements`, `document_tables`, and `document_chunks`, plus document parse-state metadata.
-- `lib/documents/parse_debug.py` — Read model for protected parse-debug payloads without exposing storage object URIs.
-- `workers/docling/converter.py` — Lazy Docling adapter that imports Docling only inside the dedicated worker runtime and normalizes Docling output into Phase 3 parse models.
-- `workers/docling/service.py` — Docling job handler; verifies the original asset, converts, persists canonical parse artifacts, refreshes page previews, and records parse failure metadata safely.
-- `workers/docling/worker.py` — Queue consumer and internal health endpoint for `docling` jobs.
-- `workers/docling/Dockerfile` — Dedicated Docling worker image; installs API requirements, Docling requirements, and native OpenCV/PDF shared libraries without adding Docling/Torch to API or preview images.
-- `workers/previews/service.py` — Page-aware preview generation and page asset linkage for Phase 3, with cleanup of derived objects on failed database persistence.
+- `scripts/gpu/run_phase8_5_resident_corpus.py` — Production-style Phase 8.5 corpus harness that ingests PDFs, waits on resident live workers, cancels text embedding jobs by default for the model gate, and reports jobs, semantic annotations/regions, extractions, fields, line items, observations, and embeddings without heredoc startup (~1800 tok)
+- `scripts/gpu/run_phase8_5_semantic_canary.py` — Semantic-only GPU canary harness for existing document IDs or PDFs; runs Docling audit plus Qwen semantic annotation and emits fan-in/fallback/schema-fit/token-budget telemetry plus optional expectation scorecards without Granite (~1400 tok)
+- `tests/fixtures/semantic_annotations/semantic_canary_expectations.example.json` — Committed class-level example shape for private semantic-canary expectations: required/forbidden document families, document-family candidates, page roles, semantic types, target schemas, source signals, extraction scopes, continuation groups, full-page flags, and region attributes (~700 tok)
+- `tests/unit/extraction/test_reconciliation.py` — Regression coverage for aggregate invoice merge, line-item/payment preservation, heading filtering, and document fallback fields (~800 tok)
+- `tests/unit/semantic_annotations/test_prompting.py` — Prompt-contract regression tests proving Smart Parse asks for material-region recall, page inventory, Docling grounding, semantic metadata, Qwen visual/layout/table awareness, and excludes old sparse-target and document-instance wording (~500 tok)
 
 ## Playwright validation
 
-- `tests/e2e/phase1-live.spec.ts` — Live GPU browser smoke for login, upload, document list/detail, and protected Viewer asset URL.
-- `tests/e2e/phase2-live.spec.ts` — Live GPU browser smoke for manual folder/tag creation, document filing, folder filtering, and Viewer propagation.
-- `tests/e2e/phase3-live.spec.ts` — Live GPU browser smoke for valid PDF upload, live Docling parse completion, and Viewer Parse Debug diagnostics.
-- `tests/e2e/phase4-live.spec.ts` — Live GPU browser smoke for opening the Review Queue against the real web/API/DB stack.
-- `tests/e2e/support/pdf.ts` — Deterministic text-layer PDF writer used by live Playwright upload tests.
-
-## .claude/
-
-- `settings.json` (~441 tok)
-
-## .claude/rules/
-
-- `openwolf.md` (~313 tok)
 
 ## claude-desktop-46/
 
@@ -375,6 +432,14 @@
 
 - `evaluation-and-test-strategy.md` — Evaluation and Test Strategy (~1538 tok)
 
+## database/
+
+- `088_phase8_5_line_item_payer_amounts.sql` — Phase 8.5: preserve payer-side service-line amounts on line-item candidates. (~115 tok)
+
+## docs/adr/
+
+- `0005-deterministic-extraction-and-reconciliation.md` — ADR 0005: Deterministic Extraction Shapes and Reconciliation (~1884 tok)
+
 ## gold-master/
 
 - `architecture.md` — System Architecture (~1616 tok)
@@ -384,6 +449,28 @@
 - `implementation-plan.md` — Implementation Plan (~1186 tok)
 - `product-and-ux.md` — Product and UX Specification (~1180 tok)
 - `README.md` — Project documentation (~905 tok)
+
+## lib/extraction/
+
+- `candidate_deduplication.py` — dedupe_line_item_candidates, line_item_exact_key, line_item_sparse_key, line_item_sparse_keys_for_ri (~1916 tok)
+- `candidate_quality.py` — reject_observation, reject_scalar_candidate, reject_line_item_content, reject_line_item (~1555 tok)
+- `candidate_repository.py` — insert_field_candidate, insert_line_item_candidate, typed_value_columns, canonical_column_values (~1933 tok)
+- `candidate_value_parsing.py` — candidate_status, first_evidence, evidence, overall_confidence (~1376 tok)
+- `claim_candidates.py` — field_candidates_from_claims, line_item_candidates_from_claims, observation_candidates_from_claims (~3201 tok)
+- `claim_invariants.py` — apply_claim_invariants (~3064 tok)
+- `claim_resolver.py` — ClaimFamilyProjection: resolve_claims_for_family (~3900 tok)
+- `claims.py` — ClaimAnchor: as_json, identity_json, as_json, claims_from_region_envelope + 1 more (~5050 tok)
+- `evidence_locator.py` — selected_evidence_ref (~896 tok)
+- `model_output_contract_boundary.py` — contract_root_payload, merge_rejected_fields, merge_contract_errors (~1176 tok)
+- `model_output_value_parsing.py` — value_type, bounded_text, money_value, number_value (~958 tok)
+- `models.py` — ParsedPageText: full_text, family, route_profile, confidence + 4 more (~1955 tok)
+- `receipt_reconciliation.py` — reconcile_receipt_region_extractions (~297 tok)
+- `reconciliation_repository.py` — aggregate: maybe_reconcile_semantic_annotation (~4803 tok)
+- `reconciliation.py` — reconcile_invoice_region_extractions (~1680 tok)
+
+## lib/semantic_annotations/
+
+- `extraction_plan.py` — GraniteJobSpec: summary_counts, to_metadata, plan_granite_jobs, select_if_allowed + 1 more (~4583 tok)
 
 ## pro-merged-master-v.beta/
 
@@ -648,3 +735,12 @@
 ## qwen3-122/
 
 - `first-pass-plan.md` — DocVault: AI-Augmented Personal Document Management System (~30226 tok)
+
+## tests/unit/extraction/
+
+- `test_claims_line_item_grouping.py` — test_distinct_rows_sharing_region_anchor_keep_distinct_groups, test_identical_repeated_rows_survive_ (~2310 tok)
+- `test_model_output_value_parsing.py` — test_model_output_value_parsing_preserves_granite_scalar_coercions, test_money_value_does_not_fabric (~556 tok)
+
+## workers/extraction/
+
+- `worker.py` — ExtractionWorkerError: parse_args, process_next_extraction_job, main, handle_stop (~3664 tok)
