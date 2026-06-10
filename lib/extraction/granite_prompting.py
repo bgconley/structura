@@ -268,7 +268,9 @@ def _compact_shape_for_schema(schema_name: str) -> str:
     if schema_name == "granite_generic_kvp.v1":
         return (
             'Use shape {"fields":[{"name":"visible_field","value":"visible value",'
-            '"confidence":0.0,"source_text":"short visible text"}],"confidence":{}}.'
+            '"confidence":0.0,"source_text":"short visible text"}],"confidence":{}}. '
+            "Report at most 24 of the most material visible fields with short scalar "
+            "values; do not transcribe the page, repeat fields, or copy paragraphs."
         )
     if schema_name == "granite_dispute_form.v1":
         return (

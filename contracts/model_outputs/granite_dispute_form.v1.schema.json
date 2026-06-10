@@ -40,7 +40,8 @@
         "number",
         "string",
         "null"
-      ]
+      ],
+      "maxLength": 80
     },
     "dispute_reason": {
       "type": [
@@ -75,7 +76,8 @@
               "number",
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "source_text": {
             "type": [

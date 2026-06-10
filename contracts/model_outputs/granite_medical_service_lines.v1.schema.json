@@ -34,67 +34,77 @@
           },
           "service_description": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 300
           },
           "service_date": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "procedure_code": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "billed_amount": {
             "type": [
               "number",
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "allowed_amount": {
             "type": [
               "number",
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "paid_amount": {
             "type": [
               "number",
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "patient_responsibility": {
             "type": [
               "number",
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 120
           },
           "row_index": {
             "type": [
               "integer",
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "table_id": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "page_number": {
             "type": [
               "integer",
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           }
         }
       }

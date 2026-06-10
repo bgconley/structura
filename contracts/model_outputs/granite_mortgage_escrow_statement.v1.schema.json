@@ -41,28 +41,32 @@
         "number",
         "string",
         "null"
-      ]
+      ],
+      "maxLength": 80
     },
     "payment_amount": {
       "type": [
         "number",
         "string",
         "null"
-      ]
+      ],
+      "maxLength": 80
     },
     "tax_amount": {
       "type": [
         "number",
         "string",
         "null"
-      ]
+      ],
+      "maxLength": 80
     },
     "insurance_amount": {
       "type": [
         "number",
         "string",
         "null"
-      ]
+      ],
+      "maxLength": 80
     },
     "confidence": {
       "type": "object",

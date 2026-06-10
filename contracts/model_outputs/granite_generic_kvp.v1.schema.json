@@ -7,7 +7,7 @@
   "properties": {
     "fields": {
       "type": "array",
-      "maxItems": 40,
+      "maxItems": 24,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -29,7 +29,8 @@
               "number",
               "boolean",
               "null"
-            ]
+            ],
+            "maxLength": 300
           },
           "source_text": {
             "type": [
@@ -42,7 +43,9 @@
             "type": [
               "number",
               "null"
-            ]
+            ],
+            "minimum": 0,
+            "maximum": 1
           }
         }
       }

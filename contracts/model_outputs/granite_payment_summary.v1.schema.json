@@ -15,14 +15,16 @@
       "type": [
         "string",
         "null"
-      ]
+      ],
+      "maxLength": 80
     },
     "amount": {
       "type": [
         "number",
         "string",
         "null"
-      ]
+      ],
+      "maxLength": 80
     },
     "payments": {
       "type": "array",
@@ -35,49 +37,57 @@
               "number",
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "card_number": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "merchant_id": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "terminal_id": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "auth_code": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "auth_mode": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "application_name": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "source_text": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 500
           }
         },
         "required": [
@@ -90,7 +100,8 @@
           "application_name",
           "source_text"
         ]
-      }
+      },
+      "maxItems": 12
     },
     "confidence": {
       "type": "object",

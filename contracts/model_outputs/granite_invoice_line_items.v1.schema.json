@@ -33,60 +33,69 @@
           },
           "description": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 300
           },
           "quantity": {
             "type": [
               "number",
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "unit": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "unit_price": {
             "type": [
               "number",
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "amount": {
             "type": [
               "number",
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "category_hint": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "row_index": {
             "type": [
               "integer",
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "table_id": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "page_number": {
             "type": [
               "integer",
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           }
         }
       }
@@ -100,35 +109,40 @@
             "number",
             "string",
             "null"
-          ]
+          ],
+          "maxLength": 80
         },
         "tax_total": {
           "type": [
             "number",
             "string",
             "null"
-          ]
+          ],
+          "maxLength": 80
         },
         "shipping_total": {
           "type": [
             "number",
             "string",
             "null"
-          ]
+          ],
+          "maxLength": 80
         },
         "discount_total": {
           "type": [
             "number",
             "string",
             "null"
-          ]
+          ],
+          "maxLength": 80
         },
         "total": {
           "type": [
             "number",
             "string",
             "null"
-          ]
+          ],
+          "maxLength": 80
         }
       },
       "required": [

@@ -29,7 +29,8 @@
               "number",
               "boolean",
               "null"
-            ]
+            ],
+            "maxLength": 300
           },
           "confidence": {
             "type": [
@@ -60,43 +61,50 @@
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "name": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 300
           },
           "phone": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "fax": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "address": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 300
           },
           "url": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "deadline": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "source_text": {
             "type": [
@@ -138,25 +146,29 @@
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "description": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 300
           },
           "code": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "decision": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "source_text": {
             "type": [

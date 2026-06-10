@@ -44,7 +44,8 @@
               "number",
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "unit": {
             "type": [
@@ -58,21 +59,24 @@
               "number",
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "discount": {
             "type": [
               "number",
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "amount": {
             "type": [
               "number",
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "sku": {
             "type": [
@@ -100,20 +104,23 @@
               "integer",
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "table_id": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "page_number": {
             "type": [
               "integer",
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           }
         }
       }
@@ -127,21 +134,24 @@
             "number",
             "string",
             "null"
-          ]
+          ],
+          "maxLength": 80
         },
         "tax": {
           "type": [
             "number",
             "string",
             "null"
-          ]
+          ],
+          "maxLength": 80
         },
         "total": {
           "type": [
             "number",
             "string",
             "null"
-          ]
+          ],
+          "maxLength": 80
         }
       },
       "required": [

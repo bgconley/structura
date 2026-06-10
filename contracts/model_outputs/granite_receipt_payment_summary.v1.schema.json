@@ -35,35 +35,40 @@
         "number",
         "string",
         "null"
-      ]
+      ],
+      "maxLength": 80
     },
     "tax": {
       "type": [
         "number",
         "string",
         "null"
-      ]
+      ],
+      "maxLength": 80
     },
     "tip": {
       "type": [
         "number",
         "string",
         "null"
-      ]
+      ],
+      "maxLength": 80
     },
     "discount_total": {
       "type": [
         "number",
         "string",
         "null"
-      ]
+      ],
+      "maxLength": 80
     },
     "total": {
       "type": [
         "number",
         "string",
         "null"
-      ]
+      ],
+      "maxLength": 80
     },
     "payment_method": {
       "type": [

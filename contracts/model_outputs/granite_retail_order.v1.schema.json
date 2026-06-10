@@ -58,21 +58,24 @@
               "number",
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "unit_price": {
             "type": [
               "number",
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "amount": {
             "type": [
               "number",
               "string",
               "null"
-            ]
+            ],
+            "maxLength": 80
           },
           "source_text": {
             "type": [
@@ -89,7 +92,8 @@
         "number",
         "string",
         "null"
-      ]
+      ],
+      "maxLength": 80
     },
     "confidence": {
       "type": "object",
