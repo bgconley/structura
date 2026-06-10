@@ -16,7 +16,17 @@ from lib.extraction.models import ExtractionSourceDocument
 from lib.extraction.repository import load_extraction_source
 from lib.jobs import JobService, create_job_with_cursor
 from lib.jobs.event_payloads import build_extract_document_job_payload
+from lib.model_runtime.http_client import (
+    ModelProtocolError,
+    ModelServiceError,
+    ModelTimeoutError,
+)
 from lib.model_runtime.reliability_versions import REGION_ENVELOPE_VERSION
+from lib.semantic_annotations.deterministic_plan import (
+    apply_baseline_invariant,
+    baseline_only_result,
+    deterministic_baseline_manifest,
+)
 from lib.semantic_annotations.docling_audit import build_docling_audit
 from lib.semantic_annotations.docling_targets import (
     augment_result_with_docling_structural_targets,
@@ -150,9 +160,7 @@ class SemanticAnnotationService:
         source = self.source_loader(document_id)
         if source.document_id != document_id:
             raise SemanticAnnotationServiceError("Loaded source document ID mismatch.")
-        manifest_result = self.gateway.annotate(source, quality_mode=quality_mode)
-        manifest_result = augment_result_with_docling_structural_targets(source, manifest_result)
-        manifest_result = normalize_result_for_planning(source, manifest_result)
+        manifest_result = self._planned_manifest_result(source, quality_mode=quality_mode)
         family_decision = semantic_document_family_decision(source, manifest_result.manifest)
         effective_source = source_with_semantic_family(source, family_decision)
         if self._use_default_atomic_uow:
@@ -179,6 +187,40 @@ class SemanticAnnotationService:
             queued_granite_job_ids=tuple(queued_job_ids),
             manifest_result=manifest_result,
         )
+
+    def _planned_manifest_result(
+        self,
+        source: ExtractionSourceDocument,
+        *,
+        quality_mode: QualityMode,
+    ) -> SemanticAnnotationResult:
+        """Plan the document's extraction regions.
+
+        Default path: Qwen annotates, then Docling structural targets and
+        structural normalization repair the plan. With the deterministic
+        planner enabled (ADR 0006 X4 / E3), the Docling baseline is built
+        first, a Qwen failure degrades to that baseline instead of failing
+        the annotation, and the final plan is enforced to be a superset of
+        the baseline with plan-identity telemetry.
+        """
+        if not get_settings().deterministic_planner_enabled:
+            manifest_result = self.gateway.annotate(source, quality_mode=quality_mode)
+            manifest_result = augment_result_with_docling_structural_targets(
+                source, manifest_result
+            )
+            return normalize_result_for_planning(source, manifest_result)
+        baseline = deterministic_baseline_manifest(source, quality_mode=quality_mode)
+        try:
+            manifest_result = self.gateway.annotate(source, quality_mode=quality_mode)
+        except (ModelProtocolError, ModelServiceError, ModelTimeoutError) as exc:
+            return baseline_only_result(
+                source,
+                baseline,
+                failure_reason=f"{type(exc).__name__}: {exc}",
+            )
+        manifest_result = augment_result_with_docling_structural_targets(source, manifest_result)
+        manifest_result = normalize_result_for_planning(source, manifest_result)
+        return apply_baseline_invariant(source, baseline, manifest_result)
 
     def _persist_and_enqueue_atomically(
         self,

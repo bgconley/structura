@@ -56,6 +56,13 @@ class Settings(BaseSettings):
     # and text-lane abstentions.
     text_lane_tables_enabled: bool = Field(default=True, alias="STRUCTURA_TEXT_LANE_TABLES")
     text_lane_kvp_enabled: bool = Field(default=True, alias="STRUCTURA_TEXT_LANE_KVP")
+    # Deterministic-primary planning (ADR 0006 X4, E3). Default off until the
+    # E3 GPU gate passes: baseline plans from Docling structure, Qwen
+    # augments, and a Qwen failure degrades to the baseline instead of
+    # stranding the document.
+    deterministic_planner_enabled: bool = Field(
+        default=False, alias="STRUCTURA_DETERMINISTIC_PLANNER"
+    )
     model_qwen_semantic_url: str = "http://127.0.0.1:8104"
     model_granite_url: str = "http://127.0.0.1:8101"
     model_text_embed_url: str = "http://127.0.0.1:8102"
