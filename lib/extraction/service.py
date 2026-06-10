@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 
 from lib.config import get_settings
 from lib.extraction.classification import TARGET_EXTRACTION_SCHEMAS, classify_document
+from lib.extraction.expected_field_coverage import expected_field_coverage
 from lib.extraction.gateway import ExtractionGateway
 from lib.extraction.gateways.routing import default_extraction_gateway
 from lib.extraction.models import (
@@ -285,6 +286,20 @@ class ExtractionService:
                 source_engine=gateway_result.route.source_engine,
                 require_concrete_evidence=require_concrete_candidate_evidence,
             )
+        if (
+            semantic_task is not None
+            and semantic_task.expected_fields
+            and is_model_source_engine(gateway_result.route.source_engine)
+        ):
+            # Telemetry only: record which Qwen-planned expected fields the
+            # Granite region envelope actually produced. Never changes
+            # admission, validation, or review behavior.
+            coverage_entry = expected_field_coverage(
+                semantic_task.expected_fields,
+                region_envelope,
+            )
+            if coverage_entry is not None:
+                gateway_result.normalization_json["expected_field_coverage"] = coverage_entry
         intent_metadata = _extraction_intent_metadata(
             requested_by=requested_by,
             requested_by_user_id=requested_by_user_id,
