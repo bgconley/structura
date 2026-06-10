@@ -30,6 +30,14 @@ if [[ ! -f granite4_vision.py || ! -f start_granite4_vision_server.py ]]; then
     --local-dir "$server_dir"
 fi
 
+structured_outputs_config="${STRUCTURA_GRANITE_STRUCTURED_OUTPUTS_CONFIG:-}"
+if [[ -z "$structured_outputs_config" ]]; then
+  # disable_any_whitespace stops degenerate whitespace loops inside guided
+  # decoding: live truncation dead letters showed 45k-68k chars of whitespace
+  # between JSON tokens, which content bounds cannot prevent.
+  structured_outputs_config='{"disable_any_whitespace": true}'
+fi
+
 args=(
   --model "$model_id"
   --trust_remote_code
@@ -39,6 +47,7 @@ args=(
   --gpu-memory-utilization "$gpu_memory"
   --max-num-seqs "$max_num_seqs"
   --limit-mm-per-prompt "$limit_mm"
+  --structured-outputs-config "$structured_outputs_config"
   --hf-overrides "{\"adapter_path\":\"$adapter_path\"}"
 )
 

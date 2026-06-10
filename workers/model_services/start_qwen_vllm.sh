@@ -21,6 +21,12 @@ if [[ -z "$limit_mm" ]]; then
   limit_mm='{"image":4,"video":0}'
 fi
 
+structured_outputs_config="${STRUCTURA_QWEN_STRUCTURED_OUTPUTS_CONFIG:-}"
+if [[ -z "$structured_outputs_config" ]]; then
+  # Match the Granite service: forbid whitespace loops inside guided decoding.
+  structured_outputs_config='{"disable_any_whitespace": true}'
+fi
+
 args=(
   --model "$STRUCTURA_VLLM_MODEL_ID"
   --served-model-name "$served_model_name"
@@ -30,6 +36,7 @@ args=(
   --max-model-len "$max_model_len"
   --gpu-memory-utilization "$gpu_memory"
   --limit-mm-per-prompt "$limit_mm"
+  --structured-outputs-config "$structured_outputs_config"
 )
 
 if [[ "$dtype" != "auto" ]]; then
