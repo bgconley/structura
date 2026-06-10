@@ -3,6 +3,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 from uuid import uuid4
 
+import pytest
+
 from lib.model_runtime.http_client import ModelProtocolError, ModelTimeoutError
 from workers import extraction as extraction_worker_module
 from workers.extraction.worker import process_next_extraction_job
@@ -38,7 +40,14 @@ def test_extraction_worker_records_exception_details_for_failed_extract(monkeypa
     assert "extract_document" in job_service.failed[0]["details"]["traceback"]
 
 
-def test_extraction_worker_does_not_retry_granite_model_timeout(monkeypatch) -> None:
+@pytest.mark.parametrize(
+    "route_profile",
+    ["docling_plus_granite_structured", "docling_plus_structured_extraction"],
+)
+def test_extraction_worker_retries_granite_model_timeout_on_all_routes(
+    monkeypatch,
+    route_profile: str,
+) -> None:
     document_id = uuid4()
     job_id = uuid4()
     job_service = RecordingJobService(
@@ -48,7 +57,7 @@ def test_extraction_worker_does_not_retry_granite_model_timeout(monkeypatch) -> 
             household_id=uuid4(),
             payload={
                 "target_schema_name": "receipt",
-                "route_profile": "docling_plus_granite_structured",
+                "route_profile": route_profile,
                 "semantic_type": "receipt_line_item_table",
                 "semantic_granite_task": "tables_json",
             },
@@ -63,8 +72,8 @@ def test_extraction_worker_does_not_retry_granite_model_timeout(monkeypatch) -> 
 
     assert processed is True
     assert job_service.failed[0]["error_class"] == "ModelTimeoutError"
-    assert job_service.failed[0]["retryable"] is False
-    assert job_service.failed[0]["details"]["model_failure_policy"] == "do_not_retry_timeout"
+    assert job_service.failed[0]["retryable"] is True
+    assert job_service.failed[0]["details"]["model_failure_policy"] == "retryable_model_exception"
 
 
 def test_extraction_worker_records_model_runtime_error_details(monkeypatch) -> None:
@@ -90,6 +99,10 @@ def test_extraction_worker_records_model_runtime_error_details(monkeypatch) -> N
 
     assert processed is True
     assert job_service.failed[0]["error_class"] == "ModelProtocolError"
+    assert job_service.failed[0]["retryable"] is False
+    assert job_service.failed[0]["details"]["model_failure_policy"] == (
+        "non_retryable_model_exception"
+    )
     assert job_service.failed[0]["details"]["model_runtime_details"] == {
         "finish_reason": "length",
         "usage": {"completion_tokens": 1024},
@@ -173,6 +186,40 @@ def test_extraction_worker_passes_phase85_run_id_from_job_metadata(monkeypatch) 
     assert processed is True
     assert service.kwargs["run_id"] == "phase85-20260604-smoke-001"
     assert job_service.completed[0]["result"]["extraction_status"] == "succeeded"
+
+
+def test_extraction_failure_policy_follows_model_exception_retryability_contract() -> None:
+    from lib.extraction.model_failure_policy import (
+        extraction_failure_policy,
+        model_exception_retryable,
+    )
+    from lib.model_runtime.http_client import (
+        ModelConfigurationError,
+        ModelServiceError,
+    )
+
+    payload = {"route_profile": "docling_plus_granite_structured"}
+
+    timeout = extraction_failure_policy(payload=payload, exc=ModelTimeoutError("timed out"))
+    service = extraction_failure_policy(payload=payload, exc=ModelServiceError("HTTP 503"))
+    protocol = extraction_failure_policy(payload=payload, exc=ModelProtocolError("bad JSON"))
+    configuration = extraction_failure_policy(
+        payload=payload,
+        exc=ModelConfigurationError("bad URL"),
+    )
+    non_model = extraction_failure_policy(payload=payload, exc=ValueError("badly formed UUID"))
+
+    assert timeout.retryable is True
+    assert timeout.policy == "retryable_model_exception"
+    assert service.retryable is True
+    assert protocol.retryable is False
+    assert protocol.policy == "non_retryable_model_exception"
+    assert configuration.retryable is False
+    assert non_model.retryable is True
+    assert non_model.policy == "default_retryable"
+    assert model_exception_retryable(ModelTimeoutError("timed out")) is True
+    assert model_exception_retryable(ModelProtocolError("bad JSON")) is False
+    assert model_exception_retryable(ValueError("not a model error")) is True
 
 
 class RecordingJobService:
