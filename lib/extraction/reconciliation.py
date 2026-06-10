@@ -54,8 +54,6 @@ def reconcile_invoice_region_extractions(
     if not _party_has_non_placeholder_name(seller):
         metadata.setdefault("missing_fields", []).append("seller.display_name")
         seller = {}
-    if "total" not in totals and "amount_paid" in totals:
-        totals["total"] = totals["amount_paid"]
     if "total" not in totals:
         metadata.setdefault("missing_fields", []).append("totals.total")
 
@@ -117,7 +115,6 @@ def _line_item_locator_key(item: dict[str, Any]) -> tuple[Any, ...]:
     evidence = item.get("evidence")
     first = selected_evidence_ref(evidence) if isinstance(evidence, list) else {}
     return (
-        normalized_text_key(first.get("semantic_region_id")),
         first.get("page_number") or item.get("page_number"),
         normalized_text_key(first.get("page_id") or item.get("page_id")),
         normalized_text_key(first.get("element_id") or item.get("element_id")),

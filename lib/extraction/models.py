@@ -204,6 +204,8 @@ class LineItemCandidateFact:
     unit: str | None = None
     unit_price: float | None = None
     gross_amount: float | None = None
+    allowed_amount: float | None = None
+    plan_paid_amount: float | None = None
     discount_amount: float | None = None
     tax_amount: float | None = None
     net_amount: float | None = None

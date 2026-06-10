@@ -38,9 +38,9 @@ def test_invoice_line_item_model_output_preserves_total_adjustments() -> None:
 
     assert normalized["line_items"][0]["description"] == "Alignment service"
     assert normalized["totals"] == {
-        "subtotal": {"amount": 100.0, "currency": "USD"},
-        "tax_total": {"amount": 10.0, "currency": "USD"},
-        "shipping_total": {"amount": 5.0, "currency": "USD"},
-        "discount_total": {"amount": 16.0, "currency": "USD"},
-        "total": {"amount": 99.0, "currency": "USD"},
+        "subtotal": {"amount": 100.0},
+        "tax_total": {"amount": 10.0},
+        "shipping_total": {"amount": 5.0},
+        "discount_total": {"amount": 16.0},
+        "total": {"amount": 99.0},
     }

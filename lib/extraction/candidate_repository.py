@@ -78,13 +78,14 @@ def insert_line_item_candidate(
           (
             document_id, extraction_id, source_engine, line_item_type, candidate_group,
             ordinal, code, code_system, service_date, description, quantity, unit,
-            unit_price, gross_amount, discount_amount, tax_amount, net_amount,
+            unit_price, gross_amount, allowed_amount, plan_paid_amount, discount_amount,
+            tax_amount, net_amount,
             currency_code, category_hint, confidence, authority_weight, evidence_json,
             validation_json, status
           )
         VALUES (
           %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-          %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s
+          %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s
         )
         RETURNING *
         """,
@@ -103,6 +104,8 @@ def insert_line_item_candidate(
             candidate.unit,
             candidate.unit_price,
             candidate.gross_amount,
+            candidate.allowed_amount,
+            candidate.plan_paid_amount,
             candidate.discount_amount,
             candidate.tax_amount,
             candidate.net_amount,

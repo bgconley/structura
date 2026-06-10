@@ -304,6 +304,12 @@ def test_invoice_claim_resolver_demotes_arithmetic_conflicts_to_review() -> None
         source_engine="granite",
         anchor=anchor,
     )
+    shipping_total = _claim(
+        canonical_key="invoice.shipping_total",
+        typed_value={"amount": 1.0, "currency": "USD"},
+        source_engine="granite",
+        anchor=anchor,
+    )
     total = _claim(
         canonical_key="invoice.total_amount",
         typed_value={"amount": 20.0, "currency": "USD"},
@@ -313,7 +319,7 @@ def test_invoice_claim_resolver_demotes_arithmetic_conflicts_to_review() -> None
 
     projection = resolve_claims_for_family(
         family="invoice",
-        claims=[invoice_number, subtotal, tax_total, total],
+        claims=[invoice_number, subtotal, tax_total, shipping_total, total],
     )
 
     assert projection.fields["totals"]["total"] == {"amount": 20.0, "currency": "USD"}

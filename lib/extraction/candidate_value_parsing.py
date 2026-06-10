@@ -5,6 +5,7 @@ from datetime import date, datetime
 from typing import Any
 
 from lib.extraction.evidence import has_concrete_evidence
+from lib.extraction.model_output_value_parsing import parse_decimal_text
 from lib.extraction.models import Evidence, ValidationReport
 
 
@@ -63,12 +64,12 @@ def money_currency(value: Any) -> str | None:
 def number_value(value: Any) -> float | None:
     if value in (None, ""):
         return None
+    if isinstance(value, bool):
+        return None
     if isinstance(value, int | float):
         return float(value)
     if isinstance(value, str):
-        match = re.search(r"-?\d[\d,]*(?:\.\d+)?", value)
-        if match:
-            return float(match.group(0).replace(",", ""))
+        return parse_decimal_text(value)
     return None
 
 

@@ -3,9 +3,9 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import Any, Literal
 
+from lib.extraction.candidate_value_parsing import date_value
 from lib.extraction.claim_registry import (
     claim_key_is_admissible,
     claim_value_type_is_admissible,
@@ -44,6 +44,17 @@ class ClaimAnchor:
     semantic_region_id: str | None = None
 
     def as_json(self) -> dict[str, Any]:
+        payload = self.identity_json()
+        if self.semantic_region_id not in (None, ""):
+            payload["semantic_region_id"] = self.semantic_region_id
+        return payload
+
+    def identity_json(self) -> dict[str, Any]:
+        """Structural anchor identity per ADR 0005: page + Docling locators only.
+
+        semantic_region_id is lineage, not identity; the same Docling anchor
+        reached through two different semantic regions must hash identically.
+        """
         payload: dict[str, Any] = {
             "docling_element_ids": list(self.docling_element_ids),
         }
@@ -54,7 +65,6 @@ class ClaimAnchor:
             ("row_index", self.row_index),
             ("bbox", list(self.bbox) if self.bbox is not None else None),
             ("text_span", self.text_span),
-            ("semantic_region_id", self.semantic_region_id),
         ):
             if value not in (None, "", []):
                 payload[key] = value
@@ -110,13 +120,16 @@ def claims_from_region_envelope(envelope: RegionExtractionEnvelope) -> list[Clai
         )
         if claim is not None:
             claims.append(claim)
-    for ordinal, item in enumerate(envelope.line_items, start=1):
+    group_ids = _line_item_group_ids(envelope.document_id, envelope.line_items)
+    for item, group_id in zip(envelope.line_items, group_ids, strict=True):
+        if group_id is None:
+            continue
         claims.extend(
             _claims_from_line_item(
                 item,
                 document_id=envelope.document_id,
                 method=method,
-                ordinal=ordinal,
+                group_id=group_id,
                 target_schema=_claim_target_schema(envelope),
             )
         )
@@ -183,13 +196,12 @@ def _claims_from_line_item(
     *,
     document_id: str,
     method: str,
-    ordinal: int,
+    group_id: str,
     target_schema: str | None,
 ) -> list[Claim]:
     anchor = claim_anchor_from_evidence(item.evidence)
     if anchor is None:
         return []
-    group_id = _group_id(document_id, anchor, ordinal)
     source_engine = _source_engine(method, item.evidence)
     if source_engine is None:
         return []
@@ -321,7 +333,7 @@ def _anchor_selection_key(anchor: ClaimAnchor) -> tuple[int, int, str, str, int,
         anchor.page_id or "",
         anchor.table_id or "",
         anchor.row_index if anchor.row_index is not None else 1_000_000_000,
-        _stable_json(anchor.as_json()),
+        _stable_json(anchor.identity_json()),
     )
 
 
@@ -360,9 +372,12 @@ def _typed_value(value_type: str, value: Any) -> tuple[ClaimValueType, Any] | No
             payload["currency"] = str(currency).upper()
         return "money", payload
     if normalized_type == "date":
-        if not isinstance(value, str) or not _is_date_like(value):
+        if not isinstance(value, str):
             return None
-        return "date", value
+        parsed_date = date_value(value)
+        if parsed_date is None:
+            return None
+        return "date", parsed_date.isoformat()
     if normalized_type in {"number", "quantity"}:
         if not isinstance(value, int | float):
             return None
@@ -427,23 +442,65 @@ def _source_engine_label(value: str) -> ClaimSourceEngine | None:
     return None
 
 
-def _group_id(document_id: str, anchor: ClaimAnchor, ordinal: int) -> str:
-    payload: dict[str, Any] = {
-        "document_id": document_id,
-        "anchor": anchor.as_json(),
-    }
-    if not _anchor_has_row_identity(anchor):
-        payload["ordinal"] = ordinal
-    return _sha256(payload)
+def _line_item_group_ids(
+    document_id: str,
+    items: list[RegionLineItem],
+) -> list[str | None]:
+    """Assign deterministic line-item group IDs with sibling awareness.
+
+    A structural anchor identifies a row only when it is row-scoped: it carries
+    a row_index, or no sibling line item shares the same anchor. Region-level
+    anchors stamped onto every row (null row_index) fall back to the row's own
+    content plus occurrence index so distinct rows never collapse into one
+    group and identical repeated rows survive as separate rows.
+    """
+    anchors = [claim_anchor_from_evidence(item.evidence) for item in items]
+    anchor_keys = [
+        _stable_json(anchor.identity_json()) if anchor is not None else None for anchor in anchors
+    ]
+    shared_counts: dict[str, int] = {}
+    for key in anchor_keys:
+        if key is not None:
+            shared_counts[key] = shared_counts.get(key, 0) + 1
+    group_ids: list[str | None] = []
+    occurrences: dict[str, int] = {}
+    for item, anchor, key in zip(items, anchors, anchor_keys, strict=True):
+        if anchor is None or key is None:
+            group_ids.append(None)
+            continue
+        if anchor.row_index is not None or shared_counts[key] == 1:
+            group_ids.append(
+                _sha256(
+                    {
+                        "document_id": document_id,
+                        "anchor": anchor.identity_json(),
+                    }
+                )
+            )
+            continue
+        content = _line_item_content_fingerprint(item)
+        occurrence_key = f"{key}|{content}"
+        occurrences[occurrence_key] = occurrences.get(occurrence_key, 0) + 1
+        group_ids.append(
+            _sha256(
+                {
+                    "document_id": document_id,
+                    "anchor": anchor.identity_json(),
+                    "content": content,
+                    "occurrence": occurrences[occurrence_key],
+                }
+            )
+        )
+    return group_ids
 
 
-def _anchor_has_row_identity(anchor: ClaimAnchor) -> bool:
-    return (
-        anchor.row_index is not None
-        or bool(anchor.docling_element_ids)
-        or anchor.bbox is not None
-        or anchor.text_span is not None
+def _line_item_content_fingerprint(item: RegionLineItem) -> str:
+    payload = item.model_dump(
+        mode="json",
+        exclude={"evidence", "confidence", "source_payload", "ordinal"},
+        exclude_none=True,
     )
+    return _sha256(payload)
 
 
 def _claim_id(
@@ -456,7 +513,7 @@ def _claim_id(
     return _sha256(
         {
             "document_id": document_id,
-            "anchor": anchor.as_json(),
+            "anchor": anchor.identity_json(),
             "canonical_key": canonical_key,
             "typed_value": typed_value,
         }
@@ -480,14 +537,3 @@ def _json_safe(value: Any) -> Any:
     if isinstance(value, list | tuple):
         return [_json_safe(item) for item in value]
     return value
-
-
-def _is_date_like(value: str) -> bool:
-    text = value.strip()
-    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y"):
-        try:
-            datetime.strptime(text, fmt)
-            return True
-        except ValueError:
-            continue
-    return False

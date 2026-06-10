@@ -113,7 +113,18 @@ def _apply_arithmetic_invariants(
                 Decimal("0"),
             )
         )
-        if target_amount == expected:
+        gap = target_amount - expected
+        if abs(gap) <= MONEY_TOLERANCE:
+            continue
+        missing_optional_addend = any(amount is None for amount in optional_addend_amounts)
+        missing_optional_subtract = any(amount is None for amount in optional_subtract_amounts)
+        if gap > 0 and missing_optional_addend:
+            # An unextracted optional addend (e.g. shipping) could explain a
+            # larger target; the equation is inconclusive, not inconsistent.
+            continue
+        if gap < 0 and missing_optional_subtract:
+            # An unextracted optional subtraction (e.g. discount) could explain
+            # a smaller target; the equation is inconclusive, not inconsistent.
             continue
         updated = _demote_decision(
             decisions=updated,
@@ -206,7 +217,7 @@ def _apply_line_item_sum_invariants(
             )
             continue
         expected = sum(line_amounts, Decimal("0"))
-        if target_amount == expected:
+        if abs(target_amount - expected) <= MONEY_TOLERANCE:
             continue
         updated = _demote_decision(
             decisions=updated,

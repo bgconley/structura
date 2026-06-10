@@ -206,6 +206,8 @@ def _line_item_candidate_from_projection(
             service_date=date_value(item.get("service_date")),
             quantity=number_value(item.get("units")),
             gross_amount=money_amount(item.get("billed_amount")),
+            allowed_amount=money_amount(item.get("allowed_amount")),
+            plan_paid_amount=money_amount(item.get("plan_paid")),
             net_amount=money_amount(patient_responsibility),
             currency=money_currency(patient_responsibility),
             category_hint=item.get("adjustment_reason"),

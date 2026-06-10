@@ -12,12 +12,11 @@ def selected_evidence_ref(evidence: Sequence[Mapping[str, Any]]) -> dict[str, An
     return min(refs, key=_evidence_selection_key)
 
 
-def _evidence_selection_key(evidence: dict[str, Any]) -> tuple[int, int, int, str, str, int, str]:
+def _evidence_selection_key(evidence: dict[str, Any]) -> tuple[int, int, int, str, int, str]:
     return (
         -_evidence_specificity(evidence),
         _locator_rank(evidence),
         _int_key(evidence.get("page_number")),
-        _normalized_text(evidence.get("semantic_region_id")),
         _normalized_text(evidence.get("page_id")),
         _int_key(evidence.get("row_index")),
         _stable_locator_json(evidence),
@@ -25,6 +24,8 @@ def _evidence_selection_key(evidence: dict[str, Any]) -> tuple[int, int, int, st
 
 
 def _evidence_specificity(evidence: dict[str, Any]) -> int:
+    # semantic_region_id is lineage, not a structural locator; it must not make
+    # a ref look more specific than an equivalent ref from another region.
     return sum(
         (
             evidence.get("row_index") is not None,
@@ -33,7 +34,6 @@ def _evidence_specificity(evidence: dict[str, Any]) -> int:
             evidence.get("bbox") is not None,
             evidence.get("text_span") is not None,
             evidence.get("page_number") is not None or evidence.get("page_id") not in (None, ""),
-            evidence.get("semantic_region_id") not in (None, ""),
         )
     )
 

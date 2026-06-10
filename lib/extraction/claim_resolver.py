@@ -132,7 +132,8 @@ def _resolve_line_items(
     claims: list[Claim],
 ) -> tuple[list[dict[str, Any]], list[ClaimResolutionDecision]]:
     grouped: dict[str, dict[str, list[Claim]]] = defaultdict(lambda: defaultdict(list))
-    group_sort_keys: dict[str, str] = {}
+    group_sort_keys: dict[str, tuple[Any, ...]] = {}
+    group_first_seen: dict[str, int] = {}
     for claim in claims:
         if not claim.canonical_key.startswith(projection.canonical_prefix):
             continue
@@ -141,7 +142,9 @@ def _resolve_line_items(
         if field_name is None:
             continue
         group_id = claim.group_id or _anchor_group_id(claim)
-        anchor_key = _stable_value_key(claim.anchor.as_json())
+        if group_id not in group_first_seen:
+            group_first_seen[group_id] = len(group_first_seen)
+        anchor_key = _anchor_order_key(claim.anchor.identity_json())
         existing_anchor_key = group_sort_keys.get(group_id)
         if existing_anchor_key is None or anchor_key < existing_anchor_key:
             group_sort_keys[group_id] = anchor_key
@@ -151,7 +154,11 @@ def _resolve_line_items(
     decisions: list[ClaimResolutionDecision] = []
     for group_id in sorted(
         grouped,
-        key=lambda item: (group_sort_keys.get(item, ""), item),
+        key=lambda item: (
+            group_sort_keys.get(item, ()),
+            group_first_seen.get(item, 0),
+            item,
+        ),
     ):
         line_item: dict[str, Any] = {}
         evidence: list[dict[str, Any]] = []
@@ -169,7 +176,7 @@ def _resolve_line_items(
                 evidence = [_clean_evidence(item) for item in selected.evidence]
         if evidence:
             line_item["evidence"] = evidence
-        if _line_item_has_value(line_item):
+        if _line_item_has_value(line_item, projection):
             line_items.append(line_item)
     return line_items, decisions
 
@@ -325,27 +332,44 @@ def _observation_evidence(claim: Claim) -> list[dict[str, Any]]:
 
 
 def _anchor_group_id(claim: Claim) -> str:
-    return _stable_value_key(claim.anchor.as_json())
+    return _stable_value_key(claim.anchor.identity_json())
 
 
-def _line_item_has_value(item: dict[str, Any]) -> bool:
-    return any(
-        item.get(key) not in (None, "")
-        for key in (
-            "description",
-            "code",
-            "quantity",
-            "unit_price",
-            "gross_amount",
-            "tax_amount",
-            "amount",
-            "service_description",
-            "procedure_code",
-            "units",
-            "billed_amount",
-            "patient_responsibility",
-        )
+def _anchor_order_key(anchor: dict[str, Any]) -> tuple[Any, ...]:
+    """Physical-order sort key: numeric page/row before lexicographic fallback.
+
+    Sorting the anchor JSON string put row 10 before row 2; this key compares
+    page and row indices numerically so projected line items follow document
+    reading order.
+    """
+    page_number = anchor.get("page_number")
+    row_index = anchor.get("row_index")
+    bbox = anchor.get("bbox") or []
+    return (
+        float(page_number) if isinstance(page_number, int | float) else float("inf"),
+        str(anchor.get("page_id") or ""),
+        str(anchor.get("table_id") or ""),
+        float(row_index) if isinstance(row_index, int | float) else float("inf"),
+        tuple(str(item) for item in anchor.get("docling_element_ids") or []),
+        tuple(float(item) for item in bbox if isinstance(item, int | float)),
+        _stable_value_key(anchor),
     )
+
+
+_LINE_ITEM_HINT_FIELDS = frozenset(
+    {
+        "unit",
+        "category_hint",
+        "tax_category_hint",
+        "adjustment_reason",
+        "service_date",
+    }
+)
+
+
+def _line_item_has_value(item: dict[str, Any], projection: ClaimLineItemProjection) -> bool:
+    value_fields = set(projection.field_map.values()) - _LINE_ITEM_HINT_FIELDS
+    return any(item.get(key) not in (None, "") for key in sorted(value_fields))
 
 
 def _clean_evidence(item: dict[str, Any]) -> dict[str, Any]:

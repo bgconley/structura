@@ -33,6 +33,6 @@ def test_model_output_line_item_helper_parses_service_record_values_with_evidenc
     assert item["ordinal"] == 2
     assert item["quantity"] == 2.0
     assert item["unit"] == "EA"
-    assert item["unit_price"] == {"amount": 182.99, "currency": "USD"}
-    assert item["amount"] == {"amount": 365.98, "currency": "USD"}
+    assert item["unit_price"] == {"amount": 182.99}
+    assert item["amount"] == {"amount": 365.98}
     assert has_concrete_evidence(item["evidence"]) is True

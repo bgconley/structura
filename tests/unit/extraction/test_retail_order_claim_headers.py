@@ -50,11 +50,11 @@ def test_retail_order_model_output_preserves_header_claims() -> None:
         "retail_order.merchant_name": "Acme Parts",
         "retail_order.order_number": "ORDER-123",
         "retail_order.order_date": "2026-05-01",
-        "retail_order.total": {"amount": 25.0, "currency": "USD"},
+        "retail_order.total": {"amount": 25.0},
         "retail_order.line_item.description": "Replacement charging cable",
         "retail_order.line_item.quantity": 2.0,
-        "retail_order.line_item.unit_price": {"amount": 12.5, "currency": "USD"},
-        "retail_order.line_item.amount": {"amount": 25.0, "currency": "USD"},
+        "retail_order.line_item.unit_price": {"amount": 12.5},
+        "retail_order.line_item.amount": {"amount": 25.0},
     }
 
 

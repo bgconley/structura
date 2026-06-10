@@ -25,9 +25,9 @@ def test_receipt_payment_summary_model_output_preserves_discount_total() -> None
 
     assert normalized["transaction"] == {
         "date_local": "2026-06-05",
-        "subtotal": {"amount": 20.0, "currency": "USD"},
-        "tax": {"amount": 2.0, "currency": "USD"},
-        "tip": {"amount": 3.0, "currency": "USD"},
-        "discount_total": {"amount": 5.0, "currency": "USD"},
-        "total": {"amount": 20.0, "currency": "USD"},
+        "subtotal": {"amount": 20.0},
+        "tax": {"amount": 2.0},
+        "tip": {"amount": 3.0},
+        "discount_total": {"amount": 5.0},
+        "total": {"amount": 20.0},
     }

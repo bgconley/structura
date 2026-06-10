@@ -118,30 +118,47 @@ def dedupe_observation_candidates(
     candidates: list[ObservationCandidateFact],
 ) -> list[ObservationCandidateFact]:
     deduped: dict[tuple[Any, ...], ObservationCandidateFact] = {}
+    unanchored_values: set[tuple[Any, ...]] = set()
     for candidate in candidates:
-        key = observation_key(candidate)
+        value_key = observation_value_key(candidate)
+        locator = evidence_locator_key(candidate.evidence)
+        if not locator:
+            # An unanchored duplicate adds nothing over any same-value sibling.
+            if value_key in unanchored_values or any(key[:-1] == value_key for key in deduped):
+                continue
+            unanchored_values.add(value_key)
+        elif value_key in unanchored_values:
+            continue
+        key = (*value_key, locator)
         if key not in deduped:
             deduped[key] = candidate
     return list(deduped.values())
 
 
-def observation_key(candidate: ObservationCandidateFact) -> tuple[Any, ...]:
+def observation_value_key(candidate: ObservationCandidateFact) -> tuple[Any, ...]:
     return (
         normalized_text_key(candidate.observation_family),
         normalized_text_key(candidate.metadata.get("semantic_type")),
         normalized_text_key(candidate.field_name),
         normalized_text_key(candidate.value_type),
         json_key(candidate.value),
+    )
+
+
+def observation_key(candidate: ObservationCandidateFact) -> tuple[Any, ...]:
+    return (
+        *observation_value_key(candidate),
         evidence_locator_key(candidate.evidence),
     )
 
 
 def evidence_locator_key(evidence: list[dict[str, Any]]) -> tuple[Any, ...]:
+    # semantic_region_id is lineage, not a structural locator: the same Docling
+    # anchor reached through two semantic regions must produce one dedupe key.
     selected = selected_evidence_ref(evidence)
     if not _has_deduplication_locator(selected):
-        return ()
+        return _page_locator_key(selected)
     return (
-        normalized_text_key(selected.get("semantic_region_id")),
         selected.get("page_number"),
         normalized_text_key(selected.get("page_id")),
         normalized_text_key(selected.get("element_id")),
@@ -151,10 +168,18 @@ def evidence_locator_key(evidence: list[dict[str, Any]]) -> tuple[Any, ...]:
     )
 
 
+def _page_locator_key(evidence: dict[str, Any]) -> tuple[Any, ...]:
+    if evidence.get("page_number") is None and evidence.get("page_id") in (None, ""):
+        return ()
+    return (
+        evidence.get("page_number"),
+        normalized_text_key(evidence.get("page_id")),
+    )
+
+
 def _has_deduplication_locator(evidence: dict[str, Any]) -> bool:
     return any(
-        evidence.get(key) not in (None, "", [])
-        for key in ("semantic_region_id", "table_id", "element_id", "bbox")
+        evidence.get(key) not in (None, "", []) for key in ("table_id", "element_id", "bbox")
     )
 
 

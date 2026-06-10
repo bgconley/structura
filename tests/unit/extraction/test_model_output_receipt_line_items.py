@@ -39,9 +39,9 @@ def test_receipt_line_item_model_output_preserves_unit_discount_and_tax_hint() -
             "description": "Coffee beans",
             "quantity": 2.0,
             "unit": "bag",
-            "unit_price": {"amount": 12.0, "currency": "USD"},
-            "discount": {"amount": 3.0, "currency": "USD"},
-            "amount": {"amount": 21.0, "currency": "USD"},
+            "unit_price": {"amount": 12.0},
+            "discount": {"amount": 3.0},
+            "amount": {"amount": 21.0},
             "sku": "BEANS-12",
             "tax_category_hint": "grocery",
             "evidence": [

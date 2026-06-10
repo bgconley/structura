@@ -18,10 +18,10 @@ def contract_root_payload(
     try:
         schema = load_model_output_schema(model_output_schema_name).schema
     except (KeyError, OSError, ValueError):
-        return payload, [], []
+        return {}, [], [f"model_output_schema_unresolvable: {model_output_schema_name}"]
     properties = schema.get("properties")
     if not isinstance(properties, dict):
-        return payload, [], []
+        return {}, [], [f"model_output_schema_missing_properties: {model_output_schema_name}"]
     rejected = _off_contract_fields(payload, schema=schema, path="")
     contract_errors = _contract_validation_errors(payload, schema=schema)
     if contract_errors:
@@ -94,8 +94,8 @@ def _contract_validation_errors(payload: dict[str, Any], *, schema: dict[str, An
     try:
         Draft202012Validator.check_schema(schema)
         validator = Draft202012Validator(schema)
-    except SchemaError:
-        return []
+    except SchemaError as exc:
+        return [f"model_output_schema_invalid: {exc.message}"]
     errors = sorted(
         validator.iter_errors(payload),
         key=lambda error: (_path_text(tuple(error.path)), error.message),

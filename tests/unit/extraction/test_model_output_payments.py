@@ -23,7 +23,7 @@ def test_model_output_payment_summary_uses_contracted_payment_record_fields() ->
 
     assert summary == {
         "invoice_number": "INV-42",
-        "amount_paid": {"amount": 123.45, "currency": "USD"},
+        "amount_paid": {"amount": 123.45},
         "payment_summary": {
             "card_number": "****4242",
             "merchant_id": "MERCHANT-9",

@@ -25,10 +25,10 @@ from tests.unit.extraction.model_output_contract_fixtures import invoice_totals 
 from tests.unit.extraction.model_output_contract_fixtures import (
     receipt_line_item as _receipt_line_item,
 )
-from tests.unit.extraction.model_output_contract_fixtures import receipt_totals as _receipt_totals
 from tests.unit.extraction.model_output_contract_fixtures import (
     receipt_payment_payload as _receipt_payment_payload,
 )
+from tests.unit.extraction.model_output_contract_fixtures import receipt_totals as _receipt_totals
 from tests.unit.extraction.model_output_contract_fixtures import (
     seller_info_payload as _seller_info_payload,
 )
@@ -446,7 +446,7 @@ def test_authoritative_docling_table_rejects_line_items_without_row_identity() -
     rejected_row = metadata["tableConsistency"]["rejectedRows"][0]
     assert rejected_row["reason"] == "candidate.missing_docling_row_index"
     assert rejected_row["payload"]["description"] == "Invented row"
-    assert rejected_row["payload"]["amount"] == {"amount": 12.0, "currency": "USD"}
+    assert rejected_row["payload"]["amount"] == {"amount": 12.0}
     assert rejected_row["payload"]["table_id"] == str(table_id)
     assert rejected_row["payload"]["page_number"] == 2
     assert "row_index" not in rejected_row["payload"]
@@ -956,8 +956,8 @@ def test_receipt_line_item_model_output_maps_to_canonical_receipt_lines() -> Non
 
     assert normalized["schema_name"] == "receipt"
     assert normalized["line_items"][0]["description"] == "USB-C cable"
-    assert normalized["line_items"][0]["amount"] == {"amount": 19.98, "currency": "USD"}
-    assert normalized["transaction"]["total"] == {"amount": 21.63, "currency": "USD"}
+    assert normalized["line_items"][0]["amount"] == {"amount": 19.98}
+    assert normalized["transaction"]["total"] == {"amount": 21.63}
     assert metadata["mapper"] == "granite_receipt_line_items.v1"
 
 
