@@ -36,7 +36,7 @@
     },
     "line_items": {
       "type": "array",
-      "maxItems": 40,
+      "maxItems": 24,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -82,7 +82,7 @@
               "string",
               "null"
             ],
-            "maxLength": 500
+            "maxLength": 240
           }
         }
       }

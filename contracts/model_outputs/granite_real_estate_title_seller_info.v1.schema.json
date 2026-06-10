@@ -25,7 +25,7 @@
         "string",
         "null"
       ],
-      "maxLength": 400
+      "maxLength": 240
     },
     "title_company": {
       "type": [

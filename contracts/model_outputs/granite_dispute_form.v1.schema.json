@@ -48,7 +48,7 @@
         "string",
         "null"
       ],
-      "maxLength": 500
+      "maxLength": 240
     },
     "transactions": {
       "type": "array",
@@ -84,7 +84,7 @@
               "string",
               "null"
             ],
-            "maxLength": 500
+            "maxLength": 240
           }
         },
         "required": [

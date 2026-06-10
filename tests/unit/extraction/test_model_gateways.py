@@ -296,7 +296,7 @@ def test_granite_gateway_routes_retail_order_tables_to_retail_contract() -> None
     assert client.request.response_schema_name == "granite_retail_order.v1"
     assert client.request.response_json_schema is not None
     line_items = client.request.response_json_schema["properties"]["line_items"]
-    assert line_items["maxItems"] == 40
+    assert line_items["maxItems"] == 24
     item_properties = line_items["items"]["properties"]
     assert "source_text" in item_properties
     assert result.normalization_json["regionEnvelope"]["resolved_document_type"] == "retail_order"

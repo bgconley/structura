@@ -87,7 +87,7 @@
               "string",
               "null"
             ],
-            "maxLength": 500
+            "maxLength": 240
           }
         },
         "required": [

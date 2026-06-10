@@ -12,7 +12,7 @@
   "properties": {
     "line_items": {
       "type": "array",
-      "maxItems": 40,
+      "maxItems": 32,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -43,14 +43,14 @@
           "description": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 360
+            "maxLength": 240
           },
           "service_description": {
             "type": [
               "string",
               "null"
             ],
-            "maxLength": 360
+            "maxLength": 240
           },
           "labor_operation": {
             "type": [
