@@ -49,9 +49,11 @@ class Settings(BaseSettings):
     embedding_visual_max_image_bytes: int = 10 * 1024 * 1024
     embedding_visual_timeout_seconds: int = 60
     model_mode: Literal["fixture", "live", "required"] = "fixture"
-    # Extractive-first text lanes (ADR 0006, E0-E2). Default off; the vision
-    # path stays authoritative until each lane passes its GPU corpus gate.
-    text_lane_tables_enabled: bool = Field(default=False, alias="STRUCTURA_TEXT_LANE_TABLES")
+    # Extractive-first text lanes (ADR 0006, E0-E2). The table lane passed
+    # its GPU A/B gate vs the pinned run-9 baseline on 2026-06-10 (runs
+    # 20260610T093120Z/095035Z) and defaults on; the KVP lane stays off
+    # until E2 passes its own gate.
+    text_lane_tables_enabled: bool = Field(default=True, alias="STRUCTURA_TEXT_LANE_TABLES")
     text_lane_kvp_enabled: bool = Field(default=False, alias="STRUCTURA_TEXT_LANE_KVP")
     model_qwen_semantic_url: str = "http://127.0.0.1:8104"
     model_granite_url: str = "http://127.0.0.1:8101"

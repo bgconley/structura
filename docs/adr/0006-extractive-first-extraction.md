@@ -125,3 +125,27 @@ classes are unrepresentable.
   cache, the medical_eob amount gloss, and added money-column sparsity
   abstention for Docling cell loss. GPU A/B gate vs the pinned run-9
   baseline is the next step before defaults flip.
+- 2026-06-10: E1 GPU A/B gate passed and `STRUCTURA_TEXT_LANE_TABLES`
+  defaults on. Two corpus runs on P620-01
+  (20260610T093120Z-text-lane-e1-a, 20260610T095035Z-text-lane-e1-b) vs
+  the pinned run-9 baseline: zero dead letters, line-item/field rows >=
+  baseline on every document, BMW aggregate observations 10=10,
+  evidence-locator completeness 100% for text-lane claims, and the
+  text-lane envelopes (line items + totals facts) byte-identical across
+  both runs with identical full-corpus canonical fingerprints. The lane
+  fired on the BMW service-lines and BH order tables; abstentions worked
+  as designed (BH Docling-cell-loss table -> money_columns_sparse ->
+  vision; EOB grid -> no_money_column; page-grounded receipt regions ->
+  no_grounded_docling_table). Value fidelity: text-lane verbatim amounts
+  agree with Granite where Granite was right (127.50) and beat it where
+  it wasn't (250.00 vs Granite's 0.0 on the same cell). Two
+  baseline-inherited defects were surfaced, not regressed (the
+  acceptance evaluator fails run-9's own report identically): aggregate
+  admission events carry NULL run_id (ExtractionRunScope.aggregate has
+  no run lineage), and rejectedCandidatesInserted collides
+  same-field+value identities across engines; both logged for follow-up.
+  Also discovered: docling_audit's table signal reads markdown rows plus
+  a nonexistent table_json["rows"] key, so it reports every live grid as
+  weak — text-lane eligibility derives structure from the parsed grid
+  instead, and the audit fix is deferred as its own measured change.
+  Next: E2 (extractive KVP lane) and E3 (deterministic-primary planner).

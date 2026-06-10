@@ -2022,6 +2022,20 @@
         "table-signal",
         "e0-gate"
       ]
+    },
+    {
+      "date": "2026-06-10",
+      "error_message": "Run A (20260610T093120Z-text-lane-e1-a) runner exited acceptance_gates_failed: hardCorrectnessInvariants admissionEventsMissingTelemetry (49 missing_run_id) and rejectedCandidatesInserted (3).",
+      "root_cause": "Both baseline-inherited, not text-lane regressions. (1) ExtractionRunScope.aggregate() carries no run lineage, so every aggregate/system-engine candidate_admission_event has NULL run_id; the pinned run-9 baseline report contains the same failure (45 missing_run_id + 6 rejectedCandidatesInserted) and fails the same evaluator under identical code \u2014 its 'clean gate' verdict was jobs/dead-letters/aggregates based. (2) rejectedCandidatesInserted matches identities by field+value payload, so a rejected UNANCHORED Granite observation (order_number/order_date/total on BH) collides with the admitted ANCHORED text-lane/aggregate row carrying the same value from a different engine.",
+      "fix": "Documented as baseline-equivalent for the E1 A/B verdict (run A: 49+3 vs baseline 45+6; rejected-inserted actually improved). Follow-ups after E1: thread run lineage into the aggregate run scope (reconciliation_repository can mine run_id from region extraction metadata), and include source_engine (or fingerprint-only matching) in the rejected-inserted identity so two-lane same-value extractions stop colliding.",
+      "tags": [
+        "phase8.5",
+        "text-lane",
+        "e1-gate",
+        "acceptance-gates",
+        "aggregate-lineage",
+        "baseline-inherited"
+      ]
     }
   ]
 }

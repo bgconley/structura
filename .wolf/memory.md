@@ -243,3 +243,30 @@
 | 04:58 | Created tests/unit/extraction/text_lane/test_review_regressions.py | — | ~3649 |
 | 04:58 | Edited lib/extraction/text_lane/gateway.py | modified _row_has_parseable_money() | ~228 |
 | 05:15 | Edited docs/adr/0006-extractive-first-extraction.md | expanded (+18 lines) | ~364 |
+| 05:19 | Edited lib/extraction/text_lane/eligibility.py | 5→4 lines | ~44 |
+| 05:19 | Edited lib/extraction/text_lane/eligibility.py | modified _difficult_page_reasons() | ~155 |
+| 05:22 | Created ../../../../tmp/structura-e0-capture/markdown_check.sql | — | ~122 |
+| 05:23 | Edited lib/extraction/text_lane/eligibility.py | expanded (+6 lines) | ~320 |
+| 05:23 | Edited lib/extraction/text_lane/eligibility.py | 9→8 lines | ~82 |
+| 05:23 | Edited lib/extraction/text_lane/eligibility.py | 6→6 lines | ~49 |
+| 05:23 | Edited lib/extraction/text_lane/eligibility.py | removed 9 lines | ~8 |
+| 05:23 | Edited scripts/gpu/check_text_lane_eligibility.py | 5→4 lines | ~70 |
+| 05:23 | Edited scripts/gpu/check_text_lane_eligibility.py | modified evaluate_document() | ~214 |
+| 05:23 | Edited tests/unit/extraction/text_lane/test_eligibility.py | modified test_usable_grid_on_text_page_is_text_lane() | ~272 |
+| 05:24 | Edited tests/unit/extraction/text_lane/test_eligibility.py | modified test_single_column_grid_routes_to_vision() | ~216 |
+| 05:24 | Edited tests/unit/extraction/text_lane/test_text_lane_gateway.py | inline fix | ~25 |
+| 05:28 | Created ../../../../tmp/structura-e0-capture/source_path.sql | — | ~46 |
+| 05:32 | Created scripts/gpu/compare_text_lane_gate.py | — | ~1986 |
+| 05:33 | Edited scripts/gpu/compare_text_lane_gate.py | 2→4 lines | ~37 |
+| 05:40 | Created ../../../../tmp/structura-e0-capture/run_a_violations.sql | — | ~274 |
+| 05:40 | Created ../../../../tmp/structura-e0-capture/run_a_violations2.sql | — | ~349 |
+| 05:42 | Created ../../../../tmp/structura-e0-capture/run9_events.sql | — | ~205 |
+| 05:47 | Created ../../../../tmp/structura-e0-capture/lane_reasons.sql | — | ~142 |
+| 05:48 | Created ../../../../tmp/structura-e0-capture/text_lane_rows.sql | — | ~594 |
+| 05:49 | Created ../../../../tmp/structura-e0-capture/bmw_region_obs.sql | — | ~340 |
+| 05:51 | Created ../../../../tmp/structura-e0-capture/bmw_values.sql | — | ~368 |
+| 05:57 | Created ../../../../tmp/structura-e0-capture/repeat_check.sql | — | ~235 |
+| 05:57 | Created ../../../../tmp/structura-e0-capture/repeat_check2.sql | — | ~336 |
+| 05:58 | Edited lib/config/settings.py | 4→6 lines | ~125 |
+| 05:59 | Edited docs/adr/0006-extractive-first-extraction.md | modified regressed() | ~471 |
+| 06:05 | E1 GPU A/B gate passed; table-lane defaults flipped on | scripts/gpu/{check_text_lane_eligibility,compare_text_lane_gate}.py, lib/config/settings.py, compose.yaml, docs/adr/0006, .wolf/buglog.json | Runs 20260610T093120Z-text-lane-e1-a + 095035Z-e1-b vs pinned run-9: zero dead letters, line items >= baseline everywhere, BMW aggregate 10=10, 100% concrete evidence on text-lane claims, text-lane envelopes byte-identical across runs, full-corpus canonical fingerprints identical. Lane fired on BMW service-lines + BH order tables; abstentions (money_columns_sparse on BH cell-loss table, no_money_column on EOB grid, no_grounded_docling_table on page-grounded receipts) all routed to vision safely. Found baseline-inherited: aggregate admission events NULL run_id; rejected-inserted identity collisions; docling_audit table signal blind to data.grid (eligibility now grid-derived). Acceptance evaluator fails run-9's own report identically - documented, not a regression | ~60000 |
