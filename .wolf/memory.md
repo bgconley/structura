@@ -237,3 +237,7 @@
 | 20:32 | Edited lib/extraction/candidate_quality.py | modified reject_line_item_content() | ~533 |
 | 20:32 | Edited lib/extraction/claim_resolver.py | inline fix | ~26 |
 | 20:33 | Edited lib/extraction/claim_resolver.py | reject_line_item() → reject_line_item_content() | ~24 |
+| 20:36 | Created ../../.claude/projects/-Users-brennanconley-vibecode-structura/memory/structura-prod-readiness-push.md | — | ~660 |
+| 20:36 | Created ../../.claude/projects/-Users-brennanconley-vibecode-structura/memory/structura-gpu-node-facts.md | — | ~318 |
+| 20:37 | Created ../../.claude/projects/-Users-brennanconley-vibecode-structura/memory/MEMORY.md | — | ~68 |
+| 20:55 | Production-readiness push: core extraction fixes | lib/extraction/*, lib/semantic_annotations/extraction_plan.py, workers/extraction/worker.py, database/088, tests | Fixed line-item group collapse, region-id identity dedupe, money/date parsing, invariant tolerance, fabricated invoice totals, stuck aggregate trigger (dead-letter/cancel), receipt aggregate lane, fanout coverage rescue, aggregate echo/signal gates; merged runtime-ops agent branch (failure taxonomy, profile drift, TEI client, health persistence, migration 086) | ~25000 |
