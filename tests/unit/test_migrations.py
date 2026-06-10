@@ -15,7 +15,7 @@ def test_baseline_migration_scripts_are_present_and_ordered() -> None:
     plan = baseline_migration_plan("database")
 
     assert plan.scripts[0].name == "001_extensions.sql"
-    assert plan.scripts[-1].name == "085_phase8_5_plan_task_visual_summary.sql"
+    assert plan.scripts[-1].name == "086_phase8_5_service_health.sql"
     assert all(script.exists() for script in plan.scripts)
 
 
@@ -236,3 +236,17 @@ def test_phase8_5_plan_task_visual_summary_migration_is_baseline_migration() -> 
     assert "ALTER TABLE semantic_extraction_plan_tasks" in sql
     assert "ADD COLUMN IF NOT EXISTS visual_plan_summary jsonb" in sql
     assert "jsonb_typeof(visual_plan_summary) = 'object'" in sql
+
+
+def test_phase8_5_service_health_migration_is_baseline_migration() -> None:
+    plan = baseline_migration_plan("database")
+    names = [script.name for script in plan.scripts]
+
+    assert "086_phase8_5_service_health.sql" in names
+
+    sql = Path("database/086_phase8_5_service_health.sql").read_text(encoding="utf-8")
+    assert "service_health_snapshots_status_check" in sql
+    assert "'fixture'" in sql
+    assert "'unavailable'" in sql
+    assert "service_health_snapshots_service_checked_idx" in sql
+    assert "(service_name, checked_at DESC)" in sql
