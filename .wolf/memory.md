@@ -340,3 +340,8 @@
 | 16:50 | Edited lib/semantic_annotations/deterministic_plan.py | added 1 import(s) | ~72 |
 | 16:50 | Edited lib/semantic_annotations/service.py | except() → failure() | ~407 |
 | 16:50 | Edited lib/semantic_annotations/service.py | 5→1 lines | ~18 |
+| 17:08 | Created ../../../../tmp/structura-e0-capture/canary_doc.sql | — | ~57 |
+| 17:09 | Created ../../../../tmp/structura-e0-capture/canary_jobs.sql | — | ~133 |
+| 17:10 | Edited lib/config/settings.py | 7→7 lines | ~117 |
+| 17:14 | Edited contracts/schemas/semantic_annotation_manifest.v1.schema.json | expanded (+14 lines) | ~226 |
+| 09:55 | E3 deterministic-primary planner gated; STRUCTURA_DETERMINISTIC_PLANNER defaults on | lib/semantic_annotations/{deterministic_plan,service}.py, lib/config/settings.py, compose.yaml, contracts/schemas/semantic_annotation_manifest.v1.schema.json, docs/adr/0006 | Pre-gate review (17 agents) fixed: docling_baseline not in model_source_enum (degradation path crashed at INSERT and dead-lettered), profile-name supersede fork, table-grounded Qwen KVP regions suppressing deterministic table targets, over-broad transient-error catch (now ModelProtocolError only). Gate runs e3-g/e3-h: 11/11 identical baseline fingerprints across fresh ingests, canonical fingerprints identical, zero dead letters, invariant enforced real coverage (BH +1 region run G, receipt scan +4 obs both runs). Forced-failure canary live: qwen 404 -> baseline manifest persisted (docling engine, qwen profile), 2 extract jobs fanned out and succeeded. Manifest contract gained optional deterministic_baseline block | ~50000 |

@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-10T20:50:43.293Z
-> Files: 530 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-10T21:14:15.226Z
+> Files: 533 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../tmp/
 
@@ -11,6 +11,8 @@
 
 - `bmw_region_obs.sql` — Declares LIKE (~340 tok)
 - `bmw_values.sql` (~368 tok)
+- `canary_doc.sql` (~57 tok)
+- `canary_jobs.sql` (~133 tok)
 - `claim_timeout_repro.py` — Repro: flag-on degradation swallows first-attempt retryable ModelTimeoutError. (~1535 tok)
 - `corpus_inventory.sql` (~182 tok)
 - `e2_lane_reasons.sql` (~218 tok)
@@ -453,6 +455,10 @@
 
 - `evaluation-and-test-strategy.md` — Evaluation and Test Strategy (~1538 tok)
 
+## contracts/schemas/
+
+- `semantic_annotation_manifest.v1.schema.json` (~3836 tok)
+
 ## docs/adr/
 
 - `0006-extractive-first-extraction.md` — ADR 0006: Extractive-First Extraction Architecture (~2533 tok)
@@ -473,7 +479,7 @@
 
 ## lib/config/
 
-- `settings.py` — Settings: reject_historical_live_semantic_profiles, canonical_objects_root, derived_objects_root, ex (~1372 tok)
+- `settings.py` — Settings: reject_historical_live_semantic_profiles, canonical_objects_root, derived_objects_root, ex (~1384 tok)
 
 ## lib/extraction/
 

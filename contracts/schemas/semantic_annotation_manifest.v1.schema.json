@@ -108,6 +108,20 @@
         }
       }
     },
+    "deterministic_baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "fingerprint", "baseline_region_count"],
+      "properties": {
+        "version": { "type": "string", "maxLength": 80 },
+        "fingerprint": { "type": "string", "minLength": 64, "maxLength": 64 },
+        "baseline_region_count": { "type": "integer", "minimum": 0, "maximum": 64 },
+        "enforced_region_count": { "type": "integer", "minimum": 0, "maximum": 64 },
+        "plan_region_count": { "type": "integer", "minimum": 0, "maximum": 128 },
+        "qwen_annotation_failed": { "type": "boolean" },
+        "failure_reason": { "type": "string", "maxLength": 500 }
+      }
+    },
     "confidence": { "$ref": "#/$defs/confidenceObject" }
   },
   "$defs": {
