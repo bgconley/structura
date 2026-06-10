@@ -2095,8 +2095,10 @@ components:
       - schemaName
       - schemaVersion
       - status
-      - isCurrent
       properties:
+        id:
+          type: string
+          format: uuid
         schemaName:
           type: string
         schemaVersion:
@@ -2107,6 +2109,41 @@ components:
           type: boolean
         sourceEngine:
           type: string
+        modelName:
+          type: string
+        modelVersion:
+          type: string
+        confidence:
+          type: number
+        reviewStatus:
+          type: string
+        extractionScope:
+          type: string
+          enum: [document, aggregate, semantic_region]
+        qualityOutcome:
+          type: string
+          nullable: true
+          enum:
+          - extracted_cleanly
+          - needs_human_review
+          - insufficient_signal
+          - no_extraction_target
+          - pipeline_failed
+          description: ADR 0005 D8 persisted resolver quality outcome for current aggregate extractions; null when the row carries no resolver outcome.
+        claimResolutionDecisions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClaimResolutionDecision'
+          description: Deterministic per-canonical-key resolver decisions with machine-readable reason codes.
+        regionJobCoverage:
+          type: object
+          additionalProperties: true
+          description: Region job coverage telemetry recorded by aggregate reconciliation when present.
+        sourceFamilies:
+          type: array
+          items:
+            type: string
+          description: Claim canonical-key families that contributed to the aggregate.
         createdAt:
           type: string
           format: date-time
@@ -2116,6 +2153,26 @@ components:
         validationJson:
           type: object
           additionalProperties: true
+    ClaimResolutionDecision:
+      type: object
+      additionalProperties: false
+      required:
+      - canonicalKey
+      - decision
+      - reasonCode
+      properties:
+        canonicalKey:
+          type: string
+        decision:
+          type: string
+        reasonCode:
+          type: string
+        selectedClaimId:
+          type: string
+        rejectedClaimIds:
+          type: array
+          items:
+            type: string
     ExtractedField:
       type: object
       additionalProperties: false
