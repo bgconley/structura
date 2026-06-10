@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from lib.config import get_settings
+from lib.extraction.classification import TARGET_EXTRACTION_SCHEMAS
 from lib.extraction.gateway import DoclingHeuristicGateway, ExtractionGateway
 from lib.extraction.gateways.granite_vision import GraniteVisionExtractionGateway
 from lib.extraction.models import ExtractionSourceDocument, GatewayExtraction
@@ -18,7 +19,10 @@ GRANITE_ROUTE_PROFILES = {
     "docling_plus_granite_structured",
     "granite_primary_review_required",
 }
-STRUCTURED_SCHEMAS = {"receipt", "invoice", "medical_eob"}
+# Every target extraction schema (including document_observation) routes to
+# Granite so non-Granite route profiles cannot silently fall back to the
+# deterministic gateway for a structured schema.
+STRUCTURED_SCHEMAS = frozenset(TARGET_EXTRACTION_SCHEMAS)
 
 
 class ModelRoutingExtractionGateway:
