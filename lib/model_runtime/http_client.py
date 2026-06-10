@@ -64,6 +64,21 @@ class ModelHttpClient:
         *,
         timeout_seconds: float | None = None,
     ) -> dict[str, Any]:
+        parsed = self.post_json_value(path, payload, timeout_seconds=timeout_seconds)
+        if not isinstance(parsed, dict):
+            raise ModelProtocolError(
+                "Model service JSON response must be an object.",
+                details=_safe_request_details(path, payload),
+            )
+        return parsed
+
+    def post_json_value(
+        self,
+        path: str,
+        payload: dict[str, Any],
+        *,
+        timeout_seconds: float | None = None,
+    ) -> dict[str, Any] | list[Any]:
         request_path = _validated_relative_path(path)
         try:
             response = self._client.post(
@@ -109,9 +124,9 @@ class ModelHttpClient:
                 "Model service returned invalid JSON.",
                 details=_safe_response_details(request_path, payload, response),
             ) from exc
-        if not isinstance(parsed, dict):
+        if not isinstance(parsed, dict | list):
             raise ModelProtocolError(
-                "Model service JSON response must be an object.",
+                "Model service JSON response must be an object or array.",
                 details=_safe_response_details(request_path, payload, response),
             )
         return parsed

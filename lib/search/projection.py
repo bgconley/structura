@@ -12,7 +12,7 @@ def refresh_projection_and_enqueue_embedding(
     document_id: UUID,
     household_id: UUID | None = None,
     force_reembed: bool = False,
-) -> UUID:
+) -> UUID | None:
     with db_connection() as conn:
         with conn.cursor() as cur:
             refresh_search_projection(cur, document_id)

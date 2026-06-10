@@ -20,13 +20,17 @@ def enqueue_embed_document_job(
     model_profile: str | None = None,
     queue_name: str = "embeddings",
     priority: int = 32,
-) -> UUID:
+) -> UUID | None:
+    requested_modalities = list(dict.fromkeys(modalities or ("text",)))
+    if "visual" not in requested_modalities and not get_settings().embedding_text_enabled:
+        # Text embeddings are de-scoped by the operator; skip enqueueing so the
+        # `embeddings` queue does not grow without a worker or model service.
+        return None
     if household_id is None:
         cur.execute("SELECT household_id FROM documents WHERE id = %s", (document_id,))
         row = cur.fetchone()
         household_id = row["household_id"] if row else None
     job_id = uuid4()
-    requested_modalities = list(dict.fromkeys(modalities or ("text",)))
     payload = {
         "schema_name": "embed_document_job",
         "schema_version": "v1",
@@ -61,7 +65,7 @@ def enqueue_visual_embed_document_job(
     household_id: UUID | None = None,
     force_reembed: bool = False,
     priority: int = 34,
-) -> UUID:
+) -> UUID | None:
     return enqueue_embed_document_job(
         cur,
         document_id=document_id,

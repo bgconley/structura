@@ -54,7 +54,8 @@ def enqueue_search_projection_rebuild(
                 priority=34,
             )
         conn.commit()
-    return EnqueuedMaintenanceJobs(document_id=document_id, job_ids=[job_id])
+    job_ids = [job_id] if job_id is not None else []
+    return EnqueuedMaintenanceJobs(document_id=document_id, job_ids=job_ids)
 
 
 def _document_original_asset(cur: Any, document_id: UUID) -> dict[str, Any]:
