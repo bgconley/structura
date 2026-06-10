@@ -73,6 +73,19 @@ def test_qwen_and_granite_profiles_have_distinct_truthful_source_engines() -> No
     assert granite.default_gpu_role == "blackwell-1"
 
 
+def test_granite_profile_limits_match_deployed_server_flags() -> None:
+    granite = get_model_profile(GRANITE_VISION_PROFILE)
+
+    assert granite.max_images_per_request == 1
+    assert granite.max_model_len == 16384
+
+
+def test_visual_embed_profile_image_limit_matches_deployed_server_flags() -> None:
+    visual = get_model_profile(VISUAL_EMBED_PROFILE)
+
+    assert visual.max_images_per_request == 1
+
+
 def test_embedding_profiles_preserve_existing_pgvector_dimensions_and_gpu_placement() -> None:
     text = get_model_profile(TEXT_EMBED_PROFILE)
     visual = get_model_profile(VISUAL_EMBED_PROFILE)

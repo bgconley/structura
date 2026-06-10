@@ -61,6 +61,63 @@ def test_phase8_5_live_runtime_preflight_checks_container_modes() -> None:
     assert "HTTPConnection" in script
 
 
+def test_phase8_5_live_runtime_preflight_checks_profile_registry_limits() -> None:
+    script = Path("scripts/gpu/phase8_5_live_runtime_preflight.py").read_text()
+
+    assert "MODEL_LIMIT_TARGETS" in script
+    assert "required_live_profile_names" in script
+    assert "STRUCTURA_GRANITE_MAX_MODEL_LEN" in script
+    assert "STRUCTURA_GRANITE_LIMIT_MM_PER_PROMPT" in script
+    assert "STRUCTURA_VLLM_MAX_MODEL_LEN" in script
+    assert "STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT" in script
+    assert "model-vl-embed" in script
+
+
+def test_phase8_5_live_runtime_preflight_limit_checks_use_profile_registry(monkeypatch) -> None:
+    from scripts.gpu import phase8_5_live_runtime_preflight as preflight
+
+    granite_env = {
+        "STRUCTURA_GRANITE_MAX_MODEL_LEN": "16384",
+        "STRUCTURA_GRANITE_LIMIT_MM_PER_PROMPT": '{"image":1,"video":0}',
+    }
+    monkeypatch.setattr(preflight, "_compose_exec_env", lambda _service: granite_env)
+
+    ok_result = preflight._check_model_service_limits(
+        "model-granite",
+        preflight.MODEL_LIMIT_TARGETS["model-granite"],
+    )
+    assert ok_result.ok is True
+
+    granite_env["STRUCTURA_GRANITE_MAX_MODEL_LEN"] = "32768"
+    granite_env["STRUCTURA_GRANITE_LIMIT_MM_PER_PROMPT"] = '{"image":4,"video":0}'
+    drift_result = preflight._check_model_service_limits(
+        "model-granite",
+        preflight.MODEL_LIMIT_TARGETS["model-granite"],
+    )
+    assert drift_result.ok is False
+    assert "16384" in drift_result.message
+    assert "image limit" in drift_result.message
+
+    registry_result = preflight._check_required_live_profiles_registered()
+    assert registry_result.ok is True
+
+
+def test_granite_start_script_default_max_model_len_matches_compose() -> None:
+    script = Path("workers/model_services/start_granite_vllm.sh").read_text()
+
+    assert 'max_model_len="${STRUCTURA_GRANITE_MAX_MODEL_LEN:-16384}"' in script
+
+
+def test_text_embed_start_script_selects_router_binary_by_compute_capability() -> None:
+    script = Path("workers/model_services/start_text_embed.sh").read_text()
+
+    assert "exec text-embeddings-router-120" not in script
+    assert "STRUCTURA_TEI_ROUTER_BINARY" in script
+    assert "compute_cap" in script
+    assert 'command -v "text-embeddings-router-${compute_cap}"' in script
+    assert 'exec "$router_binary"' in script
+
+
 def test_phase8_5_model_smoke_probes_models_before_manifest_gate_when_manifest_is_missing(
     tmp_path: Path,
 ) -> None:

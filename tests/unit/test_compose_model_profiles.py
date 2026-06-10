@@ -1,8 +1,16 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import yaml
+
+from lib.model_runtime.profiles import (
+    GRANITE_VISION_PROFILE,
+    QWEN_SEMANTIC_PROFILE,
+    VISUAL_EMBED_PROFILE,
+    get_model_profile,
+)
 
 
 def test_app_runtime_services_include_host_operator_group() -> None:
@@ -131,6 +139,37 @@ def test_live_model_profiles_have_concrete_blackwell_commands() -> None:
     assert visual_embed["environment"]["STRUCTURA_VLLM_MAX_MODEL_LEN"] == "2048"
     assert visual_embed["environment"]["STRUCTURA_VLLM_GPU_MEMORY_UTILIZATION"] == "0.45"
     assert visual_embed["environment"]["STRUCTURA_VLLM_MAX_NUM_SEQS"] == "1"
+
+
+def test_compose_and_start_script_limits_match_profile_registry() -> None:
+    compose = yaml.safe_load(Path("compose.yaml").read_text())
+    services = compose["services"]
+    qwen = get_model_profile(QWEN_SEMANTIC_PROFILE)
+    granite = get_model_profile(GRANITE_VISION_PROFILE)
+    visual = get_model_profile(VISUAL_EMBED_PROFILE)
+
+    qwen_env = services["model-qwen-semantic"]["environment"]
+    assert qwen_env["STRUCTURA_VLLM_MAX_MODEL_LEN"] == str(qwen.max_model_len)
+    assert (
+        json.loads(qwen_env["STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT"])["image"]
+        == qwen.max_images_per_request
+    )
+
+    granite_env = services["model-granite"]["environment"]
+    assert granite_env["STRUCTURA_GRANITE_MAX_MODEL_LEN"] == str(granite.max_model_len)
+    assert (
+        json.loads(granite_env["STRUCTURA_GRANITE_LIMIT_MM_PER_PROMPT"])["image"]
+        == granite.max_images_per_request
+    )
+
+    visual_env = services["model-vl-embed"]["environment"]
+    assert (
+        json.loads(visual_env["STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT"])["image"]
+        == visual.max_images_per_request
+    )
+
+    granite_script = Path("workers/model_services/start_granite_vllm.sh").read_text()
+    assert f"STRUCTURA_GRANITE_MAX_MODEL_LEN:-{granite.max_model_len}" in granite_script
 
 
 def test_phase8_5_smoke_supports_managed_model_validation() -> None:

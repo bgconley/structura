@@ -94,7 +94,8 @@ _PROFILES: dict[str, ModelProfile] = {
         source_engine="granite_vision_3b",
         default_gpu_role="blackwell-1",
         max_image_bytes=10 * 1024 * 1024,
-        max_images_per_request=4,
+        max_images_per_request=1,
+        max_model_len=16384,
     ),
     TEXT_EMBED_PROFILE: ModelProfile(
         name=TEXT_EMBED_PROFILE,
@@ -117,7 +118,7 @@ _PROFILES: dict[str, ModelProfile] = {
         output_dimensions=2048,
         default_gpu_role="blackwell-1-alternate",
         max_image_bytes=10 * 1024 * 1024,
-        max_images_per_request=8,
+        max_images_per_request=1,
         pgvector_index="embeddings_visual_2048_hnsw_idx",
     ),
 }
