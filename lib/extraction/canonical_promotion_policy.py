@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from lib.extraction.evidence import has_concrete_evidence
+from lib.model_runtime.source_engines import is_model_source_engine
 
 REQUIRED_CANONICAL_FIELD_PATHS = frozenset(
     {
@@ -22,6 +23,12 @@ REQUIRED_CANONICAL_FIELD_PATHS = frozenset(
 
 
 def candidate_auto_promotion_rejection_reason(candidate: Mapping[str, Any]) -> str | None:
+    if candidate.get("status") != "proposed":
+        return "candidate_not_proposed"
+    if is_model_source_engine(candidate.get("source_engine")):
+        # Model self-reported confidence is uncalibrated and may not gate
+        # promotion; model-backed values always route to human review.
+        return "model_backed_value_requires_review"
     if _is_required_field(str(candidate.get("field_path") or "")) and not has_concrete_evidence(
         _evidence(candidate)
     ):

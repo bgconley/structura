@@ -29,8 +29,6 @@ def promote_candidates(
         return 0
     promoted = 0
     for candidate in candidates:
-        if candidate["status"] != "proposed" or (candidate["confidence"] or 0) < 0.78:
-            continue
         if candidate_auto_promotion_rejection_reason(candidate):
             continue
         if canonical_is_human_controlled(
