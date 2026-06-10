@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import logging
 from dataclasses import replace
 from typing import Protocol
 from uuid import UUID
@@ -18,6 +20,10 @@ from lib.model_runtime.http_client import ModelProtocolError
 from lib.model_runtime.profiles import (
     QWEN_SEMANTIC_PROFILE,
     get_model_profile,
+)
+from lib.semantic_annotations.input_budget import (
+    estimate_semantic_input_budget,
+    input_budget_warning,
 )
 from lib.semantic_annotations.manifest_merge import (
     merge_partial_manifests,
@@ -56,6 +62,8 @@ from lib.storage import ObjectStorage
 
 MAX_SEMANTIC_MODEL_ATTEMPTS = 2
 SMART_SEMANTIC_MAX_OUTPUT_TOKENS = 6144
+
+_LOGGER = logging.getLogger("structura.semantic_annotations.qwen_gateway")
 PAGE_PLANNER_METADATA_FIELDS = (
     "page_family_hints",
     "continuation_group",
@@ -188,20 +196,25 @@ class QwenSemanticAnnotationGateway:
         context_source: ExtractionSourceDocument | None = None,
         focus_page_numbers: set[int] | None = None,
     ) -> DocumentSemanticManifest:
+        request = self._request_for_source(
+            source,
+            profile_name=profile_name,
+            prompt_version=prompt_version,
+            context_source=context_source,
+            focus_page_numbers=focus_page_numbers,
+        )
+        # Pre-dispatch estimate only: warning telemetry never skips, shrinks,
+        # or otherwise changes the dispatched request.
+        budget_warning = _input_budget_warning_for_request(request)
         last_error: Exception | None = None
         for attempt in range(MAX_SEMANTIC_MODEL_ATTEMPTS):
             try:
-                response = self._generate_for_source(
-                    source,
-                    profile_name=profile_name,
-                    prompt_version=prompt_version,
-                    context_source=context_source,
-                    focus_page_numbers=focus_page_numbers,
-                )
+                response = self.client.generate(request)
                 manifest = _manifest_from_response(
                     source,
                     quality_mode=quality_mode,
                     response=response,
+                    input_budget_warning=budget_warning,
                 )
                 self._validate_manifest_for_source(manifest, source)
                 return manifest
@@ -220,7 +233,7 @@ class QwenSemanticAnnotationGateway:
             ) from last_error
         raise last_error
 
-    def _generate_for_source(
+    def _request_for_source(
         self,
         source: ExtractionSourceDocument,
         *,
@@ -228,19 +241,17 @@ class QwenSemanticAnnotationGateway:
         prompt_version: str,
         context_source: ExtractionSourceDocument | None = None,
         focus_page_numbers: set[int] | None = None,
-    ) -> VisionGenerateResponse:
-        return self.client.generate(
-            VisionGenerateRequest(
-                profile_name=profile_name,
-                prompt_version=prompt_version,
-                prompt=_prompt(context_source or source, focus_page_numbers=focus_page_numbers),
-                image_inputs=_image_inputs(source, storage=self.storage),
-                response_schema_name="semantic_annotation_model_output",
-                response_json_schema=_response_json_schema_for_profile(profile_name),
-                max_output_tokens=_max_output_tokens_for_profile(profile_name),
-                temperature=0.0,
-                timeout_seconds=_timeout_seconds_for_profile(profile_name),
-            )
+    ) -> VisionGenerateRequest:
+        return VisionGenerateRequest(
+            profile_name=profile_name,
+            prompt_version=prompt_version,
+            prompt=_prompt(context_source or source, focus_page_numbers=focus_page_numbers),
+            image_inputs=_image_inputs(source, storage=self.storage),
+            response_schema_name="semantic_annotation_model_output",
+            response_json_schema=_response_json_schema_for_profile(profile_name),
+            max_output_tokens=_max_output_tokens_for_profile(profile_name),
+            temperature=0.0,
+            timeout_seconds=_timeout_seconds_for_profile(profile_name),
         )
 
     def _validate_manifest_for_source(
@@ -295,6 +306,28 @@ def _timeout_seconds_for_profile(profile_name: str) -> int:
     if profile_name == QWEN_SEMANTIC_PROFILE:
         return settings.model_qwen_semantic_timeout_seconds
     return settings.model_http_timeout_seconds
+
+
+def _input_budget_warning_for_request(
+    request: VisionGenerateRequest,
+) -> dict[str, object] | None:
+    estimate = estimate_semantic_input_budget(
+        profile=get_model_profile(request.profile_name),
+        prompt=request.prompt,
+        response_json_schema=request.response_json_schema,
+        image_bytes_inputs=[image.content for image in request.image_inputs],
+        requested_output_tokens=request.max_output_tokens,
+    )
+    warning = input_budget_warning(
+        estimate,
+        warn_fraction=get_settings().qwen_input_budget_warn_fraction,
+    )
+    if warning is not None:
+        _LOGGER.warning(
+            "qwen semantic input budget warning: %s",
+            json.dumps(warning, sort_keys=True, default=str),
+        )
+    return warning
 
 
 def _source_for_pages(
@@ -358,6 +391,7 @@ def _manifest_from_response(
     *,
     quality_mode: str,
     response: VisionGenerateResponse,
+    input_budget_warning: dict[str, object] | None = None,
 ) -> DocumentSemanticManifest:
     model_output = validated_model_output_payload(response, source=source)
     normalized = _canonical_payload_from_model_output(
@@ -382,6 +416,11 @@ def _manifest_from_response(
     confidence = _confidence_from_payload(normalized)
     if model_output.normalization:
         confidence["normalization"] = model_output.normalization
+        sanitized_payload["confidence"] = confidence
+    if input_budget_warning is not None:
+        # Persisted annotation telemetry only; dispatch already happened with
+        # the unmodified request.
+        confidence["input_budget_warning"] = dict(input_budget_warning)
         sanitized_payload["confidence"] = confidence
     return DocumentSemanticManifest(
         document_id=source.document_id,

@@ -1391,6 +1391,65 @@ def test_active_profile_reports_settings_driven_qwen_semantic_profile(monkeypatc
         get_settings.cache_clear()
 
 
+def test_live_qwen_gateway_attaches_input_budget_warning_when_estimate_exceeds_budget(
+    monkeypatch,
+) -> None:
+    from lib.config.settings import get_settings
+
+    source = _source_with_page_image()
+    client = FakeSemanticVisionClient(
+        profile_name=QWEN_SEMANTIC_PROFILE,
+        source_engine="qwen3_vl_8b",
+        normalized_json=_semantic_payload(source.pages[0].page_id),
+    )
+
+    get_settings.cache_clear()
+    try:
+        monkeypatch.setenv("STRUCTURA_QWEN_INPUT_BUDGET_WARN_FRACTION", "0.0001")
+        get_settings.cache_clear()
+        result = QwenSemanticAnnotationGateway(client=client).annotate(
+            source, quality_mode="smart"
+        )
+    finally:
+        get_settings.cache_clear()
+
+    warning = result.manifest.confidence["input_budget_warning"]
+    assert warning["kind"] == "qwen_semantic_input_budget_pressure"
+    assert warning["profile_name"] == QWEN_SEMANTIC_PROFILE
+    assert warning["warn_fraction"] == 0.0001
+    assert warning["conservative_total_token_estimate"] > warning["threshold_tokens"]
+    assert warning["requested_output_tokens"] == 6144
+    assert warning["image_count"] == 1
+    assert result.manifest.manifest["confidence"]["input_budget_warning"] == warning
+    # Warning telemetry must not change dispatch behavior.
+    assert client.request is not None
+    assert client.request.max_output_tokens == 6144
+    assert client.request.image_inputs[0].content == b"page-image"
+
+
+def test_live_qwen_gateway_omits_input_budget_warning_within_budget(monkeypatch) -> None:
+    from lib.config.settings import get_settings
+
+    source = _source_with_page_image()
+    client = FakeSemanticVisionClient(
+        profile_name=QWEN_SEMANTIC_PROFILE,
+        source_engine="qwen3_vl_8b",
+        normalized_json=_semantic_payload(source.pages[0].page_id),
+    )
+
+    get_settings.cache_clear()
+    try:
+        monkeypatch.delenv("STRUCTURA_QWEN_INPUT_BUDGET_WARN_FRACTION", raising=False)
+        get_settings.cache_clear()
+        result = QwenSemanticAnnotationGateway(client=client).annotate(
+            source, quality_mode="smart"
+        )
+    finally:
+        get_settings.cache_clear()
+
+    assert "input_budget_warning" not in result.manifest.confidence
+
+
 def _semantic_payload(page_id) -> dict[str, object]:
     return _semantic_payload_for_pages([page_id])
 

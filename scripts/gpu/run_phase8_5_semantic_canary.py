@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import sys
 from pathlib import Path
 from typing import Any
@@ -17,6 +16,12 @@ from lib.extraction.repository import load_extraction_source  # noqa: E402
 from lib.model_runtime.profiles import QWEN_SEMANTIC_PROFILE, get_model_profile  # noqa: E402
 from lib.semantic_annotations.docling_audit import build_docling_audit  # noqa: E402
 from lib.semantic_annotations.docling_context import build_docling_context  # noqa: E402
+from lib.semantic_annotations.input_budget import (  # noqa: E402
+    estimate_text_tokens,
+    image_dimensions,
+    qwen_grid_estimate,
+    visual_token_estimate,
+)
 from lib.semantic_annotations.qwen_gateway import (  # noqa: E402
     _max_output_tokens_for_profile,
     _prompt,
@@ -618,7 +623,7 @@ def _token_budget_report(
     )
     docling_context_json = json.dumps(prompt_context, sort_keys=True, separators=(",", ":"))
     schema_json = json.dumps(semantic_annotation_model_output_schema(), sort_keys=True)
-    schema_token_estimate = _estimate_text_tokens(schema_json)
+    schema_token_estimate = estimate_text_tokens(schema_json)
     requested_output_tokens = _max_output_tokens_for_profile(QWEN_SEMANTIC_PROFILE)
     page_images = [
         _page_image_budget(
@@ -647,8 +652,8 @@ def _token_budget_report(
             prompt_context, "imageSha256"
         ),
         "prompt_context_includes_element_bboxes": _context_has_key(prompt_context, "bbox"),
-        "docling_context_text_token_estimate": _estimate_text_tokens(docling_context_json),
-        "prompt_token_estimate": _estimate_text_tokens(_prompt(source)),
+        "docling_context_text_token_estimate": estimate_text_tokens(docling_context_json),
+        "prompt_token_estimate": estimate_text_tokens(_prompt(source)),
         "schema_token_estimate": schema_token_estimate,
         "requested_output_tokens": requested_output_tokens,
         "page_images": page_images,
@@ -672,7 +677,7 @@ def _page_image_budget(
     image_bytes = page.image_bytes
     if image_bytes is None and page.image_asset_uri:
         image_bytes = (storage or ObjectStorage()).path_for_uri(page.image_asset_uri).read_bytes()
-    dimensions = _image_dimensions(image_bytes or b"")
+    dimensions = image_dimensions(image_bytes or b"")
     if dimensions is None:
         return {
             "page_number": page.page_number,
@@ -690,12 +695,12 @@ def _page_image_budget(
         "width_px": width,
         "height_px": height,
         "byte_size": len(image_bytes or b""),
-        "raw_visual_token_estimate": _visual_token_estimate(
+        "raw_visual_token_estimate": visual_token_estimate(
             width=width,
             height=height,
             compression=compression,
         ),
-        "qwen_grid_estimate": _qwen_grid_estimate(
+        "qwen_grid_estimate": qwen_grid_estimate(
             width=width,
             height=height,
             compression=compression,
@@ -719,9 +724,7 @@ def _token_budget_windows(
         pages = source.pages[index : index + max_images]
         page_numbers = [page.page_number for page in pages]
         focus_page_numbers = set(page_numbers) if len(source.pages) > max_images else None
-        prompt_tokens = _estimate_text_tokens(
-            _prompt(source, focus_page_numbers=focus_page_numbers)
-        )
+        prompt_tokens = estimate_text_tokens(_prompt(source, focus_page_numbers=focus_page_numbers))
         visual_tokens = sum(
             _page_visual_tokens(by_page_number.get(page_number)) for page_number in page_numbers
         )
@@ -757,103 +760,6 @@ def _context_has_key(value: object, key: str) -> bool:
     if isinstance(value, list):
         return any(_context_has_key(item, key) for item in value)
     return False
-
-
-def _qwen_grid_estimate(
-    *,
-    width: int,
-    height: int,
-    compression: int,
-    min_pixels: int | None,
-    max_pixels: int | None,
-) -> dict[str, int]:
-    pixels = width * height
-    target_pixels = pixels
-    if max_pixels and target_pixels > max_pixels:
-        target_pixels = max_pixels
-    if min_pixels and target_pixels < min_pixels:
-        target_pixels = min_pixels
-    scale = math.sqrt(target_pixels / pixels) if pixels > 0 else 1.0
-    resized_width = max(1, round(width * scale))
-    resized_height = max(1, round(height * scale))
-    grid_width = max(1, math.ceil(resized_width / compression))
-    grid_height = max(1, math.ceil(resized_height / compression))
-    if max_pixels:
-        max_visual_tokens = max(1, max_pixels // (compression * compression))
-        while grid_width * grid_height > max_visual_tokens:
-            if grid_width >= grid_height and grid_width > 1:
-                grid_width -= 1
-            elif grid_height > 1:
-                grid_height -= 1
-            else:
-                break
-        resized_width = min(resized_width, grid_width * compression)
-        resized_height = min(resized_height, grid_height * compression)
-    return {
-        "resized_width_px": resized_width,
-        "resized_height_px": resized_height,
-        "grid_width": grid_width,
-        "grid_height": grid_height,
-        "visual_tokens": grid_width * grid_height,
-    }
-
-
-def _visual_token_estimate(*, width: int, height: int, compression: int) -> int:
-    return math.ceil((width * height) / (compression * compression))
-
-
-def _estimate_text_tokens(value: str) -> int:
-    if not value:
-        return 0
-    return math.ceil(len(value) / 4)
-
-
-def _image_dimensions(image_bytes: bytes) -> tuple[int, int] | None:
-    if len(image_bytes) >= 24 and image_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
-        return (
-            int.from_bytes(image_bytes[16:20], "big"),
-            int.from_bytes(image_bytes[20:24], "big"),
-        )
-    if len(image_bytes) >= 4 and image_bytes.startswith(b"\xff\xd8"):
-        return _jpeg_dimensions(image_bytes)
-    return None
-
-
-def _jpeg_dimensions(image_bytes: bytes) -> tuple[int, int] | None:
-    index = 2
-    while index + 9 < len(image_bytes):
-        if image_bytes[index] != 0xFF:
-            index += 1
-            continue
-        marker = image_bytes[index + 1]
-        index += 2
-        if marker in {0xD8, 0xD9}:
-            continue
-        if index + 2 > len(image_bytes):
-            return None
-        segment_length = int.from_bytes(image_bytes[index : index + 2], "big")
-        if segment_length < 2 or index + segment_length > len(image_bytes):
-            return None
-        if marker in {
-            0xC0,
-            0xC1,
-            0xC2,
-            0xC3,
-            0xC5,
-            0xC6,
-            0xC7,
-            0xC9,
-            0xCA,
-            0xCB,
-            0xCD,
-            0xCE,
-            0xCF,
-        }:
-            height = int.from_bytes(image_bytes[index + 3 : index + 5], "big")
-            width = int.from_bytes(image_bytes[index + 5 : index + 7], "big")
-            return width, height
-        index += segment_length
-    return None
 
 
 if __name__ == "__main__":
