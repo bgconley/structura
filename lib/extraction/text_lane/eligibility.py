@@ -11,7 +11,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from lib.documents.quality import PageQualityInput, classify_page_quality
 from lib.extraction.models import ExtractionSourceDocument, ParsedPageText, ParsedTableText
 from lib.extraction.text_lane.table_grid import TableGrid
 from lib.semantic_annotations.docling_audit import build_docling_audit
@@ -121,6 +120,11 @@ def _difficult_page_reasons(
     source: ExtractionSourceDocument,
     page_number: int,
 ) -> tuple[str, ...]:
+    # Imported lazily: lib.documents.quality imports lib.review at module
+    # scope, which initializes lib.extraction and would close an import
+    # cycle back into this module when quality loads first (API startup).
+    from lib.documents.quality import PageQualityInput, classify_page_quality
+
     page = _page(source, page_number)
     if page is None:
         return ("page_not_found",)

@@ -1996,6 +1996,18 @@
         "totals",
         "review-workflow"
       ]
+    },
+    {
+      "date": "2026-06-10",
+      "error_message": "structura-api-1 crashed on startup after E0+E1 deploy: ImportError: cannot import name 'PageQualityInput' from partially initialized module 'lib.documents.quality' (circular import).",
+      "root_cause": "lib/documents/quality.py imports lib.review.task_repository at module scope, which initializes lib.extraction (package __init__ imports ExtractionService -> gateways.routing -> text_lane.eligibility). eligibility.py's new module-level import of lib.documents.quality closed the cycle whenever quality loads first (API startup path); the unit suite imports extraction first, masking it.",
+      "fix": "Deferred the quality import into text_lane/eligibility.py:_difficult_page_reasons with a comment naming the cycle; verified both import orders (quality-first and extraction-first) plus apps.api.structura_api.main import cleanly.",
+      "tags": [
+        "phase8.5",
+        "text-lane",
+        "circular-import",
+        "api-startup"
+      ]
     }
   ]
 }
