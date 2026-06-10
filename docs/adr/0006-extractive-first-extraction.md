@@ -170,3 +170,27 @@ classes are unrepresentable.
   (Scan Sep 9 fields 2->5). Remaining: E3 (deterministic-primary planner),
   E4 (vision-lane consolidation/Granite retirement), E5 (representation
   collapse + per-document orchestration).
+- 2026-06-10: E3 landed and gated; `STRUCTURA_DETERMINISTIC_PLANNER`
+  defaults on. `lib/semantic_annotations/deterministic_plan.py` builds the
+  model-free baseline plan from the docling_targets builders, fingerprints
+  it over run-stable structure, and enforces plan ⊇ baseline after Qwen
+  augmentation; a Qwen `ModelProtocolError` (the non-retryable class that
+  dead-lettered phase8-live) degrades the document to the baseline-only
+  plan — persisted as source_engine `docling` under the active qwen
+  profile (supersede chain intact), review-required with the failure as
+  escalation_reason — while transient timeout/service errors keep the job
+  layer's retry-then-recover path. The pre-gate review (17 agents) caught
+  the degradation path being dead on arrival (`docling_baseline` not in
+  model_source_enum), the profile-name supersede fork, a coverage check
+  that let table-grounded Qwen KVP regions suppress deterministic table
+  targets, and the over-broad transient catch. Gate runs
+  20260610T205327Z-text-lane-e3-g / 210049Z-h: identical baseline
+  fingerprints on all 11 documents across two fresh ingests, identical
+  canonical-output fingerprints, zero dead letters, and the invariant
+  enforcing real coverage Qwen omitted (BH, a receipt scan -> +4
+  observations). Live forced-failure canary (qwen URL pointed at a 404):
+  baseline manifest persisted, 2 extraction jobs fanned out and succeeded.
+  The manifest contract gained the optional `deterministic_baseline`
+  telemetry block. Remaining: E4 (vision-lane consolidation / Granite
+  retirement; preconditions now satisfied), E5 (representation collapse +
+  per-document orchestration).
