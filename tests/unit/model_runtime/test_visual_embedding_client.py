@@ -53,14 +53,14 @@ def test_visual_embedding_client_requires_image_bytes_and_validates_2048_dimensi
     assert response.input_sha256[0]
 
 
-def test_visual_embedding_client_falls_back_to_openai_multimodal_embedding_endpoint() -> None:
+def test_visual_embedding_client_uses_openai_multimodal_embedding_endpoint_primarily() -> None:
     vector = [0.0] * 2048
     vector[7] = 1.0
     seen_payloads: list[dict[str, object]] = []
+    seen_paths: list[str] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/embed":
-            return httpx.Response(404, json={"error": "not_found"})
+        seen_paths.append(request.url.path)
         assert request.url.path == "/v1/embeddings"
         payload = request.read().decode()
         seen_payloads.append(__import__("json").loads(payload))
@@ -94,6 +94,7 @@ def test_visual_embedding_client_falls_back_to_openai_multimodal_embedding_endpo
     )
 
     assert response.vectors == (tuple(vector),)
+    assert seen_paths == ["/v1/embeddings"]
     assert "dimensions" not in seen_payloads[0]
     messages = seen_payloads[0]["messages"]
     assert isinstance(messages, list)
@@ -102,7 +103,7 @@ def test_visual_embedding_client_falls_back_to_openai_multimodal_embedding_endpo
     assert any(item["type"] == "text" for item in content)
 
 
-def test_visual_embedding_client_falls_back_one_image_at_a_time_for_batches() -> None:
+def test_visual_embedding_client_embeds_one_image_per_request_for_batches() -> None:
     vectors = []
     seen_payloads: list[dict[str, object]] = []
     for index in range(2):
@@ -111,8 +112,6 @@ def test_visual_embedding_client_falls_back_one_image_at_a_time_for_batches() ->
         vectors.append(vector)
 
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/embed":
-            return httpx.Response(404, json={"error": "not_found"})
         assert request.url.path == "/v1/embeddings"
         payload = __import__("json").loads(request.read().decode())
         seen_payloads.append(payload)

@@ -157,6 +157,45 @@ def test_semantic_annotation_worker_cancels_granite_jobs_when_parent_was_cancell
     ]
 
 
+def test_semantic_annotation_worker_classifies_model_failures_by_exception_contract() -> None:
+    from lib.model_runtime.http_client import ModelProtocolError, ModelTimeoutError
+
+    for exc, expected_retryable in (
+        (ModelTimeoutError("Model service timed out."), True),
+        (ModelProtocolError("Model service returned HTTP 422."), False),
+        (RuntimeError("transient database failure"), True),
+    ):
+        job_id = uuid4()
+        job_service = RecordingJobService(
+            SimpleNamespace(
+                state=SimpleNamespace(job_id=job_id, job_type="semantic_annotate"),
+                document_id=uuid4(),
+                household_id=uuid4(),
+                payload={},
+            )
+        )
+
+        processed = process_next_semantic_annotation_job(
+            worker_name="worker-semantic-annotations-test",
+            job_service=job_service,
+            service=RaisingSemanticService(exc),
+        )
+
+        assert processed is True
+        assert job_service.completed == []
+        assert job_service.failed[0]["job_id"] == job_id
+        assert job_service.failed[0]["error_class"] == exc.__class__.__name__
+        assert job_service.failed[0]["retryable"] is expected_retryable
+
+
+class RaisingSemanticService:
+    def __init__(self, exc: Exception) -> None:
+        self.exc = exc
+
+    def annotate_document(self, *_args: object, **_kwargs: object) -> object:
+        raise self.exc
+
+
 class RecordingJobService:
     def __init__(self, claimed: object | None, *, complete_status: str | None = None) -> None:
         self.claimed = claimed

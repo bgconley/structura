@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -65,6 +66,7 @@ def probed_model_health_snapshots(
     transport: httpx.BaseTransport | None = None,
     timeout_seconds: float = 1.0,
     include_queue_metrics: bool = False,
+    persist: bool = False,
 ) -> list[dict[str, Any]]:
     resolved = settings or get_settings()
     endpoints = [
@@ -98,7 +100,7 @@ def probed_model_health_snapshots(
             resolved,
             include_queue_metrics=include_queue_metrics,
         )
-    return [
+    snapshots = [
         _probe_snapshot(
             service_name=service_name,
             url=url,
@@ -111,6 +113,28 @@ def probed_model_health_snapshots(
         )
         for service_name, url, profile_name, endpoint_role in endpoints
     ]
+    if persist:
+        persist_model_health_snapshots(snapshots)
+    return snapshots
+
+
+def persist_model_health_snapshots(snapshots: list[dict[str, Any]]) -> None:
+    """Best-effort persistence of probe snapshots for health history/SLOs."""
+    from lib.jobs import record_service_health
+
+    for snapshot in snapshots:
+        try:
+            record_service_health(
+                service_name=str(snapshot["service_name"]),
+                status=str(snapshot["status"]),
+                metrics=dict(snapshot.get("metrics_json") or {}),
+            )
+        except Exception as exc:
+            print(
+                f"model health snapshot persistence skipped for "
+                f"{snapshot.get('service_name')}: {exc}",
+                flush=True,
+            )
 
 
 def _snapshot(
@@ -153,6 +177,7 @@ def _probe_snapshot(
         endpoint_role=endpoint_role,
         queue_metrics=queue_metrics,
     )
+    metrics["service_url"] = _redacted_service_url(url)
     try:
         with httpx.Client(
             base_url=url.rstrip("/"),
@@ -179,6 +204,21 @@ def _health_response(client: httpx.Client) -> httpx.Response:
     if first.status_code < 300:
         return first
     return client.get("/health")
+
+
+def _redacted_service_url(url: str) -> str:
+    """Reduce the configured base URL to scheme://host[:port] for triage.
+
+    Credentials, paths, queries, and fragments never reach the persisted
+    health snapshot.
+    """
+    parsed = urlsplit(url)
+    if not parsed.scheme or not parsed.hostname:
+        return ""
+    netloc = parsed.hostname
+    if parsed.port is not None:
+        netloc = f"{netloc}:{parsed.port}"
+    return f"{parsed.scheme}://{netloc}"
 
 
 def _base_metrics(

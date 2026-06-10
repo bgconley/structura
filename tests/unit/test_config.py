@@ -21,3 +21,10 @@ def test_settings_exposes_phase8_5_model_runtime_defaults() -> None:
     assert settings.model_qwen_semantic_timeout_seconds == 300
     assert settings.model_http_timeout_seconds == 60
     assert settings.model_max_image_bytes == 10 * 1024 * 1024
+
+
+def test_settings_enable_text_and_visual_embeddings_by_default() -> None:
+    settings = Settings(STRUCTURA_ENV="test", runtime_root="/tmp/structura")
+
+    assert settings.embedding_text_enabled is True
+    assert settings.embedding_visual_enabled is True

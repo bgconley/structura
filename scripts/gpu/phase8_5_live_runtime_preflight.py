@@ -2,13 +2,26 @@
 from __future__ import annotations
 
 import argparse
+import json
 import shutil
 import subprocess  # nosec B404
 import sys
 import time
 from dataclasses import dataclass
 from http.client import HTTPConnection, HTTPException
+from pathlib import Path
 from urllib.parse import urlsplit
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+
+from lib.model_runtime.profiles import (  # noqa: E402
+    GRANITE_VISION_PROFILE,
+    QWEN_SEMANTIC_PROFILE,
+    VISUAL_EMBED_PROFILE,
+    get_model_profile,
+    required_live_profile_names,
+)
 
 REQUIRED_LIVE_SERVICES = (
     "api",
@@ -32,6 +45,28 @@ MODEL_ENV_TARGETS = {
         "STRUCTURA_MODEL_PROFILE": "granite-4.0-3b-vision-bf16:v1",
     },
 }
+# Profile registry is the single source of truth for server token/image
+# limits; the running container env must agree with it.
+MODEL_LIMIT_TARGETS = {
+    "model-qwen-semantic": {
+        "profile_name": QWEN_SEMANTIC_PROFILE,
+        "max_model_len_env": "STRUCTURA_VLLM_MAX_MODEL_LEN",
+        "limit_mm_env": "STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT",
+        "required": True,
+    },
+    "model-granite": {
+        "profile_name": GRANITE_VISION_PROFILE,
+        "max_model_len_env": "STRUCTURA_GRANITE_MAX_MODEL_LEN",
+        "limit_mm_env": "STRUCTURA_GRANITE_LIMIT_MM_PER_PROMPT",
+        "required": True,
+    },
+    "model-vl-embed": {
+        "profile_name": VISUAL_EMBED_PROFILE,
+        "max_model_len_env": None,
+        "limit_mm_env": "STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT",
+        "required": False,
+    },
+}
 
 
 @dataclass(frozen=True)
@@ -51,12 +86,15 @@ def main() -> int:
     args = parser.parse_args()
 
     results: list[CheckResult] = []
+    results.append(_check_required_live_profiles_registered())
     for service in REQUIRED_LIVE_SERVICES:
         results.append(_check_service_live_mode(service, required=True))
     for service in OPTIONAL_LIVE_SERVICES:
         results.append(_check_service_live_mode(service, required=False))
     for service, expected_env in MODEL_ENV_TARGETS.items():
         results.append(_check_model_service_env(service, expected_env))
+    for service, limit_target in MODEL_LIMIT_TARGETS.items():
+        results.append(_check_model_service_limits(service, limit_target))
     if not args.skip_model_health:
         for service, url in MODEL_HEALTH_TARGETS.items():
             results.append(
@@ -121,6 +159,71 @@ def _check_model_service_env(service: str, expected: dict[str, str]) -> CheckRes
     if mismatches:
         return CheckResult(service, False, "; ".join(mismatches))
     return CheckResult(service, True, "model identity env verified")
+
+
+def _check_required_live_profiles_registered() -> CheckResult:
+    missing: list[str] = []
+    for profile_name in required_live_profile_names():
+        try:
+            get_model_profile(profile_name)
+        except KeyError:
+            missing.append(profile_name)
+    if missing:
+        return CheckResult(
+            "required-live-profiles",
+            False,
+            f"unregistered live profiles: {', '.join(missing)}",
+        )
+    return CheckResult(
+        "required-live-profiles",
+        True,
+        f"{len(required_live_profile_names())} required live profiles registered",
+    )
+
+
+def _check_model_service_limits(service: str, target: dict[str, object]) -> CheckResult:
+    name = f"{service}-limits"
+    required = bool(target.get("required", True))
+    try:
+        env = _compose_exec_env(service)
+    except subprocess.CalledProcessError as exc:
+        if not required:
+            return CheckResult(name, True, "service not running; optional limit check skipped")
+        return CheckResult(name, False, f"unable to inspect model container env: {exc}")
+    profile = get_model_profile(str(target["profile_name"]))
+    mismatches: list[str] = []
+    max_model_len_env = target.get("max_model_len_env")
+    if max_model_len_env and profile.max_model_len is not None:
+        actual = env.get(str(max_model_len_env))
+        if actual != str(profile.max_model_len):
+            mismatches.append(
+                f"{max_model_len_env}={actual!r} expected {profile.max_model_len} "
+                f"from profile {profile.name}"
+            )
+    limit_mm_env = target.get("limit_mm_env")
+    if limit_mm_env and profile.max_images_per_request is not None:
+        actual_images = _limit_mm_image_count(env.get(str(limit_mm_env)))
+        if actual_images != profile.max_images_per_request:
+            mismatches.append(
+                f"{limit_mm_env} image limit {actual_images!r} expected "
+                f"{profile.max_images_per_request} from profile {profile.name}"
+            )
+    if mismatches:
+        return CheckResult(name, False, "; ".join(mismatches))
+    return CheckResult(name, True, "server limits match profile registry")
+
+
+def _limit_mm_image_count(raw: str | None) -> int | None:
+    if not raw:
+        return None
+    try:
+        parsed = json.loads(raw)
+    except ValueError:
+        return None
+    if not isinstance(parsed, dict):
+        return None
+    image_limit = parsed.get("image")
+    return int(image_limit) if isinstance(image_limit, int | float) else None
 
 
 def _compose_exec_env(service: str) -> dict[str, str]:

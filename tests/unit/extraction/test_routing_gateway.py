@@ -114,6 +114,33 @@ def test_routing_gateway_uses_granite_for_structured_route() -> None:
     assert granite_client.request is not None
 
 
+def test_routing_structured_schemas_cover_every_target_extraction_schema() -> None:
+    from lib.extraction.classification import TARGET_EXTRACTION_SCHEMAS
+    from lib.extraction.gateways.routing import STRUCTURED_SCHEMAS
+
+    assert STRUCTURED_SCHEMAS == frozenset(TARGET_EXTRACTION_SCHEMAS)
+    assert "document_observation" in STRUCTURED_SCHEMAS
+
+
+def test_routing_gateway_fails_closed_for_document_observation_on_unknown_route() -> None:
+    granite_client = FakeVisionClient(source_engine="granite_vision_3b", profile_name="granite")
+    deterministic = RecordingDeterministicGateway()
+    gateway = ModelRoutingExtractionGateway(
+        deterministic=deterministic,
+        granite=GraniteVisionExtractionGateway(client=granite_client),
+    )
+
+    with pytest.raises(ModelProtocolError, match="semantic region task"):
+        gateway.extract(
+            _source_with_page_image(),
+            schema_name="document_observation",
+            route_profile="unrecognized_route",
+        )
+
+    assert granite_client.request is None
+    assert deterministic.called is False
+
+
 def test_default_extraction_gateway_remains_fixture_when_model_mode_is_fixture(monkeypatch) -> None:
     monkeypatch.setenv("STRUCTURA_MODEL_MODE", "fixture")
     get_settings.cache_clear()

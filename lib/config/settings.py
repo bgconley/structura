@@ -31,7 +31,6 @@ class Settings(BaseSettings):
     contracts_dir: Path = Path("contracts")
     database_dir: Path = Path("database")
     queue_transport: str = "pgmq"
-    enable_model_placeholders: bool = False
     max_upload_bytes: int = 100 * 1024 * 1024
     watched_folder_root: Path = Path("/srv/structura/imports")
     docling_max_num_pages: int = 500
@@ -43,6 +42,7 @@ class Settings(BaseSettings):
     docling_ocr_model_root: Path = Path("/srv/structura/cache/rapidocr")
     docling_ocr_backend: str = "torch"
     embedding_text_dimensions: int = 1536
+    embedding_text_enabled: bool = True
     embedding_visual_enabled: bool = True
     embedding_visual_dimensions: int = 2048
     embedding_visual_batch_size: int = 8

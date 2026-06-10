@@ -7,6 +7,7 @@ import time
 from typing import Any, Protocol, cast
 from uuid import UUID
 
+from lib.extraction.model_failure_policy import model_exception_retryable
 from lib.jobs import JobService, record_service_health
 from lib.jobs.removed_semantic_controls import (
     REMOVED_SEMANTIC_CONTROL_MESSAGE,
@@ -127,7 +128,7 @@ def process_next_semantic_annotation_job(
             job_id=claimed.state.job_id,
             error_class=exc.__class__.__name__,
             message="Semantic annotation job failed",
-            retryable=True,
+            retryable=model_exception_retryable(exc),
             suppress=False,
         )
     return True

@@ -12,6 +12,7 @@ ANALYSIS_TARGET_JOB_QUEUES = {
     "visual-embeddings",
 }
 OPERATIONAL_FAILURE_STATUSES = {"failed", "dead_letter", "pipeline_failed"}
+TERMINAL_JOB_FAILURE_STATUSES = {"dead_letter", "pipeline_failed"}
 QUALITY_OUTCOME_STATUSES = {
     "extracted_cleanly",
     "needs_human_review",
@@ -127,10 +128,28 @@ def _operational_status(document: Mapping[str, Any]) -> str:
         return "pipeline_failed"
     for job in _rows(document, "jobs"):
         queue_name = str(_value(job, "queueName", "queue_name", "queue") or "").lower()
-        job_status = str(_value(job, "status") or "").lower()
-        if queue_name in ANALYSIS_TARGET_JOB_QUEUES and job_status in OPERATIONAL_FAILURE_STATUSES:
+        if queue_name in ANALYSIS_TARGET_JOB_QUEUES and _job_failure_is_terminal(job):
             return "pipeline_failed"
     return "completed"
+
+
+def _job_failure_is_terminal(job: Mapping[str, Any]) -> bool:
+    status = str(_value(job, "status") or "").lower()
+    if status in TERMINAL_JOB_FAILURE_STATUSES:
+        return True
+    if status != "failed":
+        return False
+    # fail_job keeps retryable jobs in status 'failed' between attempts; a
+    # pending retry is pipeline in-progress, not the terminal pipeline_failed
+    # quality outcome ADR D8 reserves for runtime defects.
+    error_json = _mapping(_value(job, "errorJson", "error_json"))
+    if error_json.get("retryable") is False:
+        return True
+    attempts = _value(job, "attemptCount", "attempt_count", "attempts")
+    max_attempts = _value(job, "maxAttempts", "max_attempts")
+    if attempts is not None and max_attempts is not None:
+        return _int(attempts) >= _int(max_attempts)
+    return False
 
 
 def _has_admitted_artifact(document: Mapping[str, Any]) -> bool:

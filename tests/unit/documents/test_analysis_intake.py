@@ -129,6 +129,90 @@ def test_phase9_intake_disables_analysis_for_target_queue_dead_letter_jobs() -> 
     assert intake["eligibility"] == "analysis_disabled_operational_failure"
 
 
+def test_phase9_intake_treats_retryable_failed_jobs_as_in_progress() -> None:
+    intake = build_phase9_document_intake(
+        {
+            "id": "doc-retry-pending",
+            "fields": [
+                {
+                    "fieldPath": "invoice.total_amount",
+                    "value": {"amount": 42.5, "currency": "USD"},
+                    "reviewStatus": "auto_accepted",
+                    "evidence": [{"semanticRegionId": "region-1", "pageNumber": 1}],
+                }
+            ],
+            "jobs": [
+                {
+                    "queueName": "extraction",
+                    "jobType": "extract",
+                    "status": "failed",
+                    "attemptCount": 1,
+                    "maxAttempts": 5,
+                    "errorJson": {"retryable": True},
+                }
+            ],
+        }
+    )
+
+    assert intake["documentQuality"]["operational_status"] == "completed"
+    assert intake["eligibility"] == "analysis_enabled_with_uncertainty"
+
+
+def test_phase9_intake_disables_analysis_for_exhausted_failed_jobs() -> None:
+    intake = build_phase9_document_intake(
+        {
+            "id": "doc-attempts-exhausted",
+            "fields": [
+                {
+                    "fieldPath": "invoice.total_amount",
+                    "value": {"amount": 42.5, "currency": "USD"},
+                    "reviewStatus": "auto_accepted",
+                    "evidence": [{"semanticRegionId": "region-1", "pageNumber": 1}],
+                }
+            ],
+            "jobs": [
+                {
+                    "queueName": "extraction",
+                    "jobType": "extract",
+                    "status": "failed",
+                    "attemptCount": 5,
+                    "maxAttempts": 5,
+                }
+            ],
+        }
+    )
+
+    assert intake["documentQuality"]["operational_status"] == "pipeline_failed"
+    assert intake["eligibility"] == "analysis_disabled_operational_failure"
+
+
+def test_phase9_intake_disables_analysis_for_nonretryable_failed_jobs() -> None:
+    intake = build_phase9_document_intake(
+        {
+            "id": "doc-nonretryable-failure",
+            "fields": [
+                {
+                    "fieldPath": "invoice.total_amount",
+                    "value": {"amount": 42.5, "currency": "USD"},
+                    "reviewStatus": "auto_accepted",
+                    "evidence": [{"semanticRegionId": "region-1", "pageNumber": 1}],
+                }
+            ],
+            "jobs": [
+                {
+                    "queueName": "extraction",
+                    "jobType": "extract",
+                    "status": "failed",
+                    "errorJson": {"retryable": False},
+                }
+            ],
+        }
+    )
+
+    assert intake["documentQuality"]["operational_status"] == "pipeline_failed"
+    assert intake["eligibility"] == "analysis_disabled_operational_failure"
+
+
 def test_phase9_intake_keeps_quality_outcomes_distinct_from_operational_failure() -> None:
     intake = build_phase9_document_intake(
         {

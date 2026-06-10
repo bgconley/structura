@@ -1355,6 +1355,42 @@ def test_qwen_semantic_client_uses_only_active_smart_semantic_url(
     ]
 
 
+def test_qwen_semantic_client_builds_from_settings_qwen_semantic_profile(monkeypatch) -> None:
+    captured: list[tuple[str, str]] = []
+
+    class RecordingClient:
+        def __init__(self, *, profile: Any, http_client_base_url: str) -> None:
+            captured.append((profile.name, http_client_base_url))
+
+    monkeypatch.setattr(qwen_gateway, "QwenVLClient", RecordingClient)
+    settings = qwen_gateway.Settings(
+        model_mode="fixture",
+        model_qwen_semantic_url="http://model-qwen-semantic:8104",
+        qwen_semantic_profile="qwen3-vl-4b-semantic:v1",
+    )
+
+    client = qwen_gateway.QwenSemanticVisionClient.from_settings(settings)
+
+    assert captured == [
+        ("qwen3-vl-4b-semantic:v1", "http://model-qwen-semantic:8104"),
+    ]
+    assert set(client._clients) == {"qwen3-vl-4b-semantic:v1"}
+
+
+def test_active_profile_reports_settings_driven_qwen_semantic_profile(monkeypatch) -> None:
+    from lib.config.settings import get_settings
+
+    get_settings.cache_clear()
+    try:
+        assert qwen_gateway._active_profile() == QWEN_SEMANTIC_PROFILE
+        monkeypatch.setenv("STRUCTURA_MODEL_MODE", "fixture")
+        monkeypatch.setenv("STRUCTURA_QWEN_SEMANTIC_PROFILE", "qwen3-vl-4b-semantic:v1")
+        get_settings.cache_clear()
+        assert qwen_gateway._active_profile() == "qwen3-vl-4b-semantic:v1"
+    finally:
+        get_settings.cache_clear()
+
+
 def _semantic_payload(page_id) -> dict[str, object]:
     return _semantic_payload_for_pages([page_id])
 

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from uuid import uuid4
 
+import pytest
+
 from lib.extraction.models import ExtractionSourceDocument, ParsedPageText
 from scripts.gpu import run_phase8_5_semantic_canary as semantic_canary
 
@@ -23,6 +25,29 @@ def test_semantic_canary_parser_supports_expected_modes_and_skip_granite() -> No
         assert args.mode == mode
         assert args.skip_granite is True
         assert str(args.json_output) == "/tmp/semantic-canary.json"
+
+
+@pytest.mark.parametrize(
+    "mode",
+    ["qwen3-vl-4b-historical", "qwen3-vl-2b-historical"],
+)
+def test_semantic_canary_rejects_historical_modes_the_runtime_cannot_serve(
+    monkeypatch,
+    mode: str,
+) -> None:
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "run_phase8_5_semantic_canary.py",
+            "--mode",
+            mode,
+            "--document-id",
+            str(uuid4()),
+        ],
+    )
+
+    with pytest.raises(SystemExit, match="historical"):
+        semantic_canary.main()
 
 
 def test_semantic_canary_parser_supports_expectations_json() -> None:
