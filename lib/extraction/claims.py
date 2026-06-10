@@ -184,7 +184,7 @@ def _claim_from_fact(
         raw_value=_raw_value(fact),
         typed_value=typed[1],
         value_type=typed[0],
-        confidence=fact.confidence,
+        confidence=_normalized_confidence(fact.confidence),
         method=method,
         group_id=group_id,
         evidence=tuple(ref.model_dump(mode="json", exclude_none=True) for ref in fact.evidence),
@@ -240,7 +240,7 @@ def _claims_from_line_item(
                 raw_value=_stable_json(value),
                 typed_value=typed[1],
                 value_type=typed[0],
-                confidence=item.confidence,
+                confidence=_normalized_confidence(item.confidence),
                 method=method,
                 group_id=group_id,
                 evidence=evidence,
@@ -405,6 +405,25 @@ def _typed_value(value_type: str, value: Any) -> tuple[ClaimValueType, Any] | No
         if not isinstance(value, dict | list):
             return None
         return "object", value
+    return None
+
+
+def _normalized_confidence(value: float | None) -> float | None:
+    """Normalize model confidence to the ADR [0,1] Claim contract.
+
+    Percent-style values in (1, 100] are scaled; anything else out of range
+    is dropped rather than persisted into bounded confidence columns.
+    """
+    if value is None:
+        return None
+    try:
+        confidence = float(value)
+    except (TypeError, ValueError):
+        return None
+    if 0.0 <= confidence <= 1.0:
+        return confidence
+    if 1.0 < confidence <= 100.0:
+        return confidence / 100.0
     return None
 
 

@@ -5,6 +5,7 @@ from uuid import UUID
 
 from psycopg.types.json import Jsonb
 
+from lib.extraction.candidate_value_parsing import confidence_or_none
 from lib.extraction.errors import ExtractionRepositoryError
 from lib.extraction.models import ObservationCandidateFact
 
@@ -49,7 +50,7 @@ def insert_observation_candidate(
             candidate.field_name,
             candidate.value_type,
             Jsonb(candidate.value),
-            candidate.confidence,
+            confidence_or_none(candidate.confidence),
             Jsonb(candidate.evidence),
             Jsonb(candidate.validation),
             candidate.status,

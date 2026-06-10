@@ -362,3 +362,15 @@ def test_aggregate_observations_reject_low_signal_grid_values() -> None:
     field_names = {item["field_name"] for item in projection.observations}
     assert "account_number" in field_names
     assert "dimensions" not in field_names
+
+
+def test_claim_confidence_normalizes_percent_style_values() -> None:
+    from lib.extraction.claims import _normalized_confidence
+
+    assert _normalized_confidence(None) is None
+    assert _normalized_confidence(0.72) == 0.72
+    assert _normalized_confidence(1.0) == 1.0
+    assert _normalized_confidence(85.0) == 0.85
+    assert _normalized_confidence(100.0) == 1.0
+    assert _normalized_confidence(250.0) is None
+    assert _normalized_confidence(-0.5) is None
