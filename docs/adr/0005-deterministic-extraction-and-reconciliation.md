@@ -576,6 +576,43 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   actual page, only draws highlights when a bbox exists, and normalizes
   against stored page dimensions.
 
+- 2026-06-09: Line-item Claim grouping is sibling-aware: region-level anchors
+  with null row_index no longer collapse distinct rows into one merged group;
+  identical repeated rows survive as separate occurrences keyed by content
+  fingerprint plus occurrence index.
+- 2026-06-09: semantic_region_id was removed from Claim/anchor identity
+  hashing, evidence selection ordering, candidate dedupe keys, and aggregate
+  line-item dedupe per the anchor contract; it remains evidence lineage only.
+- 2026-06-09: Money parsing handles accounting negatives and comma-decimal
+  locales deterministically and no longer fabricates USD; typed date claims
+  normalize to ISO via the shared date parser; claim confidence normalizes to
+  the [0,1] contract (percent-style values scaled, out-of-range dropped).
+- 2026-06-09: Arithmetic invariants use the money tolerance and skip gaps
+  explainable by an unextracted optional component in the gap's direction;
+  invoice aggregates no longer fabricate totals.total from amount_paid.
+- 2026-06-09: Aggregate reconciliation triggers when every region job is
+  terminal (the worker's own in-flight job counts as settled), also fires from
+  the worker failure path, serializes per annotation/schema with an advisory
+  lock, skips when the current aggregate already covers the same region rows,
+  and records region_job_coverage plus plan-skip telemetry; missing coverage
+  demotes the quality outcome and adds an explicit validation check. Receipts
+  gained a first-class aggregate lane through the registry projector.
+- 2026-06-09: Planner fanout budgets rescue must-extract/continuation
+  line-item regions instead of silently dropping them; canonical aggregates
+  and document-observation projections share the candidate-layer echo and
+  signal gates.
+- 2026-06-09: Page-only Granite evidence is upgraded with deterministic
+  Docling anchors (element_id+bbox or page-text span located from verbatim
+  source text) before Claim construction, restoring anchored Claims,
+  candidates, and aggregates for KVP documents; unmatched refs stay page-only
+  and excluded. Dot-less observation claim keys are accepted by the
+  document-observation aggregate lane.
+- 2026-06-09: GPU corpus run 20260610T021547Z validated the above end to end:
+  aggregates with persisted quality outcomes for invoice/EOB/receipt/
+  observation lanes, a partial aggregate with missing_region_jobs=1 for a
+  dead-lettered region, KVP candidates restored, and zero non-model job
+  failures.
+
 ## Deferred Work
 
 - Plan-stage stochasticity (Qwen routing variance) is bounded by greedy/low-temperature

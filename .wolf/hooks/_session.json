@@ -133,7 +133,7 @@
       "first_read": "2026-06-09T23:26:34.374Z"
     },
     "/Users/brennanconley/vibecode/structura/lib/extraction/claim_aggregate_reconciliation.py": {
-      "count": 10,
+      "count": 11,
       "tokens": 0,
       "first_read": "2026-06-09T23:26:38.839Z"
     },
@@ -373,7 +373,7 @@
       "first_read": "2026-06-09T23:29:24.162Z"
     },
     "/Users/brennanconley/vibecode/structura/lib/extraction/evidence_concretizer.py": {
-      "count": 5,
+      "count": 6,
       "tokens": 0,
       "first_read": "2026-06-09T23:29:24.314Z"
     },
@@ -453,7 +453,7 @@
       "first_read": "2026-06-09T23:31:54.549Z"
     },
     "/Users/brennanconley/vibecode/structura/lib/extraction/evidence.py": {
-      "count": 1,
+      "count": 2,
       "tokens": 0,
       "first_read": "2026-06-09T23:32:01.626Z"
     },
@@ -608,7 +608,7 @@
       "first_read": "2026-06-09T23:46:28.660Z"
     },
     "/Users/brennanconley/vibecode/structura/lib/extraction/region_envelope_projection.py": {
-      "count": 1,
+      "count": 2,
       "tokens": 0,
       "first_read": "2026-06-09T23:47:12.595Z"
     },
@@ -2143,11 +2143,137 @@
       "action": "edit",
       "tokens": 299,
       "at": "2026-06-10T01:07:51.251Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/extraction/reconciliation_repository.py",
+      "action": "edit",
+      "tokens": 681,
+      "at": "2026-06-10T01:30:15.997Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/extraction/reconciliation_repository.py",
+      "action": "edit",
+      "tokens": 215,
+      "at": "2026-06-10T01:30:32.302Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/workers/extraction/worker.py",
+      "action": "edit",
+      "tokens": 142,
+      "at": "2026-06-10T01:30:52.810Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/extraction/docling_anchor_resolution.py",
+      "action": "create",
+      "tokens": 938,
+      "at": "2026-06-10T01:49:38.002Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/extraction/docling_anchor_resolution.py",
+      "action": "edit",
+      "tokens": 37,
+      "at": "2026-06-10T01:49:51.960Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/extraction/docling_anchor_resolution.py",
+      "action": "edit",
+      "tokens": 34,
+      "at": "2026-06-10T01:49:53.745Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/extraction/evidence.py",
+      "action": "edit",
+      "tokens": 16,
+      "at": "2026-06-10T01:49:55.039Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/extraction/evidence.py",
+      "action": "edit",
+      "tokens": 12,
+      "at": "2026-06-10T01:50:16.840Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/extraction/region_envelope_projection.py",
+      "action": "edit",
+      "tokens": 563,
+      "at": "2026-06-10T01:50:37.719Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/extraction/model_output_normalization.py",
+      "action": "edit",
+      "tokens": 428,
+      "at": "2026-06-10T01:50:54.703Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/extraction/model_output_normalization.py",
+      "action": "edit",
+      "tokens": 215,
+      "at": "2026-06-10T01:51:22.271Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/extraction/model_output_normalization.py",
+      "action": "edit",
+      "tokens": 60,
+      "at": "2026-06-10T01:51:50.431Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/tests/unit/extraction/test_docling_anchor_resolution.py",
+      "action": "create",
+      "tokens": 1253,
+      "at": "2026-06-10T01:53:14.431Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/tests/unit/extraction/test_docling_anchor_resolution.py",
+      "action": "edit",
+      "tokens": 23,
+      "at": "2026-06-10T01:53:41.050Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/tests/unit/extraction/test_docling_anchor_resolution.py",
+      "action": "edit",
+      "tokens": 249,
+      "at": "2026-06-10T01:54:37.020Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claims.py",
+      "action": "edit",
+      "tokens": 160,
+      "at": "2026-06-10T02:10:44.515Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claims.py",
+      "action": "edit",
+      "tokens": 96,
+      "at": "2026-06-10T02:10:55.634Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claims.py",
+      "action": "edit",
+      "tokens": 187,
+      "at": "2026-06-10T02:11:09.335Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/extraction/observation_repository.py",
+      "action": "edit",
+      "tokens": 36,
+      "at": "2026-06-10T02:11:32.977Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/extraction/observation_repository.py",
+      "action": "edit",
+      "tokens": 65,
+      "at": "2026-06-10T02:11:49.383Z"
+    },
+    {
+      "file": "/Users/brennanconley/vibecode/structura/lib/extraction/claim_aggregate_reconciliation.py",
+      "action": "edit",
+      "tokens": 112,
+      "at": "2026-06-10T02:14:15.740Z"
     }
   ],
   "edit_counts": {
     "../../../../tmp/repro_group_collapse.py": 1,
-    "lib/extraction/claims.py": 9,
+    "lib/extraction/claims.py": 12,
     "lib/extraction/model_output_value_parsing.py": 1,
     "lib/extraction/candidate_value_parsing.py": 2,
     "lib/extraction/claim_resolver.py": 11,
@@ -2185,10 +2311,10 @@
     ".claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/test_config.py": 1,
     "lib/extraction/receipt_reconciliation.py": 1,
     ".claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/semantic_annotations/qwen_gateway.py": 2,
-    "lib/extraction/reconciliation_repository.py": 8,
+    "lib/extraction/reconciliation_repository.py": 10,
     ".claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/semantic_annotations/test_gateways.py": 2,
     ".claude/worktrees/agent-ae7e1c2e42dcbc2f2/workers/docling/worker.py": 2,
-    "workers/extraction/worker.py": 1,
+    "workers/extraction/worker.py": 2,
     "lib/semantic_annotations/extraction_plan.py": 2,
     ".claude/worktrees/agent-ae7e1c2e42dcbc2f2/tests/unit/test_docling_worker_lifecycle.py": 1,
     ".claude/worktrees/agent-ae7e1c2e42dcbc2f2/lib/extraction/gateways/routing.py": 1,
@@ -2247,11 +2373,18 @@
     ".claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/DocumentInspector.tsx": 3,
     ".claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/App.tsx": 1,
     ".claude/worktrees/agent-a74ddaaebdf9d2a08/docs/adr/0005-deterministic-extraction-and-reconciliation.md": 1,
-    ".claude/worktrees/agent-a74ddaaebdf9d2a08/.wolf/anatomy.md": 1
+    ".claude/worktrees/agent-a74ddaaebdf9d2a08/.wolf/anatomy.md": 1,
+    "lib/extraction/docling_anchor_resolution.py": 3,
+    "lib/extraction/evidence.py": 2,
+    "lib/extraction/region_envelope_projection.py": 1,
+    "lib/extraction/model_output_normalization.py": 3,
+    "tests/unit/extraction/test_docling_anchor_resolution.py": 3,
+    "lib/extraction/observation_repository.py": 2,
+    "lib/extraction/claim_aggregate_reconciliation.py": 1
   },
   "anatomy_hits": 3,
   "anatomy_misses": 190,
-  "repeated_reads_warned": 231,
+  "repeated_reads_warned": 235,
   "cerebrum_warnings": 0,
-  "stop_count": 3
+  "stop_count": 10
 }

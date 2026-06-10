@@ -83,3 +83,32 @@
 | 07:20 | Removed legacy separate Qwen HQ/rescue runtime path | compose.yaml, lib/config/settings.py, lib/semantic_annotations, lib/extraction, apps/api, apps/web, scripts/gpu, tests, docs/adr, docs/model-runtime, agents.md, .wolf/* | Removed `STRUCTURA_QWEN8_ENABLED`, the inactive `model-qwen`/placeholder services, High Quality/Allow 8B Rescue API and UI paths, private-corpus HQ/rescue flags, and rescue enqueue behavior. Smart Parse now has one active Qwen path: Qwen3-VL-8B-Instruct-FP8 on `model-qwen-semantic:8104`; uncertainty routes to review instead of a second semantic pass. | ~1300 |
 | 11:31 | Persisted latest Phase 8.5 model-pipeline state and review findings | .wolf/cerebrum.md, .wolf/anatomy.md, .wolf/memory.md, artifacts/structura-model-prompts-contracts-behaviors-20260501T082453Z-v2.zip | Recorded the active Docling -> Qwen3-VL-8B FP8 -> Granite -> validators/review pipeline, Qwen semantic-understanding role, resident corpus run `20260501T080539Z`, removed Phase 4 auto-classify/default overwrite risk, production-style no-heredoc runner preference, v2 share pack path, and remaining hardening risks from the external review validity check | ~1600 |
 | 2026-06-09 | Implemented review-workflow and D8 quality-outcome surfacing batch | database/087_phase8_5_quality_outcome.sql, lib/extraction/extraction_repository.py, lib/extraction/service.py, lib/documents/read_model.py, lib/review/*, apps/api/structura_api/routes_review.py, contracts/api/openapi.yaml, contracts/schemas/review_action.v1.schema.json, apps/web/src/*, docs/adr/0005, tests/unit | Persisted ADR 0005 D8 quality outcomes on document_extractions (migration 087), exposed qualityOutcome/claimResolutionDecisions/regionJobCoverage on document detail, rerouted review rerun_extraction to a deduplicated semantic_annotate Smart Parse job, persisted requested_by/requested_by_user_id/user_intent_reason in extraction metadata_json, made observation/line-item review tasks actionable (new candidate read endpoints + accept/reject actions with audit), added deterministic web evidence-locator selection mirroring evidence_locator.py, and removed fabricated UI state (page-1-only viewer, fake highlight, 86% chip, fake pipeline zeros, dead buttons) | ~3000 |
+| 21:15 | Session end: 195 writes across 95 files (repro_group_collapse.py, claims.py, model_output_value_parsing.py, candidate_value_parsing.py, claim_resolver.py) | 194 reads | ~82604 tok |
+| 21:17 | Session end: 195 writes across 95 files (repro_group_collapse.py, claims.py, model_output_value_parsing.py, candidate_value_parsing.py, claim_resolver.py) | 194 reads | ~82604 tok |
+| 21:22 | Session end: 195 writes across 95 files (repro_group_collapse.py, claims.py, model_output_value_parsing.py, candidate_value_parsing.py, claim_resolver.py) | 194 reads | ~82604 tok |
+| 21:30 | Edited lib/extraction/reconciliation_repository.py | modified maybe_reconcile_semantic_annotation() | ~681 |
+| 21:30 | Edited lib/extraction/reconciliation_repository.py | modified _region_job_status_counts() | ~215 |
+| 21:30 | Edited workers/extraction/worker.py | 10→11 lines | ~142 |
+| 21:34 | Session end: 198 writes across 95 files (repro_group_collapse.py, claims.py, model_output_value_parsing.py, candidate_value_parsing.py, claim_resolver.py) | 194 reads | ~83642 tok |
+| 21:39 | Session end: 198 writes across 95 files (repro_group_collapse.py, claims.py, model_output_value_parsing.py, candidate_value_parsing.py, claim_resolver.py) | 194 reads | ~83642 tok |
+| 21:49 | Created lib/extraction/docling_anchor_resolution.py | — | ~938 |
+| 21:49 | Edited lib/extraction/docling_anchor_resolution.py | 2→2 lines | ~37 |
+| 21:49 | Edited lib/extraction/docling_anchor_resolution.py | _normalize_bbox() → normalize_bbox() | ~34 |
+| 21:49 | Edited lib/extraction/evidence.py | inline fix | ~16 |
+| 21:50 | Edited lib/extraction/evidence.py | inline fix | ~12 |
+| 21:50 | Edited lib/extraction/region_envelope_projection.py | modified finalized_region_output() | ~563 |
+| 21:50 | Edited lib/extraction/model_output_normalization.py | modified normalize_granite_region_output() | ~428 |
+| 21:51 | Edited lib/extraction/model_output_normalization.py | modified _finalized_output() | ~215 |
+| 21:51 | Edited lib/extraction/model_output_normalization.py | added 1 import(s) | ~60 |
+| 21:53 | Created tests/unit/extraction/test_docling_anchor_resolution.py | — | ~1253 |
+| 21:53 | Edited tests/unit/extraction/test_docling_anchor_resolution.py | inline fix | ~23 |
+| 21:54 | Edited tests/unit/extraction/test_docling_anchor_resolution.py | modified _source() | ~249 |
+| 21:56 | Session end: 210 writes across 100 files (repro_group_collapse.py, claims.py, model_output_value_parsing.py, candidate_value_parsing.py, claim_resolver.py) | 194 reads | ~87470 tok |
+| 22:10 | Edited lib/extraction/claims.py | 16→16 lines | ~160 |
+| 22:10 | Edited lib/extraction/claims.py | 8→8 lines | ~96 |
+| 22:11 | Edited lib/extraction/claims.py | modified _normalized_confidence() | ~187 |
+| 22:11 | Edited lib/extraction/observation_repository.py | 3→3 lines | ~36 |
+| 22:11 | Edited lib/extraction/observation_repository.py | added 1 import(s) | ~65 |
+| 22:14 | Edited lib/extraction/claim_aggregate_reconciliation.py | modified _family_is_compatible() | ~112 |
+| 22:16 | Session end: 216 writes across 102 files (repro_group_collapse.py, claims.py, model_output_value_parsing.py, candidate_value_parsing.py, claim_resolver.py) | 194 reads | ~88126 tok |
+| 22:35 | GPU validation iterations 1-4 complete | lib/extraction/{reconciliation_repository,docling_anchor_resolution,claims,claim_aggregate_reconciliation,observation_repository}.py, compose.yaml, docs/adr/0005 | Four corpus runs on P620-01 found and fixed: settled-job trigger blind spot (zero aggregates), page-only KVP evidence dropping all claims (Docling anchor resolution added), percent-style confidence overflowing numeric(5,4), dot-less observation keys skipped by family gate, unmapped embedding kill switch. Final run 20260610T021547Z: 6 aggregates incl. first receipt lane + partial aggregate with dead-letter coverage, KVP candidates restored, quality outcomes persisted, zero non-model failures | ~12000 |

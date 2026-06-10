@@ -1896,6 +1896,66 @@
         "fail-closed-routing",
         "phase8_5"
       ]
+    },
+    {
+      "date": "2026-06-09",
+      "error_message": "GPU corpus run produced zero aggregates after the terminal-jobs reconciliation trigger landed.",
+      "root_cause": "The extraction worker triggers reconciliation before complete_job, so the final region job still read as running and always blocked its own aggregate.",
+      "fix": "maybe_reconcile_semantic_annotation accepts settled_job_id and counts the caller's in-flight job as succeeded.",
+      "tags": [
+        "phase-8.5",
+        "reconciliation",
+        "gpu-validation"
+      ]
+    },
+    {
+      "date": "2026-06-09",
+      "error_message": "KVP documents (escrow, title, scans) produced zero claims, candidates, and aggregates on the live pipeline.",
+      "root_cause": "Full-page Granite values carry page-only evidence; anchor-required typing drops them all, and the source-text-to-Docling matching from Phase 4 was never applied to the region envelope path.",
+      "fix": "lib/extraction/docling_anchor_resolution.py locates verbatim source text in Docling elements/page text and upgrades page-only refs with element_id+bbox or text_span before claim construction.",
+      "tags": [
+        "phase-8.5",
+        "claims",
+        "anchors",
+        "recall",
+        "gpu-validation"
+      ]
+    },
+    {
+      "date": "2026-06-09",
+      "error_message": "Observation candidates failed insert with numeric field overflow (precision 5, scale 4).",
+      "root_cause": "Granite emitted percent-style field confidence (e.g. 85) and the Claim path passed it through unbounded into numeric(5,4) confidence columns.",
+      "fix": "Claim construction normalizes confidence to [0,1] (percent values scaled, out-of-range dropped); observation insert sanitizes via confidence_or_none.",
+      "tags": [
+        "phase-8.5",
+        "confidence",
+        "database",
+        "gpu-validation"
+      ]
+    },
+    {
+      "date": "2026-06-09",
+      "error_message": "Escrow/title observation aggregates still missing even with anchored claims and persisted candidates.",
+      "root_cause": "The aggregate source-family compatibility gate required dotted family.field canonical keys; dot-less KVP keys like loan_number yielded an empty family set and the region was skipped as incompatible.",
+      "fix": "document_observation aggregate lane accepts arbitrary anchored claims including dot-less keys.",
+      "tags": [
+        "phase-8.5",
+        "reconciliation",
+        "observations",
+        "gpu-validation"
+      ]
+    },
+    {
+      "date": "2026-06-09",
+      "error_message": "STRUCTURA_EMBEDDING_TEXT_ENABLED=false had no effect; text embed jobs still enqueued and failed against the absent live service.",
+      "root_cause": "The setting existed in code but compose.yaml never mapped the env var into any service environment.",
+      "fix": "Mapped the flag into every compose service that enqueues embed jobs.",
+      "tags": [
+        "phase-8.5",
+        "compose",
+        "embeddings",
+        "configuration"
+      ]
     }
   ]
 }
