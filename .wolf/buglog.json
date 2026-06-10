@@ -1982,6 +1982,20 @@
         "configuration",
         "model-services"
       ]
+    },
+    {
+      "date": "2026-06-10",
+      "error_message": "Pre-gate review: text-lane totals-row detection ate real line items and minted wrong totals values (substring 'tax' matched 'Taxi to airport'; totals amount taken from the leftmost money-role column captured a tax RATE; EOB 'Totals' rows double-counted as service-line claims; row_section band rows and flag-less first data rows mishandled; per-instance label cache never hit in the per-job worker).",
+      "root_cause": "First-cut E1 heuristics: bare substring phrase matching ordered before line-item interpretation, ascending money-column scan for totals values, no representation for unmapped totals labels, unused Docling row_section flags, unconditional first-row header fallback, and a label cache scoped to a gateway instance that the extraction worker rebuilds per job.",
+      "fix": "Word-boundary phrase matching (hyphen-aware), quantity-populated rows always stay line items, totals value prefers the amount-role column then right-to-left money columns, unmapped totals-looking rows are suppressed with telemetry, row_section bands excluded from data rows, content-aware first-row fallback (numeric first rows are data), module-level label cache with clear_column_label_cache(), per-family role glosses (medical_eob amount = patient responsibility), and gateway abstentions no_money_column / money_columns_sparse for Docling cell loss. Regression tests in tests/unit/extraction/text_lane/test_review_regressions.py.",
+      "tags": [
+        "phase8.5",
+        "adr-0006",
+        "text-lane",
+        "e1",
+        "totals",
+        "review-workflow"
+      ]
     }
   ]
 }

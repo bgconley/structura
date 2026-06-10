@@ -169,3 +169,77 @@
 | 03:20 | Created docs/adr/0006-extractive-first-extraction.md | — | ~1549 |
 | 03:22 | Created docs/superpowers/plans/2026-06-10-extractive-first-extraction-plan.md | — | ~2652 |
 | 07:55 | Clean gate achieved; extractive-first migration approved | docs/adr/0006, docs/superpowers/plans/2026-06-10-extractive-first-extraction-plan.md, workers/model_services, contracts | Run 9: 101/101 jobs, zero dead letters, 9/9 aggregates with quality outcomes after whitespace-loop root cause fixed (xgrammar disable_any_whitespace + tokenization-aware bounds). Live suite 7/8 (phase8-live killed by planner dead-letter -> E3 scope). User approved extractive-first redesign; ADR 0006 + E0-E5 plan committed; baseline pinned to run 9 | ~14000 |
+| 03:23 | Session end: 261 writes across 117 files (repro_group_collapse.py, claims.py, model_output_value_parsing.py, candidate_value_parsing.py, claim_resolver.py) | 210 reads | ~110421 tok |
+| 03:25 | Session end: 261 writes across 117 files (repro_group_collapse.py, claims.py, model_output_value_parsing.py, candidate_value_parsing.py, claim_resolver.py) | 210 reads | ~110421 tok |
+
+## Session: 2026-06-10 03:26
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 03:41 | Created ../../../../tmp/structura-e0-capture/corpus_inventory.sql | — | ~182 |
+| 03:41 | Created ../../../../tmp/structura-e0-capture/run9_docs.sql | — | ~167 |
+| 03:42 | Created ../../../../tmp/structura-e0-capture/run9_files.sql | — | ~74 |
+| 03:42 | Created ../../../../tmp/structura-e0-capture/run9_tables.sql | — | ~127 |
+| 03:48 | Edited lib/extraction/models.py | 13→15 lines | ~142 |
+| 03:48 | Edited lib/extraction/source_repository.py | 12→14 lines | ~110 |
+| 03:48 | Edited lib/extraction/source_repository.py | 4→8 lines | ~134 |
+| 03:48 | Edited lib/config/settings.py | 1→5 lines | ~115 |
+| 03:48 | Created lib/extraction/text_lane/__init__.py | — | ~113 |
+| 03:49 | Created lib/extraction/text_lane/table_grid.py | — | ~2110 |
+| 03:49 | Created lib/extraction/text_lane/eligibility.py | — | ~1418 |
+| 03:50 | Edited compose.yaml | 10→12 lines | ~191 |
+| 03:50 | Edited compose.yaml | 4→6 lines | ~102 |
+| 03:50 | Edited compose.yaml | 9→11 lines | ~166 |
+| 03:51 | Created ../../../../tmp/structura-e0-capture/gen_fixtures.py | — | ~1899 |
+| 03:52 | Created tests/unit/extraction/text_lane/test_table_grid.py | — | ~1285 |
+| 03:52 | Created tests/unit/extraction/text_lane/test_eligibility.py | — | ~1893 |
+| 03:54 | Edited lib/model_runtime/contracts.py | expanded (+36 lines) | ~302 |
+| 03:54 | Created lib/model_runtime/clients/_openai_text.py | — | ~1268 |
+| 03:56 | Created lib/extraction/text_lane/column_labeling.py | — | ~2088 |
+| 03:56 | Created lib/extraction/text_lane/table_extractor.py | — | ~3756 |
+| 03:57 | Edited lib/extraction/text_lane/table_extractor.py | reduced (-6 lines) | ~19 |
+| 03:57 | Created lib/extraction/text_lane/gateway.py | — | ~1861 |
+| 03:58 | Created lib/extraction/gateways/routing.py | — | ~1508 |
+| 03:58 | Edited lib/extraction/validators.py | modified validate_text_lane_region_payload() | ~414 |
+| 03:58 | Edited lib/extraction/service.py | 1→5 lines | ~44 |
+| 03:58 | Edited lib/extraction/service.py | modified is_model_source_engine() | ~352 |
+| 03:58 | Edited lib/extraction/service.py | 8→11 lines | ~137 |
+| 03:59 | Created tests/unit/extraction/text_lane/test_column_labeling.py | — | ~1511 |
+| 04:00 | Created tests/unit/extraction/text_lane/test_table_extractor.py | — | ~2394 |
+| 04:00 | Edited tests/unit/extraction/text_lane/test_table_extractor.py | 11→13 lines | ~155 |
+| 04:01 | Created tests/unit/extraction/text_lane/test_text_lane_gateway.py | — | ~2861 |
+| 04:02 | Edited tests/unit/extraction/text_lane/test_text_lane_gateway.py | 2→2 lines | ~34 |
+| 04:03 | Edited lib/extraction/text_lane/table_grid.py | modified _offset() | ~109 |
+| 04:04 | Created scripts/gpu/check_text_lane_eligibility.py | — | ~1610 |
+| 04:05 | Edited scripts/gpu/check_text_lane_eligibility.py | added 1 import(s) | ~21 |
+| 04:05 | Edited scripts/gpu/check_text_lane_eligibility.py | inline fix | ~17 |
+| 04:05 | Edited scripts/gpu/check_text_lane_eligibility.py | inline fix | ~11 |
+| 04:35 | Implemented extractive-first E0+E1 text lane behind default-off flags | lib/extraction/text_lane/*, lib/model_runtime/clients/_openai_text.py, lib/extraction/{gateways/routing.py,service.py,validators.py,models.py,source_repository.py}, lib/config/settings.py, compose.yaml, scripts/gpu/check_text_lane_eligibility.py, tests/ | E0: TableGrid parser over table_json data.grid with run-9-shape fixtures, text_lane_eligibility quality+table-signal screens, STRUCTURA_TEXT_LANE_TABLES/KVP flags in compose. E1: enum column-role labeling on qwen-semantic cached by family+header fingerprint, verbatim-cell extractor emitting Granite-parity RegionExtractionEnvelope with docling row anchors and totals-row facts, routing seam with TextLaneAbstention fallback, review-gated text-lane validator, lane telemetry. 1049 unit tests/ruff/contracts pass locally; adversarial review workflow before commit and GPU A/B gate | ~95000 |
+| 04:40 | Created ../../../../tmp/structura-e0-capture/repro_totals_substring.py | — | ~1652 |
+| 04:41 | Created ../../../../tmp/structura-e0-capture/repro_totals_rate.py | — | ~1347 |
+| 04:41 | Edited ../../../../tmp/structura-e0-capture/repro_totals_rate.py | 19→17 lines | ~156 |
+| 04:42 | Created ../../../../tmp/structura-e0-capture/repro_totals_variants.py | — | ~1378 |
+| 04:45 | Created ../../../../tmp/structura-e0-capture/repro_band_rows.py | — | ~1554 |
+| 04:53 | Edited lib/extraction/text_lane/table_extractor.py | added 1 import(s) | ~51 |
+| 04:53 | Edited lib/extraction/text_lane/table_extractor.py | expanded (+16 lines) | ~169 |
+| 04:53 | Edited lib/extraction/text_lane/table_extractor.py | expanded (+7 lines) | ~96 |
+| 04:53 | Edited lib/extraction/text_lane/table_extractor.py | _totals_fact() → _classify_totals_row() | ~350 |
+| 04:53 | Edited lib/extraction/text_lane/table_extractor.py | 4→5 lines | ~71 |
+| 04:53 | Edited lib/extraction/text_lane/table_extractor.py | 6→7 lines | ~65 |
+| 04:54 | Edited lib/extraction/text_lane/table_extractor.py | modified _classify_totals_row() | ~1195 |
+| 04:54 | Edited lib/extraction/text_lane/table_extractor.py | 6→5 lines | ~38 |
+| 04:54 | Edited lib/extraction/text_lane/table_extractor.py | 19→17 lines | ~160 |
+| 04:54 | Edited lib/extraction/text_lane/table_grid.py | added 1 import(s) | ~81 |
+| 04:54 | Edited lib/extraction/text_lane/table_grid.py | modified header_row_indexes() | ~639 |
+| 04:55 | Edited lib/extraction/text_lane/column_labeling.py | 7→7 lines | ~88 |
+| 04:55 | Edited lib/extraction/text_lane/column_labeling.py | expanded (+18 lines) | ~265 |
+| 04:55 | Edited lib/extraction/text_lane/column_labeling.py | modified clear_column_label_cache() | ~253 |
+| 04:56 | Edited lib/extraction/text_lane/gateway.py | modified values() | ~384 |
+| 04:56 | Edited lib/extraction/text_lane/gateway.py | added 1 import(s) | ~87 |
+| 04:56 | Edited lib/extraction/text_lane/gateway.py | 7→8 lines | ~92 |
+| 04:56 | Edited lib/extraction/text_lane/gateway.py | 3→1 lines | ~28 |
+| 04:57 | Edited lib/extraction/text_lane/table_extractor.py | 3→5 lines | ~99 |
+| 04:57 | Edited lib/extraction/text_lane/table_extractor.py | modified _phrase_matches() | ~96 |
+| 04:58 | Created tests/unit/extraction/text_lane/test_review_regressions.py | — | ~3649 |
+| 04:58 | Edited lib/extraction/text_lane/gateway.py | modified _row_has_parseable_money() | ~228 |
+| 05:15 | Edited docs/adr/0006-extractive-first-extraction.md | expanded (+18 lines) | ~364 |

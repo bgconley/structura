@@ -36,7 +36,11 @@ from lib.extraction.repository import (
     persist_extraction_run,
 )
 from lib.extraction.schema_registry import ExtractionSchemaRegistry
-from lib.extraction.validators import validate_extraction_payload, validate_semantic_region_payload
+from lib.extraction.validators import (
+    validate_extraction_payload,
+    validate_semantic_region_payload,
+    validate_text_lane_region_payload,
+)
 from lib.jobs import JobService
 from lib.jobs.event_payloads import build_extract_document_job_payload
 from lib.model_runtime.source_engines import is_model_source_engine
@@ -210,20 +214,30 @@ class ExtractionService:
             if region_envelope is not None
             else gateway_result.normalized_json
         )
-        validation = (
-            validate_semantic_region_payload(
+        text_lane_region = (
+            semantic_task is not None
+            and region_envelope is not None
+            and gateway_result.normalization_json.get("lane") == "text"
+        )
+        if text_lane_region:
+            validation = validate_text_lane_region_payload(
+                semantic_region_validation_payload,
+                model_output_schema_name=gateway_result.model_output_schema_name,
+            )
+        elif semantic_task is not None and is_model_source_engine(
+            gateway_result.route.source_engine
+        ):
+            validation = validate_semantic_region_payload(
                 semantic_region_validation_payload,
                 model_output_schema_name=gateway_result.model_output_schema_name,
                 model_output_payload=model_output_payload,
             )
-            if semantic_task is not None
-            and is_model_source_engine(gateway_result.route.source_engine)
-            else validate_extraction_payload(
+        else:
+            validation = validate_extraction_payload(
                 schema_name,
                 gateway_result.normalized_json,
                 registry=self.registry,
             )
-        )
         gateway_result.normalized_json["validation"] = validation.as_json()
         normalized_schema_name = str(
             gateway_result.normalized_json.get("schema_name") or schema_name
@@ -289,11 +303,12 @@ class ExtractionService:
         if (
             semantic_task is not None
             and semantic_task.expected_fields
-            and is_model_source_engine(gateway_result.route.source_engine)
+            and (is_model_source_engine(gateway_result.route.source_engine) or text_lane_region)
         ):
             # Telemetry only: record which Qwen-planned expected fields the
-            # Granite region envelope actually produced. Never changes
-            # admission, validation, or review behavior.
+            # extraction region envelope (Granite or text lane) actually
+            # produced. Never changes admission, validation, or review
+            # behavior.
             coverage_entry = expected_field_coverage(
                 semantic_task.expected_fields,
                 region_envelope,

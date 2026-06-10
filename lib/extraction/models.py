@@ -20,6 +20,8 @@ class ParsedPageText:
     width_points: float | None = None
     height_points: float | None = None
     rotation_degrees: int = 0
+    has_text_layer: bool | None = None
+    ocr_confidence: float | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
 

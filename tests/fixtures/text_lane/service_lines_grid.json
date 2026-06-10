@@ -1,0 +1,261 @@
+{
+  "page_number": 1,
+  "table_index": 1,
+  "table_json": {
+    "data": {
+      "grid": [
+        [
+          {
+            "bbox": {
+              "b": 112.0,
+              "coord_origin": "TOPLEFT",
+              "l": 36.0,
+              "r": 136.0,
+              "t": 100.0
+            },
+            "col_span": 1,
+            "column_header": true,
+            "end_col_offset_idx": 1,
+            "end_row_offset_idx": 1,
+            "fillable": false,
+            "row_header": false,
+            "row_section": false,
+            "row_span": 1,
+            "start_col_offset_idx": 0,
+            "start_row_offset_idx": 0,
+            "text": "DESCRIPTION OF SERVICE AND PARTS"
+          },
+          {
+            "bbox": {
+              "b": 112.0,
+              "coord_origin": "TOPLEFT",
+              "l": 146.0,
+              "r": 246.0,
+              "t": 100.0
+            },
+            "col_span": 1,
+            "column_header": false,
+            "end_col_offset_idx": 2,
+            "end_row_offset_idx": 1,
+            "fillable": false,
+            "row_header": false,
+            "row_section": false,
+            "row_span": 1,
+            "start_col_offset_idx": 1,
+            "start_row_offset_idx": 0,
+            "text": ""
+          },
+          {
+            "bbox": {
+              "b": 112.0,
+              "coord_origin": "TOPLEFT",
+              "l": 256.0,
+              "r": 356.0,
+              "t": 100.0
+            },
+            "col_span": 1,
+            "column_header": true,
+            "end_col_offset_idx": 3,
+            "end_row_offset_idx": 1,
+            "fillable": false,
+            "row_header": false,
+            "row_section": false,
+            "row_span": 1,
+            "start_col_offset_idx": 2,
+            "start_row_offset_idx": 0,
+            "text": "AMOUNT"
+          }
+        ],
+        [
+          {
+            "bbox": {
+              "b": 130.0,
+              "coord_origin": "TOPLEFT",
+              "l": 36.0,
+              "r": 136.0,
+              "t": 118.0
+            },
+            "col_span": 1,
+            "column_header": false,
+            "end_col_offset_idx": 1,
+            "end_row_offset_idx": 2,
+            "fillable": false,
+            "row_header": false,
+            "row_section": false,
+            "row_span": 1,
+            "start_col_offset_idx": 0,
+            "start_row_offset_idx": 1,
+            "text": "600 mile run-in service"
+          },
+          {
+            "bbox": {
+              "b": 130.0,
+              "coord_origin": "TOPLEFT",
+              "l": 146.0,
+              "r": 246.0,
+              "t": 118.0
+            },
+            "col_span": 1,
+            "column_header": false,
+            "end_col_offset_idx": 2,
+            "end_row_offset_idx": 2,
+            "fillable": false,
+            "row_header": false,
+            "row_section": false,
+            "row_span": 1,
+            "start_col_offset_idx": 1,
+            "start_row_offset_idx": 1,
+            "text": "1"
+          },
+          {
+            "bbox": {
+              "b": 130.0,
+              "coord_origin": "TOPLEFT",
+              "l": 256.0,
+              "r": 356.0,
+              "t": 118.0
+            },
+            "col_span": 1,
+            "column_header": false,
+            "end_col_offset_idx": 3,
+            "end_row_offset_idx": 2,
+            "fillable": false,
+            "row_header": false,
+            "row_section": false,
+            "row_span": 1,
+            "start_col_offset_idx": 2,
+            "start_row_offset_idx": 1,
+            "text": "289.00"
+          }
+        ],
+        [
+          {
+            "bbox": {
+              "b": 148.0,
+              "coord_origin": "TOPLEFT",
+              "l": 36.0,
+              "r": 136.0,
+              "t": 136.0
+            },
+            "col_span": 1,
+            "column_header": false,
+            "end_col_offset_idx": 1,
+            "end_row_offset_idx": 3,
+            "fillable": false,
+            "row_header": false,
+            "row_section": false,
+            "row_span": 1,
+            "start_col_offset_idx": 0,
+            "start_row_offset_idx": 2,
+            "text": "Rear tire replacement"
+          },
+          {
+            "bbox": {
+              "b": 148.0,
+              "coord_origin": "TOPLEFT",
+              "l": 146.0,
+              "r": 246.0,
+              "t": 136.0
+            },
+            "col_span": 1,
+            "column_header": false,
+            "end_col_offset_idx": 2,
+            "end_row_offset_idx": 3,
+            "fillable": false,
+            "row_header": false,
+            "row_section": false,
+            "row_span": 1,
+            "start_col_offset_idx": 1,
+            "start_row_offset_idx": 2,
+            "text": "1"
+          },
+          {
+            "bbox": {
+              "b": 148.0,
+              "coord_origin": "TOPLEFT",
+              "l": 256.0,
+              "r": 356.0,
+              "t": 136.0
+            },
+            "col_span": 1,
+            "column_header": false,
+            "end_col_offset_idx": 3,
+            "end_row_offset_idx": 3,
+            "fillable": false,
+            "row_header": false,
+            "row_section": false,
+            "row_span": 1,
+            "start_col_offset_idx": 2,
+            "start_row_offset_idx": 2,
+            "text": "412.50"
+          }
+        ],
+        [
+          {
+            "bbox": {
+              "b": 166.0,
+              "coord_origin": "TOPLEFT",
+              "l": 36.0,
+              "r": 136.0,
+              "t": 154.0
+            },
+            "col_span": 1,
+            "column_header": false,
+            "end_col_offset_idx": 1,
+            "end_row_offset_idx": 4,
+            "fillable": false,
+            "row_header": false,
+            "row_section": false,
+            "row_span": 1,
+            "start_col_offset_idx": 0,
+            "start_row_offset_idx": 3,
+            "text": "Balance due"
+          },
+          {
+            "bbox": {
+              "b": 166.0,
+              "coord_origin": "TOPLEFT",
+              "l": 146.0,
+              "r": 246.0,
+              "t": 154.0
+            },
+            "col_span": 1,
+            "column_header": false,
+            "end_col_offset_idx": 2,
+            "end_row_offset_idx": 4,
+            "fillable": false,
+            "row_header": false,
+            "row_section": false,
+            "row_span": 1,
+            "start_col_offset_idx": 1,
+            "start_row_offset_idx": 3,
+            "text": ""
+          },
+          {
+            "bbox": {
+              "b": 166.0,
+              "coord_origin": "TOPLEFT",
+              "l": 256.0,
+              "r": 356.0,
+              "t": 154.0
+            },
+            "col_span": 1,
+            "column_header": false,
+            "end_col_offset_idx": 3,
+            "end_row_offset_idx": 4,
+            "fillable": false,
+            "row_header": false,
+            "row_section": false,
+            "row_span": 1,
+            "start_col_offset_idx": 2,
+            "start_row_offset_idx": 3,
+            "text": "701.50"
+          }
+        ]
+      ],
+      "num_cols": 3,
+      "num_rows": 4
+    },
+    "label": "table"
+  }
+}

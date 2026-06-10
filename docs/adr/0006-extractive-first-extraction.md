@@ -107,3 +107,21 @@ classes are unrepresentable.
 
 - 2026-06-10: ADR accepted; migration plan and spec authored
   (docs/superpowers/specs+plans/2026-06-10-extractive-first-extraction-*).
+- 2026-06-10: E0+E1 landed behind default-off flags
+  (`STRUCTURA_TEXT_LANE_TABLES` / `STRUCTURA_TEXT_LANE_KVP`).
+  `lib/extraction/text_lane/` provides the typed `TableGrid` over
+  `document_tables.table_json["data"]["grid"]`, lane eligibility
+  (line-item semantic type + grounded strong Docling table + clean text
+  page), enum column-role labeling on the resident Qwen text endpoint
+  (cached by family + header fingerprint), and a verbatim-cell table
+  extractor emitting the standard `RegionExtractionEnvelope` with
+  docling row anchors, so claims/candidates/reconciliation/review are
+  unchanged. Routing falls back to the Granite vision path on
+  `TextLaneAbstention` with `normalization_json.lane` telemetry; the
+  text lane keeps candidates review-gated in E1. A pre-gate adversarial
+  review (25 agents) confirmed and fixed totals-row substring matching,
+  leftmost-money totals values, EOB totals double-counting, row_section
+  band rows, the flag-less first-row header fallback, the per-job label
+  cache, the medical_eob amount gloss, and added money-column sparsity
+  abstention for Docling cell loss. GPU A/B gate vs the pinned run-9
+  baseline is the next step before defaults flip.

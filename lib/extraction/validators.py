@@ -40,6 +40,42 @@ def validate_extraction_payload(
     return ValidationReport(needs_review=needs_review, checks=checks)
 
 
+def validate_text_lane_region_payload(
+    payload: dict[str, Any],
+    *,
+    model_output_schema_name: str | None,
+) -> ValidationReport:
+    """Region-scope validation for extractive text-lane output (ADR 0006).
+
+    Values are verbatim Docling cell text with exact structural anchors, so
+    there is no model-output contract to re-validate. The model's only
+    authority was column-role selection; that mapping decides canonical keys,
+    so text-lane candidates stay review-gated in E1 to match the vision
+    path's review posture during A/B gating.
+    """
+    checks: list[dict[str, Any]] = [
+        _check(
+            "region_scope.validation_routing",
+            "passed",
+            "Semantic-region output was not validated against a full canonical document schema.",
+        ),
+        _check(
+            "region_scope.text_lane_extraction",
+            "passed",
+            "Values were selected verbatim from Docling structure via "
+            f"{model_output_schema_name or 'the text lane'}; the model labeled columns only.",
+        ),
+        _evidence_check(payload),
+        _check(
+            "region_scope.text_lane_review_required",
+            "warning",
+            "Text-lane candidates keep the model-selected column-role mapping "
+            "under human review before canonical promotion.",
+        ),
+    ]
+    return ValidationReport(needs_review=True, checks=checks)
+
+
 def validate_semantic_region_payload(
     payload: dict[str, Any],
     *,

@@ -1,12 +1,25 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-10T07:22:00.231Z
-> Files: 440 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-10T09:15:26.945Z
+> Files: 481 tracked | Anatomy hits: 0 | Misses: 0
+
+## ../../../../tmp/structura-e0-capture/
+
+- `corpus_inventory.sql` (~182 tok)
+- `gen_fixtures.py` — Generate sanitized text-lane grid fixtures mirroring live corpus shapes. (~1899 tok)
+- `repro_band_rows.py` — Adversarial repro: do Docling row_section band rows become canonical line items? (~1554 tok)
+- `repro_totals_rate.py` — Adversarial repro: does _totals_amount_cell pick the rate column for totals rows? (~1311 tok)
+- `repro_totals_substring.py` — Adversarial repro: does substring totals matching eat real line items? (~1652 tok)
+- `repro_totals_variants.py` — Variants: (a) shipping present + tax rate captured; (b) discount % captured. (~1378 tok)
+- `run9_docs.sql` (~167 tok)
+- `run9_files.sql` (~74 tok)
+- `run9_tables.sql` (~127 tok)
 
 ## ./
 
 - `.DS_Store` (~3824 tok)
 - `CLAUDE.md` — OpenWolf (~57 tok)
+- `compose.yaml` — Docker Compose: 7 services (~6767 tok)
 - `STRUCTURA_IMPLEMENTATION_PLAN.md` — Canonical end-to-end implementation plan; phase gates, mandatory per-phase artifact lists, API/database/event coverage, Markdown-first duplicate-artifact handling with DOCX parity note, GPU sync policy (~15500 tok)
 - `STRUCTURA_PHASE_1_IMPLEMENTATION_PLAN.md` — Phase 1 execution plan; upload, object storage, Inbox, protected asset streaming, preview, Viewer, fresh-context rereads, Firecrawl evidence rules, validation gate (~5700 tok)
 - `STRUCTURA_PHASE_10_IMPLEMENTATION_PLAN.md` — Phase 10 execution plan; exports, manifest/provenance, export authorization/audit, WebAuthn/passkeys, session hardening, API token lifecycle, folder ACL management, backup/restore, admin jobs, service/storage/model/extraction health, settings/admin UI, SAST, phase gate, fresh-context rereads, Firecrawl evidence rules (~11600 tok)
@@ -70,6 +83,19 @@
 
 - `test_gateways.py` — class: generate, test_fixture_gateway_has_explicit_fixture_provenance, test_fixture_gateway_infers_t (~17607 tok)
 - `test_input_budget.py` — test_estimate_text_tokens_matches_canary_heuristic, test_image_dimensions_parses_png_and_jpeg_header (~1598 tok)
+
+## Extractive-first text lane E0+E1 (2026-06-10, ADR 0006)
+
+- `lib/extraction/text_lane/__init__.py` — Package doc: extractive text lane; models select via closed enums, never transcribe values (~150 tok)
+- `lib/extraction/text_lane/column_labeling.py` — Enum micro-schema column-role labeling (registry line-item field_map keys + ignore) via text-only qwen-semantic call, temperature 0/seed 0, in-process cache by (family, header fingerprint), prompt/schema builders, roles_from_payload (~1300 tok)
+- `lib/extraction/text_lane/eligibility.py` — `text_lane_eligibility(source, semantic_task)`: line-item semantic type + grounded Docling table + usable grid + strong audit table signal + non-difficult page (quality.py reasons) -> LaneDecision(lane, reason) telemetry (~900 tok)
+- `lib/extraction/text_lane/gateway.py` — TextLaneTableExtractionGateway producing Granite-parity GatewayExtraction (regionEnvelope normalization_json, route source_engine=docling, method text_lane_table.v1); TextLaneAbstention for labeling failure/all-ignore/no-description/no-rows fallback (~1200 tok)
+- `lib/extraction/text_lane/table_extractor.py` — TableGrid + roles -> RegionExtractionEnvelope: verbatim cell values parsed with parse_decimal_text, row-level docling EvidenceRefs (page/table_id/row_index/bbox union), totals-row keyword facts per family instead of line items, lane coverage telemetry (~1800 tok)
+- `lib/extraction/text_lane/table_grid.py` — Typed TableGrid/TableGridCell parser for `document_tables.table_json["data"]["grid"]`: span-duplicate dedupe, positional span-resolving accessors, leading header-block detection from column_header flags with first-row fallback, multi-row header labels, header fingerprint for label caching (~1500 tok)
+- `lib/model_runtime/clients/_openai_text.py` — OpenAITextGenerateClient: text-only strict json_schema chat against OpenAI-compatible endpoints, shares response handling with the vision client (~900 tok)
+- `scripts/gpu/check_text_lane_eligibility.py` — E0 gate check printing per-table lane verdicts and per-document rollups for corpus documents (read-only, GPU host venv) (~1000 tok)
+- `tests/fixtures/text_lane/` — Sanitized grid fixtures mirroring live shapes: service_lines (flags H.H + balance row), retail_order_items (3 noisy header rows + col-span duplication), escrow_activity (no cell bboxes, multi-row spanned headers, empty row) (~1200 tok)
+- `tests/unit/extraction/text_lane/` — Grid round-trip/span/header/fingerprint tests, eligibility lane tests, labeling schema/prompt/cache tests, extractor verbatim/anchor/totals/claims/repeatability tests, routing/abstention/flag-off and service validation+coverage tests (~3200 tok)
 
 ## Phase 0 implementation scaffold
 
@@ -377,7 +403,7 @@
 
 ## docs/adr/
 
-- `0006-extractive-first-extraction.md` — ADR 0006: Extractive-First Extraction Architecture (~1452 tok)
+- `0006-extractive-first-extraction.md` — ADR 0006: Extractive-First Extraction Architecture (~1753 tok)
 
 ## docs/superpowers/plans/
 
@@ -393,6 +419,10 @@
 - `product-and-ux.md` — Product and UX Specification (~1180 tok)
 - `README.md` — Project documentation (~905 tok)
 
+## lib/config/
+
+- `settings.py` — Settings: reject_historical_live_semantic_profiles, canonical_objects_root, derived_objects_root, ex (~1215 tok)
+
 ## lib/extraction/
 
 - `canonical_promotion_policy.py` — candidate_auto_promotion_rejection_reason (~512 tok)
@@ -404,12 +434,34 @@
 - `granite_budgets.py` — from: granite_budget_for_task, granite_length_retry_budget (~1045 tok)
 - `granite_prompting.py` — granite_prompt (~3708 tok)
 - `model_output_normalization.py` — normalize_granite_region_output, finalize, invoice_line_item_dicts_from_payload (~8666 tok)
+- `models.py` — ParsedPageText: full_text, family, route_profile, confidence + 4 more (~1977 tok)
 - `observation_repository.py` — insert_observation_candidate (~566 tok)
 - `reconciliation_repository.py` — aggregate: maybe_reconcile_semantic_annotation (~4998 tok)
 - `region_envelope_projection.py` — finalized_region_output (~652 tok)
+- `service.py` — ExtractionServiceError: create_job, classify_document, extract_document (~4445 tok)
+- `source_repository.py` — load_extraction_source, require_document_readable (~2268 tok)
+- `validators.py` — validate_extraction_payload, validate_text_lane_region_payload, validate_semantic_region_payload (~3826 tok)
+
+## lib/extraction/gateways/
+
+- `routing.py` — ModelRoutingExtractionGateway: extract, default_extraction_gateway (~1508 tok)
+
+## lib/extraction/text_lane/
+
+- `__init__.py` — Extractive-first text lane (ADR 0006). (~113 tok)
+- `column_labeling.py` — Model column-role labeling for the extractive table lane (ADR 0006 X2). (~2311 tok)
+- `eligibility.py` — Text-lane eligibility: which regions may extract from Docling text. (~1418 tok)
+- `gateway.py` — Text-lane extraction gateway (ADR 0006 X2, migration phase E1). (~2222 tok)
+- `table_extractor.py` — Deterministic line-item extraction from the Docling cell grid (ADR 0006). (~4658 tok)
+- `table_grid.py` — Typed access to the Docling table cell grid persisted in table_json. (~2404 tok)
+
+## lib/model_runtime/
+
+- `contracts.py` — ModelImageInput: validated_sha256, sha256 (~860 tok)
 
 ## lib/model_runtime/clients/
 
+- `_openai_text.py` — OpenAITextGenerateClient: generate (~1268 tok)
 - `_openai_vision.py` — OpenAIVisionGenerateClient: generate (~2786 tok)
 
 ## lib/semantic_annotations/
@@ -682,11 +734,21 @@
 
 ## scripts/gpu/
 
+- `check_text_lane_eligibility.py` — E0 gate check: text-lane eligibility over live corpus documents. (~1615 tok)
 - `run_phase8_5_semantic_canary.py` — main, build_parser, parse_args (~9270 tok)
 
 ## tests/unit/extraction/
 
 - `test_docling_anchor_resolution.py` — test_page_only_evidence_upgrades_to_docling_element_anchor, test_page_only_evidence_falls_back_to_pa (~1324 tok)
+
+## tests/unit/extraction/text_lane/
+
+- `test_column_labeling.py` — from: generate, test_line_item_roles_come_from_claim_registry, test_schema_is_strict_closed_enum, te (~1511 tok)
+- `test_eligibility.py` — test_strong_table_on_text_page_is_text_lane, test_non_line_item_region_routes_to_vision, test_missin (~1893 tok)
+- `test_review_regressions.py` — Regression coverage for the 2026-06-10 adversarial review findings. (~3649 tok)
+- `test_table_extractor.py` — test_line_items_are_verbatim_with_row_anchors, test_totals_row_emits_family_fact_not_line_item, test (~2413 tok)
+- `test_table_grid.py` — test_service_lines_grid_round_trip, test_retail_grid_dedupes_span_duplicates_and_detects_header_bloc (~1285 tok)
+- `test_text_lane_gateway.py` — _StaticLabeler: label_columns, extract, extract, test_eligible_line_item_region_routes_to_text_lane (~2860 tok)
 
 ## workers/extraction/
 

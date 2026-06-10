@@ -77,6 +77,10 @@ def load_extraction_source(document_id: UUID) -> ExtractionSourceDocument:
                 width_points=_row_float(row.get("width_points")),
                 height_points=_row_float(row.get("height_points")),
                 rotation_degrees=_row_int(row["rotation_degrees"], "rotation_degrees"),
+                has_text_layer=(
+                    bool(row["has_text_layer"]) if row.get("has_text_layer") is not None else None
+                ),
+                ocr_confidence=_row_float(row.get("ocr_confidence")),
                 metadata=(
                     dict(row["metadata_json"]) if isinstance(row["metadata_json"], dict) else {}
                 ),
@@ -161,6 +165,8 @@ def _page_rows(cur: Any, document_id: UUID) -> list[dict[str, object]]:
           p.width_points,
           p.height_points,
           p.rotation_degrees,
+          p.has_text_layer,
+          p.ocr_confidence,
           p.metadata_json,
           a.uri AS image_uri,
           a.mime_type AS image_mime_type,

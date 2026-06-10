@@ -19,6 +19,42 @@ class ModelImageInput:
 
 
 @dataclass(frozen=True)
+class TextGenerateRequest:
+    """Text-only structured generation (no image inputs).
+
+    Used by the extractive text lane for enum-constrained selection calls
+    (column-role labeling, span selection); the schema is mandatory and the
+    response must validate against it, mirroring the vision contract.
+    """
+
+    profile_name: str
+    prompt_version: str
+    prompt: str
+    response_schema_name: str | None
+    max_output_tokens: int
+    temperature: float
+    timeout_seconds: int
+    response_json_schema: dict[str, Any] | None = None
+    seed: int | None = 0
+
+
+@dataclass(frozen=True)
+class TextGenerateResponse:
+    profile_name: str
+    model_name: str
+    model_version: str
+    source_engine: str
+    prompt_version: str
+    raw_text: str
+    normalized_json: dict[str, object]
+    prompt_sha256: str
+    latency_ms: int
+    finish_reason: str | None = None
+    usage_json: dict[str, object] = field(default_factory=dict)
+    structured_output_used: bool = False
+
+
+@dataclass(frozen=True)
 class VisionGenerateRequest:
     profile_name: str
     prompt_version: str

@@ -45,6 +45,8 @@ services:
       STRUCTURA_GRANITE_VISUAL_INPUT_MODE: ${STRUCTURA_GRANITE_VISUAL_INPUT_MODE:-shadow_full_page}
       STRUCTURA_MODEL_TEXT_EMBED_URL: http://model-embed:8102
       STRUCTURA_MODEL_VISUAL_EMBED_URL: http://model-vl-embed:8103
+      STRUCTURA_TEXT_LANE_TABLES: ${STRUCTURA_TEXT_LANE_TABLES:-false}
+      STRUCTURA_TEXT_LANE_KVP: ${STRUCTURA_TEXT_LANE_KVP:-false}
     ports:
       - "${STRUCTURA_API_BIND_HOST:-127.0.0.1}:${STRUCTURA_API_PORT:-8000}:8000"
     volumes:
@@ -173,6 +175,8 @@ services:
       STRUCTURA_MODEL_QWEN_SEMANTIC_URL: http://model-qwen-semantic:8104
       STRUCTURA_MODEL_GRANITE_URL: http://model-granite:8101
       STRUCTURA_GRANITE_VISUAL_INPUT_MODE: ${STRUCTURA_GRANITE_VISUAL_INPUT_MODE:-shadow_full_page}
+      STRUCTURA_TEXT_LANE_TABLES: ${STRUCTURA_TEXT_LANE_TABLES:-false}
+      STRUCTURA_TEXT_LANE_KVP: ${STRUCTURA_TEXT_LANE_KVP:-false}
     volumes:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/derived:/srv/structura/objects/derived
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/workers:/srv/structura/logs/workers
@@ -197,6 +201,8 @@ services:
       STRUCTURA_RUNTIME_ROOT: /srv/structura
       STRUCTURA_MODEL_MODE: ${STRUCTURA_MODEL_MODE:-fixture}
       STRUCTURA_MODEL_QWEN_SEMANTIC_URL: http://model-qwen-semantic:8104
+      STRUCTURA_TEXT_LANE_TABLES: ${STRUCTURA_TEXT_LANE_TABLES:-false}
+      STRUCTURA_TEXT_LANE_KVP: ${STRUCTURA_TEXT_LANE_KVP:-false}
     volumes:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/derived:/srv/structura/objects/derived
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/workers:/srv/structura/logs/workers
