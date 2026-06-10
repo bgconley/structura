@@ -236,6 +236,76 @@ def test_extraction_service_passes_semantic_region_scope_to_persister() -> None:
     ]
 
 
+def test_extraction_service_persists_request_intent_in_extraction_metadata() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    region_id = uuid4()
+    user_id = uuid4()
+    source = _source(document_id=document_id, household_id=household_id)
+    task = SemanticExtractionTask(
+        region_id=region_id,
+        annotation_id=uuid4(),
+        document_id=document_id,
+        semantic_type="invoice_line_item_table",
+        granite_task="tables_json",
+        target_schema="invoice",
+        expected_fields=("line_items", "total_amount"),
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+    )
+    captured: dict[str, Any] = {}
+
+    def persist(*args: object, **kwargs: object) -> PersistedExtraction:
+        captured["extraction"] = args[0]
+        captured.update(kwargs)
+        return _persisted()
+
+    ExtractionService(
+        gateway=RecordingGateway(),
+        source_loader=lambda loaded_document_id: source,
+        semantic_task_loader=lambda loaded_region_id: task,
+        persister=persist,
+    ).extract_document(
+        document_id,
+        schema_name="invoice",
+        route_profile="docling_plus_granite_structured",
+        semantic_region_id=region_id,
+        requested_by="reviewer",
+        requested_by_user_id=user_id,
+        user_intent_reason="Re-run requested from review queue.",
+    )
+
+    metadata = captured["extraction"].metadata
+    assert metadata["requested_by"] == "reviewer"
+    assert metadata["requested_by_user_id"] == str(user_id)
+    assert metadata["user_intent_reason"] == "Re-run requested from review queue."
+
+
+def test_extraction_service_omits_absent_intent_fields_from_metadata() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    source = _source(document_id=document_id, household_id=household_id)
+    captured: dict[str, Any] = {}
+
+    def persist(*args: object, **kwargs: object) -> PersistedExtraction:
+        captured["extraction"] = args[0]
+        return _persisted()
+
+    ExtractionService(
+        gateway=RecordingGateway(),
+        source_loader=lambda loaded_document_id: source,
+        persister=persist,
+    ).extract_document(
+        document_id,
+        schema_name="invoice",
+        route_profile="docling_plus_granite_structured",
+    )
+
+    metadata = captured["extraction"].metadata
+    assert metadata["requested_by"] == "system"
+    assert "requested_by_user_id" not in metadata
+    assert "user_intent_reason" not in metadata
+
+
 def test_extraction_service_does_not_rescue_needs_review_without_user_permission() -> None:
     document_id = uuid4()
     household_id = uuid4()
