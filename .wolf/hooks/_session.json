@@ -1046,6 +1046,11 @@
       "count": 1,
       "tokens": 0,
       "first_read": "2026-06-10T05:05:44.092Z"
+    },
+    "/Users/brennanconley/vibecode/structura/playwright.config.ts": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-06-10T05:19:14.297Z"
     }
   },
   "files_written": [
@@ -2716,8 +2721,8 @@
     ".claude/worktrees/agent-a86df2a212eebdab3/.wolf/anatomy.md": 1
   },
   "anatomy_hits": 4,
-  "anatomy_misses": 204,
+  "anatomy_misses": 205,
   "repeated_reads_warned": 238,
   "cerebrum_warnings": 0,
-  "stop_count": 12
+  "stop_count": 13
 }

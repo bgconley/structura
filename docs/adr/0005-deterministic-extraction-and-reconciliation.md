@@ -623,6 +623,17 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   structural-target lane, and the semantic canary now scores the same
   post-planning manifest the live service hands to Granite fanout.
 
+- 2026-06-10: Granite length retries escalate to the 8192-token ceiling with a
+  scaled timeout (recovered a previously dead-lettering dense receipt region
+  live); auto-promotion no longer consumes uncalibrated model confidence
+  (model-backed candidates always review; deterministic candidates promote on
+  validation plus concrete evidence); expected-field coverage telemetry is
+  recorded per region extraction and rolled up in the reliability report; the
+  live Qwen dispatch path emits proactive input-budget warnings. Corpus run
+  20260610T051818Z (generalized planner, no family repairs) produced 8
+  aggregates versus 6, including the formerly truncating receipt region and a
+  truthful observation aggregate beside the medical EOB lane.
+
 ## Deferred Work
 
 - Plan-stage stochasticity (Qwen routing variance) is bounded by greedy/low-temperature
