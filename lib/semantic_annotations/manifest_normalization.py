@@ -15,10 +15,6 @@ from lib.semantic_annotations.models import (
     SemanticGroundingRef,
     SemanticRegionAnnotation,
 )
-from lib.semantic_annotations.real_estate_title_normalization import (
-    normalize_real_estate_title_regions,
-)
-from lib.semantic_annotations.service_record_normalization import normalize_service_record_regions
 
 _LINE_ITEM_SEMANTIC_TYPES = frozenset(
     {
@@ -28,31 +24,6 @@ _LINE_ITEM_SEMANTIC_TYPES = frozenset(
         "retail_order_line_item_table",
         "service_record_line_item_table",
         "dispute_transaction_table",
-    }
-)
-_RETAIL_ORDER_TOTAL_TERMS = (
-    "total",
-    "amount paid",
-    "tax",
-    "shipping",
-    "subtotal",
-)
-_RETAIL_ORDER_PAYMENT_FIELDS = ("subtotal", "tax", "shipping", "total_amount")
-_RECEIPT_PAYMENT_FIELDS = ("subtotal", "tax", "payment_method", "total_amount")
-_OBSERVATION_DOCUMENT_TYPES = frozenset(
-    {
-        "real_estate_title",
-        "mortgage_escrow_statement",
-        "financial_dispute_form",
-    }
-)
-_GENERIC_DOCUMENT_TYPES = frozenset(
-    {
-        "document_observation",
-        "generic",
-        "generic_form",
-        "no_extraction_target",
-        "unsupported_document",
     }
 )
 _OBSERVATION_FAMILY_BY_SEMANTIC_TYPE = {
@@ -83,40 +54,6 @@ _PAGE_KVP_DEDUPE_TYPES = frozenset(
     }
 )
 _PRIORITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3}
-_MEDICAL_EOB_APPEAL_TERMS = (
-    "appeal",
-    "coverage decision",
-    "denial",
-    "denied",
-    "grievance",
-    "medical necessity",
-)
-_MEDICAL_EOB_DECISION_FIELDS = (
-    "appeal_deadline",
-    "denial_reason",
-    "grievance_rights",
-    "request_status",
-)
-_MEDICAL_EOB_DECISION_PAGE_TERMS = (
-    "appeal",
-    "clinical guideline",
-    "coverage decision",
-    "diagnosis and treatment codes",
-    "denial",
-    "denied",
-    "dispute resolution",
-    "grievance",
-    "medical necessity",
-    "rights available to members",
-)
-_MEDICAL_EOB_MAX_DECISION_REGIONS = 5
-_RECEIPT_PAYMENT_SUMMARY_FAMILIES = frozenset(
-    {
-        "receipt",
-        "retail_order",
-        "service_record",
-    }
-)
 
 
 def normalize_result_for_planning(
@@ -133,14 +70,14 @@ def normalize_manifest_for_planning(
     source: ExtractionSourceDocument,
     manifest: DocumentSemanticManifest,
 ) -> DocumentSemanticManifest:
-    regions = [_normalize_region(source, manifest, region) for region in manifest.regions]
+    # Structural-only normalization per the generalization spec: grounding
+    # repair, low-value filtering, and dedupe. Family-specific semantic-intent
+    # repairs (semantic-type rewrites, synthetic regions, model-region
+    # replacement) are disallowed; recall comes from the Qwen contract plus the
+    # Docling structural-target lane.
+    regions = [_normalize_region(source, region) for region in manifest.regions]
     regions = _drop_low_value_regions(regions)
     regions = _drop_unanchored_observation_family_regions(source, regions)
-    regions = normalize_real_estate_title_regions(source, manifest, regions)
-    regions = _normalize_retail_order_regions(source, manifest, regions)
-    regions = normalize_service_record_regions(source, manifest, regions)
-    regions = _drop_unsupported_model_payment_summaries(source, manifest, regions)
-    regions = _with_medical_eob_decision_pages(source, manifest, regions)
     regions = _dedupe_page_kvp_regions(regions)
     regions = _dedupe_equivalent_regions(regions)
     if regions == manifest.regions:
@@ -152,7 +89,7 @@ def normalize_manifest_for_planning(
 
     confidence = dict(manifest.confidence)
     confidence["semantic_planner_normalization"] = {
-        "version": "phase8_5-semantic-planner-normalization-v1",
+        "version": "phase8_5-semantic-planner-normalization-v2",
         "region_count": len(regions),
     }
     manifest_payload["confidence"] = confidence
@@ -168,12 +105,10 @@ def normalize_manifest_for_planning(
 
 def _normalize_region(
     source: ExtractionSourceDocument,
-    manifest: DocumentSemanticManifest,
     region: SemanticRegionAnnotation,
 ) -> SemanticRegionAnnotation:
     normalized = _normalize_table_grounding(source, region)
     normalized = _normalize_page_scoped_kvp_grounding(source, normalized)
-    normalized = _normalize_medical_eob_generic_region(source, manifest, normalized)
     if _is_model_planned_line_item(normalized):
         normalized = replace(normalized, review_required=True)
     if _is_model_planned_payment_summary(normalized):
@@ -209,8 +144,6 @@ def _normalize_table_grounding(
         return region
     tables_on_page = _tables_by_page(source).get(page_number, [])
     if len(tables_on_page) != 1:
-        return region
-    if region.semantic_type == "service_record_line_item_table":
         return region
     table = tables_on_page[0]
     metadata = {
@@ -264,207 +197,6 @@ def _normalize_page_scoped_kvp_grounding(
         grounding=SemanticGroundingRef(kind="page", page_id=page_id),
         metadata=metadata,
     )
-
-
-def _normalize_medical_eob_generic_region(
-    source: ExtractionSourceDocument,
-    manifest: DocumentSemanticManifest,
-    region: SemanticRegionAnnotation,
-) -> SemanticRegionAnnotation:
-    if region.semantic_type != "generic_form_kvp":
-        return region
-    if region.granite_task != "kvp":
-        return region
-    if not _is_medical_eob_source(source, manifest):
-        return region
-    page_text = _normalized_text(_page_text_for_region(source, region))
-    if not any(term in page_text for term in _MEDICAL_EOB_APPEAL_TERMS):
-        return region
-    metadata = {
-        **region.metadata,
-        "semantic_planner_normalization": {
-            "from": "generic_form_kvp",
-            "to": "denial_or_coverage_decision",
-            "reason": "medical_eob_appeal_or_denial_anchor",
-        },
-    }
-    expected_fields = tuple(
-        dict.fromkeys(sorted((*region.expected_fields, *_MEDICAL_EOB_DECISION_FIELDS)))
-    )
-    return replace(
-        region,
-        semantic_type="denial_or_coverage_decision",
-        target_schema="medical_eob",
-        expected_fields=expected_fields,
-        metadata=metadata,
-    )
-
-
-def _with_retail_order_payment_summary(
-    source: ExtractionSourceDocument,
-    manifest: DocumentSemanticManifest,
-    regions: list[SemanticRegionAnnotation],
-) -> list[SemanticRegionAnnotation]:
-    if not _is_retail_order_source(source, manifest):
-        return regions
-    if any(region.semantic_type == "receipt_payment_summary" for region in regions):
-        return regions
-    page_id = _retail_order_payment_summary_page(source)
-    if page_id is None:
-        return regions
-    return [
-        *regions,
-        SemanticRegionAnnotation(
-            semantic_type="receipt_payment_summary",
-            priority="high",
-            granite_task="kvp",
-            target_schema="receipt",
-            expected_fields=_RETAIL_ORDER_PAYMENT_FIELDS,
-            grounding=SemanticGroundingRef(kind="page", page_id=page_id),
-            review_required=True,
-            reason="Docling text anchors indicate a retail-order payment summary.",
-            confidence=0.68,
-            metadata={
-                "region_source": DOCLING_STRUCTURAL_REGION_SOURCE,
-                "source_signal": "text",
-                "coverage_role": "summary",
-                "extraction_scope": "page",
-                "must_extract_reason": "payment_summary",
-            },
-        ),
-    ]
-
-
-def _with_receipt_payment_summary(
-    source: ExtractionSourceDocument,
-    manifest: DocumentSemanticManifest,
-    regions: list[SemanticRegionAnnotation],
-) -> list[SemanticRegionAnnotation]:
-    if not _is_receipt_source(source, manifest):
-        return regions
-    if any(region.semantic_type == "receipt_payment_summary" for region in regions):
-        return regions
-    page_id = _receipt_payment_summary_page(source)
-    if page_id is None:
-        return regions
-    return [
-        *regions,
-        SemanticRegionAnnotation(
-            semantic_type="receipt_payment_summary",
-            priority="high",
-            granite_task="kvp",
-            target_schema="receipt",
-            expected_fields=_RECEIPT_PAYMENT_FIELDS,
-            grounding=SemanticGroundingRef(kind="page", page_id=page_id),
-            review_required=True,
-            reason="Docling text anchors indicate a receipt payment summary.",
-            confidence=0.68,
-            metadata={
-                "region_source": DOCLING_STRUCTURAL_REGION_SOURCE,
-                "source_signal": "text",
-                "coverage_role": "summary",
-                "extraction_scope": "page",
-                "must_extract_reason": "payment_summary",
-            },
-        ),
-    ]
-
-
-def _normalize_retail_order_regions(
-    source: ExtractionSourceDocument,
-    manifest: DocumentSemanticManifest,
-    regions: list[SemanticRegionAnnotation],
-) -> list[SemanticRegionAnnotation]:
-    if not _is_retail_order_source(source, manifest):
-        return _with_receipt_payment_summary(source, manifest, regions)
-
-    line_item_ids_to_keep = _retail_order_line_item_ids_to_keep(source, regions)
-    normalized: list[SemanticRegionAnnotation] = []
-    for region in regions:
-        if region.semantic_type == "receipt_payment_summary":
-            continue
-        if region.semantic_type == "retail_order_line_item_table":
-            if id(region) not in line_item_ids_to_keep:
-                continue
-        normalized.append(region)
-    return _with_retail_order_payment_summary(source, manifest, normalized)
-
-
-def _drop_unsupported_model_payment_summaries(
-    source: ExtractionSourceDocument,
-    manifest: DocumentSemanticManifest,
-    regions: list[SemanticRegionAnnotation],
-) -> list[SemanticRegionAnnotation]:
-    if _supports_receipt_payment_summary(source, manifest):
-        return regions
-    return [
-        region
-        for region in regions
-        if not (
-            region.semantic_type == "receipt_payment_summary"
-            and region.metadata.get("region_source") != DOCLING_STRUCTURAL_REGION_SOURCE
-        )
-    ]
-
-
-def _with_medical_eob_decision_pages(
-    source: ExtractionSourceDocument,
-    manifest: DocumentSemanticManifest,
-    regions: list[SemanticRegionAnnotation],
-) -> list[SemanticRegionAnnotation]:
-    if not _is_medical_eob_source(source, manifest):
-        return regions
-
-    existing_decision_pages = {
-        page_number
-        for region in regions
-        if region.semantic_type == "denial_or_coverage_decision"
-        and (page_number := _region_page_number(source, region)) is not None
-    }
-    line_item_pages = {
-        page_number
-        for region in regions
-        if region.semantic_type == "covered_services_line_item_table"
-        and (page_number := _region_page_number(source, region)) is not None
-    }
-    if len(existing_decision_pages) >= _MEDICAL_EOB_MAX_DECISION_REGIONS:
-        return regions
-
-    added: list[SemanticRegionAnnotation] = []
-    for page in sorted(source.pages, key=lambda item: item.page_number):
-        if len(existing_decision_pages) + len(added) >= _MEDICAL_EOB_MAX_DECISION_REGIONS:
-            break
-        if page.page_number in existing_decision_pages or page.page_number in line_item_pages:
-            continue
-        page_text = _normalized_text(page.text)
-        if not any(term in page_text for term in _MEDICAL_EOB_DECISION_PAGE_TERMS):
-            continue
-        added.append(
-            SemanticRegionAnnotation(
-                semantic_type="denial_or_coverage_decision",
-                priority="high",
-                granite_task="kvp",
-                target_schema="medical_eob",
-                expected_fields=_MEDICAL_EOB_DECISION_FIELDS,
-                grounding=SemanticGroundingRef(kind="page", page_id=page.page_id),
-                review_required=True,
-                reason="Docling text anchors indicate a medical EOB decision or appeal page.",
-                confidence=0.68,
-                metadata={
-                    "region_source": DOCLING_STRUCTURAL_REGION_SOURCE,
-                    "source_signal": "text",
-                    "coverage_role": "supporting",
-                    "extraction_scope": "page",
-                    "must_extract_reason": "medical_eob_decision_or_appeal_context",
-                    "semantic_planner_normalization": {
-                        "reason": "medical_eob_docling_decision_page_coverage",
-                    },
-                },
-            )
-        )
-    if not added:
-        return regions
-    return [*regions, *added]
 
 
 def _drop_unanchored_observation_family_regions(
@@ -575,38 +307,6 @@ def _region_preference_key(region: SemanticRegionAnnotation) -> tuple[object, ..
     )
 
 
-def _retail_order_line_item_ids_to_keep(
-    source: ExtractionSourceDocument,
-    regions: list[SemanticRegionAnnotation],
-) -> set[int]:
-    best_by_page: dict[int, tuple[tuple[object, ...], SemanticRegionAnnotation]] = {}
-    for region in regions:
-        if region.semantic_type != "retail_order_line_item_table":
-            continue
-        page_number = _region_page_number(source, region)
-        if page_number is None:
-            continue
-        key = _retail_order_line_item_key(source, region)
-        current = best_by_page.get(page_number)
-        if current is None or key < current[0]:
-            best_by_page[page_number] = (key, region)
-    return {id(region) for _key, region in best_by_page.values()}
-
-
-def _retail_order_line_item_key(
-    source: ExtractionSourceDocument,
-    region: SemanticRegionAnnotation,
-) -> tuple[object, ...]:
-    grounding = region.grounding
-    page_number = _region_page_number(source, region)
-    return (
-        page_number if page_number is not None else 999_999,
-        _table_index_for_id(source, grounding.table_id) if grounding.table_id else 999_999,
-        0 if grounding.kind == "table" else 1,
-        str(grounding.table_id or ""),
-    )
-
-
 def _region_page_number(
     source: ExtractionSourceDocument,
     region: SemanticRegionAnnotation,
@@ -683,25 +383,6 @@ def _region_key(region: SemanticRegionAnnotation) -> tuple[object, ...]:
     )
 
 
-def _retail_order_payment_summary_page(source: ExtractionSourceDocument) -> UUID | None:
-    for page in source.pages:
-        page_text = _normalized_text(page.text)
-        if any(term in page_text for term in _RETAIL_ORDER_TOTAL_TERMS):
-            return page.page_id
-    return None
-
-
-def _receipt_payment_summary_page(source: ExtractionSourceDocument) -> UUID | None:
-    audit = build_docling_audit(source)
-    if "receipt" not in audit.suggested_family_hints:
-        return None
-    for page in source.pages:
-        page_text = _normalized_text(page.text)
-        if "receipt" in page_text and any(term in page_text for term in _RETAIL_ORDER_TOTAL_TERMS):
-            return page.page_id
-    return _retail_order_payment_summary_page(source)
-
-
 def _page_number_for_id(source: ExtractionSourceDocument, page_id: UUID) -> int | None:
     for page in source.pages:
         if page.page_id == page_id:
@@ -754,86 +435,6 @@ def _document_type(manifest: DocumentSemanticManifest) -> str | None:
         return None
     normalized = value.strip().lower()
     return normalized or None
-
-
-def _is_retail_order_source(
-    source: ExtractionSourceDocument,
-    manifest: DocumentSemanticManifest,
-) -> bool:
-    if _document_type(manifest) == "retail_order":
-        return True
-    if source.family.strip().lower() == "retail_order":
-        return True
-    return "retail_order" in build_docling_audit(source).suggested_family_hints
-
-
-def _is_receipt_source(
-    source: ExtractionSourceDocument,
-    manifest: DocumentSemanticManifest,
-) -> bool:
-    document_type = _document_type(manifest)
-    source_family = source.family.strip().lower()
-    if document_type in _OBSERVATION_DOCUMENT_TYPES or source_family in _OBSERVATION_DOCUMENT_TYPES:
-        return False
-    if source_family == "receipt":
-        return True
-    if document_type == "receipt":
-        if source_family in {"", "generic"}:
-            return _has_receipt_docling_support(source)
-        return True
-    if document_type in _GENERIC_DOCUMENT_TYPES and source_family in {"", "generic"}:
-        return False
-    audit = build_docling_audit(source)
-    if any(family in audit.suggested_family_hints for family in _OBSERVATION_DOCUMENT_TYPES):
-        return False
-    return "receipt" in audit.suggested_family_hints
-
-
-def _supports_receipt_payment_summary(
-    source: ExtractionSourceDocument,
-    manifest: DocumentSemanticManifest,
-) -> bool:
-    document_type = _document_type(manifest)
-    source_family = source.family.strip().lower()
-    if source_family in _RECEIPT_PAYMENT_SUMMARY_FAMILIES:
-        return True
-    if document_type in _RECEIPT_PAYMENT_SUMMARY_FAMILIES:
-        if document_type == "receipt" and source_family in {"", "generic"}:
-            return _has_receipt_docling_support(source)
-        return True
-    if document_type in _GENERIC_DOCUMENT_TYPES and source_family in {"", "generic"}:
-        return False
-    audit = build_docling_audit(source)
-    return any(
-        family in audit.suggested_family_hints for family in _RECEIPT_PAYMENT_SUMMARY_FAMILIES
-    )
-
-
-def _has_receipt_docling_support(source: ExtractionSourceDocument) -> bool:
-    return "receipt" in build_docling_audit(source).suggested_family_hints
-
-
-def _is_medical_eob_source(
-    source: ExtractionSourceDocument,
-    manifest: DocumentSemanticManifest,
-) -> bool:
-    document_type = _document_type(manifest)
-    source_family = source.family.strip().lower()
-    if document_type == "medical_eob" or source_family == "medical_eob":
-        return True
-    return "medical_eob" in build_docling_audit(source).suggested_family_hints
-
-
-def _page_text_for_region(
-    source: ExtractionSourceDocument,
-    region: SemanticRegionAnnotation,
-) -> str:
-    page_number = _region_page_number(source, region)
-    if page_number is None and region.grounding.page_id is not None:
-        page_number = _page_number_for_id(source, region.grounding.page_id)
-    if page_number is None:
-        return source.full_text
-    return " ".join(page.text for page in source.pages if page.page_number == page_number)
 
 
 def _normalized_text(value: Any) -> str:

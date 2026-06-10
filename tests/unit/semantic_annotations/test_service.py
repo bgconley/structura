@@ -421,9 +421,9 @@ def test_semantic_service_uses_docling_service_record_targets_when_qwen_emits_no
     assert [region.semantic_type for region in persisted_regions] == [
         "service_record_line_item_table"
     ]
-    assert persisted_regions[0].grounding.kind == "page"
+    assert persisted_regions[0].grounding.kind == "table"
     assert persisted_regions[0].grounding.page_id == page_id
-    assert persisted_regions[0].grounding.table_id is None
+    assert persisted_regions[0].grounding.table_id == table_id
     ContractRegistry.load("contracts").validate_schema_instance(
         "semantic_annotation_manifest.v1.schema.json",
         persisted_manifests[0].manifest,
@@ -438,9 +438,6 @@ def test_semantic_service_uses_docling_service_record_targets_when_qwen_emits_no
     assert payload["canonical_target_schema"] == "service_record"
     assert payload["compatibility_mode"] == "exact"
     assert payload["metadata"]["region_source"] == "docling_structural"
-    assert payload["metadata"]["semantic_planner_normalization"] == {
-        "reason": "service_record_docling_line_item_page_coverage"
-    }
 
 
 def test_semantic_service_suppresses_weak_docling_table_duplicate_when_qwen_has_type() -> None:
@@ -499,169 +496,6 @@ def test_semantic_service_suppresses_weak_docling_table_duplicate_when_qwen_has_
     assert len(payloads) == 1
     assert payloads[0]["semantic_type"] == "retail_order_line_item_table"
     assert payloads[0]["metadata"].get("region_source") != "docling_structural"
-
-
-def test_semantic_service_stabilizes_retail_order_regions_for_repeatability() -> None:
-    document_id = uuid4()
-    household_id = uuid4()
-    page_id = uuid4()
-    table_id = uuid4()
-    annotation_id = uuid4()
-    source = _source(
-        document_id=document_id,
-        household_id=household_id,
-        page_id=page_id,
-        family="generic",
-        title="BH Photo order",
-        original_filename="BH Photo desktop tripod order.pdf",
-        text="BH Photo order number item shipping tax total amount paid",
-        tables=[
-            ParsedTableText(
-                table_id=table_id,
-                page_number=1,
-                table_index=1,
-                table_markdown="| item | qty | total |\n| tripod | 1 | 120.32 |",
-            )
-        ],
-    )
-    manifest = _manifest_with_regions(
-        document_id=document_id,
-        household_id=household_id,
-        page_id=page_id,
-        document_type="generic_form",
-        regions=[
-            SemanticRegionAnnotation(
-                semantic_type="retail_order_line_item_table",
-                priority="high",
-                granite_task="tables_json",
-                target_schema="receipt",
-                expected_fields=("item_description", "quantity", "line_total"),
-                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
-                review_required=False,
-                confidence=0.2,
-            ),
-            SemanticRegionAnnotation(
-                semantic_type="retail_order_line_item_table",
-                priority="high",
-                granite_task="tables_json",
-                target_schema="receipt",
-                expected_fields=("item_description", "quantity", "line_total"),
-                grounding=SemanticGroundingRef(kind="table", page_id=page_id, table_id=table_id),
-                review_required=False,
-                confidence=0.98,
-            ),
-            SemanticRegionAnnotation(
-                semantic_type="receipt_payment_summary",
-                priority="high",
-                granite_task="kvp",
-                target_schema="receipt",
-                expected_fields=("subtotal", "tax", "shipping", "total_amount"),
-                grounding=SemanticGroundingRef(kind="table", page_id=page_id, table_id=table_id),
-                review_required=False,
-                confidence=0.98,
-            ),
-        ],
-    )
-    jobs = RecordingJobs()
-    persisted_manifests: list[DocumentSemanticManifest] = []
-
-    SemanticAnnotationService(
-        source_loader=lambda loaded_document_id: source,
-        gateway=StaticGateway(manifest),
-        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
-            persisted_manifest,
-            annotation_id=annotation_id,
-            captured=persisted_manifests,
-        ),
-        jobs=jobs,
-    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
-
-    assert len(persisted_manifests) == 1
-    persisted_regions = persisted_manifests[0].regions
-    assert [(region.semantic_type, region.grounding.kind) for region in persisted_regions] == [
-        ("retail_order_line_item_table", "table"),
-        ("receipt_payment_summary", "page"),
-    ]
-    assert persisted_regions[0].grounding.table_id == table_id
-    assert persisted_regions[0].grounding.page_id == page_id
-    assert persisted_regions[0].review_required is True
-    assert persisted_regions[1].review_required is True
-    assert len(jobs.created) == 2
-    payloads = [job["payload"] for job in jobs.created]
-    line_payload = next(
-        payload
-        for payload in payloads
-        if payload["semantic_type"] == "retail_order_line_item_table"
-    )
-    summary_payload = next(
-        payload for payload in payloads if payload["semantic_type"] == "receipt_payment_summary"
-    )
-    assert line_payload["semantic_granite_task"] == "tables_json"
-    assert line_payload["metadata"]["semantic_grounding_normalization"] == {
-        "from": "page",
-        "reason": "single_docling_table_on_page",
-        "to": "table",
-    }
-    assert summary_payload["semantic_granite_task"] == "kvp"
-    assert summary_payload["model_output_schema_name"] == "granite_receipt_payment_summary.v1"
-    assert summary_payload["compatibility_mode"] == "compatible_alias"
-
-
-def test_semantic_service_stabilizes_plain_receipt_payment_summary() -> None:
-    document_id = uuid4()
-    household_id = uuid4()
-    page_id = uuid4()
-    annotation_id = uuid4()
-    source = _source(
-        document_id=document_id,
-        household_id=household_id,
-        page_id=page_id,
-        family="receipt",
-        title="Amtrak receipt",
-        original_filename="Scan Sep 9, 2025 at 18.57.pdf",
-        text="Amtrak rail receipt subtotal tax total amount paid card payment",
-    )
-    manifest = _manifest_with_regions(
-        document_id=document_id,
-        household_id=household_id,
-        page_id=page_id,
-        document_type="receipt",
-        regions=[
-            SemanticRegionAnnotation(
-                semantic_type="receipt_line_item_table",
-                priority="high",
-                granite_task="tables_json",
-                target_schema="receipt",
-                expected_fields=("item_description", "line_total"),
-                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
-                review_required=False,
-                confidence=0.86,
-            )
-        ],
-    )
-    jobs = RecordingJobs()
-    persisted_manifests: list[DocumentSemanticManifest] = []
-
-    SemanticAnnotationService(
-        source_loader=lambda loaded_document_id: source,
-        gateway=StaticGateway(manifest),
-        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
-            persisted_manifest,
-            annotation_id=annotation_id,
-            captured=persisted_manifests,
-        ),
-        jobs=jobs,
-    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
-
-    persisted_types = [region.semantic_type for region in persisted_manifests[0].regions]
-    assert persisted_types == ["receipt_line_item_table", "receipt_payment_summary"]
-    assert persisted_manifests[0].regions[1].metadata["region_source"] == "docling_structural"
-    payloads = [job["payload"] for job in jobs.created]
-    assert [payload["semantic_type"] for payload in payloads] == [
-        "receipt_line_item_table",
-        "receipt_payment_summary",
-    ]
-    assert payloads[1]["model_output_schema_name"] == "granite_receipt_payment_summary.v1"
 
 
 def test_semantic_service_dedupes_duplicate_page_kvp_regions_before_persistence() -> None:
@@ -808,7 +642,7 @@ def test_semantic_service_dedupes_element_grounded_page_kvp_regions_before_persi
     assert len(jobs.created) == 1
 
 
-def test_semantic_service_normalizes_medical_eob_generic_appeal_regions() -> None:
+def test_semantic_service_preserves_generic_kvp_type_for_medical_eob_pages() -> None:
     document_id = uuid4()
     household_id = uuid4()
     page_id = uuid4()
@@ -858,551 +692,11 @@ def test_semantic_service_normalizes_medical_eob_generic_appeal_regions() -> Non
     ).annotate_document(document_id, quality_mode="smart", requested_by="system")
 
     persisted_region = persisted_manifests[0].regions[0]
-    assert persisted_region.semantic_type == "denial_or_coverage_decision"
-    assert persisted_region.target_schema == "medical_eob"
+    # Family heuristics may not rewrite the model's semantic type; only the
+    # structural page-scoped KVP grounding repair applies.
+    assert persisted_region.semantic_type == "generic_form_kvp"
     assert persisted_region.grounding.kind == "page"
-    assert jobs.created[0]["payload"]["semantic_type"] == "denial_or_coverage_decision"
-
-
-def test_semantic_service_adds_medical_eob_docling_decision_pages_for_stable_coverage() -> None:
-    document_id = uuid4()
-    household_id = uuid4()
-    page_ids = {page_number: uuid4() for page_number in (1, 2, 3, 5, 6, 7, 8)}
-    table_id = uuid4()
-    annotation_id = uuid4()
-    source = _source_with_pages(
-        document_id=document_id,
-        household_id=household_id,
-        family="medical_eob",
-        title="Anthem denial",
-        original_filename="MRI Anthem Denial 01-26.pdf",
-        page_texts={
-            1: "Anthem claim denied coverage decision appeal rights member details",
-            2: "Denial reason clinical guideline medical necessity criteria",
-            3: "Care details service date billed amount patient responsibility",
-            5: "Rights Available to Members grievance appeal process",
-            6: "Can I get diagnosis and treatment codes for this denial",
-            7: "If we deny your grievance dispute resolution options",
-            8: "Member notices continuation page",
-        },
-        page_ids=page_ids,
-        tables=[
-            ParsedTableText(
-                table_id=table_id,
-                page_number=3,
-                table_index=1,
-                table_markdown=(
-                    "| Service | Billed | Responsibility |\n| MRI | $1200.00 | $0.00 |"
-                ),
-            )
-        ],
-    )
-    manifest = _manifest_with_regions_for_pages(
-        document_id=document_id,
-        household_id=household_id,
-        page_ids=page_ids,
-        document_type="medical_eob",
-        regions=[
-            SemanticRegionAnnotation(
-                semantic_type="denial_or_coverage_decision",
-                priority="high",
-                granite_task="kvp",
-                target_schema="medical_eob",
-                expected_fields=("request_status", "appeal_deadline"),
-                grounding=SemanticGroundingRef(kind="page", page_id=page_ids[1]),
-                review_required=True,
-                confidence=0.76,
-            ),
-            SemanticRegionAnnotation(
-                semantic_type="covered_services_line_item_table",
-                priority="critical",
-                granite_task="tables_json",
-                target_schema="medical_eob",
-                expected_fields=("service_date", "billed_amount", "patient_responsibility"),
-                grounding=SemanticGroundingRef(
-                    kind="table",
-                    page_id=page_ids[3],
-                    table_id=table_id,
-                ),
-                review_required=True,
-                confidence=0.81,
-            ),
-            SemanticRegionAnnotation(
-                semantic_type="denial_or_coverage_decision",
-                priority="high",
-                granite_task="kvp",
-                target_schema="medical_eob",
-                expected_fields=("grievance_rights",),
-                grounding=SemanticGroundingRef(kind="page", page_id=page_ids[5]),
-                review_required=True,
-                confidence=0.7,
-            ),
-        ],
-    )
-    jobs = RecordingJobs()
-    persisted_manifests: list[DocumentSemanticManifest] = []
-
-    SemanticAnnotationService(
-        source_loader=lambda loaded_document_id: source,
-        gateway=StaticGateway(manifest),
-        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
-            persisted_manifest,
-            annotation_id=annotation_id,
-            captured=persisted_manifests,
-        ),
-        jobs=jobs,
-    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
-
-    page_number_by_id = {page_id: page_number for page_number, page_id in page_ids.items()}
-    decision_pages = {
-        page_number_by_id[region.grounding.page_id]
-        for region in persisted_manifests[0].regions
-        if region.semantic_type == "denial_or_coverage_decision"
-        and region.grounding.page_id is not None
-    }
-    assert decision_pages == {1, 2, 5, 6, 7}
-    assert len(persisted_manifests[0].regions) == 6
-    assert len(jobs.created) == 6
-
-
-def test_semantic_service_drops_unsupported_generic_receipt_payment_summary() -> None:
-    document_id = uuid4()
-    household_id = uuid4()
-    page_id = uuid4()
-    annotation_id = uuid4()
-    source = _source(
-        document_id=document_id,
-        household_id=household_id,
-        page_id=page_id,
-        family="generic",
-        title="Low context scan",
-        original_filename="Scan Sep 10, 2025 at 19.57.pdf",
-        text="menu item quantity price total scanned page",
-    )
-    manifest = _manifest_with_regions(
-        document_id=document_id,
-        household_id=household_id,
-        page_id=page_id,
-        document_type="generic_form",
-        regions=[
-            SemanticRegionAnnotation(
-                semantic_type="receipt_line_item_table",
-                priority="high",
-                granite_task="tables_json",
-                target_schema="receipt",
-                expected_fields=("item_description", "quantity", "line_total"),
-                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
-                review_required=True,
-                confidence=0.74,
-            ),
-            SemanticRegionAnnotation(
-                semantic_type="receipt_payment_summary",
-                priority="high",
-                granite_task="kvp",
-                target_schema="receipt",
-                expected_fields=("subtotal", "tax", "total_amount"),
-                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
-                review_required=True,
-                confidence=0.72,
-            ),
-        ],
-    )
-    jobs = RecordingJobs()
-    persisted_manifests: list[DocumentSemanticManifest] = []
-
-    SemanticAnnotationService(
-        source_loader=lambda loaded_document_id: source,
-        gateway=StaticGateway(manifest),
-        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
-            persisted_manifest,
-            annotation_id=annotation_id,
-            captured=persisted_manifests,
-        ),
-        jobs=jobs,
-    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
-
-    assert [region.semantic_type for region in persisted_manifests[0].regions] == [
-        "receipt_line_item_table"
-    ]
-    assert [job["payload"]["semantic_type"] for job in jobs.created] == ["receipt_line_item_table"]
-
-
-def test_semantic_service_drops_model_receipt_summary_for_generic_source() -> None:
-    document_id = uuid4()
-    household_id = uuid4()
-    page_id = uuid4()
-    annotation_id = uuid4()
-    source = _source(
-        document_id=document_id,
-        household_id=household_id,
-        page_id=page_id,
-        family="generic",
-        title="Low context scan",
-        original_filename="Scan Sep 10, 2025 at 19.57.pdf",
-        text="menu item quantity price total scanned page",
-    )
-    manifest = _manifest_with_regions(
-        document_id=document_id,
-        household_id=household_id,
-        page_id=page_id,
-        document_type="receipt",
-        regions=[
-            SemanticRegionAnnotation(
-                semantic_type="receipt_line_item_table",
-                priority="high",
-                granite_task="tables_json",
-                target_schema="receipt",
-                expected_fields=("item_description", "quantity", "line_total"),
-                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
-                review_required=True,
-                confidence=0.97,
-            ),
-            SemanticRegionAnnotation(
-                semantic_type="receipt_payment_summary",
-                priority="high",
-                granite_task="kvp",
-                target_schema="receipt",
-                expected_fields=("subtotal", "tax", "total_amount"),
-                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
-                review_required=True,
-                confidence=0.96,
-            ),
-        ],
-    )
-    jobs = RecordingJobs()
-    persisted_manifests: list[DocumentSemanticManifest] = []
-
-    SemanticAnnotationService(
-        source_loader=lambda loaded_document_id: source,
-        gateway=StaticGateway(manifest),
-        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
-            persisted_manifest,
-            annotation_id=annotation_id,
-            captured=persisted_manifests,
-        ),
-        jobs=jobs,
-    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
-
-    assert [region.semantic_type for region in persisted_manifests[0].regions] == [
-        "receipt_line_item_table"
-    ]
-    assert [job["payload"]["semantic_type"] for job in jobs.created] == ["receipt_line_item_table"]
-
-
-def test_semantic_service_stabilizes_service_record_payment_summary_page() -> None:
-    document_id = uuid4()
-    household_id = uuid4()
-    page_ids = {page_number: uuid4() for page_number in (1, 2, 3)}
-    annotation_id = uuid4()
-    source = _source_with_pages(
-        document_id=document_id,
-        household_id=household_id,
-        family="service_record",
-        title="BMW service record",
-        original_filename="BMW CE-04 600mi run in service and tire service 04-23.pdf",
-        page_texts={
-            1: "repair order motorcycle service labor parts mileage",
-            2: "service description tire replacement labor operation quantity line total",
-            3: "subtotal tax amount paid total credit card balance due",
-        },
-        page_ids=page_ids,
-    )
-    manifest = _manifest_with_regions_for_pages(
-        document_id=document_id,
-        household_id=household_id,
-        page_ids=page_ids,
-        document_type="service_record",
-        regions=[
-            SemanticRegionAnnotation(
-                semantic_type="service_record_line_item_table",
-                priority="high",
-                granite_task="tables_json",
-                target_schema="receipt",
-                expected_fields=("service_description", "quantity", "line_total"),
-                grounding=SemanticGroundingRef(kind="page", page_id=page_ids[2]),
-                review_required=True,
-                confidence=0.98,
-            ),
-            SemanticRegionAnnotation(
-                semantic_type="service_record_line_item_table",
-                priority="high",
-                granite_task="tables_json",
-                target_schema="receipt",
-                expected_fields=("service_description", "quantity", "line_total"),
-                grounding=SemanticGroundingRef(kind="page", page_id=page_ids[3]),
-                review_required=True,
-                confidence=0.98,
-            ),
-        ],
-    )
-    jobs = RecordingJobs()
-    persisted_manifests: list[DocumentSemanticManifest] = []
-
-    SemanticAnnotationService(
-        source_loader=lambda loaded_document_id: source,
-        gateway=StaticGateway(manifest),
-        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
-            persisted_manifest,
-            annotation_id=annotation_id,
-            captured=persisted_manifests,
-        ),
-        jobs=jobs,
-    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
-
-    page_number_by_id = {page_id: page_number for page_number, page_id in page_ids.items()}
-    persisted_by_page = {
-        page_number_by_id[region.grounding.page_id]: region
-        for region in persisted_manifests[0].regions
-        if region.grounding.page_id is not None
-    }
-
-    assert persisted_by_page[2].semantic_type == "service_record_line_item_table"
-    assert persisted_by_page[3].semantic_type == "receipt_payment_summary"
-    assert [job["payload"]["semantic_type"] for job in jobs.created] == [
-        "service_record_line_item_table",
-        "receipt_payment_summary",
-    ]
-
-
-def test_semantic_service_collapses_service_record_line_item_fanout_to_docling_anchor() -> None:
-    document_id = uuid4()
-    household_id = uuid4()
-    page_ids = {page_number: uuid4() for page_number in (1, 2, 3)}
-    table_id = uuid4()
-    annotation_id = uuid4()
-    source = _source_with_pages(
-        document_id=document_id,
-        household_id=household_id,
-        family="service_record",
-        title="BMW service record",
-        original_filename="BMW CE-04 service record.pdf",
-        page_texts={
-            1: "repair order motorcycle vin mileage opened advisor",
-            2: "service description labor operation part number quantity line total",
-            3: "subtotal tax amount paid total credit card balance due",
-        },
-        page_ids=page_ids,
-        tables=[
-            ParsedTableText(
-                table_id=table_id,
-                page_number=2,
-                table_index=1,
-                table_markdown=(
-                    "| Service Description | Quantity | Line Total |\n"
-                    "| 600 mile service | 1 | 304.72 |"
-                ),
-            )
-        ],
-    )
-    manifest = _manifest_with_regions_for_pages(
-        document_id=document_id,
-        household_id=household_id,
-        page_ids=page_ids,
-        document_type="service_record",
-        regions=[
-            SemanticRegionAnnotation(
-                semantic_type="service_record_line_item_table",
-                priority="high",
-                granite_task="tables_json",
-                target_schema="receipt",
-                expected_fields=("service_description", "quantity", "line_total"),
-                grounding=SemanticGroundingRef(kind="page", page_id=page_ids[1]),
-                review_required=True,
-                confidence=0.98,
-            ),
-            SemanticRegionAnnotation(
-                semantic_type="service_record_line_item_table",
-                priority="high",
-                granite_task="tables_json",
-                target_schema="receipt",
-                expected_fields=("service_description", "quantity", "line_total"),
-                grounding=SemanticGroundingRef(
-                    kind="table",
-                    page_id=page_ids[2],
-                    table_id=table_id,
-                ),
-                review_required=True,
-                confidence=0.98,
-            ),
-            SemanticRegionAnnotation(
-                semantic_type="service_record_line_item_table",
-                priority="high",
-                granite_task="tables_json",
-                target_schema="receipt",
-                expected_fields=("service_description", "quantity", "line_total"),
-                grounding=SemanticGroundingRef(kind="page", page_id=page_ids[3]),
-                review_required=True,
-                confidence=0.98,
-            ),
-        ],
-    )
-    jobs = RecordingJobs()
-    persisted_manifests: list[DocumentSemanticManifest] = []
-
-    SemanticAnnotationService(
-        source_loader=lambda loaded_document_id: source,
-        gateway=StaticGateway(manifest),
-        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
-            persisted_manifest,
-            annotation_id=annotation_id,
-            captured=persisted_manifests,
-        ),
-        jobs=jobs,
-    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
-
-    persisted_regions = persisted_manifests[0].regions
-    line_regions = [
-        region
-        for region in persisted_regions
-        if region.semantic_type == "service_record_line_item_table"
-    ]
-    summary_regions = [
-        region for region in persisted_regions if region.semantic_type == "receipt_payment_summary"
-    ]
-
-    assert [(region.grounding.kind, region.grounding.page_id) for region in line_regions] == [
-        ("page", page_ids[2])
-    ]
-    assert [region.grounding.page_id for region in summary_regions] == [page_ids[3]]
-    assert [job["payload"]["semantic_type"] for job in jobs.created] == [
-        "service_record_line_item_table",
-        "receipt_payment_summary",
-    ]
-
-
-def test_semantic_service_keeps_service_record_line_items_page_grounded() -> None:
-    document_id = uuid4()
-    household_id = uuid4()
-    page_id = uuid4()
-    annotation_id = uuid4()
-    table_id = uuid4()
-    source = _source(
-        document_id=document_id,
-        household_id=household_id,
-        page_id=page_id,
-        family="service_record",
-        title="BMW service record",
-        original_filename="BMW CE-04 600mi run in service and tire service 04-23.pdf",
-        text=(
-            "repair order motorcycle service description labor operation quantity "
-            "line total vehicle parts"
-        ),
-        tables=[
-            ParsedTableText(
-                table_id=table_id,
-                page_number=1,
-                table_index=1,
-                table_markdown="| R/O Number | Status |\n| 6046058/1 | Pre-Invoice |",
-            )
-        ],
-    )
-    manifest = _manifest_with_regions(
-        document_id=document_id,
-        household_id=household_id,
-        page_id=page_id,
-        document_type="service_record",
-        regions=[
-            SemanticRegionAnnotation(
-                semantic_type="service_record_line_item_table",
-                priority="high",
-                granite_task="tables_json",
-                target_schema="receipt",
-                expected_fields=("service_description", "quantity", "line_total"),
-                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
-                review_required=True,
-                confidence=0.98,
-            )
-        ],
-    )
-    jobs = RecordingJobs()
-    persisted_manifests: list[DocumentSemanticManifest] = []
-
-    SemanticAnnotationService(
-        source_loader=lambda loaded_document_id: source,
-        gateway=StaticGateway(manifest),
-        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
-            persisted_manifest,
-            annotation_id=annotation_id,
-            captured=persisted_manifests,
-        ),
-        jobs=jobs,
-    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
-
-    line_region = next(
-        region
-        for region in persisted_manifests[0].regions
-        if region.semantic_type == "service_record_line_item_table"
-    )
-    assert line_region.grounding.kind == "page"
-    assert line_region.grounding.table_id is None
-    line_job = next(
-        job
-        for job in jobs.created
-        if job["payload"]["semantic_type"] == "service_record_line_item_table"
-    )
-    assert line_job["payload"]["metadata"].get("docling_table_id") is None
-
-
-def test_semantic_service_drops_generic_form_receipt_summary_despite_receipt_anchors() -> None:
-    document_id = uuid4()
-    household_id = uuid4()
-    page_id = uuid4()
-    annotation_id = uuid4()
-    source = _source(
-        document_id=document_id,
-        household_id=household_id,
-        page_id=page_id,
-        family="generic",
-        title="Receipt-like generic scan",
-        original_filename="Scan Oct 8, 2025 at 21.48.pdf",
-        text="receipt subtotal tax payment amount paid total",
-    )
-    manifest = _manifest_with_regions(
-        document_id=document_id,
-        household_id=household_id,
-        page_id=page_id,
-        document_type="generic_form",
-        regions=[
-            SemanticRegionAnnotation(
-                semantic_type="receipt_line_item_table",
-                priority="high",
-                granite_task="tables_json",
-                target_schema="receipt",
-                expected_fields=("item_description", "quantity", "line_total"),
-                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
-                review_required=True,
-                confidence=0.74,
-            ),
-            SemanticRegionAnnotation(
-                semantic_type="receipt_payment_summary",
-                priority="high",
-                granite_task="kvp",
-                target_schema="receipt",
-                expected_fields=("subtotal", "tax", "total_amount"),
-                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
-                review_required=True,
-                confidence=0.72,
-            ),
-        ],
-    )
-    jobs = RecordingJobs()
-    persisted_manifests: list[DocumentSemanticManifest] = []
-
-    SemanticAnnotationService(
-        source_loader=lambda loaded_document_id: source,
-        gateway=StaticGateway(manifest),
-        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
-            persisted_manifest,
-            annotation_id=annotation_id,
-            captured=persisted_manifests,
-        ),
-        jobs=jobs,
-    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
-
-    assert [region.semantic_type for region in persisted_manifests[0].regions] == [
-        "receipt_line_item_table"
-    ]
-    assert [job["payload"]["semantic_type"] for job in jobs.created] == ["receipt_line_item_table"]
+    assert jobs.created[0]["payload"]["semantic_type"] == "generic_form_kvp"
 
 
 def test_semantic_service_drops_unanchored_observation_family_region() -> None:
@@ -1582,112 +876,6 @@ def test_semantic_service_dedupes_supported_observation_family_by_page() -> None
         "transaction_date",
     )
     assert len(jobs.created) == 1
-
-
-def test_semantic_service_stabilizes_real_estate_seller_info_from_docling_pages() -> None:
-    document_id = uuid4()
-    household_id = uuid4()
-    page_ids = {page_number: uuid4() for page_number in range(1, 5)}
-    annotation_id = uuid4()
-    source = _source_with_pages(
-        document_id=document_id,
-        household_id=household_id,
-        family="real_estate_title",
-        title="Phenix Title Seller Info",
-        original_filename="Phenix Title Seller Info 032924.pdf",
-        page_ids=page_ids,
-        page_texts={
-            1: (
-                "Dear Briana Burke Redfin we are forwarding the attached seller questionnaire. "
-                "Seller(s) must provide wiring instructions for proceeds before closing. "
-                "Your key contact person is Jessi Punska phone number email address "
-                "mailing address file number."
-            ),
-            2: (
-                "Please complete this questionnaire. Seller Information Seller 1 name "
-                "SS#/Tax ID marital status email address phone number current mailing "
-                "address property address"
-            ),
-            3: (
-                "Requires the following important seller questions be answered. "
-                "Marital status bankruptcy vested in title U.S. citizens attending "
-                "the closing power of attorney driver's license forwarding address"
-            ),
-            4: (
-                "Seller Signature Mortgage Information payoff authorization lender name "
-                "United Wholesale Mortgage type of loan account # release information "
-                "payoff figures file number property address title company"
-            ),
-        },
-    )
-    manifest = _manifest_with_regions_for_pages(
-        document_id=document_id,
-        household_id=household_id,
-        page_ids=page_ids,
-        document_type="real_estate_title",
-        regions=[
-            SemanticRegionAnnotation(
-                semantic_type="seller_information_block",
-                priority="high",
-                granite_task="kvp",
-                target_schema="document_observation",
-                expected_fields=("seller_name", "property_address"),
-                grounding=SemanticGroundingRef(kind="page", page_id=page_ids[2]),
-                review_required=True,
-                confidence=0.97,
-            ),
-            SemanticRegionAnnotation(
-                semantic_type="seller_information_block",
-                priority="high",
-                granite_task="kvp",
-                target_schema="document_observation",
-                expected_fields=("seller_name", "file_number"),
-                grounding=SemanticGroundingRef(kind="page", page_id=page_ids[3]),
-                review_required=True,
-                confidence=0.95,
-            ),
-            SemanticRegionAnnotation(
-                semantic_type="seller_information_block",
-                priority="high",
-                granite_task="kvp",
-                target_schema="document_observation",
-                expected_fields=("seller_name", "closing_date"),
-                grounding=SemanticGroundingRef(kind="page", page_id=page_ids[4]),
-                review_required=True,
-                confidence=0.96,
-            ),
-        ],
-    )
-    jobs = RecordingJobs()
-    persisted_manifests: list[DocumentSemanticManifest] = []
-
-    SemanticAnnotationService(
-        source_loader=lambda loaded_document_id: source,
-        gateway=StaticGateway(manifest),
-        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
-            persisted_manifest,
-            annotation_id=annotation_id,
-            captured=persisted_manifests,
-        ),
-        jobs=jobs,
-    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
-
-    persisted_regions = persisted_manifests[0].regions
-    page_number_by_id = {page_id: number for number, page_id in page_ids.items()}
-    assert [
-        page_number_by_id[region.grounding.page_id]
-        for region in persisted_regions
-        if region.semantic_type == "seller_information_block"
-    ] == [2, 3]
-    assert all(
-        region.metadata.get("region_source") == DOCLING_STRUCTURAL_REGION_SOURCE
-        for region in persisted_regions
-        if region.semantic_type == "seller_information_block"
-    )
-    assert [job["payload"]["semantic_type"] for job in jobs.created] == [
-        "seller_information_block",
-        "seller_information_block",
-    ]
 
 
 def test_semantic_service_routes_escrow_docling_tables_as_observations_not_receipts() -> None:
@@ -1944,7 +1132,8 @@ def test_semantic_service_drops_incompatible_docling_structural_target() -> None
 
     payloads = [job["payload"] for job in jobs.created]
     assert all(payload["semantic_type"] != "invoice_line_item_table" for payload in payloads)
-    assert [payload["semantic_type"] for payload in payloads] == ["receipt_payment_summary"]
+    # Structural-only normalization synthesizes nothing in its place.
+    assert payloads == []
 
 
 def test_semantic_service_uses_docling_observation_targets_when_qwen_emits_no_regions() -> None:
@@ -2854,3 +2043,101 @@ def _region_payload(region: SemanticRegionAnnotation) -> dict[str, Any]:
         "reason": region.reason,
         "confidence": region.confidence,
     }
+
+
+def test_planning_normalization_never_synthesizes_or_rewrites_model_regions() -> None:
+    from lib.semantic_annotations.manifest_normalization import normalize_manifest_for_planning
+
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="medical_eob",
+        title="Anthem denial",
+        text=(
+            "Explanation of benefits claim denied appeal grievance rights deadline "
+            "receipt subtotal total tax shipping amount paid seller 1 escrow"
+        ),
+    )
+    model_regions = [
+        SemanticRegionAnnotation(
+            semantic_type="generic_form_kvp",
+            priority="high",
+            granite_task="kvp",
+            target_schema="medical_eob",
+            expected_fields=("appeal_deadline",),
+            grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+            review_required=True,
+            confidence=0.7,
+        ),
+        SemanticRegionAnnotation(
+            semantic_type="covered_services_line_item_table",
+            priority="critical",
+            granite_task="tables_json",
+            target_schema="medical_eob",
+            expected_fields=("service_lines",),
+            grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+            review_required=True,
+            confidence=0.8,
+        ),
+    ]
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        document_type="medical_eob",
+        regions=model_regions,
+    )
+
+    normalized = normalize_manifest_for_planning(source, manifest)
+
+    # The spec bans synthetic regions and semantic-type rewrites: every output
+    # region corresponds to a model-emitted region with its type unchanged.
+    assert len(normalized.regions) <= len(model_regions)
+    assert {region.semantic_type for region in normalized.regions} <= {
+        region.semantic_type for region in model_regions
+    }
+
+
+def test_planning_normalization_preserves_model_payment_summary_on_generic_source() -> None:
+    from lib.semantic_annotations.manifest_normalization import normalize_manifest_for_planning
+
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="generic",
+        text="quarterly newsletter with no purchase content",
+    )
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        document_type="generic_form",
+        regions=[
+            SemanticRegionAnnotation(
+                semantic_type="receipt_payment_summary",
+                priority="medium",
+                granite_task="kvp",
+                target_schema="receipt",
+                expected_fields=("total_amount",),
+                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+                review_required=False,
+                confidence=0.55,
+            )
+        ],
+    )
+
+    normalized = normalize_manifest_for_planning(source, manifest)
+
+    # Model-emitted regions survive normalization; schema-fit gating (not
+    # family term lists) decides the eventual contract, and the model-planned
+    # payment summary is review-required.
+    assert [region.semantic_type for region in normalized.regions] == ["receipt_payment_summary"]
+    assert normalized.regions[0].review_required is True

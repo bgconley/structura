@@ -613,6 +613,16 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   dead-lettered region, KVP candidates restored, and zero non-model job
   failures.
 
+- 2026-06-10: Family-specific semantic-intent normalization was removed per the
+  generalization spec: the medical-EOB semantic-type rewrite, synthetic
+  retail-order/receipt payment-summary and EOB decision-page regions, the
+  family-gated model payment-summary drops, and the service-record and
+  real-estate-title region replacement modules are gone. Planning
+  normalization is structural-only (grounding repair, low-value filtering,
+  dedupe; version v2); deterministic floor coverage remains in the Docling
+  structural-target lane, and the semantic canary now scores the same
+  post-planning manifest the live service hands to Granite fanout.
+
 ## Deferred Work
 
 - Plan-stage stochasticity (Qwen routing variance) is bounded by greedy/low-temperature

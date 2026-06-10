@@ -17,6 +17,9 @@ from lib.extraction.repository import load_extraction_source  # noqa: E402
 from lib.model_runtime.profiles import QWEN_SEMANTIC_PROFILE, get_model_profile  # noqa: E402
 from lib.semantic_annotations.docling_audit import build_docling_audit  # noqa: E402
 from lib.semantic_annotations.docling_context import build_docling_context  # noqa: E402
+from lib.semantic_annotations.manifest_normalization import (  # noqa: E402
+    normalize_result_for_planning,
+)
 from lib.semantic_annotations.qwen_gateway import (  # noqa: E402
     _max_output_tokens_for_profile,
     _prompt,
@@ -116,6 +119,10 @@ def _semantic_report(*, document_id: UUID, mode: str) -> dict[str, Any]:
     source = load_extraction_source(document_id)
     audit = build_docling_audit(source)
     result = default_semantic_annotation_gateway().annotate(source, quality_mode="smart")
+    raw_region_count = len(result.manifest.regions)
+    # Score the same manifest the live service hands to Granite planning so
+    # the canary gate cannot diverge from live routing behavior.
+    result = normalize_result_for_planning(source, result)
     manifest = result.manifest
     document_type_hint = (
         str(manifest.manifest["document_type"])
@@ -179,6 +186,10 @@ def _semantic_report(*, document_id: UUID, mode: str) -> dict[str, Any]:
             source,
             selected_fan_in_sequence=image_fan_in_sequence,
         ),
+        "planning_normalization": {
+            "raw_region_count": raw_region_count,
+            "planned_region_count": len(manifest.regions),
+        },
         "semantic": {
             "document_type": manifest.manifest.get("document_type"),
             "page_document_hints": [
