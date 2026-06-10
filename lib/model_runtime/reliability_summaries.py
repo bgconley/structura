@@ -286,6 +286,66 @@ def safe_outcome_summary(
     }
 
 
+def expected_field_coverage_summary(documents: list[dict[str, Any]]) -> dict[str, Any]:
+    """Aggregate per-region expected_field_coverage telemetry across current rows.
+
+    Reads the compact entries recorded by region-extraction normalization in
+    document_extractions.normalization_json.expected_field_coverage for
+    current semantic-region extraction rows.
+    """
+    region_rows = [
+        extraction
+        for extraction in all_rows(documents, "extractions")
+        if normalized_text(get_value(extraction, "extraction_scope", "extractionScope"))
+        == "semantic_region"
+        and bool_value(get_value(extraction, "is_current", "isCurrent"))
+    ]
+    coverage_rows: list[dict[str, Any]] = []
+    for extraction in region_rows:
+        normalization = dict_value(get_value(extraction, "normalization_json", "normalizationJson"))
+        coverage = dict_value(
+            get_value(normalization, "expected_field_coverage", "expectedFieldCoverage")
+        )
+        if coverage:
+            coverage_rows.append(coverage)
+    expected_total = 0
+    missing_total = 0
+    fully_covered = 0
+    partially_covered = 0
+    uncovered = 0
+    ratios: list[float] = []
+    missing_counts: Counter[str] = Counter()
+    for coverage in coverage_rows:
+        expected = [str(item) for item in list_value(get_value(coverage, "expected"))]
+        missing = [str(item) for item in list_value(get_value(coverage, "missing"))]
+        expected_total += len(expected)
+        missing_total += len(missing)
+        missing_counts.update(missing)
+        ratio = get_value(coverage, "coverage_ratio", "coverageRatio")
+        if isinstance(ratio, int | float):
+            ratios.append(float(ratio))
+        elif expected:
+            ratios.append((len(expected) - len(missing)) / len(expected))
+        if not missing:
+            fully_covered += 1
+        elif len(missing) < len(expected):
+            partially_covered += 1
+        else:
+            uncovered += 1
+    return {
+        "currentRegionExtractionCount": len(region_rows),
+        "regionsWithExpectedFields": len(coverage_rows),
+        "fullyCoveredRegionCount": fully_covered,
+        "partiallyCoveredRegionCount": partially_covered,
+        "uncoveredRegionCount": uncovered,
+        "expectedFieldCount": expected_total,
+        "producedExpectedFieldCount": expected_total - missing_total,
+        "missingExpectedFieldCount": missing_total,
+        "meanCoverageRatio": round(sum(ratios) / len(ratios), 4) if ratios else None,
+        "missingFieldCounts": dict(sorted(missing_counts.items())),
+    }
+
+
 def quality_summary(documents: list[dict[str, Any]]) -> dict[str, Any]:
     statuses: Counter[str] = Counter()
     review_required = 0

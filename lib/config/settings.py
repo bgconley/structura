@@ -55,6 +55,10 @@ class Settings(BaseSettings):
     model_visual_embed_url: str = "http://127.0.0.1:8103"
     qwen_semantic_profile: str = "qwen3-vl-8b-fp8-semantic:v1"
     model_qwen_semantic_timeout_seconds: int = 300
+    # Warn when the conservative pre-dispatch Qwen input estimate (prompt +
+    # schema + visual tokens + requested output budget) exceeds this fraction
+    # of the profile's max_model_len. Telemetry only; <= 0 disables.
+    qwen_input_budget_warn_fraction: float = 0.9
     granite_profile: str = "granite-4.0-3b-vision-bf16:v1"
     text_embed_profile: str = "qwen3-embedding-4b-1536:v1"
     visual_embed_profile: str = "qwen3-vl-embedding-2b-2048:v1"

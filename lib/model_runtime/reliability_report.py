@@ -15,6 +15,7 @@ from lib.model_runtime.reliability_summaries import (
     dedupe_summary,
     envelope_summary,
     evidence_summary,
+    expected_field_coverage_summary,
     extraction_pressure,
     planner_summary,
     quality_summary,
@@ -65,6 +66,9 @@ def build_phase85_reliability_report(
         safe_documents,
     )
     report["qualitySummary"] = quality_summary(safe_documents)
+    # Telemetry-only rollup of per-region expected_field_coverage entries; not
+    # part of REQUIRED_REPORT_SUMMARIES acceptance gating.
+    report["expectedFieldCoverage"] = expected_field_coverage_summary(safe_documents)
     report["acceptanceGates"] = {
         "hardCorrectnessInvariants": evaluate_hard_correctness_invariants(safe_documents),
         "goldCorpusQuality": evaluate_gold_corpus_metrics_from_documents(safe_documents),
