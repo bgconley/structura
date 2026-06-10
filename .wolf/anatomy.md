@@ -147,6 +147,14 @@
 - `artifacts/structura-model-prompts-contracts-behaviors-20260501T082453Z-v2.zip` — Untracked shareable review archive with Phase 8.5 prompts, contracts, runtime behavior, docs/RCAs, migrations, tests, Docling/extraction seams, API/UI semantic read paths, and manifest/readme; use v2 instead of the narrower first archive (~archive)
 - `artifacts/model-contract-pack-20260501T082453Z-v2/PACK_MANIFEST.txt` / `PACK_README.txt` — Manifest and explanation for the v2 share pack; the copied source files inside this directory are evidence-pack snapshots, not the active source of truth (~600 tok)
 
+## Review-workflow and D8 quality-outcome surfacing additions (2026-06-09)
+
+- `database/087_phase8_5_quality_outcome.sql` — Adds `document_extractions.quality_outcome` (D8 vocabulary CHECK + current-row index) and expands `extraction_observations.status` to allow review `accepted` (~250 tok)
+- `lib/review/candidate_decision_repository.py` — Accept/reject persistence for observation and line-item candidates with audit events, task clearing, and document review-status refresh (~700 tok)
+- `apps/web/src/evidence.ts` — Deterministic richer-anchor-first evidence locator selection mirroring `lib/extraction/evidence_locator.py` for jump targets and card labels (~500 tok)
+- `tests/unit/review/` — Unit coverage for Smart Parse rerun routing, review mappers (task metadata, evidence sanitization), and observation/line-item decision dispatch (~900 tok)
+- `tests/unit/documents/test_read_model_payloads.py` — Coverage for qualityOutcome/claimResolutionDecisions/regionJobCoverage projection on document detail extraction payloads (~450 tok)
+
 ## ./
 
 - `.DS_Store` (~3824 tok)
