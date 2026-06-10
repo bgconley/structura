@@ -188,6 +188,14 @@
 - `tests/unit/documents/test_read_model_payloads.py` — Coverage for qualityOutcome/claimResolutionDecisions/regionJobCoverage projection on document detail extraction payloads (~450 tok)
 - `tests/unit/review/` — Unit coverage for Smart Parse rerun routing, review mappers (task metadata, evidence sanitization), and observation/line-item decision dispatch (~900 tok)
 
+## Telemetry additions: expected-field coverage and Qwen input budget (2026-06-10)
+
+- `lib/extraction/expected_field_coverage.py` — Compares Qwen plan `expected_fields` against region-envelope claim-bearing output (fact/observation names, populated line-item/table-row fields) with normalized snake-case exact-or-substring matching; builds the compact `expected_field_coverage` normalization_json entry (~700 tok)
+- `lib/semantic_annotations/input_budget.py` — Pure Qwen input-budget estimators shared by the semantic canary and live gateway: text-token heuristic, PNG/JPEG dimension parsing, visual-token grid estimate with profile pixel clamping, conservative request estimate, and threshold-based structured warning (~1100 tok)
+- `tests/unit/extraction/test_expected_field_coverage.py` — Coverage matching rules, missing-envelope zero coverage, dedupe, bookkeeping-key exclusion, and ExtractionService normalization_json recording (~1100 tok)
+- `tests/unit/model_runtime/test_reliability_expected_field_coverage.py` — expectedFieldCoverage rollup aggregation over current semantic-region extraction rows and report wiring (~600 tok)
+- `tests/unit/semantic_annotations/test_input_budget.py` — Estimator parity with canary math, profile pixel clamping, unknown-dimension fallback, and warning threshold behavior (~700 tok)
+
 ## claude-desktop-46/
 
 - `docvault-architecture-brainstorm.md` — DocVault — AI-Augmented Life Document Filing System (~12767 tok)
