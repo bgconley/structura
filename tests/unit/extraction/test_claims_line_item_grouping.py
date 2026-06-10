@@ -285,3 +285,80 @@ def test_arithmetic_invariant_skips_inconclusive_missing_optional_addend() -> No
         if decision.canonical_key == "receipt.transaction.total"
     ]
     assert [decision.decision for decision in total_decisions] == ["accepted"]
+
+
+def test_aggregate_line_items_reject_prompt_echo_content() -> None:
+    document_id = str(uuid4())
+    region_id = str(uuid4())
+    envelope = _receipt_envelope(
+        document_id,
+        region_id,
+        [
+            RegionLineItem(
+                description="Return ONLY the JSON object for the table schema",
+                quantity=1.0,
+                net_amount=1.0,
+                evidence=[_region_evidence(document_id, region_id, row_index=1)],
+                page_number=1,
+                row_index=1,
+            ),
+            RegionLineItem(
+                description="COFFEE",
+                quantity=1.0,
+                net_amount=3.5,
+                evidence=[_region_evidence(document_id, region_id, row_index=2)],
+                page_number=1,
+                row_index=2,
+            ),
+        ],
+    )
+
+    projection = resolve_claims_for_family(
+        family="receipt",
+        claims=claims_from_region_envelope(envelope),
+    )
+    assert [item["description"] for item in projection.line_items] == ["COFFEE"]
+
+
+def test_aggregate_observations_reject_low_signal_grid_values() -> None:
+    from lib.extraction.region_envelope import RegionFact
+
+    document_id = str(uuid4())
+    region_id = str(uuid4())
+    evidence = EvidenceRef(
+        document_id=document_id,
+        semantic_region_id=region_id,
+        page_number=1,
+        element_id="el-1",
+        source_engine="granite_vision_3b",
+    )
+    envelope = RegionExtractionEnvelope(
+        document_id=document_id,
+        semantic_region_id=region_id,
+        resolved_document_type="document_observation",
+        semantic_type="generic_form_kvp",
+        target_schema="document_observation",
+        model_output_schema_name="granite_generic_kvp.v1",
+        observations=[
+            RegionFact(
+                name="observation.dimensions",
+                value={"rows": 4, "cols": 2},
+                value_type="object",
+                evidence=[evidence],
+            ),
+            RegionFact(
+                name="observation.account_number",
+                value="ACCT-1234",
+                value_type="string",
+                evidence=[evidence],
+            ),
+        ],
+    )
+
+    projection = resolve_claims_for_family(
+        family="document_observation",
+        claims=claims_from_region_envelope(envelope),
+    )
+    field_names = {item["field_name"] for item in projection.observations}
+    assert "account_number" in field_names
+    assert "dimensions" not in field_names

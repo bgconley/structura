@@ -36,7 +36,12 @@ def reject_scalar_candidate(value: object) -> tuple[bool, str | None]:
     return False, None
 
 
-def reject_line_item(item: dict[str, Any]) -> tuple[bool, str | None]:
+def reject_line_item_content(item: dict[str, Any]) -> tuple[bool, str | None]:
+    """Echo/placeholder content gates shared by candidates and canonical aggregates.
+
+    Completeness policy (description required, zero-amount context) stays in
+    reject_line_item; anchored resolver rows may legitimately omit amounts.
+    """
     if contains_prompt_or_schema_artifact(item):
         return True, "prompt_or_schema_echo"
     if contains_placeholder_value_for_keys(
@@ -62,11 +67,20 @@ def reject_line_item(item: dict[str, Any]) -> tuple[bool, str | None]:
         return True, "fake_schema_line_item"
 
     description = str(item.get("description") or item.get("service_description") or "").strip()
+    if description and is_placeholder_token(description):
+        return True, "placeholder_or_null_value"
+
+    return False, None
+
+
+def reject_line_item(item: dict[str, Any]) -> tuple[bool, str | None]:
+    rejected, reason = reject_line_item_content(item)
+    if rejected:
+        return True, reason
+
+    description = str(item.get("description") or item.get("service_description") or "").strip()
     if not description:
         return True, "missing_description"
-
-    if is_placeholder_token(description):
-        return True, "placeholder_or_null_value"
 
     zero_rejected, zero_reason = zero_amount_line_requires_context(item)
     if zero_rejected:

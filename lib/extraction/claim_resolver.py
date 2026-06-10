@@ -4,6 +4,11 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any
 
+from lib.extraction.candidate_quality import reject_line_item_content, reject_observation
+from lib.extraction.candidate_value_parsing import (
+    empty_observation_value,
+    grid_only_observation,
+)
 from lib.extraction.claim_decisions import ClaimResolutionDecision
 from lib.extraction.claim_invariants import apply_claim_invariants
 from lib.extraction.claim_registry import (
@@ -108,12 +113,13 @@ def _resolve_document_observations(
             decisions.append(decision)
         if selected is None:
             continue
-        observations.append(
-            _observation_from_claim(
-                selected,
-                requested_family=requested_family,
-            )
+        observation = _observation_from_claim(
+            selected,
+            requested_family=requested_family,
         )
+        if _observation_is_low_signal(observation):
+            continue
+        observations.append(observation)
     return ClaimFamilyProjection(
         family="document_observation",
         observations=observations,
@@ -176,8 +182,14 @@ def _resolve_line_items(
                 evidence = [_clean_evidence(item) for item in selected.evidence]
         if evidence:
             line_item["evidence"] = evidence
-        if _line_item_has_value(line_item, projection):
-            line_items.append(line_item)
+        if not _line_item_has_value(line_item, projection):
+            continue
+        rejected, _reason = reject_line_item_content(line_item)
+        if rejected:
+            # Canonical aggregates share the candidate-layer echo/placeholder
+            # gate; a synthesized region anchor must not launder echo rows.
+            continue
+        line_items.append(line_item)
     return line_items, decisions
 
 
@@ -260,6 +272,16 @@ def _stable_value_key(value: Any) -> str:
     import json
 
     return json.dumps(value, sort_keys=True, separators=(",", ":"))
+
+
+def _observation_is_low_signal(observation: dict[str, Any]) -> bool:
+    """Aggregate observations share the candidate-layer signal/echo gates."""
+    field_name = str(observation.get("field_name") or "")
+    value = observation.get("value")
+    rejected, _reason = reject_observation(field_name, value)
+    if rejected:
+        return True
+    return empty_observation_value(value) or grid_only_observation(field_name, value)
 
 
 def _observation_from_claim(

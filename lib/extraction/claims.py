@@ -298,8 +298,10 @@ def _claim_target_schema(envelope: RegionExtractionEnvelope) -> str | None:
 
 
 def _planner_only_method(method: str) -> bool:
+    # Qwen is planner provenance only; its outputs may never mint value Claims,
+    # including replayed envelopes named after the live Qwen response schema.
     normalized = method.strip().lower().replace("-", "_")
-    return normalized.startswith("qwen")
+    return normalized.startswith(("qwen", "semantic_annotation"))
 
 
 def _anchor_from_ref(ref: EvidenceRef) -> ClaimAnchor | None:
