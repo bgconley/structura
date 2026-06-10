@@ -36,14 +36,19 @@ CANARY_MODES = (
     "qwen3-vl-4b-historical",
     "qwen3-vl-2b-historical",
 )
+ACTIVE_CANARY_MODE = "qwen3-vl-8b-fp8-smart"
 
 
 def main() -> int:
     args = parse_args()
-    if args.mode == "qwen3-vl-2b-historical":
+    if args.mode != ACTIVE_CANARY_MODE:
+        # The runtime gateway is settings-driven and only serves the 8B FP8
+        # Smart Parse profile; running a "historical" canary here would
+        # execute 8B while labelling the report with a different lineage.
         raise SystemExit(
-            "qwen3-vl-2b-historical canary mode requires a separately running historical "
-            "2B service; the active Phase 8.5 runtime uses Qwen3-VL-8B-Instruct-FP8."
+            f"{args.mode} canary mode requires a separately running historical "
+            "service; the active Phase 8.5 runtime uses Qwen3-VL-8B-Instruct-FP8 "
+            "and this harness cannot serve historical lineages."
         )
     owner = _resolve_owner(args.household_id, args.user_id) if args.pdf else None
     document_ids = list(args.document_id)
