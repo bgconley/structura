@@ -648,3 +648,8 @@
 ## qwen3-122/
 
 - `first-pass-plan.md` — DocVault: AI-Augmented Personal Document Management System (~30226 tok)
+
+## Runtime-ops hardening (2026-06-09)
+
+- `database/086_phase8_5_service_health.sql` — Extends service_health_snapshots status CHECK with 'fixture'/'unavailable' and adds (service_name, checked_at DESC) index for latest-per-service health reads (~150 tok)
+- `tests/unit/search/test_embedding_jobs.py` — Unit coverage for the STRUCTURA_EMBEDDING_TEXT_ENABLED enqueue gate on the embeddings queue (~500 tok)

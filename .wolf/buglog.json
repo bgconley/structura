@@ -1104,6 +1104,49 @@
       "related_bugs": ["bug-088", "bug-089", "bug-091"],
       "occurrences": 1,
       "last_seen": "2026-04-29T20:25:00-04:00"
+    },
+    {
+      "id": "bug-093",
+      "timestamp": "2026-06-09T18:30:00-04:00",
+      "error_message": "Job-layer failure policy ignored exception retryability: deterministic ModelProtocolError/ModelConfigurationError retried 5x while Granite timeouts on route docling_plus_granite_structured dead-lettered immediately.",
+      "file": "lib/extraction/model_failure_policy.py",
+      "root_cause": "extraction_failure_policy special-cased one (ModelTimeoutError, route) pair and returned retryable=True for everything else; the per-class ModelRuntimeError.retryable contract was read nowhere, and the semantic worker hardcoded retryable=True.",
+      "fix": "Derived retryability from the exception contract via model_exception_retryable (timeouts/service errors retryable on all routes, protocol/configuration errors dead-letter), applied it in workers/semantic_annotations/worker.py too.",
+      "tags": [
+        "runtime-ops",
+        "jobs",
+        "retry-policy",
+        "model-runtime"
+      ]
+    },
+    {
+      "id": "bug-094",
+      "timestamp": "2026-06-09T18:30:00-04:00",
+      "error_message": "Live text-embedding client posted internal {model,input,dimensions} shape to TEI /embed, which 422s; profile registry drifted from compose limits (granite images 4 vs 1, max_model_len unset vs 16384, visual-embed images 8 vs 1); start_text_embed.sh hardcoded the sm_120 binary on an rtx3090-role profile.",
+      "file": "lib/model_runtime/clients/_embedding.py",
+      "root_cause": "Endpoint shape was guessed via 404/405 fallback instead of being declared by config; profile registry was never reconciled with compose/start-script server flags.",
+      "fix": "Embedding API flavor now derives from profile.backend (tei-compatible -> TEI {inputs:[...]} on /embed with bare-array responses, vllm-embed -> /v1/embeddings one image per request); granite profile set to 1 image/16384 ctx, visual-embed to 1 image; preflight asserts mm-limit/max_model_len vs registry; TEI router binary selected by compute capability or STRUCTURA_TEI_ROUTER_BINARY.",
+      "tags": [
+        "runtime-ops",
+        "embeddings",
+        "tei",
+        "profiles",
+        "compose-drift"
+      ]
+    },
+    {
+      "id": "bug-095",
+      "timestamp": "2026-06-09T18:30:00-04:00",
+      "error_message": "Docling worker swallowed semantic_annotate enqueue failures after marking the parse job succeeded, so parsed documents could silently never enter extraction; transient retryable job failures also flipped analysis quality to pipeline_failed during backoff windows.",
+      "file": "workers/docling/worker.py",
+      "root_cause": "Downstream enqueues ran after complete_job in best-effort try/except blocks that only wrote a degraded health snapshot; analysis_quality counted status 'failed' (retry pending) as a terminal operational failure.",
+      "fix": "Semantic enqueue now happens before complete_job and a failure fails the docling job retryable (parse is idempotent); cancelled completions cancel the queued semantic job; analysis_quality treats failed-with-attempts-remaining as in-progress (only dead_letter/non-retryable/exhausted count).",
+      "tags": [
+        "runtime-ops",
+        "workers",
+        "docling",
+        "analysis-quality"
+      ]
     }
   ]
 }
