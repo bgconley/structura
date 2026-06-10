@@ -170,6 +170,7 @@ def _raw_message_content(response: dict[str, Any]) -> tuple[str, str | None]:
                 "model": response.get("model"),
                 "model_version": response.get("model_version")
                 or response.get("system_fingerprint"),
+                "content_diagnostics": _truncation_content_diagnostics(first),
             },
         )
     message = first.get("message")
@@ -179,6 +180,25 @@ def _raw_message_content(response: dict[str, Any]) -> tuple[str, str | None]:
     if isinstance(content, str) and content.strip():
         return content, str(finish_reason) if finish_reason else None
     raise ModelProtocolError("Vision model response message content is empty.")
+
+
+def _truncation_content_diagnostics(choice: dict[str, Any]) -> dict[str, int]:
+    """Content-free shape diagnostics for truncated generations.
+
+    Distinguishes row rambling (many object opens), giant values (few opens,
+    many chars), and degenerate whitespace loops without persisting document
+    content into job errors.
+    """
+    message = choice.get("message")
+    content = message.get("content") if isinstance(message, dict) else None
+    text = content if isinstance(content, str) else ""
+    return {
+        "content_chars": len(text),
+        "whitespace_chars": sum(1 for char in text if char.isspace()),
+        "trailing_whitespace_chars": len(text) - len(text.rstrip()),
+        "object_open_count": text.count("{"),
+        "array_open_count": text.count("["),
+    }
 
 
 def _usage_json(response: dict[str, Any]) -> dict[str, object]:
