@@ -140,13 +140,13 @@ def _element_evidence(
         "source_text": source_text,
         "confidence": 0.86,
     }
-    bbox = _normalize_bbox(element.bbox)
+    bbox = normalize_bbox(element.bbox)
     if bbox:
         evidence["bbox"] = bbox
     return evidence
 
 
-def _normalize_bbox(value: Any) -> list[float] | None:
+def normalize_bbox(value: Any) -> list[float] | None:
     if isinstance(value, list) and len(value) == 4:
         return [float(item) for item in value]
     if isinstance(value, dict):

@@ -69,6 +69,7 @@ from lib.extraction.model_output_value_parsing import (
 from lib.extraction.model_output_wrappers import (
     unwrap_model_output_payload as _unwrapped_payload,
 )
+from lib.extraction.models import ExtractionSourceDocument
 from lib.extraction.region_envelope_projection import finalized_region_output
 
 _REVIEW_ONLY_RECEIPT_LIKE_SEMANTIC_TYPES = frozenset(
@@ -93,6 +94,7 @@ def normalize_granite_region_output(
     target_schema: str | None = None,
     resolved_document_type: str | None = None,
     docling_table_quality: DoclingTableQuality | None = None,
+    source: ExtractionSourceDocument | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     model_payload, wrapper_repairs = _unwrapped_payload(payload)
     if _looks_like_schema_echo(model_payload):
@@ -117,6 +119,7 @@ def normalize_granite_region_output(
             semantic_type=semantic_type,
             target_schema=target_schema or schema_name,
             resolved_document_type=resolved_document_type,
+            source=source,
         )
 
     if model_output_schema_name == "granite_invoice_line_items.v1":
@@ -205,6 +208,7 @@ def _finalized_output(
     semantic_type: str | None,
     target_schema: str | None,
     resolved_document_type: str | None,
+    source: ExtractionSourceDocument | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     return finalized_region_output(
         normalized,
@@ -215,6 +219,7 @@ def _finalized_output(
         semantic_type=semantic_type,
         target_schema=target_schema,
         resolved_document_type=resolved_document_type,
+        source=source,
     )
 
 

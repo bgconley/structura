@@ -106,6 +106,7 @@ class VisionExtractionGateway:
             target_schema=schema_name,
             resolved_document_type=_resolved_document_type(semantic_task, schema_name),
             docling_table_quality=_docling_table_quality(source, semantic_task),
+            source=source,
         )
         useful = is_useful_granite_output(
             normalized_json=normalized_json,
@@ -159,6 +160,7 @@ class VisionExtractionGateway:
                 target_schema=schema_name,
                 resolved_document_type=_resolved_document_type(semantic_task, schema_name),
                 docling_table_quality=_docling_table_quality(source, semantic_task),
+                source=source,
             )
             retry_useful = is_useful_granite_output(
                 normalized_json=retry_normalized_json,
