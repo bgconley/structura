@@ -2008,6 +2008,20 @@
         "circular-import",
         "api-startup"
       ]
+    },
+    {
+      "date": "2026-06-10",
+      "error_message": "E0 gate check on P620-01: all 12 run-9 Docling tables reported table_signal_weak, so zero tables were text-lane eligible and E1 would have been a silent no-op on the corpus.",
+      "root_cause": "docling_audit._table_signal counts table_markdown rows plus a table_json['rows'] key that the persisted Docling shape does not have (the grid lives at table_json['data']['grid']); live document_tables rows persist empty table_markdown (length 0 for all 12 run-9 tables), so the audit reports every real grid as weak. Pre-existing telemetry blindness that became load-bearing when eligibility consulted it.",
+      "fix": "Text-lane eligibility now derives the structural signal from the parsed TableGrid itself (parseable cells, >=1 data row, >=2 columns) and no longer consults the markdown-based audit signal; the GPU check script mirrors it. Fixing docling_audit._table_json_row_count to read data.grid is deliberately deferred: it would remove weak-table warnings from Qwen context and contaminate the E1 A/B baseline.",
+      "tags": [
+        "phase8.5",
+        "text-lane",
+        "eligibility",
+        "docling-audit",
+        "table-signal",
+        "e0-gate"
+      ]
     }
   ]
 }

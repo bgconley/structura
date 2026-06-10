@@ -170,7 +170,7 @@ def test_eligible_line_item_region_routes_to_text_lane() -> None:
     assert granite.calls == 0
     assert result.route.source_engine == "docling"
     assert result.normalization_json["lane"] == "text"
-    assert result.normalization_json["laneEligibility"] == "strong_table_on_text_page"
+    assert result.normalization_json["laneEligibility"] == "usable_grid_on_text_page"
     assert isinstance(result.normalization_json["regionEnvelope"], dict)
     assert result.model_output_schema_name == "text_lane_table.v1"
     assert result.normalized_json["schema_name"] == "invoice"

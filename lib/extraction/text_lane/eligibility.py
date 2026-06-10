@@ -2,8 +2,15 @@
 
 The text lane requires a trustworthy text layer at the grounded location;
 everything else stays on the vision path (ADR 0006 X2). Eligibility combines
-the page-quality signals from lib/documents/quality.py with the Docling
-table-signal audit, and always returns a reason for lane telemetry.
+the page-quality signals from lib/documents/quality.py with structural
+checks on the parsed cell grid, and always returns a reason for lane
+telemetry.
+
+The docling_audit table signal is deliberately not consulted: it counts
+table_markdown rows plus a table_json["rows"] key that the Docling shape
+does not have, and live document_tables rows persist empty markdown, so it
+reports every real grid as weak. The grid itself (parseable cells, data
+rows, >=2 columns) is the structural signal here.
 """
 
 from __future__ import annotations
@@ -13,7 +20,6 @@ from typing import Literal
 
 from lib.extraction.models import ExtractionSourceDocument, ParsedPageText, ParsedTableText
 from lib.extraction.text_lane.table_grid import TableGrid
-from lib.semantic_annotations.docling_audit import build_docling_audit
 from lib.semantic_annotations.models import SemanticExtractionTask
 from lib.semantic_annotations.task_routing import LINE_ITEM_TABLE_SEMANTIC_TYPES
 
@@ -68,11 +74,10 @@ def text_lane_eligibility(
             page_number=table.page_number,
             table_id=str(table.table_id),
         )
-    table_signal = _table_signal(source, table)
-    if table_signal != "strong":
+    if grid.num_cols < 2:
         return LaneDecision(
             lane="vision",
-            reason=f"table_signal_{table_signal or 'unknown'}",
+            reason="table_grid_too_narrow",
             page_number=table.page_number,
             table_id=str(table.table_id),
         )
@@ -86,7 +91,7 @@ def text_lane_eligibility(
         )
     return LaneDecision(
         lane="text",
-        reason="strong_table_on_text_page",
+        reason="usable_grid_on_text_page",
         page_number=table.page_number,
         table_id=str(table.table_id),
     )
@@ -105,14 +110,6 @@ def _grounded_table(
         for table in source.tables:
             if table.element_id == grounding.element_id:
                 return table
-    return None
-
-
-def _table_signal(source: ExtractionSourceDocument, table: ParsedTableText) -> str | None:
-    audit = build_docling_audit(source)
-    for summary in audit.table_summaries:
-        if summary.table_id == table.table_id:
-            return summary.table_signal
     return None
 
 

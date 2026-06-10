@@ -99,13 +99,29 @@ def _task(
     )
 
 
-def test_strong_table_on_text_page_is_text_lane() -> None:
+def test_usable_grid_on_text_page_is_text_lane() -> None:
     table = _table()
     decision = text_lane_eligibility(_source(tables=[table]), semantic_task=_task(table))
     assert decision.lane == "text"
-    assert decision.reason == "strong_table_on_text_page"
+    assert decision.reason == "usable_grid_on_text_page"
     assert decision.table_id == str(table.table_id)
     assert decision.page_number == 1
+
+
+def test_empty_markdown_does_not_disqualify_a_rich_grid() -> None:
+    # Live document_tables rows persist empty markdown; the grid is the
+    # structural signal, so markdown absence must not exclude the table.
+    base = _table()
+    table = ParsedTableText(
+        table_id=base.table_id,
+        page_number=base.page_number,
+        table_index=base.table_index,
+        table_markdown=None,
+        table_json=base.table_json,
+        element_id=base.element_id,
+    )
+    decision = text_lane_eligibility(_source(tables=[table]), semantic_task=_task(table))
+    assert decision.lane == "text"
 
 
 def test_non_line_item_region_routes_to_vision() -> None:
@@ -185,24 +201,24 @@ def test_table_without_grid_routes_to_vision() -> None:
     assert decision.reason == "table_grid_missing"
 
 
-def test_weak_table_signal_routes_to_vision() -> None:
+def test_single_column_grid_routes_to_vision() -> None:
     payload = json.loads((FIXTURES / "service_lines_grid.json").read_text())
     table = ParsedTableText(
         table_id=uuid4(),
         page_number=1,
         table_index=1,
-        table_markdown="| only-header |",
+        table_markdown=None,
         table_json={
             "data": {
                 "num_rows": 2,
-                "num_cols": 2,
+                "num_cols": 1,
                 "grid": [
-                    payload["table_json"]["data"]["grid"][0][:2],
-                    payload["table_json"]["data"]["grid"][1][:2],
+                    payload["table_json"]["data"]["grid"][0][:1],
+                    payload["table_json"]["data"]["grid"][1][:1],
                 ],
             }
         },
     )
     decision = text_lane_eligibility(_source(tables=[table]), semantic_task=_task(table))
     assert decision.lane == "vision"
-    assert decision.reason.startswith("table_signal_")
+    assert decision.reason == "table_grid_too_narrow"

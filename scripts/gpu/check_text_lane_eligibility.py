@@ -21,7 +21,6 @@ from lib.db.connection import db_connection
 from lib.documents.quality import PageQualityInput, classify_page_quality
 from lib.extraction.source_repository import load_extraction_source
 from lib.extraction.text_lane.table_grid import TableGrid
-from lib.semantic_annotations.docling_audit import build_docling_audit
 
 DEFAULT_TITLE_PREFIX = "Phase 8.5 Production Corpus 20260610T070545Z"
 _DIFFICULT_PAGE_REASONS = frozenset(
@@ -77,8 +76,6 @@ def _page_reasons(source, page_number: int) -> tuple[str, ...]:  # noqa: ANN001
 
 def evaluate_document(document_id: UUID) -> dict[str, Any]:
     source = load_extraction_source(document_id)
-    audit = build_docling_audit(source)
-    signals = {summary.table_id: summary.table_signal for summary in audit.table_summaries}
     tables: list[dict[str, Any]] = []
     for table in source.tables:
         grid = TableGrid.from_parsed_table(table)
@@ -87,12 +84,12 @@ def evaluate_document(document_id: UUID) -> dict[str, Any]:
             lane, reason = "vision", "table_grid_missing"
         elif not grid.data_row_indexes:
             lane, reason = "vision", "table_grid_has_no_data_rows"
-        elif signals.get(table.table_id) != "strong":
-            lane, reason = "vision", f"table_signal_{signals.get(table.table_id) or 'unknown'}"
+        elif grid.num_cols < 2:
+            lane, reason = "vision", "table_grid_too_narrow"
         elif difficult:
             lane, reason = "vision", "difficult_page:" + ",".join(difficult)
         else:
-            lane, reason = "text", "strong_table_on_text_page"
+            lane, reason = "text", "usable_grid_on_text_page"
         tables.append(
             {
                 "table_id": str(table.table_id),
