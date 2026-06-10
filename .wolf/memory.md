@@ -310,3 +310,10 @@
 | 06:53 | Edited lib/extraction/text_lane/kvp_gateway.py | added 1 import(s) | ~70 |
 | 06:53 | Edited lib/extraction/text_lane/kvp_gateway.py | modified _family_is_first_class() | ~184 |
 | 06:53 | Edited lib/extraction/text_lane/kvp_gateway.py | modified _family_is_first_class() | ~74 |
+| 07:02 | Created ../../../../tmp/structura-e0-capture/e2_lane_reasons.sql | — | ~218 |
+| 07:12 | Created ../../../../tmp/structura-e0-capture/mri_check.sql | — | ~211 |
+| 07:13 | Edited lib/extraction/text_lane/kvp_gateway.py | expanded (+6 lines) | ~286 |
+| 07:13 | Edited lib/extraction/text_lane/kvp_gateway.py | modified _family_is_first_class() | ~146 |
+| 07:46 | Edited lib/config/settings.py | 6→7 lines | ~147 |
+| 07:46 | Edited docs/adr/0006-extractive-first-extraction.md | expanded (+21 lines) | ~413 |
+| 07:35 | E2 KVP lane gated; STRUCTURA_TEXT_LANE_KVP defaults on | lib/extraction/text_lane/{span_candidates,span_selection,kvp_extractor,kvp_gateway}.py, lib/config/settings.py, compose.yaml, docs/adr/0006 | Pre-gate review (16 agents) fixed money-regex mid-number matches, unvalidated date spans, first-class dead-end claims; run C exposed the effective-family hole (MRI denial 17->0 obs) fixed by keying abstention on the candidate layer's family fallback. Gate runs e2-e/e2-f vs run-9: Phenix obs 10->17, UWM 14->16 with exact anchors, fingerprints identical across runs, zero dead letters, receipt registry facts 2->5. KVP lane fired on Phenix/UWM/receipt-summary regions; MRI/medical_eob KVP correctly abstains to vision | ~55000 |

@@ -149,3 +149,24 @@ classes are unrepresentable.
   weak — text-lane eligibility derives structure from the parsed grid
   instead, and the audit fix is deferred as its own measured change.
   Next: E2 (extractive KVP lane) and E3 (deterministic-primary planner).
+- 2026-06-10: E2 landed and gated; `STRUCTURA_TEXT_LANE_KVP` defaults on.
+  `span_candidates.py` builds bounded deterministic value spans from Docling
+  elements (label adjacency over BOTTOMLEFT bboxes + typed regexes,
+  positional span ids), `span_selection.py` maps expected keys to a closed
+  span-id enum on the resident Qwen text endpoint, and `kvp_extractor.py`
+  mints verbatim claims (registry-exact keys -> family facts, others ->
+  dot-less observations). A 16-agent pre-gate review confirmed and fixed
+  three defects: the money regex matched mid-number, unparseable date spans
+  were counted then silently dropped at claim minting, and first-class
+  families with non-registry keys minted dead-end dot-less claims while
+  suppressing the vision fallback. The first gate run exposed one more
+  (MRI denial regions: unregistered resolved family with a first-class
+  target dropped all observation candidates) — the abstention now keys on
+  the candidate layer's effective family. Gate runs
+  20260610T111457Z-text-lane-e2-e / 112154Z-f vs the pinned run-9 baseline:
+  Phenix title observations 10->17 and UWM escrow 14->16 with exact
+  element/text-span anchors, identical canonical fingerprints across both
+  runs, zero dead letters; receipt summaries minted registry facts
+  (Scan Sep 9 fields 2->5). Remaining: E3 (deterministic-primary planner),
+  E4 (vision-lane consolidation/Granite retirement), E5 (representation
+  collapse + per-document orchestration).
