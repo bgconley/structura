@@ -83,7 +83,9 @@ def source_families_from_claims(claims: Iterable[Claim]) -> set[str]:
 
 def _family_is_compatible(*, requested_family: str, source_families: set[str]) -> bool:
     if requested_family == "document_observation":
-        return bool(source_families)
+        # The review-only observation lane collects arbitrary anchored Claims,
+        # including dot-less KVP keys (e.g. loan_number) with no family prefix.
+        return True
     return bool(source_families) and requested_family in source_families
 
 

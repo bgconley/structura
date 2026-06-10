@@ -169,3 +169,63 @@ def test_claim_region_projection_skips_incompatible_first_class_regions() -> Non
             "source_families": ["invoice"],
         }
     ]
+
+
+def test_dotless_observation_claims_aggregate_into_document_observation() -> None:
+    from uuid import uuid4
+
+    from lib.extraction.claims import claims_from_region_envelope
+    from lib.extraction.region_envelope import (
+        EvidenceRef,
+        RegionExtractionEnvelope,
+        RegionFact,
+    )
+    from lib.extraction.region_reconciliation import RegionExtraction
+
+    document_id = str(uuid4())
+    region_id = str(uuid4())
+    envelope = RegionExtractionEnvelope(
+        document_id=document_id,
+        semantic_region_id=region_id,
+        resolved_document_type="document_observation",
+        semantic_type="escrow_summary",
+        target_schema="document_observation",
+        model_output_schema_name="granite_mortgage_escrow_statement.v1",
+        observations=[
+            RegionFact(
+                name="loan_number",
+                value="0176595130",
+                value_type="string",
+                source_text="0176595130",
+                evidence=[
+                    EvidenceRef(
+                        document_id=document_id,
+                        semantic_region_id=region_id,
+                        page_number=1,
+                        element_id="el-1",
+                        source_text="0176595130",
+                        source_engine="granite_vision_3b",
+                    )
+                ],
+            )
+        ],
+    )
+    region = RegionExtraction(
+        extraction_id=uuid4(),
+        semantic_region_id=uuid4(),
+        semantic_type="escrow_summary",
+        region_envelope=envelope,
+        claims=tuple(claims_from_region_envelope(envelope)),
+    )
+
+    projection = resolve_claim_regions_for_family(
+        family="document_observation",
+        missing_claims_reason="claims_required",
+        regions=[region],
+    )
+
+    assert projection is not None
+    assert projection.region_count == 1
+    assert [item["field_name"] for item in projection.claim_projection.observations] == [
+        "loan_number"
+    ]
