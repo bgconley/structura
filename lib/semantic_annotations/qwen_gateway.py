@@ -86,16 +86,19 @@ class QwenSemanticVisionClient:
         self,
         *,
         smart: SemanticVisionClientProtocol,
+        profile_name: str = QWEN_SEMANTIC_PROFILE,
     ) -> None:
-        self._clients = {QWEN_SEMANTIC_PROFILE: smart}
+        self._clients = {profile_name: smart}
 
     @classmethod
     def from_settings(cls, settings: Settings) -> QwenSemanticVisionClient:
+        profile = get_model_profile(settings.qwen_semantic_profile)
         return cls(
             smart=QwenVLClient(
-                profile=get_model_profile(QWEN_SEMANTIC_PROFILE),
+                profile=profile,
                 http_client_base_url=str(settings.model_qwen_semantic_url),
             ),
+            profile_name=profile.name,
         )
 
     def generate(self, request: VisionGenerateRequest) -> VisionGenerateResponse:
@@ -254,7 +257,9 @@ class QwenSemanticAnnotationGateway:
 
 
 def _active_profile() -> str:
-    return QWEN_SEMANTIC_PROFILE
+    # The settings validator already rejects historical profiles in live mode,
+    # so the settings-driven profile is the one the runtime actually serves.
+    return get_settings().qwen_semantic_profile
 
 
 def _active_prompt_version() -> str:
