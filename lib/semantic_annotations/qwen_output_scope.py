@@ -145,9 +145,11 @@ def _pages_in_source_order(
     source_order = {page_id: index for index, page_id in enumerate(source_page_by_id.keys())}
     return sorted(
         pages,
-        key=lambda page: source_order.get(str(page.get("page_id") or ""), len(source_order))
-        if isinstance(page, dict)
-        else len(source_order),
+        key=lambda page: (
+            source_order.get(str(page.get("page_id") or ""), len(source_order))
+            if isinstance(page, dict)
+            else len(source_order)
+        ),
     )
 
 

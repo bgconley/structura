@@ -25,6 +25,9 @@ from lib.extraction.normalization import (
 from lib.extraction.observation_reconciliation import (
     reconcile_document_observation_region_extractions,
 )
+from lib.extraction.receipt_reconciliation import (
+    reconcile_receipt_region_extractions,
+)
 from lib.extraction.reconciliation import (
     RegionExtraction,
     reconcile_invoice_region_extractions,
@@ -33,8 +36,11 @@ from lib.extraction.region_envelope import region_envelope_from_normalization_js
 from lib.extraction.repository import load_extraction_source, persist_extraction_run
 from lib.extraction.validators import validate_extraction_payload
 
-AGGREGATE_RECONCILIATION_SCHEMAS = {"invoice", "medical_eob", "document_observation"}
+AGGREGATE_RECONCILIATION_SCHEMAS = {"invoice", "receipt", "medical_eob", "document_observation"}
 OBSERVATION_AGGREGATE_CANONICAL_TARGETS = {"retail_order", "service_record"}
+
+PENDING_REGION_JOB_STATUSES = ("queued", "leased", "running", "failed")
+TERMINAL_FAILURE_REGION_JOB_STATUSES = ("dead_letter", "cancelled")
 
 
 def maybe_reconcile_semantic_annotation(
@@ -50,9 +56,37 @@ def maybe_reconcile_semantic_annotation(
     )
     if semantic_annotation_id is None or aggregate_schema_name is None:
         return None
+    lock_key = f"phase85_aggregate:{semantic_annotation_id}:{schema_name}"
+    with db_connection() as lock_conn:
+        with lock_conn.cursor() as lock_cur:
+            lock_cur.execute("SELECT pg_advisory_lock(hashtextextended(%s, 0))", (lock_key,))
+        try:
+            return _reconcile_semantic_annotation_locked(
+                document_id=document_id,
+                semantic_annotation_id=semantic_annotation_id,
+                schema_name=schema_name,
+                canonical_target_schema=canonical_target_schema,
+                aggregate_schema_name=aggregate_schema_name,
+            )
+        finally:
+            with lock_conn.cursor() as lock_cur:
+                lock_cur.execute(
+                    "SELECT pg_advisory_unlock(hashtextextended(%s, 0))",
+                    (lock_key,),
+                )
+
+
+def _reconcile_semantic_annotation_locked(
+    *,
+    document_id: UUID,
+    semantic_annotation_id: UUID,
+    schema_name: str,
+    canonical_target_schema: str | None,
+    aggregate_schema_name: str,
+) -> PersistedExtraction | None:
     with db_connection() as conn:
         with conn.cursor() as cur:
-            expected_count = _expected_region_job_count(
+            job_counts = _region_job_status_counts(
                 cur,
                 document_id=document_id,
                 semantic_annotation_id=semantic_annotation_id,
@@ -64,8 +98,27 @@ def maybe_reconcile_semantic_annotation(
                 semantic_annotation_id=semantic_annotation_id,
                 schema_name=schema_name,
             )
-    if expected_count == 0 or len(rows) < expected_count:
+            existing_fingerprint = _current_aggregate_region_fingerprint(
+                cur,
+                document_id=document_id,
+                semantic_annotation_id=semantic_annotation_id,
+                aggregate_schema_name=aggregate_schema_name,
+            )
+            plan_coverage = _plan_skipped_task_summary(
+                cur,
+                document_id=document_id,
+                semantic_annotation_id=semantic_annotation_id,
+            )
+    total_jobs = sum(job_counts.values())
+    pending_jobs = sum(job_counts.get(status, 0) for status in PENDING_REGION_JOB_STATUSES)
+    if total_jobs == 0 or pending_jobs > 0 or not rows:
         return None
+    region_fingerprint = sorted(str(row["id"]) for row in rows)
+    if existing_fingerprint == region_fingerprint:
+        return None
+    missing_region_jobs = sum(
+        job_counts.get(status, 0) for status in TERMINAL_FAILURE_REGION_JOB_STATUSES
+    )
 
     regions: list[RegionExtraction] = []
     for row in rows:
@@ -103,8 +156,21 @@ def maybe_reconcile_semantic_annotation(
         aggregate_json["metadata"]["source_schema_name"] = schema_name
         if canonical_target_schema not in (None, ""):
             aggregate_json["metadata"]["canonical_target_schema"] = canonical_target_schema
+    if isinstance(aggregate_json["metadata"], dict):
+        _record_region_coverage(
+            aggregate_json["metadata"],
+            job_counts=job_counts,
+            missing_region_jobs=missing_region_jobs,
+            plan_coverage=plan_coverage,
+        )
     validation = validate_extraction_payload(aggregate_schema_name, aggregate_json)
     validation = _force_aggregate_review(validation)
+    if missing_region_jobs or plan_coverage.get("skipped_task_count"):
+        validation = _flag_incomplete_region_coverage(
+            validation,
+            missing_region_jobs=missing_region_jobs,
+            skipped_task_count=int(plan_coverage.get("skipped_task_count") or 0),
+        )
     aggregate_json["validation"] = validation.as_json()
     gateway_extraction = GatewayExtraction(
         schema_name=aggregate_schema_name,
@@ -131,7 +197,10 @@ def maybe_reconcile_semantic_annotation(
             "rejected_fields": [],
             "sourceFamilies": _aggregate_source_families(aggregate_json),
         },
-        metadata={"semanticAnnotationId": str(semantic_annotation_id)},
+        metadata={
+            "semanticAnnotationId": str(semantic_annotation_id),
+            "regionExtractionIds": region_fingerprint,
+        },
     )
     field_candidates = field_candidates_from_extraction(
         document_id=document_id,
@@ -183,6 +252,12 @@ def _reconcile_regions(
             created_at=created_at,
             regions=regions,
         )
+    if schema_name == "receipt":
+        return reconcile_receipt_region_extractions(
+            document_id=document_id,
+            created_at=created_at,
+            regions=regions,
+        )
     if schema_name == "document_observation":
         return reconcile_document_observation_region_extractions(
             document_id=document_id,
@@ -203,33 +278,126 @@ def _aggregate_schema_name(
     schema_name: str,
     canonical_target_schema: str | None,
 ) -> str | None:
-    if schema_name in AGGREGATE_RECONCILIATION_SCHEMAS:
-        return schema_name
+    # Observation-only canonical targets (e.g. service records extracted through
+    # receipt-shaped contracts) must aggregate as review-only observations even
+    # though their region schema_name is a first-class aggregate family.
     if canonical_target_schema in OBSERVATION_AGGREGATE_CANONICAL_TARGETS:
         return "document_observation"
+    if schema_name in AGGREGATE_RECONCILIATION_SCHEMAS:
+        return schema_name
     return None
 
 
-def _expected_region_job_count(
+def _region_job_status_counts(
     cur: Any,
     *,
     document_id: UUID,
     semantic_annotation_id: UUID,
     schema_name: str,
-) -> int:
+) -> dict[str, int]:
     cur.execute(
         """
-        SELECT COUNT(*) AS expected_count
+        SELECT status, COUNT(*) AS job_count
         FROM pipeline_jobs
         WHERE document_id = %s
           AND job_type = 'extract'
           AND payload_json ->> 'semantic_annotation_id' = %s
           AND payload_json ->> 'target_schema_name' = %s
+        GROUP BY status
         """,
         (document_id, str(semantic_annotation_id), schema_name),
     )
+    return {str(row["status"]): int(row["job_count"]) for row in cur.fetchall()}
+
+
+def _current_aggregate_region_fingerprint(
+    cur: Any,
+    *,
+    document_id: UUID,
+    semantic_annotation_id: UUID,
+    aggregate_schema_name: str,
+) -> list[str] | None:
+    cur.execute(
+        """
+        SELECT metadata_json -> 'regionExtractionIds' AS region_extraction_ids
+        FROM document_extractions
+        WHERE document_id = %s
+          AND semantic_annotation_id = %s
+          AND schema_name = %s
+          AND extraction_scope = 'aggregate'
+          AND is_current
+        ORDER BY created_at DESC
+        LIMIT 1
+        """,
+        (document_id, semantic_annotation_id, aggregate_schema_name),
+    )
     row = cur.fetchone()
-    return int(row["expected_count"] if row else 0)
+    if not row:
+        return None
+    region_ids = row.get("region_extraction_ids")
+    if not isinstance(region_ids, list):
+        return None
+    return sorted(str(item) for item in region_ids)
+
+
+def _plan_skipped_task_summary(
+    cur: Any,
+    *,
+    document_id: UUID,
+    semantic_annotation_id: UUID,
+) -> dict[str, Any]:
+    cur.execute(
+        """
+        SELECT tasks.status, tasks.skip_reason, COUNT(*) AS task_count
+        FROM semantic_extraction_plan_tasks AS tasks
+        JOIN semantic_extraction_plans AS plans ON plans.id = tasks.plan_id
+        WHERE tasks.document_id = %s
+          AND plans.semantic_annotation_id = %s
+          AND plans.created_at = (
+            SELECT MAX(created_at)
+            FROM semantic_extraction_plans
+            WHERE semantic_annotation_id = %s
+          )
+          AND tasks.status = 'skipped_budget_exceeded'
+        GROUP BY tasks.status, tasks.skip_reason
+        """,
+        (document_id, str(semantic_annotation_id), str(semantic_annotation_id)),
+    )
+    rows = list(cur.fetchall())
+    skipped: list[dict[str, Any]] = [
+        {
+            "status": str(row["status"]),
+            "skip_reason": str(row["skip_reason"]) if row["skip_reason"] is not None else None,
+            "count": int(row["task_count"]),
+        }
+        for row in rows
+    ]
+    return {
+        "skipped_task_count": sum(item["count"] for item in skipped),
+        "skipped_tasks": skipped,
+    }
+
+
+def _record_region_coverage(
+    metadata: dict[str, Any],
+    *,
+    job_counts: dict[str, int],
+    missing_region_jobs: int,
+    plan_coverage: dict[str, Any],
+) -> None:
+    metadata["region_job_coverage"] = {
+        "expected_jobs": sum(job_counts.values()),
+        "succeeded_jobs": job_counts.get("succeeded", 0),
+        "dead_letter_jobs": job_counts.get("dead_letter", 0),
+        "cancelled_jobs": job_counts.get("cancelled", 0),
+        "missing_region_jobs": missing_region_jobs,
+        "plan_skipped_task_count": int(plan_coverage.get("skipped_task_count") or 0),
+        "plan_skipped_tasks": list(plan_coverage.get("skipped_tasks") or []),
+    }
+    if missing_region_jobs or plan_coverage.get("skipped_task_count"):
+        if metadata.get("quality_outcome") == "extracted_cleanly":
+            metadata["quality_outcome"] = "needs_human_review"
+            metadata["quality_outcome_demotion_reason"] = "aggregate_region_coverage_incomplete"
 
 
 def _current_region_extraction_rows(
@@ -258,6 +426,27 @@ def _current_region_extraction_rows(
         (document_id, semantic_annotation_id, schema_name),
     )
     return list(cur.fetchall())
+
+
+def _flag_incomplete_region_coverage(
+    validation: ValidationReport,
+    *,
+    missing_region_jobs: int,
+    skipped_task_count: int,
+) -> ValidationReport:
+    checks = [
+        *validation.checks,
+        {
+            "code": "aggregate_region_coverage_incomplete",
+            "status": "warning",
+            "message": (
+                "Aggregate is missing planned region extractions "
+                f"({missing_region_jobs} terminal-failed region jobs, "
+                f"{skipped_task_count} skipped plan tasks); output may be partial."
+            ),
+        },
+    ]
+    return ValidationReport(needs_review=True, checks=checks)
 
 
 def _force_aggregate_review(validation: ValidationReport) -> ValidationReport:

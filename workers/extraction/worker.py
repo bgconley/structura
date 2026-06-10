@@ -178,7 +178,42 @@ def process_next_extraction_job(
             suppress=False,
             details=_failure_details(exc, failure_policy.policy),
         )
+        _maybe_reconcile_after_failure(
+            worker_name=worker_name,
+            job_type=claimed.state.job_type,
+            document_id=target_document_id,
+            payload=claimed.payload,
+        )
     return True
+
+
+def _maybe_reconcile_after_failure(
+    *,
+    worker_name: str,
+    job_type: str,
+    document_id: UUID | None,
+    payload: dict[str, Any],
+) -> None:
+    """Build the document aggregate even when the final region job fails.
+
+    The reconciliation trigger requires every region job for the annotation to
+    be terminal; if the last one dead-letters, no later success event would
+    ever fire it, permanently suppressing the (partial) aggregate.
+    """
+    if job_type != "extract" or document_id is None:
+        return
+    try:
+        maybe_reconcile_semantic_annotation(
+            document_id=document_id,
+            semantic_annotation_id=_optional_uuid(payload.get("semantic_annotation_id")),
+            schema_name=str(payload.get("target_schema_name") or ""),
+            canonical_target_schema=_optional_str(payload.get("canonical_target_schema")),
+        )
+    except Exception as reconcile_exc:
+        print(
+            f"{worker_name}: post-failure reconciliation skipped: {reconcile_exc}",
+            flush=True,
+        )
 
 
 def _document_id_for_job(document_id: UUID | None, payload: dict[str, object]) -> UUID:

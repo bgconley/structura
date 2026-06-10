@@ -210,3 +210,46 @@ def _generic_form_spec(
         ),
         metadata={},
     )
+
+
+def test_continuation_line_item_regions_are_rescued_from_fanout_budgets() -> None:
+    pages = [uuid4() for _ in range(7)]
+    continuation_specs = [
+        _generic_form_spec(
+            index=index,
+            page_id=page_id,
+            semantic_type="invoice_line_item_table",
+            granite_task="tables_json",
+            target_schema="invoice",
+            canonical_target_schema="invoice",
+            model_output_schema_name="granite_invoice_line_items.v1",
+            compatibility_mode="exact",
+            contract_resolution_reason="exact_contract",
+            metadata={
+                "continuation_group": "service_lines",
+                "must_extract_reason": "line_item_table",
+            },
+        )
+        for index, page_id in enumerate(pages, start=1)
+    ]
+    summary_spec = _generic_form_spec(
+        index=99,
+        page_id=pages[0],
+        semantic_type="payment_summary",
+        granite_task="kvp",
+        target_schema="invoice",
+        canonical_target_schema="invoice",
+        model_output_schema_name="granite_payment_summary.v1",
+        compatibility_mode="exact",
+        contract_resolution_reason="exact_contract",
+    )
+
+    plan = plan_granite_jobs([*continuation_specs, summary_spec], quality_mode="smart")
+
+    selected_region_ids = {spec.region_id for spec in plan.selected}
+    for spec in continuation_specs:
+        assert spec.region_id in selected_region_ids
+    assert not any(
+        warning.startswith("dropped_must_extract_target:invoice_line_item_table")
+        for warning in plan.warnings
+    )

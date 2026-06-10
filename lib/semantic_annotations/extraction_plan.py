@@ -176,6 +176,22 @@ def plan_granite_jobs(
                 break
             if select_if_allowed(spec):
                 selected_ids.add(id(spec))
+    # Coverage rescue: must-extract or continuation line-item regions are never
+    # silently dropped by document/page/bucket budgets. A multi-page line-item
+    # table legitimately costs one Granite job per page; truncating it loses
+    # entire pages of canonical rows without any review signal.
+    for spec in sorted(
+        (
+            spec
+            for spec in deduped
+            if id(spec) not in selected_ids and _line_item_coverage_rescue_eligible(spec)
+        ),
+        key=_sort_key,
+    ):
+        selected.append(spec)
+        selected_ids.add(id(spec))
+        selected_by_page[_page_key(spec)] += 1
+        warnings.append(f"granite_plan_line_item_budget_rescued:{spec.region_id}")
     dropped = (
         *invalid_specs,
         *duplicate_suppressed_specs,
@@ -197,6 +213,13 @@ def plan_granite_jobs(
         max_tasks_per_page=per_page_limit,
     )
     return _attach_plan_metadata(plan)
+
+
+def _line_item_coverage_rescue_eligible(spec: GraniteJobSpec) -> bool:
+    if _bucket(spec) != "line_item":
+        return False
+    metadata = spec.region.metadata
+    return bool(metadata.get("must_extract_reason") or metadata.get("continuation_group"))
 
 
 def dropped_task_status_and_reason(spec: GraniteJobSpec) -> tuple[str, str]:

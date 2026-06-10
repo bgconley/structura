@@ -22,7 +22,7 @@ from lib.semantic_annotations.models import (
 from lib.semantic_annotations.task_routing import LINE_ITEM_TABLE_SEMANTIC_TYPES
 
 DOCLING_STRUCTURAL_REGION_SOURCE = "docling_structural"
-MAX_DOCLING_STRUCTURAL_TARGETS = 4
+MAX_DOCLING_STRUCTURAL_TARGETS = 8
 
 _TABLE_FAMILY_PRIORITY = (
     "service_record",

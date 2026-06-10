@@ -84,7 +84,13 @@ def test_maybe_reconcile_semantic_annotation_persists_document_observation_aggre
     captured: dict[str, Any] = {}
 
     monkeypatch.setattr(repo, "db_connection", lambda: _FakeConnection())
-    monkeypatch.setattr(repo, "_expected_region_job_count", lambda *args, **kwargs: 1)
+    monkeypatch.setattr(repo, "_region_job_status_counts", lambda *args, **kwargs: {"succeeded": 1})
+    monkeypatch.setattr(repo, "_current_aggregate_region_fingerprint", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        repo,
+        "_plan_skipped_task_summary",
+        lambda *args, **kwargs: {"skipped_task_count": 0, "skipped_tasks": []},
+    )
     monkeypatch.setattr(
         repo,
         "_current_region_extraction_rows",
@@ -137,7 +143,13 @@ def test_maybe_reconcile_semantic_annotation_rejects_region_without_claims(
     region_id = uuid4()
 
     monkeypatch.setattr(repo, "db_connection", lambda: _FakeConnection())
-    monkeypatch.setattr(repo, "_expected_region_job_count", lambda *args, **kwargs: 1)
+    monkeypatch.setattr(repo, "_region_job_status_counts", lambda *args, **kwargs: {"succeeded": 1})
+    monkeypatch.setattr(repo, "_current_aggregate_region_fingerprint", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        repo,
+        "_plan_skipped_task_summary",
+        lambda *args, **kwargs: {"skipped_task_count": 0, "skipped_tasks": []},
+    )
     monkeypatch.setattr(
         repo,
         "_current_region_extraction_rows",
@@ -246,7 +258,13 @@ def test_maybe_reconcile_semantic_annotation_persists_medical_eob_claim_aggregat
     captured: dict[str, Any] = {}
 
     monkeypatch.setattr(repo, "db_connection", lambda: _FakeConnection())
-    monkeypatch.setattr(repo, "_expected_region_job_count", lambda *args, **kwargs: 1)
+    monkeypatch.setattr(repo, "_region_job_status_counts", lambda *args, **kwargs: {"succeeded": 1})
+    monkeypatch.setattr(repo, "_current_aggregate_region_fingerprint", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        repo,
+        "_plan_skipped_task_summary",
+        lambda *args, **kwargs: {"skipped_task_count": 0, "skipped_tasks": []},
+    )
     monkeypatch.setattr(
         repo,
         "_current_region_extraction_rows",
@@ -345,7 +363,13 @@ def test_maybe_reconcile_semantic_annotation_persists_service_record_observation
     captured: dict[str, Any] = {}
 
     monkeypatch.setattr(repo, "db_connection", lambda: _FakeConnection())
-    monkeypatch.setattr(repo, "_expected_region_job_count", lambda *args, **kwargs: 1)
+    monkeypatch.setattr(repo, "_region_job_status_counts", lambda *args, **kwargs: {"succeeded": 1})
+    monkeypatch.setattr(repo, "_current_aggregate_region_fingerprint", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        repo,
+        "_plan_skipped_task_summary",
+        lambda *args, **kwargs: {"skipped_task_count": 0, "skipped_tasks": []},
+    )
     monkeypatch.setattr(
         repo,
         "_current_region_extraction_rows",
@@ -448,6 +472,15 @@ class _FakeCursor:
     def __exit__(self, *args: object) -> None:
         return None
 
+    def execute(self, *args: object, **kwargs: object) -> None:
+        return None
+
+    def fetchone(self) -> None:
+        return None
+
+    def fetchall(self) -> list[object]:
+        return []
+
 
 def _source(document_id):
     return ExtractionSourceDocument(
@@ -478,4 +511,260 @@ def _capture_persist(captured, extraction, **kwargs):
         candidate_count=len(kwargs["observation_candidates"]),
         canonical_count=0,
         review_task_count=len(kwargs["observation_candidates"]),
+    )
+
+
+def _receipt_envelope_for_reconciliation(
+    document_id, semantic_annotation_id, region_id
+) -> RegionExtractionEnvelope:
+    evidence = EvidenceRef(
+        document_id=str(document_id),
+        semantic_annotation_id=str(semantic_annotation_id),
+        semantic_region_id=str(region_id),
+        page_number=1,
+        table_id="receipt-table",
+        row_index=1,
+        source_engine="granite_vision_3b",
+    )
+    return RegionExtractionEnvelope(
+        document_id=str(document_id),
+        semantic_annotation_id=str(semantic_annotation_id),
+        semantic_region_id=str(region_id),
+        resolved_document_type="receipt",
+        semantic_type="receipt_line_item_table",
+        target_schema="receipt",
+        model_output_schema_name="granite_receipt_line_items.v1",
+        facts=[
+            RegionFact(
+                name="receipt.merchant.display_name",
+                value="Corner Cafe",
+                value_type="string",
+                evidence=[evidence],
+            ),
+            RegionFact(
+                name="receipt.transaction.total",
+                value={"amount": 5.75},
+                value_type="money",
+                evidence=[evidence],
+            ),
+        ],
+        line_items=[
+            RegionLineItem(
+                description="COFFEE",
+                quantity=1.0,
+                net_amount=5.75,
+                evidence=[evidence],
+                table_id="receipt-table",
+                row_index=1,
+                page_number=1,
+            )
+        ],
+    )
+
+
+def _patch_reconciliation_helpers(
+    monkeypatch,
+    *,
+    envelope: RegionExtractionEnvelope,
+    extraction_id,
+    semantic_type: str,
+    job_counts: dict[str, int],
+    existing_fingerprint: list[str] | None = None,
+    skipped_task_count: int = 0,
+) -> dict[str, Any]:
+    captured: dict[str, Any] = {}
+    monkeypatch.setattr(repo, "db_connection", lambda: _FakeConnection())
+    monkeypatch.setattr(repo, "_region_job_status_counts", lambda *args, **kwargs: dict(job_counts))
+    monkeypatch.setattr(
+        repo,
+        "_current_aggregate_region_fingerprint",
+        lambda *args, **kwargs: existing_fingerprint,
+    )
+    monkeypatch.setattr(
+        repo,
+        "_plan_skipped_task_summary",
+        lambda *args, **kwargs: {
+            "skipped_task_count": skipped_task_count,
+            "skipped_tasks": (
+                [
+                    {
+                        "status": "skipped_budget_exceeded",
+                        "skip_reason": "planner_budget_or_fanout_policy",
+                        "count": skipped_task_count,
+                    }
+                ]
+                if skipped_task_count
+                else []
+            ),
+        },
+    )
+    monkeypatch.setattr(
+        repo,
+        "_current_region_extraction_rows",
+        lambda *args, **kwargs: [
+            {
+                "id": extraction_id,
+                "source_semantic_region_id": envelope.semantic_region_id,
+                "semantic_type": semantic_type,
+                "normalization_json": {
+                    "regionEnvelope": envelope.model_dump(mode="json", exclude_none=True)
+                },
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        repo,
+        "load_extraction_source",
+        lambda document_id: _source(document_id),
+    )
+    monkeypatch.setattr(
+        repo,
+        "persist_extraction_run",
+        lambda *args, **kwargs: _capture_persist(captured, *args, **kwargs),
+    )
+    return captured
+
+
+def test_maybe_reconcile_persists_receipt_claim_aggregate(monkeypatch) -> None:
+    document_id = uuid4()
+    semantic_annotation_id = uuid4()
+    region_id = uuid4()
+    envelope = _receipt_envelope_for_reconciliation(document_id, semantic_annotation_id, region_id)
+    captured = _patch_reconciliation_helpers(
+        monkeypatch,
+        envelope=envelope,
+        extraction_id=uuid4(),
+        semantic_type="receipt_line_item_table",
+        job_counts={"succeeded": 1},
+    )
+
+    persisted = repo.maybe_reconcile_semantic_annotation(
+        document_id=document_id,
+        semantic_annotation_id=semantic_annotation_id,
+        schema_name="receipt",
+    )
+
+    assert persisted is not None
+    extraction = cast(GatewayExtraction, captured["extraction"])
+    aggregate = extraction.normalized_json
+    assert extraction.schema_name == "receipt"
+    assert aggregate["schema_name"] == "receipt"
+    assert aggregate["merchant"]["display_name"] == "Corner Cafe"
+    assert aggregate["transaction"]["total"] == {"amount": 5.75}
+    assert [item["description"] for item in aggregate["line_items"]] == ["COFFEE"]
+    assert aggregate["metadata"]["quality_outcome"] in {
+        "extracted_cleanly",
+        "needs_human_review",
+    }
+
+
+def test_maybe_reconcile_builds_partial_aggregate_after_dead_letter(monkeypatch) -> None:
+    document_id = uuid4()
+    semantic_annotation_id = uuid4()
+    region_id = uuid4()
+    envelope = _receipt_envelope_for_reconciliation(document_id, semantic_annotation_id, region_id)
+    captured = _patch_reconciliation_helpers(
+        monkeypatch,
+        envelope=envelope,
+        extraction_id=uuid4(),
+        semantic_type="receipt_line_item_table",
+        job_counts={"succeeded": 1, "dead_letter": 1},
+    )
+
+    persisted = repo.maybe_reconcile_semantic_annotation(
+        document_id=document_id,
+        semantic_annotation_id=semantic_annotation_id,
+        schema_name="receipt",
+    )
+
+    assert persisted is not None
+    extraction = cast(GatewayExtraction, captured["extraction"])
+    aggregate = extraction.normalized_json
+    coverage = aggregate["metadata"]["region_job_coverage"]
+    assert coverage["expected_jobs"] == 2
+    assert coverage["dead_letter_jobs"] == 1
+    assert coverage["missing_region_jobs"] == 1
+    assert aggregate["metadata"]["quality_outcome"] == "needs_human_review"
+    validation = cast(ValidationReport, captured["validation"])
+    assert validation.needs_review is True
+    assert any(
+        check.get("code") == "aggregate_region_coverage_incomplete" for check in validation.checks
+    )
+
+
+def test_maybe_reconcile_waits_for_pending_retry_jobs(monkeypatch) -> None:
+    document_id = uuid4()
+    semantic_annotation_id = uuid4()
+    region_id = uuid4()
+    envelope = _receipt_envelope_for_reconciliation(document_id, semantic_annotation_id, region_id)
+    _patch_reconciliation_helpers(
+        monkeypatch,
+        envelope=envelope,
+        extraction_id=uuid4(),
+        semantic_type="receipt_line_item_table",
+        job_counts={"succeeded": 1, "failed": 1},
+    )
+
+    assert (
+        repo.maybe_reconcile_semantic_annotation(
+            document_id=document_id,
+            semantic_annotation_id=semantic_annotation_id,
+            schema_name="receipt",
+        )
+        is None
+    )
+
+
+def test_maybe_reconcile_skips_when_aggregate_already_current(monkeypatch) -> None:
+    document_id = uuid4()
+    semantic_annotation_id = uuid4()
+    region_id = uuid4()
+    extraction_id = uuid4()
+    envelope = _receipt_envelope_for_reconciliation(document_id, semantic_annotation_id, region_id)
+    _patch_reconciliation_helpers(
+        monkeypatch,
+        envelope=envelope,
+        extraction_id=extraction_id,
+        semantic_type="receipt_line_item_table",
+        job_counts={"succeeded": 1},
+        existing_fingerprint=[str(extraction_id)],
+    )
+
+    assert (
+        repo.maybe_reconcile_semantic_annotation(
+            document_id=document_id,
+            semantic_annotation_id=semantic_annotation_id,
+            schema_name="receipt",
+        )
+        is None
+    )
+
+
+def test_maybe_reconcile_marks_plan_budget_skips_as_incomplete_coverage(monkeypatch) -> None:
+    document_id = uuid4()
+    semantic_annotation_id = uuid4()
+    region_id = uuid4()
+    envelope = _receipt_envelope_for_reconciliation(document_id, semantic_annotation_id, region_id)
+    captured = _patch_reconciliation_helpers(
+        monkeypatch,
+        envelope=envelope,
+        extraction_id=uuid4(),
+        semantic_type="receipt_line_item_table",
+        job_counts={"succeeded": 1},
+        skipped_task_count=2,
+    )
+
+    persisted = repo.maybe_reconcile_semantic_annotation(
+        document_id=document_id,
+        semantic_annotation_id=semantic_annotation_id,
+        schema_name="receipt",
+    )
+
+    assert persisted is not None
+    extraction = cast(GatewayExtraction, captured["extraction"])
+    coverage = extraction.normalized_json["metadata"]["region_job_coverage"]
+    assert coverage["plan_skipped_task_count"] == 2
+    validation = cast(ValidationReport, captured["validation"])
+    assert any(
+        check.get("code") == "aggregate_region_coverage_incomplete" for check in validation.checks
     )
