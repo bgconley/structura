@@ -634,6 +634,17 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   aggregates versus 6, including the formerly truncating receipt region and a
   truthful observation aggregate beside the medical EOB lane.
 
+- 2026-06-10: The persistent truncation dead letters were root-caused with new
+  content-free truncation diagnostics: degenerate whitespace loops inside
+  guided decoding (45k-68k whitespace characters around three JSON tokens),
+  which content bounds cannot prevent because JSON grammars permit unlimited
+  inter-token whitespace. Both vLLM services now run xgrammar with
+  disable_any_whitespace; model-output contracts are additionally bounded to
+  fit the 8192-token retry ceiling at dense (~2.5 chars/token) tokenization
+  (generic KVP 16 fields / 240-char values, line-item arrays 24-32 rows, long
+  text 240 chars). The two previously dead-lettering regions succeed on first
+  attempt under the new grammar.
+
 ## Deferred Work
 
 - Plan-stage stochasticity (Qwen routing variance) is bounded by greedy/low-temperature

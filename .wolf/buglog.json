@@ -1956,6 +1956,32 @@
         "embeddings",
         "configuration"
       ]
+    },
+    {
+      "date": "2026-06-10",
+      "error_message": "Granite region extractions truncated at the 8192-token retry ceiling even after grammar bounds on all contract fields.",
+      "root_cause": "Degenerate whitespace loops inside guided decoding: truncation diagnostics showed 45k-68k whitespace characters around three JSON tokens. JSON grammars permit unlimited inter-token whitespace, so maxLength/maxItems cannot bound it. Secondary: worst-case bounded output exceeded the ceiling at dense ~2.5 chars/token tokenization (24 maxed KVP fields ~ 8.4k tokens).",
+      "fix": "Both vLLM services run xgrammar with disable_any_whitespace (STRUCTURA_{GRANITE,QWEN}_STRUCTURED_OUTPUTS_CONFIG overridable); contracts tightened (generic KVP 16 fields/240-char values, line-item arrays 24-32, long text 240); vision truncation errors now carry content-free diagnostics (char/whitespace/object counts).",
+      "tags": [
+        "phase-8.5",
+        "granite",
+        "vllm",
+        "structured-output",
+        "whitespace",
+        "truncation"
+      ]
+    },
+    {
+      "date": "2026-06-10",
+      "error_message": "Both vLLM model services failed startup after adding disable_any_whitespace.",
+      "root_cause": "vLLM validates disable_any_whitespace only when the structured-outputs backend is explicitly xgrammar or guidance; the default auto backend rejects the config at argparse time.",
+      "fix": "Pin backend xgrammar in the structured-outputs config JSON.",
+      "tags": [
+        "phase-8.5",
+        "vllm",
+        "configuration",
+        "model-services"
+      ]
     }
   ]
 }
