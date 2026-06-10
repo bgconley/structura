@@ -53,15 +53,3 @@ export function coerceCorrectionValue(
   return {value: trimmed, metadata};
 }
 
-export function schemaFromReviewTask(task: ReviewTask): string {
-  if (task.fieldPath?.startsWith("invoice.")) {
-    return "invoice";
-  }
-  if (task.fieldPath?.startsWith("medical_eob.")) {
-    return "medical_eob";
-  }
-  if (task.fieldPath?.startsWith("receipt.")) {
-    return "receipt";
-  }
-  return "receipt";
-}

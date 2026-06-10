@@ -133,6 +133,22 @@ def test_phase4_invoice_extraction_persists_candidates_canonical_and_assets(
     )
     assert rerun.status_code == 200
     rerun_job_id = uuid.UUID(rerun.json()["jobId"])
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT job_type::text AS job_type, queue_name, payload_json
+                FROM pipeline_jobs
+                WHERE id = %s
+                """,
+                (rerun_job_id,),
+            )
+            rerun_job = cur.fetchone()
+    # Review reruns must re-enter the pipeline at Smart Parse planning;
+    # broad document-level Granite extract jobs fail closed in live routing.
+    assert rerun_job["job_type"] == "semantic_annotate"
+    assert rerun_job["queue_name"] == "semantic-annotations"
+    assert rerun_job["payload_json"]["requested_by"] == "reviewer"
     _drain_extraction_jobs(document_id, worker_name="phase4-rerun-extraction-test")
     _wait_for_job_status(rerun_job_id, "succeeded")
     with db_connection() as conn:

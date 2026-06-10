@@ -10,7 +10,6 @@ import {
   coerceCorrectionValue,
   evidenceTargetFromCandidate,
   referenceCandidate,
-  schemaFromReviewTask,
 } from "../reviewActions";
 import type {CanonicalField, EvidenceTarget, FieldCandidate, ReviewTask} from "../types";
 import {ReviewDecisionPanel} from "./ReviewDecisionPanel";
@@ -181,11 +180,10 @@ export function ReviewQueue({
         documentId: activeTask.documentId,
         actionType: "rerun_extraction",
         actorType: "human",
-        metadata: {targetSchemaName: schemaFromReviewTask(activeTask)},
         comment: "Manual re-run requested from review queue.",
         createdAt: new Date().toISOString(),
       },
-      "Extraction re-run queued.",
+      "Smart Parse re-run queued.",
     );
   }
 
