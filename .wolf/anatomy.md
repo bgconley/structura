@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-10T00:37:05.127Z
-> Files: 403 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-10T01:07:51.239Z
+> Files: 442 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../.claude/projects/-Users-brennanconley-vibecode-structura/memory/
 
@@ -36,6 +36,96 @@
 ## .claude/rules/
 
 - `openwolf.md` (~313 tok)
+
+## .claude/worktrees/agent-a74ddaaebdf9d2a08/.wolf/
+
+- `anatomy.md` — anatomy.md (~13550 tok)
+
+## .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/api/structura_api/
+
+- `routes_review.py` — API: 7 endpoints (~1681 tok)
+
+## .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/
+
+- `App.tsx` — App (~4197 tok)
+- `evidence.ts` — Deterministic evidence locator selection. (~822 tok)
+- `reviewActions.ts` — Exports referenceCandidate, evidenceTargetFromCandidate, coerceCorrectionValue (~510 tok)
+- `reviewApi.ts` — Exports listReviewTasks, listFieldCandidates, listObservationCandidates, listLineItemCandidates + 2 (~686 tok)
+- `types.ts` — Exports ViewMode, SessionInfo, DocumentSummary, DocumentAsset + 38 more (~4315 tok)
+
+## .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/
+
+- `DocumentInspector.tsx` — DocumentInspector (~1226 tok)
+- `Inbox.tsx` — Inbox (~818 tok)
+- `InboxMetrics.tsx` — filterLabels (~543 tok)
+- `PipelineSummary.tsx` — PipelineSummary (~391 tok)
+- `ReviewDecisionPanel.tsx` — DOCUMENT_FAMILIES — renders form (~1662 tok)
+- `ReviewQueue.tsx` — ReviewQueue (~5241 tok)
+- `Status.tsx` — StatusChip (~287 tok)
+- `Viewer.tsx` — Viewer (~4764 tok)
+
+## .claude/worktrees/agent-a74ddaaebdf9d2a08/contracts/api/
+
+- `openapi.yaml` (~26705 tok)
+
+## .claude/worktrees/agent-a74ddaaebdf9d2a08/database/
+
+- `087_phase8_5_quality_outcome.sql` — Phase 8.5 / ADR 0005 D8: quality outcomes are first-class persisted decisions. (~404 tok)
+
+## .claude/worktrees/agent-a74ddaaebdf9d2a08/docs/adr/
+
+- `0005-deterministic-extraction-and-reconciliation.md` — ADR 0005: Deterministic Extraction Shapes and Reconciliation (~10056 tok)
+
+## .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/contracts/
+
+- `models.py` — Pydantic: ContractModel (~8172 tok)
+
+## .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/db/
+
+- `migrations.py` — from: sql_batches, baseline_migration_plan, apply_baseline_migrations (~1591 tok)
+
+## .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/documents/
+
+- `read_model.py` — get_document_detail (~4626 tok)
+
+## .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/extraction/
+
+- `extraction_repository.py` — persist_classification, persist_extraction_run (~7684 tok)
+- `service.py` — ExtractionServiceError: create_job, classify_document, extract_document (~4064 tok)
+
+## .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/
+
+- `action_repository.py` — get_field_candidate, upsert_human_canonical_field, confirm_candidate, reject_field (~4589 tok)
+- `candidate_decision_repository.py` — canonical: decide_observation, decide_line_item (~1410 tok)
+- `mappers.py` — review_task_from_row, field_candidate_from_row, observation_candidate_from_row, line_item_candidate_ (~2728 tok)
+- `read_repository.py` — list_review_tasks, list_field_candidates, list_observation_candidates, list_line_item_candidates (~1359 tok)
+- `repository.py` (~273 tok)
+- `service.py` — ReviewServiceError: apply_review_action, write_canonical_field (~3273 tok)
+
+## .claude/worktrees/agent-a74ddaaebdf9d2a08/tests/integration/
+
+- `test_phase4_extraction_review.py` — TextDoclingConverter: convert, test_phase4_invoice_extraction_persists_candidates_canonical_and_asse (~5630 tok)
+
+## .claude/worktrees/agent-a74ddaaebdf9d2a08/tests/unit/
+
+- `test_contract_registry.py` — test_contract_registry_loads_openapi_schemas_and_events, test_json_schemas_are_valid_draft_2020_12, (~5637 tok)
+- `test_migrations.py` — test_baseline_migration_plan_excludes_query_examples, test_baseline_migration_scripts_are_present_an (~2969 tok)
+
+## .claude/worktrees/agent-a74ddaaebdf9d2a08/tests/unit/documents/
+
+- `test_read_model_payloads.py` — test_aggregate_extraction_payload_exposes_quality_outcome_and_decisions, test_extraction_payload_kee (~1135 tok)
+
+## .claude/worktrees/agent-a74ddaaebdf9d2a08/tests/unit/extraction/
+
+- `test_extraction_persistence_policy.py` — test_schema_validation_review_does_not_mark_persisted_extraction_failed, test_model_backed_semantic_ (~4355 tok)
+- `test_semantic_region_routing.py` — from: test_extraction_service_loads_semantic_region_task_for_gateway, test_extraction_service_realiz (~9596 tok)
+
+## .claude/worktrees/agent-a74ddaaebdf9d2a08/tests/unit/review/
+
+- `__init__.py` (~0 tok)
+- `test_candidate_decisions.py` — test_observation_decisions_route_to_decision_repository, fake_decide_observation, test_line_item_dec (~1048 tok)
+- `test_review_mappers.py` — test_review_task_mapper_exposes_candidate_reference_metadata, test_observation_candidate_mapper_proj (~1369 tok)
+- `test_review_rerun.py` — _FakeConnection: cursor, commit, test_rerun_extraction_enqueues_smart_parse_semantic_annotation, fak (~1052 tok)
 
 ## Phase 0 implementation scaffold
 

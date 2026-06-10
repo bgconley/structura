@@ -241,3 +241,71 @@
 | 20:36 | Created ../../.claude/projects/-Users-brennanconley-vibecode-structura/memory/structura-gpu-node-facts.md | — | ~318 |
 | 20:37 | Created ../../.claude/projects/-Users-brennanconley-vibecode-structura/memory/MEMORY.md | — | ~68 |
 | 20:55 | Production-readiness push: core extraction fixes | lib/extraction/*, lib/semantic_annotations/extraction_plan.py, workers/extraction/worker.py, database/088, tests | Fixed line-item group collapse, region-id identity dedupe, money/date parsing, invariant tolerance, fabricated invoice totals, stuck aggregate trigger (dead-letter/cancel), receipt aggregate lane, fanout coverage rescue, aggregate echo/signal gates; merged runtime-ops agent branch (failure taxonomy, profile drift, TEI client, health persistence, migration 086) | ~25000 |
+| 20:37 | Session end: 128 writes across 60 files (repro_group_collapse.py, claims.py, model_output_value_parsing.py, candidate_value_parsing.py, claim_resolver.py) | 188 reads | ~47906 tok |
+| 20:39 | Created .claude/worktrees/agent-a74ddaaebdf9d2a08/database/087_phase8_5_quality_outcome.sql | — | ~404 |
+| 20:39 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/db/migrations.py | 2→3 lines | ~26 |
+| 20:39 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/extraction/extraction_repository.py | 12→12 lines | ~200 |
+| 20:39 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/extraction/extraction_repository.py | 6→7 lines | ~79 |
+| 20:39 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/extraction/extraction_repository.py | modified _quality_outcome_for_extraction() | ~238 |
+| 20:39 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/tests/unit/test_migrations.py | "085_phase8_5_plan_task_vi" → "087_phase8_5_quality_outc" | ~20 |
+| 20:40 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/tests/unit/extraction/test_extraction_persistence_policy.py | 6→7 lines | ~68 |
+| 20:40 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/tests/unit/extraction/test_extraction_persistence_policy.py | modified test_quality_outcome_is_persisted_from_aggregate_payload_metadata() | ~427 |
+| 20:41 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/documents/read_model.py | 18→20 lines | ~221 |
+| 20:41 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/documents/read_model.py | modified _extraction_payload() | ~708 |
+| 20:41 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/contracts/api/openapi.yaml | expanded (+57 lines) | ~687 |
+| 20:42 | Created .claude/worktrees/agent-a74ddaaebdf9d2a08/tests/unit/documents/test_read_model_payloads.py | — | ~1135 |
+| 20:42 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/documents/read_model.py | modified isinstance() | ~170 |
+| 20:43 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/types.ts | expanded (+91 lines) | ~822 |
+| 20:44 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/service.py | 13→13 lines | ~158 |
+| 20:44 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/service.py | modified _enqueue_rerun() | ~458 |
+| 20:44 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/service.py | modified _target_schema_from_action() | ~102 |
+| 20:44 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/service.py | inline fix | ~6 |
+| 20:44 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/action_repository.py | modified record_rerun_request() | ~261 |
+| 20:45 | Created .claude/worktrees/agent-a74ddaaebdf9d2a08/tests/unit/review/__init__.py | — | ~0 |
+| 20:45 | Created .claude/worktrees/agent-a74ddaaebdf9d2a08/tests/unit/review/test_review_rerun.py | — | ~1052 |
+| 20:47 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/tests/integration/test_phase4_extraction_review.py | expanded (+16 lines) | ~263 |
+| 20:47 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/reviewActions.ts | — | ~0 |
+| 20:47 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/ReviewQueue.tsx | 6→5 lines | ~33 |
+| 20:47 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/ReviewQueue.tsx | 9→8 lines | ~78 |
+| 20:48 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/extraction/service.py | expanded (+10 lines) | ~217 |
+| 20:48 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/extraction/service.py | modified _extraction_intent_metadata() | ~212 |
+| 20:49 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/tests/unit/extraction/test_semantic_region_routing.py | modified test_extraction_service_persists_request_intent_in_extraction_metadata() | ~736 |
+| 20:49 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/contracts/models.py | 10→14 lines | ~112 |
+| 20:50 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/contracts/models.py | modified ReviewTask() | ~596 |
+| 20:53 | Created .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/mappers.py | — | ~2728 |
+| 20:54 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/tests/unit/test_contract_registry.py | 10→14 lines | ~104 |
+| 20:54 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/read_repository.py | expanded (+8 lines) | ~162 |
+| 20:54 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/read_repository.py | modified list_observation_candidates() | ~528 |
+| 20:55 | Created .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/candidate_decision_repository.py | — | ~1410 |
+| 20:55 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/service.py | expanded (+20 lines) | ~405 |
+| 20:55 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/service.py | 20→20 lines | ~305 |
+| 20:55 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/service.py | modified _metadata_uuid() | ~115 |
+| 20:56 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/lib/review/repository.py | expanded (+10 lines) | ~263 |
+| 20:56 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/api/structura_api/routes_review.py | 6→8 lines | ~59 |
+| 20:56 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/api/structura_api/routes_review.py | modified get_observation_candidates() | ~473 |
+| 20:56 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/contracts/api/openapi.yaml | expanded (+76 lines) | ~616 |
+| 20:57 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/contracts/api/openapi.yaml | expanded (+113 lines) | ~819 |
+| 20:57 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/contracts/api/openapi.yaml | 9→13 lines | ~108 |
+| 20:57 | Created .claude/worktrees/agent-a74ddaaebdf9d2a08/tests/unit/review/test_review_mappers.py | — | ~1369 |
+| 20:58 | Created .claude/worktrees/agent-a74ddaaebdf9d2a08/tests/unit/review/test_candidate_decisions.py | — | ~1048 |
+| 20:58 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/types.ts | expanded (+52 lines) | ~516 |
+| 20:58 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/reviewApi.ts | 7→9 lines | ~56 |
+| 20:58 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/reviewApi.ts | added 2 condition(s) | ~275 |
+| 20:59 | Created .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/evidence.ts | — | ~822 |
+| 20:59 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/reviewActions.ts | modified referenceCandidate() | ~212 |
+| 21:00 | Created .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/ReviewQueue.tsx | — | ~5241 |
+| 21:00 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/ReviewDecisionPanel.tsx | modified return() | ~336 |
+| 21:00 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/ReviewDecisionPanel.tsx | 5→7 lines | ~49 |
+| 21:01 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/ReviewDecisionPanel.tsx | 5→7 lines | ~46 |
+| 21:01 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/ReviewDecisionPanel.tsx | 4→5 lines | ~34 |
+| 21:02 | Created .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/Viewer.tsx | — | ~4764 |
+| 21:03 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/Status.tsx | modified FactRow() | ~90 |
+| 21:03 | Created .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/PipelineSummary.tsx | — | ~391 |
+| 21:03 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/Inbox.tsx | 4→5 lines | ~50 |
+| 21:03 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/InboxMetrics.tsx | 13→12 lines | ~214 |
+| 21:04 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/DocumentInspector.tsx | 11→12 lines | ~157 |
+| 21:04 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/DocumentInspector.tsx | String() → formatFieldValue() | ~135 |
+| 21:04 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/components/DocumentInspector.tsx | added optional chaining | ~251 |
+| 21:04 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/apps/web/src/App.tsx | 8→9 lines | ~118 |
+| 21:07 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/docs/adr/0005-deterministic-extraction-and-reconciliation.md | expanded (+32 lines) | ~571 |
+| 21:07 | Edited .claude/worktrees/agent-a74ddaaebdf9d2a08/.wolf/anatomy.md | expanded (+8 lines) | ~279 |
