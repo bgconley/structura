@@ -49,7 +49,16 @@ def maybe_reconcile_semantic_annotation(
     semantic_annotation_id: UUID | None,
     schema_name: str,
     canonical_target_schema: str | None = None,
+    settled_job_id: UUID | None = None,
 ) -> PersistedExtraction | None:
+    """Build the document aggregate once every region job is terminal.
+
+    ``settled_job_id`` identifies the worker's own in-flight job: the worker
+    triggers reconciliation after persisting its region row but before
+    ``complete_job``, so that job still reads as ``running`` and must be
+    treated as settled or the final region job would always block its own
+    aggregate.
+    """
     aggregate_schema_name = _aggregate_schema_name(
         schema_name=schema_name,
         canonical_target_schema=canonical_target_schema,
@@ -67,6 +76,7 @@ def maybe_reconcile_semantic_annotation(
                 schema_name=schema_name,
                 canonical_target_schema=canonical_target_schema,
                 aggregate_schema_name=aggregate_schema_name,
+                settled_job_id=settled_job_id,
             )
         finally:
             with lock_conn.cursor() as lock_cur:
@@ -83,6 +93,7 @@ def _reconcile_semantic_annotation_locked(
     schema_name: str,
     canonical_target_schema: str | None,
     aggregate_schema_name: str,
+    settled_job_id: UUID | None,
 ) -> PersistedExtraction | None:
     with db_connection() as conn:
         with conn.cursor() as cur:
@@ -91,6 +102,7 @@ def _reconcile_semantic_annotation_locked(
                 document_id=document_id,
                 semantic_annotation_id=semantic_annotation_id,
                 schema_name=schema_name,
+                settled_job_id=settled_job_id,
             )
             rows = _current_region_extraction_rows(
                 cur,
@@ -294,18 +306,21 @@ def _region_job_status_counts(
     document_id: UUID,
     semantic_annotation_id: UUID,
     schema_name: str,
+    settled_job_id: UUID | None = None,
 ) -> dict[str, int]:
     cur.execute(
         """
-        SELECT status, COUNT(*) AS job_count
+        SELECT
+          CASE WHEN id = %s THEN 'succeeded' ELSE status END AS status,
+          COUNT(*) AS job_count
         FROM pipeline_jobs
         WHERE document_id = %s
           AND job_type = 'extract'
           AND payload_json ->> 'semantic_annotation_id' = %s
           AND payload_json ->> 'target_schema_name' = %s
-        GROUP BY status
+        GROUP BY 1
         """,
-        (document_id, str(semantic_annotation_id), schema_name),
+        (settled_job_id, document_id, str(semantic_annotation_id), schema_name),
     )
     return {str(row["status"]): int(row["job_count"]) for row in cur.fetchall()}
 

@@ -35,6 +35,7 @@ services:
       STRUCTURA_ENV: ${STRUCTURA_ENV:-production}
       STRUCTURA_DATABASE_URL: postgresql://${POSTGRES_USER:-structura}:${POSTGRES_PASSWORD:-structura}@postgres:5432/${POSTGRES_DB:-structura}
       STRUCTURA_RUNTIME_ROOT: /srv/structura
+      STRUCTURA_EMBEDDING_TEXT_ENABLED: ${STRUCTURA_EMBEDDING_TEXT_ENABLED:-true}
       STRUCTURA_WATCHED_FOLDER_ROOT: /srv/structura/imports
       STRUCTURA_CONTRACTS_DIR: /app/contracts
       STRUCTURA_DATABASE_DIR: /app/database
@@ -93,6 +94,7 @@ services:
     environment:
       STRUCTURA_DATABASE_URL: postgresql://${POSTGRES_USER:-structura}:${POSTGRES_PASSWORD:-structura}@postgres:5432/${POSTGRES_DB:-structura}
       STRUCTURA_RUNTIME_ROOT: /srv/structura
+      STRUCTURA_EMBEDDING_TEXT_ENABLED: ${STRUCTURA_EMBEDDING_TEXT_ENABLED:-true}
       STRUCTURA_WATCHED_FOLDER_ROOT: /srv/structura/imports
       HF_HOME: /srv/structura/cache/huggingface
       XDG_CACHE_HOME: /srv/structura/cache/xdg
@@ -141,6 +143,7 @@ services:
     environment:
       STRUCTURA_DATABASE_URL: postgresql://${POSTGRES_USER:-structura}:${POSTGRES_PASSWORD:-structura}@postgres:5432/${POSTGRES_DB:-structura}
       STRUCTURA_RUNTIME_ROOT: /srv/structura
+      STRUCTURA_EMBEDDING_TEXT_ENABLED: ${STRUCTURA_EMBEDDING_TEXT_ENABLED:-true}
     volumes:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/staging:/srv/structura/staging
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/canonical:/srv/structura/objects/canonical:ro
@@ -165,6 +168,7 @@ services:
     environment:
       STRUCTURA_DATABASE_URL: postgresql://${POSTGRES_USER:-structura}:${POSTGRES_PASSWORD:-structura}@postgres:5432/${POSTGRES_DB:-structura}
       STRUCTURA_RUNTIME_ROOT: /srv/structura
+      STRUCTURA_EMBEDDING_TEXT_ENABLED: ${STRUCTURA_EMBEDDING_TEXT_ENABLED:-true}
       STRUCTURA_MODEL_MODE: ${STRUCTURA_MODEL_MODE:-fixture}
       STRUCTURA_MODEL_QWEN_SEMANTIC_URL: http://model-qwen-semantic:8104
       STRUCTURA_MODEL_GRANITE_URL: http://model-granite:8101
@@ -215,6 +219,7 @@ services:
     environment:
       STRUCTURA_DATABASE_URL: postgresql://${POSTGRES_USER:-structura}:${POSTGRES_PASSWORD:-structura}@postgres:5432/${POSTGRES_DB:-structura}
       STRUCTURA_RUNTIME_ROOT: /srv/structura
+      STRUCTURA_EMBEDDING_TEXT_ENABLED: ${STRUCTURA_EMBEDDING_TEXT_ENABLED:-true}
       STRUCTURA_MODEL_MODE: ${STRUCTURA_MODEL_MODE:-fixture}
       STRUCTURA_MODEL_TEXT_EMBED_URL: http://model-embed:8102
       STRUCTURA_MODEL_VISUAL_EMBED_URL: http://model-vl-embed:8103
@@ -266,6 +271,7 @@ services:
     environment:
       STRUCTURA_DATABASE_URL: postgresql://${POSTGRES_USER:-structura}:${POSTGRES_PASSWORD:-structura}@postgres:5432/${POSTGRES_DB:-structura}
       STRUCTURA_RUNTIME_ROOT: /srv/structura
+      STRUCTURA_EMBEDDING_TEXT_ENABLED: ${STRUCTURA_EMBEDDING_TEXT_ENABLED:-true}
     volumes:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/staging:/srv/structura/staging
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/canonical:/srv/structura/objects/canonical
@@ -290,6 +296,7 @@ services:
     environment:
       STRUCTURA_DATABASE_URL: postgresql://${POSTGRES_USER:-structura}:${POSTGRES_PASSWORD:-structura}@postgres:5432/${POSTGRES_DB:-structura}
       STRUCTURA_RUNTIME_ROOT: /srv/structura
+      STRUCTURA_EMBEDDING_TEXT_ENABLED: ${STRUCTURA_EMBEDDING_TEXT_ENABLED:-true}
     volumes:
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/derived:/srv/structura/objects/derived
       - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/logs/workers:/srv/structura/logs/workers

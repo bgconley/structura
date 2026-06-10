@@ -135,6 +135,7 @@ def process_next_extraction_job(
                 canonical_target_schema=_optional_str(
                     claimed.payload.get("canonical_target_schema")
                 ),
+                settled_job_id=claimed.state.job_id,
             )
             completed = job_service.complete_job(
                 job_id=claimed.state.job_id,

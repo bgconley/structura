@@ -768,3 +768,63 @@ def test_maybe_reconcile_marks_plan_budget_skips_as_incomplete_coverage(monkeypa
     assert any(
         check.get("code") == "aggregate_region_coverage_incomplete" for check in validation.checks
     )
+
+
+def test_maybe_reconcile_treats_in_flight_settled_job_as_succeeded(monkeypatch) -> None:
+    document_id = uuid4()
+    semantic_annotation_id = uuid4()
+    region_id = uuid4()
+    settled_job_id = uuid4()
+    envelope = _receipt_envelope_for_reconciliation(document_id, semantic_annotation_id, region_id)
+    captured = _patch_reconciliation_helpers(
+        monkeypatch,
+        envelope=envelope,
+        extraction_id=uuid4(),
+        semantic_type="receipt_line_item_table",
+        job_counts={"succeeded": 1},
+    )
+    seen_kwargs: dict[str, Any] = {}
+    original = repo._region_job_status_counts
+
+    def recording_counts(cur, **kwargs):
+        seen_kwargs.update(kwargs)
+        return {"succeeded": 1}
+
+    del original
+    monkeypatch.setattr(repo, "_region_job_status_counts", recording_counts)
+
+    persisted = repo.maybe_reconcile_semantic_annotation(
+        document_id=document_id,
+        semantic_annotation_id=semantic_annotation_id,
+        schema_name="receipt",
+        settled_job_id=settled_job_id,
+    )
+
+    assert persisted is not None
+    assert seen_kwargs.get("settled_job_id") == settled_job_id
+    assert captured["extraction"].schema_name == "receipt"
+
+
+def test_region_job_status_counts_settles_in_flight_job_in_sql() -> None:
+    class RecordingCursor:
+        query = ""
+        args: tuple[object, ...] = ()
+
+        def execute(self, query: str, args: tuple[object, ...]) -> None:
+            self.query = query
+            self.args = args
+
+        def fetchall(self) -> list[dict[str, object]]:
+            return []
+
+    cursor = RecordingCursor()
+    settled = uuid4()
+    repo._region_job_status_counts(
+        cursor,
+        document_id=uuid4(),
+        semantic_annotation_id=uuid4(),
+        schema_name="receipt",
+        settled_job_id=settled,
+    )
+    assert "CASE WHEN id = %s THEN 'succeeded' ELSE status END" in cursor.query
+    assert cursor.args[0] == settled
