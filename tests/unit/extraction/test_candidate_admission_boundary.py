@@ -4,6 +4,7 @@ from uuid import uuid4
 
 from lib.extraction.candidate_admission_boundary import apply_candidate_admission_boundary
 from lib.extraction.models import (
+    CandidateFact,
     ExtractionRunScope,
     ExtractionSourceDocument,
     GatewayExtraction,
@@ -126,6 +127,45 @@ def test_model_semantic_region_without_envelope_does_not_scan_raw_payload_reject
 
     assert result.admission.events == []
     assert result.admission.rejected_candidates == []
+
+
+def test_aggregate_admission_events_inherit_run_scope_lineage() -> None:
+    document_id = uuid4()
+    semantic_annotation_id = uuid4()
+    extraction = _extraction(
+        normalized_json={"schema_name": "invoice", "total_amount": {"amount": 42.0}},
+        normalization_json={},
+    )
+
+    result = apply_candidate_admission_boundary(
+        extraction=extraction,
+        source=_source(document_id),
+        run_scope=ExtractionRunScope.aggregate(
+            semantic_annotation_id=semantic_annotation_id,
+            metadata={"run_id": "phase85-lineage-run-1"},
+        ),
+        field_candidates=[
+            CandidateFact(
+                field_path="invoice.total_amount",
+                value_type="money",
+                value={"amount": 42.0, "currency": "USD"},
+                evidence=[
+                    {
+                        "document_id": str(document_id),
+                        "page_number": 1,
+                        "semantic_region_id": str(uuid4()),
+                    }
+                ],
+                status="needs_review",
+            )
+        ],
+        line_item_candidates=[],
+        observation_candidates=[],
+    )
+
+    assert len(result.admission.events) == 1
+    assert result.admission.events[0].run_id == "phase85-lineage-run-1"
+    assert result.admission.events[0].semantic_annotation_id == semantic_annotation_id
 
 
 def _extraction(

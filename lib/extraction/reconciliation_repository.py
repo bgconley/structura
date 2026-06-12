@@ -131,6 +131,7 @@ def _reconcile_semantic_annotation_locked(
     missing_region_jobs = sum(
         job_counts.get(status, 0) for status in TERMINAL_FAILURE_REGION_JOB_STATUSES
     )
+    aggregate_lineage = _aggregate_lineage_metadata(rows)
 
     regions: list[RegionExtraction] = []
     for row in rows:
@@ -169,6 +170,7 @@ def _reconcile_semantic_annotation_locked(
         if canonical_target_schema not in (None, ""):
             aggregate_json["metadata"]["canonical_target_schema"] = canonical_target_schema
     if isinstance(aggregate_json["metadata"], dict):
+        aggregate_json["metadata"].update(aggregate_lineage)
         _record_region_coverage(
             aggregate_json["metadata"],
             job_counts=job_counts,
@@ -202,6 +204,7 @@ def _reconcile_semantic_annotation_locked(
             "regionExtractionIds": [str(region.extraction_id) for region in regions],
             "sourceSchemaName": schema_name,
             "canonicalTargetSchema": canonical_target_schema,
+            "sourceRunIds": aggregate_lineage.get("source_run_ids", []),
         },
         normalization_json={
             "mapper": "phase8_5_region_reconciler.v1",
@@ -212,6 +215,7 @@ def _reconcile_semantic_annotation_locked(
         metadata={
             "semanticAnnotationId": str(semantic_annotation_id),
             "regionExtractionIds": region_fingerprint,
+            **aggregate_lineage,
         },
     )
     field_candidates = field_candidates_from_extraction(
@@ -240,7 +244,10 @@ def _reconcile_semantic_annotation_locked(
         field_candidates=field_candidates,
         line_item_candidates=line_item_candidates,
         observation_candidates=observation_candidates,
-        run_scope=ExtractionRunScope.aggregate(semantic_annotation_id=semantic_annotation_id),
+        run_scope=ExtractionRunScope.aggregate(
+            semantic_annotation_id=semantic_annotation_id,
+            metadata=aggregate_lineage,
+        ),
     )
 
 
@@ -428,7 +435,8 @@ def _current_region_extraction_rows(
           id,
           source_semantic_region_id,
           semantic_type,
-          normalization_json
+          normalization_json,
+          metadata_json
         FROM document_extractions
         WHERE document_id = %s
           AND semantic_annotation_id = %s
@@ -441,6 +449,32 @@ def _current_region_extraction_rows(
         (document_id, semantic_annotation_id, schema_name),
     )
     return list(cur.fetchall())
+
+
+def _aggregate_lineage_metadata(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    run_ids = sorted(
+        {
+            run_id
+            for row in rows
+            if (run_id := _metadata_run_id(row.get("metadata_json"))) is not None
+        }
+    )
+    if not run_ids:
+        return {}
+    run_id = run_ids[0] if len(run_ids) == 1 else "mixed:" + ",".join(run_ids)
+    return {
+        "run_id": run_id,
+        "source_run_ids": run_ids,
+    }
+
+
+def _metadata_run_id(metadata: Any) -> str | None:
+    if not isinstance(metadata, dict):
+        return None
+    value = metadata.get("run_id") or metadata.get("runId")
+    if value in (None, ""):
+        return None
+    return str(value)
 
 
 def _flag_incomplete_region_coverage(

@@ -140,10 +140,16 @@ class ExtractionRunScope:
         return cls(extraction_scope="document")
 
     @classmethod
-    def aggregate(cls, *, semantic_annotation_id: UUID | None = None) -> ExtractionRunScope:
+    def aggregate(
+        cls,
+        *,
+        semantic_annotation_id: UUID | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> ExtractionRunScope:
         return cls(
             extraction_scope="aggregate",
             semantic_annotation_id=semantic_annotation_id,
+            metadata=metadata or {},
         )
 
     @classmethod

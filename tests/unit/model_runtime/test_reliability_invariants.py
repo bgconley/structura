@@ -6,6 +6,7 @@ from lib.extraction.candidate_admission_models import CANDIDATE_GATE_VERSION
 from lib.extraction.contract_registry import CONTRACT_REGISTRY_VERSION
 from lib.model_runtime.reliability_invariants import evaluate_hard_correctness_invariants
 from lib.model_runtime.reliability_report import build_phase85_reliability_report
+from lib.model_runtime.reliability_versions import REGION_ENVELOPE_VERSION
 from lib.semantic_annotations.extraction_plan_repository import PLANNER_VERSION
 
 
@@ -1117,6 +1118,99 @@ def test_hard_invariants_flag_rejected_candidate_rows_inserted() -> None:
             "reason": "rejected_candidate_inserted",
             "documentId": "doc-safe",
             "entityId": "field-rejected",
+        }
+    ]
+
+
+def test_hard_invariants_do_not_match_rejected_rows_by_value_when_fingerprints_differ() -> None:
+    document = _safe_document_report()
+    document["admissionEvents"].append(
+        {
+            "decision": "rejected_missing_evidence",
+            "candidate_kind": "field",
+            "candidate_fingerprint": "rejected-region-field-fingerprint",
+            **_admission_event_telemetry(),
+            "plan_id": "plan-1",
+            "plan_task_id": "plan-task-1",
+            "semantic_annotation_id": "annotation-1",
+            "region_envelope_version": REGION_ENVELOPE_VERSION,
+            "field_path": "invoice.total_amount",
+            "source_engine": "granite_vision_3b",
+            "extraction_scope": "semantic_region",
+            "payload_json": {
+                "candidate": {
+                    "field_path": "invoice.total_amount",
+                    "value": "42.00",
+                    "evidence": [
+                        {
+                            "page_id": "page-1",
+                            "semantic_region_id": "region-rejected",
+                        }
+                    ],
+                }
+            },
+        }
+    )
+    document["fields"].append(
+        {
+            "id": "field-admitted-different-fingerprint",
+            "candidate_fingerprint": "admitted-aggregate-field-fingerprint",
+            "candidate_kind": "field",
+            "field_path": "invoice.total_amount",
+            "value": "42.00",
+            "source_engine": "system",
+            "extraction_scope": "aggregate",
+            "evidence": [
+                {
+                    "page_id": "page-1",
+                    "semantic_region_id": "region-admitted",
+                }
+            ],
+            "status": "needs_review",
+        }
+    )
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "passed"
+    assert summary["totalViolationCount"] == 0
+    assert summary["invariants"]["rejectedCandidatesInserted"]["violationCount"] == 0
+
+
+def test_hard_invariants_still_match_exact_rejected_fingerprints() -> None:
+    document = _safe_document_report()
+    document["admissionEvents"].append(
+        {
+            "decision": "rejected_missing_evidence",
+            "candidate_kind": "field",
+            "candidate_fingerprint": "exact-rejected-field-fingerprint",
+            **_admission_event_telemetry(),
+            "field_path": "invoice.total_amount",
+            "payload_json": {
+                "field_path": "invoice.total_amount",
+                "value": "42.00",
+            },
+        }
+    )
+    document["fields"].append(
+        {
+            "id": "field-exact-rejected-fingerprint",
+            "candidate_fingerprint": "exact-rejected-field-fingerprint",
+            "field_path": "invoice.total_amount",
+            "value": "99.00",
+            "status": "needs_review",
+        }
+    )
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 1
+    assert summary["invariants"]["rejectedCandidatesInserted"]["examples"] == [
+        {
+            "reason": "rejected_candidate_inserted",
+            "documentId": "doc-safe",
+            "entityId": "field-exact-rejected-fingerprint",
         }
     ]
 
