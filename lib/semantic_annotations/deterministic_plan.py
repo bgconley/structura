@@ -30,6 +30,7 @@ from lib.semantic_annotations.models import (
     PageSemanticAnnotation,
     QualityMode,
     SemanticAnnotationResult,
+    SemanticGroundingRef,
     SemanticRegionAnnotation,
 )
 from lib.semantic_annotations.task_routing import TABLE_GRANITE_TASKS
@@ -91,7 +92,14 @@ def baseline_plan_fingerprint(
 ) -> str:
     """Run-stable identity for the deterministic baseline plan."""
     page_numbers = {str(page.page_id): page.page_number for page in source.pages}
-    entries = sorted(_region_identity(region, page_numbers) for region in manifest.regions)
+    element_positions = {
+        str(element.element_id): (element.page_number, element.ordinal)
+        for element in source.elements
+    }
+    entries = sorted(
+        _region_identity(region, page_numbers, element_positions)
+        for region in manifest.regions
+    )
     payload = json.dumps(entries, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
@@ -175,43 +183,81 @@ def _baseline_region_covered(
     baseline_region: SemanticRegionAnnotation,
     plan_regions: list[SemanticRegionAnnotation],
 ) -> bool:
-    table_id = baseline_region.grounding.table_id
-    if table_id is not None:
-        # A table-grounded baseline target is a TABLE extraction; a Qwen KVP
-        # region that happens to share the table grounding (billing_summary
-        # etc.) does not cover it — counting it covered would let Qwen
-        # silently suppress the deterministic line-item extraction.
-        return any(
-            region.grounding.table_id == table_id
-            and (
-                region.granite_task in TABLE_GRANITE_TASKS
-                or region.semantic_type == baseline_region.semantic_type
-            )
-            for region in plan_regions
-        )
     return any(
-        region.semantic_type == baseline_region.semantic_type
-        and region.granite_task is not None
-        and region.granite_task != "ignore"
-        for region in plan_regions
+        _region_covers_baseline(region, baseline_region) for region in plan_regions
     )
 
 
 def _region_identity(
     region: SemanticRegionAnnotation,
     page_numbers: dict[str, int],
+    element_positions: dict[str, tuple[int, int]],
 ) -> str:
     grounding = region.grounding
     page_number = None
     if grounding.page_id is not None:
         page_number = page_numbers.get(str(grounding.page_id))
+    element_position = None
+    if grounding.element_id is not None:
+        element_position = element_positions.get(str(grounding.element_id))
     identity: dict[str, Any] = {
         "semantic_type": region.semantic_type,
         "granite_task": region.granite_task,
         "target_schema": region.target_schema,
         "grounding_kind": grounding.kind,
         "page_number": region.metadata.get("docling_table_page_number") or page_number,
+        "element_position": element_position,
         "table_index": region.metadata.get("docling_table_index"),
-        "expected_fields": list(region.expected_fields),
+        "expected_fields": sorted(_expected_field_intent(region.expected_fields)),
     }
     return json.dumps(identity, sort_keys=True, separators=(",", ":"))
+
+
+def _region_covers_baseline(
+    region: SemanticRegionAnnotation,
+    baseline_region: SemanticRegionAnnotation,
+) -> bool:
+    return (
+        _is_active_extraction_region(region)
+        and region.semantic_type == baseline_region.semantic_type
+        and _granite_tasks_compatible(region.granite_task, baseline_region.granite_task)
+        and region.target_schema == baseline_region.target_schema
+        and _expected_field_intent(baseline_region.expected_fields).issubset(
+            _expected_field_intent(region.expected_fields)
+        )
+        and _grounding_matches(region.grounding, baseline_region.grounding)
+    )
+
+
+def _is_active_extraction_region(region: SemanticRegionAnnotation) -> bool:
+    return region.granite_task is not None and region.granite_task != "ignore"
+
+
+def _granite_tasks_compatible(
+    task: str | None,
+    baseline_task: str | None,
+) -> bool:
+    if task is None or task == "ignore" or baseline_task is None or baseline_task == "ignore":
+        return False
+    if task == baseline_task:
+        return True
+    return task in TABLE_GRANITE_TASKS and baseline_task in TABLE_GRANITE_TASKS
+
+
+def _grounding_matches(
+    grounding: SemanticGroundingRef,
+    baseline_grounding: SemanticGroundingRef,
+) -> bool:
+    if grounding.kind != baseline_grounding.kind:
+        return False
+    if baseline_grounding.table_id is not None or grounding.table_id is not None:
+        return grounding.table_id == baseline_grounding.table_id
+    if baseline_grounding.element_id is not None or grounding.element_id is not None:
+        return grounding.element_id == baseline_grounding.element_id
+    if baseline_grounding.page_id is not None or grounding.page_id is not None:
+        return grounding.page_id == baseline_grounding.page_id
+    return True
+
+
+def _expected_field_intent(expected_fields: tuple[str, ...]) -> frozenset[str]:
+    return frozenset(expected_fields)

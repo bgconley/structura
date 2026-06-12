@@ -1399,7 +1399,6 @@ def test_semantic_service_dedupes_repeated_regions_before_enqueue() -> None:
     document_id = uuid4()
     household_id = uuid4()
     page_id = uuid4()
-    element_id = uuid4()
     annotation_id = uuid4()
     persisted_region_ids: list[UUID] = []
     source = _source(
@@ -1418,7 +1417,7 @@ def test_semantic_service_dedupes_repeated_regions_before_enqueue() -> None:
             granite_task="kvp",
             target_schema="document_observation",
             expected_fields=("seller_name",),
-            grounding=SemanticGroundingRef(kind="element", element_id=element_id),
+            grounding=SemanticGroundingRef(kind="page", page_id=page_id),
             confidence=0.8 + (index * 0.01),
         )
         for index in range(3)

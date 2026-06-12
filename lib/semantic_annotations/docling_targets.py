@@ -19,7 +19,10 @@ from lib.semantic_annotations.models import (
     SemanticGroundingRef,
     SemanticRegionAnnotation,
 )
-from lib.semantic_annotations.task_routing import LINE_ITEM_TABLE_SEMANTIC_TYPES
+from lib.semantic_annotations.task_routing import (
+    LINE_ITEM_TABLE_SEMANTIC_TYPES,
+    TABLE_GRANITE_TASKS,
+)
 
 DOCLING_STRUCTURAL_REGION_SOURCE = "docling_structural"
 MAX_DOCLING_STRUCTURAL_TARGETS = 8
@@ -178,28 +181,16 @@ def _docling_structural_regions(
     audit: DoclingAudit,
 ) -> list[SemanticRegionAnnotation]:
     regions: list[SemanticRegionAnnotation] = []
-    existing_table_ids = {
-        region.grounding.table_id
+    coverage_keys = {
+        _structural_coverage_key(region)
         for region in manifest.regions
-        if region.grounding.table_id is not None
-        and region.granite_task is not None
-        and region.granite_task != "ignore"
-        and not _is_table_grounded_observation_summary(region)
-    }
-    existing_semantic_types = {
-        region.semantic_type
-        for region in manifest.regions
-        if region.granite_task is not None
-        and region.granite_task != "ignore"
-        and not _is_table_grounded_observation_summary(region)
+        if _is_active_structural_target(region)
     }
     table_audit_by_id = {summary.table_id: summary for summary in audit.table_summaries}
     page_id_by_number = {page.page_number: page.page_id for page in source.pages}
     for table in source.tables:
         if len(regions) >= MAX_DOCLING_STRUCTURAL_TARGETS:
             break
-        if table.table_id in existing_table_ids:
-            continue
         table_summary = table_audit_by_id.get(table.table_id)
         table_family = _selected_table_family_for_table(
             source=source,
@@ -216,23 +207,26 @@ def _docling_structural_regions(
         )
         if table_region is None:
             continue
+        coverage_key = _structural_coverage_key(table_region)
         if _is_redundant_weak_table_region(
             table_region,
             table_signal=table_signal,
-            existing_semantic_types=existing_semantic_types,
+            coverage_keys=coverage_keys,
         ):
             continue
+        if coverage_key in coverage_keys:
+            continue
+        coverage_keys.add(coverage_key)
         regions.append(table_region)
 
     if len(regions) >= MAX_DOCLING_STRUCTURAL_TARGETS:
         return _dedupe_docling_regions(regions)[:MAX_DOCLING_STRUCTURAL_TARGETS]
 
-    existing_semantic_types = existing_semantic_types | {region.semantic_type for region in regions}
     regions.extend(
         _docling_observation_regions(
             source=source,
             audit=audit,
-            existing_semantic_types=existing_semantic_types,
+            coverage_keys=coverage_keys,
             remaining=MAX_DOCLING_STRUCTURAL_TARGETS - len(regions),
         )
     )
@@ -243,7 +237,7 @@ def _docling_observation_regions(
     *,
     source: ExtractionSourceDocument,
     audit: DoclingAudit,
-    existing_semantic_types: set[str],
+    coverage_keys: set[tuple[object, ...]],
     remaining: int,
 ) -> list[SemanticRegionAnnotation]:
     regions: list[SemanticRegionAnnotation] = []
@@ -257,34 +251,35 @@ def _docling_observation_regions(
         if family not in audit.suggested_family_hints:
             continue
         semantic_type, expected_fields = _OBSERVATION_TARGETS[family]
-        if semantic_type in existing_semantic_types:
-            continue
         page_id = _best_page_for_family(source, family)
         if page_id is None:
             continue
-        regions.append(
-            SemanticRegionAnnotation(
-                semantic_type=semantic_type,
-                priority="high",
-                granite_task="kvp",
-                target_schema="document_observation",
-                expected_fields=expected_fields,
-                grounding=SemanticGroundingRef(kind="page", page_id=page_id),
-                review_required=True,
-                reason=(
-                    f"Docling anchors indicate {family} content even though Qwen emitted no target."
-                ),
-                confidence=_confidence_for_family(audit, family),
-                metadata=_base_metadata(
-                    audit,
-                    source="docling_page_anchors",
-                    family=family,
-                    source_signal="text",
-                    coverage_role="primary",
-                    extraction_scope="page",
-                ),
-            )
+        region = SemanticRegionAnnotation(
+            semantic_type=semantic_type,
+            priority="high",
+            granite_task="kvp",
+            target_schema="document_observation",
+            expected_fields=expected_fields,
+            grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+            review_required=True,
+            reason=(
+                f"Docling anchors indicate {family} content even though Qwen emitted no target."
+            ),
+            confidence=_confidence_for_family(audit, family),
+            metadata=_base_metadata(
+                audit,
+                source="docling_page_anchors",
+                family=family,
+                source_signal="text",
+                coverage_role="primary",
+                extraction_scope="page",
+            ),
         )
+        coverage_key = _structural_coverage_key(region)
+        if coverage_key in coverage_keys:
+            continue
+        coverage_keys.add(coverage_key)
+        regions.append(region)
         if len(regions) >= remaining:
             break
     return regions
@@ -338,13 +333,45 @@ def _is_redundant_weak_table_region(
     region: SemanticRegionAnnotation,
     *,
     table_signal: str,
-    existing_semantic_types: set[str],
+    coverage_keys: set[tuple[object, ...]],
 ) -> bool:
-    return table_signal == "weak" and region.semantic_type in existing_semantic_types
+    return table_signal == "weak" and _structural_coverage_key(region) in coverage_keys
 
 
 def _is_table_grounded_observation_summary(region: SemanticRegionAnnotation) -> bool:
     return region.grounding.kind == "table" and region.semantic_type in _OBSERVATION_SEMANTIC_TYPES
+
+
+def _is_active_structural_target(region: SemanticRegionAnnotation) -> bool:
+    return (
+        region.granite_task is not None
+        and region.granite_task != "ignore"
+        and not _is_table_grounded_observation_summary(region)
+    )
+
+
+def _structural_coverage_key(region: SemanticRegionAnnotation) -> tuple[object, ...]:
+    grounding = region.grounding
+    return (
+        region.semantic_type,
+        _coverage_task_key(region.granite_task),
+        region.target_schema,
+        grounding.kind,
+        grounding.page_id,
+        grounding.element_id,
+        grounding.table_id,
+        _expected_field_intent(region.expected_fields),
+    )
+
+
+def _coverage_task_key(granite_task: str | None) -> str | None:
+    if granite_task in TABLE_GRANITE_TASKS:
+        return "table"
+    return granite_task
+
+
+def _expected_field_intent(expected_fields: tuple[str, ...]) -> tuple[str, ...]:
+    return tuple(sorted(dict.fromkeys(expected_fields)))
 
 
 def _base_metadata(
@@ -444,16 +471,7 @@ def _dedupe_docling_regions(
     deduped: list[SemanticRegionAnnotation] = []
     seen: set[tuple[object, ...]] = set()
     for region in regions:
-        grounding = region.grounding
-        key = (
-            region.semantic_type,
-            region.granite_task,
-            grounding.kind,
-            grounding.page_id,
-            grounding.element_id,
-            grounding.table_id,
-            tuple(region.expected_fields),
-        )
+        key = _structural_coverage_key(region)
         if key in seen:
             continue
         seen.add(key)

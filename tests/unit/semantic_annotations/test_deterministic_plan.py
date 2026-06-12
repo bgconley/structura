@@ -73,6 +73,69 @@ def _source(tables: list[ParsedTableText]) -> ExtractionSourceDocument:
     )
 
 
+def _page_observation_source(
+    *,
+    family: str,
+    title: str,
+    page_texts: list[str],
+) -> ExtractionSourceDocument:
+    pages = [
+        ParsedPageText(
+            page_id=uuid4(),
+            page_number=index,
+            text=text,
+            has_text_layer=True,
+        )
+        for index, text in enumerate(page_texts, start=1)
+    ]
+    elements = [
+        ParsedElementText(
+            element_id=uuid4(),
+            page_number=page.page_number,
+            ordinal=page.page_number,
+            text=page.text,
+        )
+        for page in pages
+    ]
+    return ExtractionSourceDocument(
+        document_id=uuid4(),
+        household_id=uuid4(),
+        title=title,
+        original_filename=f"{title}.pdf",
+        mime_type="application/pdf",
+        family=family,
+        subtype=None,
+        sensitivity="standard",
+        document_date=date(2026, 6, 1),
+        counterparty_display=None,
+        primary_folder_id=None,
+        metadata={},
+        pages=pages,
+        elements=elements,
+        tables=[],
+    )
+
+
+def _manifest_like_baseline_with_regions(
+    baseline,
+    regions: list[SemanticRegionAnnotation],
+):
+    return baseline.__class__(
+        document_id=baseline.document_id,
+        household_id=baseline.household_id,
+        quality_mode=baseline.quality_mode,
+        profile_name="qwen",
+        source_engine="qwen3_vl_8b",
+        model_name="qwen",
+        model_version="t",
+        prompt_version="t",
+        pages=baseline.pages,
+        regions=regions,
+        confidence={},
+        manifest={"regions": [], "pages": []},
+    )
+
+
 def test_baseline_manifest_plans_tables_without_a_model() -> None:
     source = _source([_table()])
     baseline = deterministic_baseline_manifest(source)
@@ -131,13 +194,14 @@ def test_invariant_appends_uncovered_baseline_regions() -> None:
 def test_invariant_counts_qwen_covered_tables_as_covered() -> None:
     source = _source([_table()])
     baseline = deterministic_baseline_manifest(source)
+    baseline_region = baseline.regions[0]
     qwen_region = SemanticRegionAnnotation(
-        semantic_type="invoice_line_item_table",
-        priority="critical",
-        granite_task="tables_json",
+        semantic_type=baseline_region.semantic_type,
+        priority=baseline_region.priority,
+        granite_task=baseline_region.granite_task,
         grounding=SemanticGroundingRef(kind="table", table_id=source.tables[0].table_id),
-        target_schema="invoice",
-        expected_fields=("description", "amount"),
+        target_schema=baseline_region.target_schema,
+        expected_fields=baseline_region.expected_fields,
     )
     covered = SemanticAnnotationResult(
         manifest=baseline.__class__(
@@ -159,6 +223,33 @@ def test_invariant_counts_qwen_covered_tables_as_covered() -> None:
     telemetry = enforced.manifest.manifest["deterministic_baseline"]
     assert telemetry["enforced_region_count"] == 0
     assert enforced.manifest.regions == [qwen_region]
+
+
+def test_table_region_wrong_semantic_type_does_not_cover_baseline_table_target() -> None:
+    source = _source([_table()])
+    baseline = deterministic_baseline_manifest(source)
+    wrong_table_region = SemanticRegionAnnotation(
+        semantic_type="receipt_line_item_table",
+        priority="critical",
+        granite_task="tables_json",
+        grounding=SemanticGroundingRef(kind="table", table_id=source.tables[0].table_id),
+        target_schema="receipt",
+        expected_fields=("item_description", "quantity", "unit_price", "line_total"),
+    )
+    plan = SemanticAnnotationResult(
+        manifest=_manifest_like_baseline_with_regions(baseline, [wrong_table_region])
+    )
+
+    enforced = apply_baseline_invariant(source, baseline, plan)
+
+    telemetry = enforced.manifest.manifest["deterministic_baseline"]
+    assert telemetry["enforced_region_count"] == 1
+    assert {
+        (region.semantic_type, region.target_schema) for region in enforced.manifest.regions
+    } == {
+        ("receipt_line_item_table", "receipt"),
+        (baseline.regions[0].semantic_type, baseline.regions[0].target_schema),
+    }
 
 
 def test_baseline_only_result_marks_review_and_succeeds() -> None:
@@ -337,6 +428,146 @@ def test_table_grounded_kvp_region_does_not_cover_baseline_table_target() -> Non
     tasks = {(region.semantic_type, region.granite_task) for region in enforced.manifest.regions}
     assert ("billing_summary", "kvp") in tasks
     assert any(task == "tables_json" for _stype, task in tasks)
+
+
+def test_wrong_page_escrow_region_does_not_cover_baseline_escrow_target() -> None:
+    source = _page_observation_source(
+        family="mortgage_escrow_statement",
+        title="UWM Final Escrow Statement",
+        page_texts=[
+            "Cover page with general servicing notes.",
+            "Escrow mortgage shortage surplus details and monthly payment.",
+        ],
+    )
+    baseline = deterministic_baseline_manifest(source)
+    baseline_region = next(
+        region for region in baseline.regions if region.semantic_type == "escrow_summary"
+    )
+    qwen_region = SemanticRegionAnnotation(
+        semantic_type="escrow_summary",
+        priority="high",
+        granite_task="kvp",
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+        target_schema="document_observation",
+        expected_fields=baseline_region.expected_fields,
+    )
+    plan = SemanticAnnotationResult(
+        manifest=_manifest_like_baseline_with_regions(baseline, [qwen_region])
+    )
+
+    enforced = apply_baseline_invariant(source, baseline, plan)
+
+    telemetry = enforced.manifest.manifest["deterministic_baseline"]
+    assert telemetry["enforced_region_count"] == 1
+    assert {region.grounding.page_id for region in enforced.manifest.regions} == {
+        source.pages[0].page_id,
+        source.pages[1].page_id,
+    }
+
+
+def test_wrong_page_seller_region_does_not_cover_baseline_seller_target() -> None:
+    source = _page_observation_source(
+        family="real_estate_title",
+        title="Real Estate Title Closing Packet",
+        page_texts=[
+            "Introductory page with recording notes.",
+            "Seller information title company closing settlement proceeds.",
+        ],
+    )
+    baseline = deterministic_baseline_manifest(source)
+    baseline_region = next(
+        region for region in baseline.regions if region.semantic_type == "seller_information_block"
+    )
+    qwen_region = SemanticRegionAnnotation(
+        semantic_type="seller_information_block",
+        priority="high",
+        granite_task="kvp",
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+        target_schema="document_observation",
+        expected_fields=baseline_region.expected_fields,
+    )
+    plan = SemanticAnnotationResult(
+        manifest=_manifest_like_baseline_with_regions(baseline, [qwen_region])
+    )
+
+    enforced = apply_baseline_invariant(source, baseline, plan)
+
+    telemetry = enforced.manifest.manifest["deterministic_baseline"]
+    assert telemetry["enforced_region_count"] == 1
+    assert {region.grounding.page_id for region in enforced.manifest.regions} == {
+        source.pages[0].page_id,
+        source.pages[1].page_id,
+    }
+
+
+def test_wrong_page_generic_kvp_region_does_not_cover_baseline_target() -> None:
+    source = _page_observation_source(
+        family="generic",
+        title="Generic form",
+        page_texts=["Intro page", "Important form fields and visible values."],
+    )
+    baseline = deterministic_baseline_manifest(source)
+    baseline_region = SemanticRegionAnnotation(
+        semantic_type="generic_form_kvp",
+        priority="high",
+        granite_task="kvp",
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[1].page_id),
+        target_schema="document_observation",
+        expected_fields=("field_labels", "visible_values"),
+    )
+    baseline = _manifest_like_baseline_with_regions(baseline, [baseline_region])
+    qwen_region = SemanticRegionAnnotation(
+        semantic_type="generic_form_kvp",
+        priority="high",
+        granite_task="kvp",
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+        target_schema="document_observation",
+        expected_fields=baseline_region.expected_fields,
+    )
+    plan = SemanticAnnotationResult(
+        manifest=_manifest_like_baseline_with_regions(baseline, [qwen_region])
+    )
+
+    enforced = apply_baseline_invariant(source, baseline, plan)
+
+    telemetry = enforced.manifest.manifest["deterministic_baseline"]
+    assert telemetry["enforced_region_count"] == 1
+    assert {region.grounding.page_id for region in enforced.manifest.regions} == {
+        source.pages[0].page_id,
+        source.pages[1].page_id,
+    }
+
+
+def test_same_page_observation_region_covers_baseline_target() -> None:
+    source = _page_observation_source(
+        family="mortgage_escrow_statement",
+        title="UWM Final Escrow Statement",
+        page_texts=[
+            "Cover page with general servicing notes.",
+            "Escrow mortgage shortage surplus details and monthly payment.",
+        ],
+    )
+    baseline = deterministic_baseline_manifest(source)
+    baseline_region = next(
+        region for region in baseline.regions if region.semantic_type == "escrow_summary"
+    )
+    qwen_region = SemanticRegionAnnotation(
+        semantic_type="escrow_summary",
+        priority="high",
+        granite_task="kvp",
+        grounding=baseline_region.grounding,
+        target_schema=baseline_region.target_schema,
+        expected_fields=baseline_region.expected_fields,
+    )
+    plan = SemanticAnnotationResult(
+        manifest=_manifest_like_baseline_with_regions(baseline, [qwen_region])
+    )
+
+    enforced = apply_baseline_invariant(source, baseline, plan)
+
+    telemetry = enforced.manifest.manifest["deterministic_baseline"]
+    assert telemetry["enforced_region_count"] == 0
+    assert enforced.manifest.regions == [qwen_region]
 
 
 def test_baseline_manifest_uses_active_profile_when_supplied() -> None:

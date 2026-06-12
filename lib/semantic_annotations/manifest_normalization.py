@@ -336,6 +336,12 @@ def _is_model_planned_payment_summary(region: SemanticRegionAnnotation) -> bool:
 def _dedupe_equivalent_regions(
     regions: list[SemanticRegionAnnotation],
 ) -> list[SemanticRegionAnnotation]:
+    docling_line_item_by_key = {
+        _region_key(region): region
+        for region in regions
+        if region.metadata.get("region_source") == DOCLING_STRUCTURAL_REGION_SOURCE
+        and region.semantic_type in _LINE_ITEM_SEMANTIC_TYPES
+    }
     model_line_item_keys = {
         _region_key(region)
         for region in regions
@@ -353,6 +359,10 @@ def _dedupe_equivalent_regions(
     }
     deduped: list[SemanticRegionAnnotation] = []
     for region in regions:
+        if _is_model_planned_line_item(region):
+            docling_region = docling_line_item_by_key.get(_region_key(region))
+            if docling_region is not None:
+                region = _merge_equivalent_region_intent(region, docling_region)
         if (
             region.metadata.get("region_source") == DOCLING_STRUCTURAL_REGION_SOURCE
             and region.semantic_type in _LINE_ITEM_SEMANTIC_TYPES
@@ -368,6 +378,29 @@ def _dedupe_equivalent_regions(
             continue
         deduped.append(region)
     return deduped
+
+
+def _merge_equivalent_region_intent(
+    preferred: SemanticRegionAnnotation,
+    suppressed: SemanticRegionAnnotation,
+) -> SemanticRegionAnnotation:
+    merged_fields = tuple(
+        dict.fromkeys(sorted((*preferred.expected_fields, *suppressed.expected_fields)))
+    )
+    if merged_fields == preferred.expected_fields:
+        return preferred
+    return replace(
+        preferred,
+        expected_fields=merged_fields,
+        review_required=preferred.review_required or suppressed.review_required,
+        metadata={
+            **preferred.metadata,
+            "semantic_planner_normalization": {
+                "reason": "equivalent_docling_region_intent_merged",
+                "merged_semantic_type": preferred.semantic_type,
+            },
+        },
+    )
 
 
 def _region_key(region: SemanticRegionAnnotation) -> tuple[object, ...]:
