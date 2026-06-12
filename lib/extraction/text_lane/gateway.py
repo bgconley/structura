@@ -18,6 +18,7 @@ from lib.extraction.region_envelope import (
     to_normalization_projection,
 )
 from lib.extraction.text_lane.column_labeling import (
+    ColumnLabelingValidationError,
     ColumnRoleLabeler,
     LiveColumnRoleLabeler,
     line_item_roles,
@@ -68,7 +69,7 @@ class TextLaneTableExtractionGateway:
             raise TextLaneAbstention(f"family_without_line_item_registry:{family}")
         try:
             labeling = self.labeler.label_columns(family=family, grid=grid)
-        except ModelProtocolError as exc:
+        except (ColumnLabelingValidationError, ModelProtocolError) as exc:
             raise TextLaneAbstention(f"column_labeling_failed:{exc}") from exc
         labeled_roles = {index: role for index, role in labeling.roles.items() if role != "ignore"}
         if not labeled_roles:

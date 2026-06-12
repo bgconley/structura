@@ -5,11 +5,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
 
+import pytest
+
 from lib.extraction.models import ParsedTableText
 from lib.extraction.text_lane.column_labeling import (
     COLUMN_LABELING_PROMPT_VERSION,
     IGNORE_ROLE,
+    MAX_COLUMN_LABEL_CACHE_SIZE,
+    ColumnLabelingValidationError,
     LiveColumnRoleLabeler,
+    clear_column_label_cache,
     column_labeling_prompt,
     column_labeling_schema,
     line_item_roles,
@@ -29,6 +34,48 @@ def _grid(fixture_name: str = "service_lines_grid.json") -> TableGrid:
             page_number=payload["page_number"],
             table_index=payload["table_index"],
             table_json=payload["table_json"],
+        )
+    )
+    assert grid is not None
+    return grid
+
+
+def _grid_with_headers(headers: tuple[str, ...]) -> TableGrid:
+    rows = [
+        [
+            {
+                "text": header,
+                "start_row_offset_idx": 0,
+                "start_col_offset_idx": col,
+                "row_span": 1,
+                "col_span": 1,
+                "column_header": True,
+            }
+            for col, header in enumerate(headers)
+        ],
+        [
+            {
+                "text": value,
+                "start_row_offset_idx": 1,
+                "start_col_offset_idx": col,
+                "row_span": 1,
+                "col_span": 1,
+            }
+            for col, value in enumerate(("Sample service", "1", "12.00")[: len(headers)])
+        ],
+    ]
+    grid = TableGrid.from_parsed_table(
+        ParsedTableText(
+            table_id=uuid4(),
+            page_number=1,
+            table_index=1,
+            table_json={
+                "data": {
+                    "num_rows": 2,
+                    "num_cols": len(headers),
+                    "grid": rows,
+                }
+            },
         )
     )
     assert grid is not None
@@ -112,6 +159,7 @@ def test_prompt_contains_headers_samples_and_roles() -> None:
 
 
 def test_labeler_caches_by_family_and_header_fingerprint() -> None:
+    clear_column_label_cache()
     payload = {
         "columns": [
             {"column_index": 0, "role": "description"},
@@ -138,16 +186,86 @@ def test_labeler_caches_by_family_and_header_fingerprint() -> None:
     assert request.response_json_schema is not None
 
 
-def test_roles_from_payload_first_assignment_wins_and_fills_ignore() -> None:
-    roles = roles_from_payload(
-        {
-            "columns": [
-                {"column_index": 0, "role": "description"},
-                {"column_index": 0, "role": "amount"},
-                {"column_index": 5, "role": "amount"},
-                {"column_index": "bad", "role": "amount"},
-            ]
-        },
-        num_cols=3,
-    )
-    assert roles == {0: "description", 1: IGNORE_ROLE, 2: IGNORE_ROLE}
+def test_roles_from_payload_rejects_duplicate_column_indexes() -> None:
+    with pytest.raises(ColumnLabelingValidationError, match="duplicate_column_index:0"):
+        roles_from_payload(
+            {
+                "columns": [
+                    {"column_index": 0, "role": "description"},
+                    {"column_index": 0, "role": "amount"},
+                    {"column_index": 2, "role": "amount"},
+                ]
+            },
+            num_cols=3,
+        )
+
+
+def test_roles_from_payload_rejects_missing_column_indexes() -> None:
+    with pytest.raises(ColumnLabelingValidationError, match="missing_column_index:2"):
+        roles_from_payload(
+            {
+                "columns": [
+                    {"column_index": 0, "role": "description"},
+                    {"column_index": 1, "role": "quantity"},
+                ]
+            },
+            num_cols=3,
+        )
+
+
+def test_roles_from_payload_requires_well_formed_column_entries() -> None:
+    with pytest.raises(ColumnLabelingValidationError, match="invalid_column_entry"):
+        roles_from_payload(
+            {"columns": ["not-an-object"]},
+            num_cols=1,
+        )
+
+
+def test_labeler_cache_separates_model_profiles() -> None:
+    clear_column_label_cache()
+    payload = {
+        "columns": [
+            {"column_index": 0, "role": "description"},
+            {"column_index": 1, "role": "quantity"},
+            {"column_index": 2, "role": "amount"},
+        ]
+    }
+    first_client = _FakeTextClient(payload)
+    second_client = _FakeTextClient(payload)
+    second_client.profile = _FakeProfile(name="qwen3-vl-8b-fp8-semantic:v2")
+
+    first = LiveColumnRoleLabeler(client=first_client)  # type: ignore[arg-type]
+    second = LiveColumnRoleLabeler(client=second_client)  # type: ignore[arg-type]
+    first_result = first.label_columns(family="invoice", grid=_grid())
+    second_result = second.label_columns(family="invoice", grid=_grid())
+
+    assert not first_result.from_cache
+    assert not second_result.from_cache
+    assert len(first_client.requests) == 1
+    assert len(second_client.requests) == 1
+
+
+def test_labeler_cache_evicts_oldest_entries() -> None:
+    clear_column_label_cache()
+    payload = {
+        "columns": [
+            {"column_index": 0, "role": "description"},
+            {"column_index": 1, "role": "quantity"},
+            {"column_index": 2, "role": "amount"},
+        ]
+    }
+    client = _FakeTextClient(payload)
+    labeler = LiveColumnRoleLabeler(client=client)  # type: ignore[arg-type]
+    grids = [
+        _grid_with_headers((f"Description {index}", "Quantity", "Amount"))
+        for index in range(MAX_COLUMN_LABEL_CACHE_SIZE + 1)
+    ]
+
+    first = labeler.label_columns(family="invoice", grid=grids[0])
+    for grid in grids[1:]:
+        labeler.label_columns(family="invoice", grid=grid)
+    replay = labeler.label_columns(family="invoice", grid=grids[0])
+
+    assert not first.from_cache
+    assert not replay.from_cache
+    assert len(client.requests) == MAX_COLUMN_LABEL_CACHE_SIZE + 2

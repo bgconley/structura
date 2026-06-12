@@ -18,7 +18,10 @@ from lib.extraction.models import (
     PersistedExtraction,
 )
 from lib.extraction.service import ExtractionService
-from lib.extraction.text_lane.column_labeling import ColumnLabeling
+from lib.extraction.text_lane.column_labeling import (
+    ColumnLabeling,
+    ColumnLabelingValidationError,
+)
 from lib.extraction.text_lane.gateway import (
     TextLaneAbstention,
     TextLaneTableExtractionGateway,
@@ -82,6 +85,12 @@ class _FakeGranite:
 class _FakeDeterministic:
     def extract(self, source, **kwargs):  # noqa: ANN001, ANN003
         raise AssertionError("deterministic gateway should not run in these tests")
+
+
+class _InvalidLabeler:
+    def label_columns(self, *, family: str, grid) -> ColumnLabeling:  # noqa: ANN001
+        del family, grid
+        raise ColumnLabelingValidationError("missing_column_index:2")
 
 
 def _table(fixture_name: str = "service_lines_grid.json") -> ParsedTableText:
@@ -205,6 +214,30 @@ def test_text_lane_abstention_falls_back_to_vision() -> None:
     assert result.normalization_json["lane"] == "vision"
     assert str(result.normalization_json["laneEligibility"]).startswith(
         "text_lane_abstained:all_columns_labeled_ignore"
+    )
+
+
+def test_column_labeling_validation_abstains_to_vision() -> None:
+    table = _table()
+    granite = _FakeGranite()
+    text_lane = TextLaneTableExtractionGateway(labeler=_InvalidLabeler())
+    gateway = ModelRoutingExtractionGateway(
+        deterministic=_FakeDeterministic(),
+        granite=granite,
+        text_lane_tables=text_lane,
+    )
+
+    result = gateway.extract(
+        _source(table),
+        schema_name="invoice",
+        route_profile="docling_plus_structured_extraction",
+        semantic_task=_task(table),
+    )
+
+    assert granite.calls == 1
+    assert result.normalization_json["lane"] == "vision"
+    assert str(result.normalization_json["laneEligibility"]).startswith(
+        "text_lane_abstained:column_labeling_failed:missing_column_index:2"
     )
 
 

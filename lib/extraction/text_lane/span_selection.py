@@ -10,7 +10,9 @@ fingerprint to dedupe identical requests within a worker process.
 from __future__ import annotations
 
 import hashlib
+import json
 import threading
+from collections import OrderedDict
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import Any, Protocol
@@ -24,8 +26,9 @@ from lib.model_runtime.profiles import get_model_profile
 
 SPAN_SELECTION_PROMPT_VERSION = "text_lane_span_selection.v1"
 MAX_SELECTION_KEYS = 16
+MAX_SPAN_SELECTION_CACHE_SIZE = 128
 
-_SELECTION_CACHE: dict[str, SpanSelection] = {}
+_SELECTION_CACHE: OrderedDict[tuple[str, str, str, str], SpanSelection] = OrderedDict()
 _SELECTION_CACHE_LOCK = threading.Lock()
 
 
@@ -129,29 +132,41 @@ class LiveSpanSelector:
             raise ValueError("Span selection requires expected keys.")
         if not spans:
             raise ValueError("Span selection requires candidate spans.")
+        client = self._ensure_client()
         prompt = span_selection_prompt(family=family, keys=expected_keys, spans=spans)
-        cache_key = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
+        cache_key = _selection_cache_key(
+            profile_name=client.profile.name,
+            family=family,
+            expected_keys=expected_keys,
+            spans=spans,
+        )
         with _SELECTION_CACHE_LOCK:
             cached = _SELECTION_CACHE.get(cache_key)
+            if cached is not None:
+                _SELECTION_CACHE.move_to_end(cache_key)
         if cached is not None:
             return replace(cached, from_cache=True)
         selection = self._select_live(
+            client=client,
             prompt=prompt,
             expected_keys=expected_keys,
             spans=spans,
         )
         with _SELECTION_CACHE_LOCK:
             _SELECTION_CACHE.setdefault(cache_key, selection)
+            _SELECTION_CACHE.move_to_end(cache_key)
+            while len(_SELECTION_CACHE) > MAX_SPAN_SELECTION_CACHE_SIZE:
+                _SELECTION_CACHE.popitem(last=False)
         return selection
 
     def _select_live(
         self,
         *,
+        client: OpenAITextGenerateClient,
         prompt: str,
         expected_keys: Sequence[str],
         spans: Sequence[SpanCandidate],
     ) -> SpanSelection:
-        client = self._ensure_client()
         request = TextGenerateRequest(
             profile_name=client.profile.name,
             prompt_version=SPAN_SELECTION_PROMPT_VERSION,
@@ -183,6 +198,34 @@ class LiveSpanSelector:
                 http_client_base_url=settings.model_qwen_semantic_url,
             )
         return self._client
+
+
+def _selection_cache_key(
+    *,
+    profile_name: str,
+    family: str,
+    expected_keys: Sequence[str],
+    spans: Sequence[SpanCandidate],
+) -> tuple[str, str, str, str]:
+    payload = {
+        "selection_type": "kvp_span",
+        "expected_keys": list(expected_keys),
+        "spans": [
+            {
+                "span_id": span.span_id,
+                "kind": span.kind,
+                "value_type": span.value_type,
+                "label_text": span.label_text,
+                "value_text": span.value_text,
+                "element_id": span.element_id,
+                "text_span": span.text_span,
+            }
+            for span in spans
+        ],
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    fingerprint = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+    return (SPAN_SELECTION_PROMPT_VERSION, profile_name, family, fingerprint)
 
 
 def selections_from_payload(

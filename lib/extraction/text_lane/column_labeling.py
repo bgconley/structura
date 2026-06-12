@@ -11,6 +11,7 @@ table shapes never re-call the model.
 from __future__ import annotations
 
 import threading
+from collections import OrderedDict
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from typing import Any, Protocol
@@ -24,6 +25,7 @@ from lib.model_runtime.profiles import get_model_profile
 
 COLUMN_LABELING_PROMPT_VERSION = "text_lane_column_labeling.v1"
 IGNORE_ROLE = "ignore"
+MAX_COLUMN_LABEL_CACHE_SIZE = 128
 _SAMPLE_DATA_ROWS = 3
 _MAX_SAMPLE_CELL_CHARS = 48
 
@@ -42,8 +44,12 @@ _ROLE_GLOSSES = {
 # Labels cache across gateway/service instances within the worker process:
 # the extraction worker builds a fresh service per job, so an instance-level
 # cache would never hit.
-_LABEL_CACHE: dict[tuple[str, str], ColumnLabeling] = {}
+_LABEL_CACHE: OrderedDict[tuple[str, str, str, str], ColumnLabeling] = OrderedDict()
 _LABEL_CACHE_LOCK = threading.Lock()
+
+
+class ColumnLabelingValidationError(ValueError):
+    """The model response did not assign exactly one role per physical column."""
 
 
 @dataclass(frozen=True)
@@ -141,15 +147,31 @@ class LiveColumnRoleLabeler:
         roles = line_item_roles(family)
         if not roles:
             raise ValueError(f"Family {family} has no registered line-item roles.")
-        cache_key = (family, grid.header_fingerprint())
+        profile_name = self._profile_name()
+        cache_key = (
+            COLUMN_LABELING_PROMPT_VERSION,
+            profile_name,
+            family,
+            grid.header_fingerprint(),
+        )
         with _LABEL_CACHE_LOCK:
             cached = _LABEL_CACHE.get(cache_key)
+            if cached is not None:
+                _LABEL_CACHE.move_to_end(cache_key)
         if cached is not None:
             return replace(cached, from_cache=True)
         labeling = self._label_columns_live(family=family, grid=grid, roles=roles)
         with _LABEL_CACHE_LOCK:
             _LABEL_CACHE.setdefault(cache_key, labeling)
+            _LABEL_CACHE.move_to_end(cache_key)
+            while len(_LABEL_CACHE) > MAX_COLUMN_LABEL_CACHE_SIZE:
+                _LABEL_CACHE.popitem(last=False)
         return labeling
+
+    def _profile_name(self) -> str:
+        if self._client is not None:
+            return self._client.profile.name
+        return get_settings().qwen_semantic_profile
 
     def _label_columns_live(
         self,
@@ -189,23 +211,24 @@ class LiveColumnRoleLabeler:
 
 
 def roles_from_payload(payload: Mapping[str, Any], *, num_cols: int) -> dict[int, str]:
-    """Collapse the schema-validated columns array into column_index -> role.
-
-    First assignment per index wins; unassigned columns default to ignore.
-    """
+    """Validate and collapse the columns array into column_index -> role."""
     roles: dict[int, str] = {}
     columns = payload.get("columns")
-    if isinstance(columns, list):
-        for entry in columns:
-            if not isinstance(entry, Mapping):
-                continue
-            index = entry.get("column_index")
-            role = entry.get("role")
-            if not isinstance(index, int) or isinstance(index, bool):
-                continue
-            if not isinstance(role, str) or not (0 <= index < num_cols):
-                continue
-            roles.setdefault(index, role)
+    if not isinstance(columns, list):
+        raise ColumnLabelingValidationError("missing_columns_array")
+    for entry in columns:
+        if not isinstance(entry, Mapping):
+            raise ColumnLabelingValidationError("invalid_column_entry")
+        index = entry.get("column_index")
+        role = entry.get("role")
+        if not isinstance(index, int) or isinstance(index, bool) or not (0 <= index < num_cols):
+            raise ColumnLabelingValidationError(f"invalid_column_index:{index}")
+        if not isinstance(role, str) or not role:
+            raise ColumnLabelingValidationError(f"invalid_column_role:{index}")
+        if index in roles:
+            raise ColumnLabelingValidationError(f"duplicate_column_index:{index}")
+        roles[index] = role
     for index in range(num_cols):
-        roles.setdefault(index, IGNORE_ROLE)
+        if index not in roles:
+            raise ColumnLabelingValidationError(f"missing_column_index:{index}")
     return roles

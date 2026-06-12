@@ -24,7 +24,10 @@ from lib.extraction.text_lane.span_candidates import (
     span_candidates_for_page,
 )
 from lib.extraction.text_lane.span_selection import (
+    MAX_SPAN_SELECTION_CACHE_SIZE,
+    LiveSpanSelector,
     SpanSelection,
+    clear_span_selection_cache,
     selection_keys,
     selections_from_payload,
     span_selection_prompt,
@@ -395,11 +398,6 @@ def test_kvp_gateway_abstains_without_expected_fields() -> None:
 
 
 def test_selection_cache_dedupes_identical_prompts() -> None:
-    from lib.extraction.text_lane.span_selection import (
-        LiveSpanSelector,
-        clear_span_selection_cache,
-    )
-
     clear_span_selection_cache()
     source = _source(_default_elements())
     spans = span_candidates_for_page(source, 1)
@@ -440,6 +438,80 @@ def test_selection_cache_dedupes_identical_prompts() -> None:
         assert not initial.from_cache
         assert cached.from_cache
         assert _Client.calls == 1
+    finally:
+        clear_span_selection_cache()
+
+
+class _ProfiledSpanClient:
+    def __init__(self, profile_name: str) -> None:
+        self.profile = type("_Profile", (), {"name": profile_name})()
+        self.requests: list[TextGenerateRequest] = []
+
+    def generate(self, request: TextGenerateRequest) -> TextGenerateResponse:
+        self.requests.append(request)
+        schema = request.response_json_schema or {}
+        keys = schema.get("required")
+        payload = {str(key): None for key in keys} if isinstance(keys, list) else {}
+        return TextGenerateResponse(
+            profile_name=request.profile_name,
+            model_name="fake",
+            model_version="t",
+            source_engine="qwen3_vl_8b",
+            prompt_version=request.prompt_version,
+            raw_text=json.dumps(payload),
+            normalized_json=payload,
+            prompt_sha256="0" * 64,
+            latency_ms=1,
+            structured_output_used=True,
+        )
+
+
+def test_selection_cache_separates_model_profiles() -> None:
+    clear_span_selection_cache()
+    source = _source(_default_elements())
+    spans = span_candidates_for_page(source, 1)
+    keys = ("loan_number", "statement_date")
+    first_client = _ProfiledSpanClient("qwen3-vl-8b-fp8-semantic:v1")
+    second_client = _ProfiledSpanClient("qwen3-vl-8b-fp8-semantic:v2")
+    first = LiveSpanSelector(client=first_client)  # type: ignore[arg-type]
+    second = LiveSpanSelector(client=second_client)  # type: ignore[arg-type]
+    try:
+        first_result = first.select_spans(
+            family="mortgage_escrow_statement", expected_keys=keys, spans=spans
+        )
+        second_result = second.select_spans(
+            family="mortgage_escrow_statement", expected_keys=keys, spans=spans
+        )
+        assert not first_result.from_cache
+        assert not second_result.from_cache
+        assert len(first_client.requests) == 1
+        assert len(second_client.requests) == 1
+    finally:
+        clear_span_selection_cache()
+
+
+def test_selection_cache_evicts_oldest_entries() -> None:
+    clear_span_selection_cache()
+    source = _source(_default_elements())
+    spans = span_candidates_for_page(source, 1)
+    client = _ProfiledSpanClient("qwen3-vl-8b-fp8-semantic:v1")
+    selector = LiveSpanSelector(client=client)  # type: ignore[arg-type]
+    try:
+        first = selector.select_spans(
+            family="mortgage_escrow_statement", expected_keys=("field_0",), spans=spans
+        )
+        for index in range(1, MAX_SPAN_SELECTION_CACHE_SIZE + 1):
+            selector.select_spans(
+                family="mortgage_escrow_statement",
+                expected_keys=(f"field_{index}",),
+                spans=spans,
+            )
+        replay = selector.select_spans(
+            family="mortgage_escrow_statement", expected_keys=("field_0",), spans=spans
+        )
+        assert not first.from_cache
+        assert not replay.from_cache
+        assert len(client.requests) == MAX_SPAN_SELECTION_CACHE_SIZE + 2
     finally:
         clear_span_selection_cache()
 
