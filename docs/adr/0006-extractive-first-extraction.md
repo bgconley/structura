@@ -194,12 +194,24 @@ classes are unrepresentable.
   telemetry block. Remaining: E4 (vision-lane consolidation / Granite
   retirement; preconditions now satisfied), E5 (representation collapse +
   per-document orchestration).
-- 2026-06-13: E4 default-runtime retirement is in progress. The Qwen-vs-Granite
-  A/B gate at `aabfb25` passed for the BMW and Anthem difficult-document inputs
-  with identical hard/operational acceptance, repeatability fingerprints, and
-  truthful mode lineage. The default live runtime now enables Qwen vision
-  fallback, excludes Granite from required live profiles, removes
-  `model-granite` from `models-live`, and keeps Granite behind explicit
-  comparison/rollback flags only. Remaining: run the post-flip GPU E4 gate,
-  record final evidence, then proceed to E5 representation/orchestration
-  collapse.
+- 2026-06-13: E4 default-runtime retirement passed the post-flip gate on GPU
+  commit `0ce4546`. The Qwen-vs-Granite A/B gate at `aabfb25` first passed for
+  the BMW and Anthem difficult-document inputs with identical hard/operational
+  acceptance, repeatability fingerprints, and truthful mode lineage. Then the
+  default live runtime was rebuilt with Qwen vision fallback enabled, Granite
+  removed from required live profiles and `models-live`, and the leftover
+  `model-granite` container removed before bringup. Preflight reported three
+  required live profiles and healthy `model-qwen-semantic`/`model-vl-embed`;
+  `docker compose ps` confirmed `model-granite-not-running`. Resident
+  acceptance reports
+  `/srv/structura/objects/exports/phase85-runs/e4-default-qwen/20260613T032000Z-e4-default-qwen-0ce4546-pass-1-report.json`
+  and `...pass-2-report.json` passed hard correctness, operational SLO,
+  report lineage, required summaries, safe outcomes, and repeatability gates.
+  Both reports recorded `vision_fallback_provider=qwen`,
+  `qwen_vision_fallback_enabled=true`, 13 admitted / 1 rejected candidates,
+  zero target dead letters, zero unsafe failures, and identical fingerprints
+  (`candidateFingerprints=4565152190f8b7dff7d09e33659591bd875597e1adcb59d0afa43a415a2766da`,
+  `canonicalOutput=6b9afd7e2720ce20c60bc622e638c525507ee7323ea91fc3a92b8187d365b074`).
+  Remaining: E5 representation/orchestration collapse, including retiring
+  legacy `granite_*` model-output/backend labels that are now compatibility
+  names rather than default runtime requirements.
