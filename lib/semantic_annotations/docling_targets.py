@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from typing import Any
 from uuid import UUID
 
@@ -123,6 +123,76 @@ _OBSERVATION_SEMANTIC_TYPES = frozenset(
 )
 
 
+@dataclass(frozen=True)
+class _PageKvpTarget:
+    semantic_type: str
+    target_schema: str
+    expected_fields: tuple[str, ...]
+    terms: tuple[str, ...]
+    min_term_hits: int = 1
+
+
+_PAGE_KVP_TARGETS = {
+    "medical_eob": (
+        _PageKvpTarget(
+            semantic_type="denial_or_coverage_decision",
+            target_schema="medical_eob",
+            expected_fields=(
+                "request_status",
+                "denial_reason",
+                "appeal_deadline",
+            ),
+            terms=("denied", "denial", "not medically necessary", "appeal"),
+            min_term_hits=1,
+        ),
+        _PageKvpTarget(
+            semantic_type="generic_form_kvp",
+            target_schema="document_observation",
+            expected_fields=(
+                "grievance_deadline",
+                "grievance_contact",
+                "grievance_contact_phone",
+                "grievance_contact_fax",
+                "grievance_contact_address",
+                "grievance_contact_url",
+            ),
+            terms=("grievance", "external review", "civil action"),
+            min_term_hits=1,
+        ),
+    ),
+    "receipt": (
+        _PageKvpTarget(
+            semantic_type="receipt_payment_summary",
+            target_schema="receipt",
+            expected_fields=(
+                "payment_method",
+                "subtotal",
+                "tax",
+                "tip",
+                "total_amount",
+            ),
+            terms=("subtotal", "sub total", "tax", "total", "amount paid", "payment"),
+            min_term_hits=2,
+        ),
+    ),
+    "service_record": (
+        _PageKvpTarget(
+            semantic_type="receipt_payment_summary",
+            target_schema="receipt",
+            expected_fields=(
+                "payment_method",
+                "subtotal",
+                "tax",
+                "tip",
+                "total_amount",
+            ),
+            terms=("subtotal", "sub total", "tax", "total", "amount paid", "payment"),
+            min_term_hits=2,
+        ),
+    ),
+}
+
+
 def augment_result_with_docling_structural_targets(
     source: ExtractionSourceDocument,
     result: SemanticAnnotationResult,
@@ -223,6 +293,17 @@ def _docling_structural_regions(
         return _dedupe_docling_regions(regions)[:MAX_DOCLING_STRUCTURAL_TARGETS]
 
     regions.extend(
+        _docling_page_kvp_regions(
+            source=source,
+            audit=audit,
+            coverage_keys=coverage_keys,
+            remaining=MAX_DOCLING_STRUCTURAL_TARGETS - len(regions),
+        )
+    )
+    if len(regions) >= MAX_DOCLING_STRUCTURAL_TARGETS:
+        return _dedupe_docling_regions(regions)[:MAX_DOCLING_STRUCTURAL_TARGETS]
+
+    regions.extend(
         _docling_observation_regions(
             source=source,
             audit=audit,
@@ -231,6 +312,75 @@ def _docling_structural_regions(
         )
     )
     return _dedupe_docling_regions(regions)[:MAX_DOCLING_STRUCTURAL_TARGETS]
+
+
+def _docling_page_kvp_regions(
+    *,
+    source: ExtractionSourceDocument,
+    audit: DoclingAudit,
+    coverage_keys: set[tuple[object, ...]],
+    remaining: int,
+) -> list[SemanticRegionAnnotation]:
+    regions: list[SemanticRegionAnnotation] = []
+    for family in _page_kvp_families(source, audit):
+        for target in _PAGE_KVP_TARGETS[family]:
+            for page in source.pages:
+                if len(regions) >= remaining:
+                    return regions
+                matched_terms = _matched_page_terms(page.text, target.terms)
+                if len(matched_terms) < target.min_term_hits:
+                    continue
+                region = SemanticRegionAnnotation(
+                    semantic_type=target.semantic_type,
+                    priority="high",
+                    granite_task="kvp",
+                    target_schema=target.target_schema,
+                    expected_fields=target.expected_fields,
+                    grounding=SemanticGroundingRef(kind="page", page_id=page.page_id),
+                    review_required=True,
+                    reason=(
+                        f"Docling page text anchors indicate {family} "
+                        f"{target.semantic_type} content."
+                    ),
+                    confidence=0.76,
+                    metadata={
+                        **_base_metadata(
+                            audit,
+                            source="docling_page_kvp",
+                            family=family,
+                            source_signal="text",
+                            coverage_role="primary",
+                            extraction_scope="page",
+                        ),
+                        "matched_page_terms": list(matched_terms),
+                    },
+                )
+                coverage_key = _structural_coverage_key(region)
+                if coverage_key in coverage_keys:
+                    continue
+                coverage_keys.add(coverage_key)
+                regions.append(region)
+    return regions
+
+
+def _page_kvp_families(
+    source: ExtractionSourceDocument,
+    audit: DoclingAudit,
+) -> tuple[str, ...]:
+    del audit
+    source_family = (source.family or "").strip().lower()
+    if source_family in _PAGE_KVP_TARGETS:
+        return (source_family,)
+    return ()
+
+
+def _matched_page_terms(text: str, terms: tuple[str, ...]) -> tuple[str, ...]:
+    page_text = _normalized_text(text)
+    return tuple(term for term in terms if term in page_text)
+
+
+def _normalized_text(value: str) -> str:
+    return " ".join(value.lower().replace("&", " & ").split())
 
 
 def _docling_observation_regions(

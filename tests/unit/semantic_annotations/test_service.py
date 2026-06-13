@@ -652,8 +652,8 @@ def test_semantic_service_preserves_generic_kvp_type_for_medical_eob_pages() -> 
         household_id=household_id,
         page_id=page_id,
         family="medical_eob",
-        title="Anthem denial",
-        text="Explanation of benefits claim denied appeal grievance rights deadline",
+        title="Anthem coverage notice",
+        text="Explanation of benefits claim coverage rights deadline",
     )
     manifest = _manifest_with_regions(
         document_id=document_id,
@@ -2099,6 +2099,54 @@ def test_planning_normalization_never_synthesizes_or_rewrites_model_regions() ->
     assert {region.semantic_type for region in normalized.regions} <= {
         region.semantic_type for region in model_regions
     }
+
+
+def test_planning_normalization_drops_model_page_kvp_when_docling_page_target_exists() -> None:
+    from lib.semantic_annotations.manifest_normalization import normalize_manifest_for_planning
+
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    source = _source(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        family="medical_eob",
+        title="Anthem denial",
+        text="Explanation of benefits claim denied appeal grievance rights deadline",
+    )
+    docling_region = SemanticRegionAnnotation(
+        semantic_type="denial_or_coverage_decision",
+        priority="high",
+        granite_task="kvp",
+        target_schema="medical_eob",
+        expected_fields=("request_status", "denial_reason", "appeal_deadline"),
+        grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+        review_required=True,
+        confidence=0.82,
+        metadata={"region_source": DOCLING_STRUCTURAL_REGION_SOURCE},
+    )
+    qwen_variant = SemanticRegionAnnotation(
+        semantic_type="generic_form_kvp",
+        priority="high",
+        granite_task="kvp",
+        target_schema="medical_eob",
+        expected_fields=("appeal_deadline", "grievance_rights"),
+        grounding=SemanticGroundingRef(kind="page", page_id=page_id),
+        review_required=False,
+        confidence=0.99,
+    )
+    manifest = _manifest_with_regions(
+        document_id=document_id,
+        household_id=household_id,
+        page_id=page_id,
+        document_type="medical_eob",
+        regions=[qwen_variant, docling_region],
+    )
+
+    normalized = normalize_manifest_for_planning(source, manifest)
+
+    assert normalized.regions == [docling_region]
 
 
 def test_planning_normalization_preserves_model_payment_summary_on_generic_source() -> None:

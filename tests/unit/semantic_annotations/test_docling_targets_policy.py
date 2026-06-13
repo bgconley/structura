@@ -71,6 +71,13 @@ def _manifest_with_region(
     source: ExtractionSourceDocument,
     region: SemanticRegionAnnotation,
 ) -> DocumentSemanticManifest:
+    return _manifest_with_regions(source, [region])
+
+
+def _manifest_with_regions(
+    source: ExtractionSourceDocument,
+    regions: list[SemanticRegionAnnotation],
+) -> DocumentSemanticManifest:
     pages = [
         PageSemanticAnnotation(
             page_id=page.page_id,
@@ -90,7 +97,7 @@ def _manifest_with_region(
         model_version="t",
         prompt_version="t",
         pages=pages,
-        regions=[region],
+        regions=regions,
         confidence={},
         manifest={"pages": [], "regions": []},
     )
@@ -161,3 +168,68 @@ def test_qwen_observation_on_same_page_suppresses_duplicate_docling_target() -> 
         region for region in augmented.regions if region.semantic_type == "escrow_summary"
     ]
     assert escrow_regions == [qwen_region]
+
+
+def test_docling_medical_eob_targets_denial_and_grievance_pages() -> None:
+    source = _source_with_pages(
+        family="medical_eob",
+        title="Anthem denial",
+        page_texts=[
+            (
+                "Explanation of benefits claim denied because the requested MRI "
+                "was not medically necessary. Appeal within 180 days."
+            ),
+            (
+                "Grievance rights include a deadline, contact phone, fax, "
+                "mailing address, and website for submitting the grievance."
+            ),
+        ],
+    )
+
+    augmented = augment_manifest_with_docling_structural_targets(
+        source,
+        _manifest_with_regions(source, []),
+    )
+
+    regions_by_type = {
+        (region.semantic_type, region.grounding.page_id): region for region in augmented.regions
+    }
+    denial = regions_by_type[("denial_or_coverage_decision", source.pages[0].page_id)]
+    grievance = regions_by_type[("generic_form_kvp", source.pages[1].page_id)]
+    assert denial.target_schema == "medical_eob"
+    assert denial.metadata["region_source"] == "docling_structural"
+    assert set(denial.expected_fields) >= {
+        "appeal_deadline",
+        "denial_reason",
+        "request_status",
+    }
+    assert grievance.target_schema == "document_observation"
+    assert grievance.metadata["region_source"] == "docling_structural"
+    assert set(grievance.expected_fields) >= {
+        "grievance_contact",
+        "grievance_deadline",
+    }
+
+
+def test_docling_service_record_targets_payment_summary_page() -> None:
+    source = _source_with_pages(
+        family="service_record",
+        title="BMW repair order",
+        page_texts=[
+            "Repair order service labor parts vehicle VIN mileage motorcycle.",
+            "Sub Total 701.50 Tax 0.00 Total 701.50 Amount Paid 701.50 Visa payment.",
+        ],
+    )
+
+    augmented = augment_manifest_with_docling_structural_targets(
+        source,
+        _manifest_with_regions(source, []),
+    )
+
+    payment = next(
+        region for region in augmented.regions if region.semantic_type == "receipt_payment_summary"
+    )
+    assert payment.grounding.page_id == source.pages[1].page_id
+    assert payment.target_schema == "receipt"
+    assert payment.metadata["region_source"] == "docling_structural"
+    assert set(payment.expected_fields) >= {"subtotal", "tax", "total_amount"}

@@ -79,6 +79,7 @@ def normalize_manifest_for_planning(
     regions = _drop_low_value_regions(regions)
     regions = _drop_unanchored_observation_family_regions(source, regions)
     regions = _dedupe_page_kvp_regions(regions)
+    regions = _drop_model_page_kvp_variants_covered_by_docling_targets(regions)
     regions = _dedupe_equivalent_regions(regions)
     if regions == manifest.regions:
         return manifest
@@ -297,6 +298,32 @@ def _merge_page_kvp_regions(
         ),
         metadata=metadata,
     )
+
+
+def _drop_model_page_kvp_variants_covered_by_docling_targets(
+    regions: list[SemanticRegionAnnotation],
+) -> list[SemanticRegionAnnotation]:
+    docling_page_targets = {
+        region.grounding.page_id
+        for region in regions
+        if region.metadata.get("region_source") == DOCLING_STRUCTURAL_REGION_SOURCE
+        and region.granite_task == "kvp"
+        and region.grounding.kind == "page"
+        and region.grounding.page_id is not None
+    }
+    if not docling_page_targets:
+        return regions
+    return [
+        region
+        for region in regions
+        if not (
+            region.metadata.get("region_source") != DOCLING_STRUCTURAL_REGION_SOURCE
+            and region.granite_task == "kvp"
+            and region.grounding.kind == "page"
+            and region.grounding.page_id in docling_page_targets
+            and region.semantic_type in _PAGE_KVP_DEDUPE_TYPES
+        )
+    ]
 
 
 def _region_preference_key(region: SemanticRegionAnnotation) -> tuple[object, ...]:
