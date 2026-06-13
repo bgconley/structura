@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import subprocess  # nosec B404
 import sys
@@ -24,6 +25,24 @@ def main() -> int:
         acceptance = _run_resident_acceptance(args, mode=mode)
         if acceptance.returncode != 0:
             return acceptance.returncode
+        failures = _mode_report_failures(
+            mode=mode,
+            paths=_mode_report_paths(args, mode=mode),
+            qwen_vision_profile=args.qwen_vision_profile,
+        )
+        if failures:
+            print(
+                json.dumps(
+                    {
+                        "stage": "e4_vision_ab_mode_report_validation_failed",
+                        "mode": mode,
+                        "failures": failures,
+                    },
+                    sort_keys=True,
+                ),
+                flush=True,
+            )
+            return 1
     return 0
 
 
@@ -117,6 +136,55 @@ def _run_resident_acceptance(
         command.append("--require-gold")
     # Fixed Python script path and argv-only forwarding; no shell.
     return subprocess.run(command, cwd=ROOT, check=False, text=True)  # nosec B603
+
+
+def _mode_report_paths(args: argparse.Namespace, *, mode: str) -> list[Path]:
+    mode_report_dir = args.report_dir / mode
+    run_id_prefix = f"{args.run_id_prefix}-{mode}"
+    return [
+        mode_report_dir / f"{run_id_prefix}-pass-{pass_number}-report.json"
+        for pass_number in (1, 2)
+    ]
+
+
+def _mode_report_failures(
+    *,
+    mode: str,
+    paths: list[Path],
+    qwen_vision_profile: str,
+) -> list[dict[str, object]]:
+    failures: list[dict[str, object]] = []
+    for path in paths:
+        invalid: list[str] = []
+        report = _load_report(path)
+        manifest = report.get("runManifest")
+        manifest = manifest if isinstance(manifest, dict) else {}
+        run_id = report.get("runId")
+        expected_qwen = mode == "qwen"
+        if manifest.get("vision_fallback_provider") != mode:
+            invalid.append("runManifest.vision_fallback_provider")
+        if manifest.get("qwen_vision_fallback_enabled") is not expected_qwen:
+            invalid.append("runManifest.qwen_vision_fallback_enabled")
+        if expected_qwen and manifest.get("qwen_vision_profile") != qwen_vision_profile:
+            invalid.append("runManifest.qwen_vision_profile")
+        if invalid:
+            failures.append(
+                {
+                    "report": str(path),
+                    "runId": run_id,
+                    "invalid": invalid,
+                }
+            )
+    return failures
+
+
+def _load_report(path: Path) -> dict[str, object]:
+    if not path.exists():
+        return {"runId": None, "runManifest": {}, "_missingReportPath": str(path)}
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        return {"runId": None, "runManifest": {}, "_invalidReportPath": str(path)}
+    return payload
 
 
 def _mode_env(

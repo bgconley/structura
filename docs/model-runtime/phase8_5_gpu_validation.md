@@ -114,6 +114,8 @@ The wrapper first brings up the live runtime with
 runs two-pass resident acceptance into `e4-vision-ab/granite`. It then recreates
 the runtime with `STRUCTURA_QWEN_VISION_FALLBACK=true` for Qwen vision fallback
 and writes the same two-pass acceptance evidence into `e4-vision-ab/qwen`.
+It also fails if the captured report manifests do not record the expected
+fallback provider and Qwen vision profile for each mode.
 Do not remove Granite or flip the default fallback until the Qwen reports match
 or safely abstain relative to the Granite baseline with no hard invariant,
 dead-letter, provenance, or hidden-second-Qwen regressions.

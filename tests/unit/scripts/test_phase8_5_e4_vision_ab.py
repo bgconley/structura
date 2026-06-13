@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -36,6 +37,8 @@ def test_e4_vision_ab_runner_recreates_runtime_for_granite_then_qwen(
     ) -> subprocess.CompletedProcess[str]:
         env = kwargs.get("env")
         calls.append((command, env if isinstance(env, dict) else None))
+        if str(runner.RESIDENT_ACCEPTANCE) in command:
+            _write_mode_reports(command, runner.QWEN_VISION_PROFILE)
         return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
 
     monkeypatch.setattr(runner.subprocess, "run", fake_run)
@@ -100,6 +103,8 @@ def test_e4_vision_ab_runner_stops_when_qwen_acceptance_fails(
         calls.append(command)
         if str(runner.RESIDENT_ACCEPTANCE) in command and "phase85-e4-qwen" in command:
             return subprocess.CompletedProcess(command, 1, stdout="", stderr="")
+        if str(runner.RESIDENT_ACCEPTANCE) in command:
+            _write_mode_reports(command, runner.QWEN_VISION_PROFILE)
         return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
 
     monkeypatch.setattr(runner.subprocess, "run", fake_run)
@@ -122,3 +127,62 @@ def test_e4_vision_ab_runner_stops_when_qwen_acceptance_fails(
     assert len(calls) == 4
     assert calls[0][-1] == "--skip-preflight"
     assert calls[2][-1] == "--skip-preflight"
+
+
+def test_e4_vision_ab_report_validation_rejects_wrong_qwen_mode(tmp_path) -> None:
+    runner = _load_e4_runner()
+    report = tmp_path / "qwen-pass-1-report.json"
+    report.write_text(
+        json.dumps(
+            {
+                "runId": "phase85-e4-qwen-pass-1",
+                "runManifest": {
+                    "vision_fallback_provider": "granite",
+                    "qwen_vision_fallback_enabled": False,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    failures = runner._mode_report_failures(
+        mode="qwen",
+        paths=[report],
+        qwen_vision_profile=runner.QWEN_VISION_PROFILE,
+    )
+
+    assert failures == [
+        {
+            "report": str(report),
+            "runId": "phase85-e4-qwen-pass-1",
+            "invalid": [
+                "runManifest.vision_fallback_provider",
+                "runManifest.qwen_vision_fallback_enabled",
+                "runManifest.qwen_vision_profile",
+            ],
+        }
+    ]
+
+
+def _write_mode_reports(command: list[str], qwen_vision_profile: str) -> None:
+    report_dir = Path(command[command.index("--report-dir") + 1])
+    run_id_prefix = command[command.index("--run-id-prefix") + 1]
+    mode = "qwen" if run_id_prefix.endswith("-qwen") else "granite"
+    report_dir.mkdir(parents=True, exist_ok=True)
+    for pass_number in (1, 2):
+        report = report_dir / f"{run_id_prefix}-pass-{pass_number}-report.json"
+        manifest = {
+            "vision_fallback_provider": mode,
+            "qwen_vision_fallback_enabled": mode == "qwen",
+        }
+        if mode == "qwen":
+            manifest["qwen_vision_profile"] = qwen_vision_profile
+        report.write_text(
+            json.dumps(
+                {
+                    "runId": f"{run_id_prefix}-pass-{pass_number}",
+                    "runManifest": manifest,
+                }
+            ),
+            encoding="utf-8",
+        )
