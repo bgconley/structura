@@ -19,6 +19,8 @@ from lib.extraction.canonical_repository import (
     refresh_document_chunk_projection,
     update_document_rollups,
 )
+from lib.extraction.claim_repository import persist_extraction_claims
+from lib.extraction.claims import Claim, claims_from_region_envelope
 from lib.extraction.errors import ExtractionRepositoryError
 from lib.extraction.extraction_plan_task_repository import update_plan_task_visual_summary
 from lib.extraction.models import (
@@ -33,6 +35,7 @@ from lib.extraction.models import (
     ValidationReport,
 )
 from lib.extraction.observation_repository import insert_observation_candidate
+from lib.extraction.region_envelope import region_envelope_from_normalization_json
 from lib.model_runtime.source_engines import is_model_source_engine
 from lib.review.task_repository import upsert_review_task
 from lib.storage import ObjectStorage, StoredObject, cleanup_unreferenced_stored_object
@@ -188,6 +191,12 @@ def _persist_extraction_rows(
                 cur,
                 plan_task_id=run_scope.plan_task_id,
                 extraction_metadata=extraction_for_insert.metadata,
+            )
+            persist_extraction_claims(
+                cur,
+                extraction_id=extraction_id,
+                claims=_claims_for_persistence(extraction_for_insert),
+                run_scope=run_scope,
             )
             persist_candidate_admission_events(
                 cur,
@@ -648,6 +657,13 @@ def _run_scope_from_semantic_task(semantic_task: Any | None) -> ExtractionRunSco
         ),
         metadata=dict(semantic_task.metadata),
     )
+
+
+def _claims_for_persistence(extraction: GatewayExtraction) -> list[Claim]:
+    envelope = region_envelope_from_normalization_json(extraction.normalization_json)
+    if envelope is None:
+        return []
+    return claims_from_region_envelope(envelope)
 
 
 def _artifact_metadata(

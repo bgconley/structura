@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+from pathlib import Path
+from typing import cast
 from uuid import uuid4
 
+from lib.extraction import extraction_repository as extraction_repo
+from lib.extraction.claims import Claim
 from lib.extraction.extraction_repository import (
+    _persist_extraction_rows,
     _quality_outcome_for_extraction,
     _review_status_for_extraction,
     _status_for_persisted_extraction,
@@ -22,6 +27,8 @@ from lib.extraction.normalization import (
     line_item_candidates_from_extraction,
     observation_candidates_from_extraction,
 )
+from lib.extraction.region_envelope import EvidenceRef, RegionExtractionEnvelope, RegionFact
+from lib.storage import StoredObject
 
 
 def test_schema_validation_review_does_not_mark_persisted_extraction_failed() -> None:
@@ -410,6 +417,144 @@ def test_model_region_observations_require_concrete_evidence_when_requested() ->
     ]
 
 
+def test_persist_extraction_rows_persists_claims_from_region_envelope(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    document_id = uuid4()
+    extraction_id = uuid4()
+    annotation_id = uuid4()
+    region_id = uuid4()
+    source = ExtractionSourceDocument(
+        document_id=document_id,
+        household_id=uuid4(),
+        title="Invoice",
+        original_filename="invoice.pdf",
+        mime_type="application/pdf",
+        family="invoice",
+        subtype=None,
+        sensitivity="normal",
+        document_date=None,
+        counterparty_display=None,
+        primary_folder_id=None,
+        metadata={},
+        pages=[],
+        elements=[],
+        tables=[],
+    )
+    envelope = RegionExtractionEnvelope(
+        document_id=str(document_id),
+        semantic_annotation_id=str(annotation_id),
+        semantic_region_id=str(region_id),
+        resolved_document_type="invoice",
+        semantic_type="payment_summary",
+        target_schema="invoice",
+        model_output_schema_name="docling_text_kvp.v1",
+        facts=[
+            RegionFact(
+                name="invoice.invoice_number",
+                value="INV-100",
+                value_type="string",
+                evidence=[
+                    EvidenceRef(
+                        document_id=str(document_id),
+                        semantic_annotation_id=str(annotation_id),
+                        semantic_region_id=str(region_id),
+                        page_number=1,
+                        element_id="invoice-number",
+                        source_engine="docling",
+                    )
+                ],
+            )
+        ],
+    )
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(extraction_repo, "db_connection", lambda: _FakeConnection())
+    monkeypatch.setattr(extraction_repo, "_lock_document", lambda *args, **kwargs: None)
+    monkeypatch.setattr(extraction_repo, "_supersede_current_assets", lambda *args, **kwargs: None)
+    monkeypatch.setattr(extraction_repo, "_insert_artifact_asset", lambda *args, **kwargs: uuid4())
+    monkeypatch.setattr(
+        extraction_repo,
+        "_supersede_current_extractions",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        extraction_repo,
+        "_insert_extraction_run_row",
+        lambda *args, **kwargs: extraction_id,
+    )
+    monkeypatch.setattr(
+        extraction_repo,
+        "update_plan_task_visual_summary",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        extraction_repo,
+        "persist_candidate_admission_events",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(extraction_repo, "promote_candidates", lambda *args, **kwargs: 0)
+    monkeypatch.setattr(extraction_repo, "create_review_tasks", lambda *args, **kwargs: 0)
+    monkeypatch.setattr(extraction_repo, "update_document_rollups", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        extraction_repo,
+        "refresh_document_chunk_projection",
+        lambda *args, **kwargs: None,
+    )
+
+    def capture_claims(cur, *, extraction_id, claims, run_scope):
+        captured["cursor"] = cur
+        captured["extraction_id"] = extraction_id
+        captured["claims"] = list(claims)
+        captured["run_scope"] = run_scope
+
+    monkeypatch.setattr(extraction_repo, "persist_extraction_claims", capture_claims)
+
+    _persist_extraction_rows(
+        GatewayExtraction(
+            schema_name="invoice",
+            schema_version="v1",
+            route=ModelRoute(
+                source_engine="docling",
+                model_name="docling-text",
+                model_version="v1",
+                prompt_version="none",
+                route_profile="docling_text",
+            ),
+            normalized_json={"schema_name": "invoice"},
+            raw_output_json={},
+            model_output_schema_name="docling_text_kvp.v1",
+            normalization_json={
+                "regionEnvelope": envelope.model_dump(mode="json", exclude_none=True),
+                "regionEnvelopeVersion": "phase8_5-region-envelope-v1",
+            },
+        ),
+        source=source,
+        validation=ValidationReport(needs_review=True, checks=[]),
+        field_candidates=[],
+        line_item_candidates=[],
+        observation_candidates=[],
+        run_scope=ExtractionRunScope.semantic_region(
+            semantic_annotation_id=annotation_id,
+            source_semantic_region_id=region_id,
+            semantic_type="payment_summary",
+            granite_task="kvp",
+            region_envelope_version="phase8_5-region-envelope-v1",
+        ),
+        raw_object=_stored(tmp_path, "raw"),
+        normalized_object=_stored(tmp_path, "normalized"),
+    )
+
+    claims = cast(list[Claim], captured["claims"])
+    run_scope = cast(ExtractionRunScope, captured["run_scope"])
+    assert captured["extraction_id"] == extraction_id
+    assert len(claims) == 1
+    assert claims[0].canonical_key == "invoice.invoice_number"
+    assert claims[0].anchor.docling_element_ids == ("invoice-number",)
+    assert run_scope.source_semantic_region_id == region_id
+
+
 def test_supersede_current_extractions_is_scoped_to_semantic_region() -> None:
     cur = RecordingCursor()
     document_id = uuid4()
@@ -476,3 +621,41 @@ class RecordingCursor:
 
     def execute(self, sql: str, params: tuple[object, ...]) -> None:
         self.queries.append((sql, params))
+
+
+def _stored(tmp_path: Path, name: str) -> StoredObject:
+    path = tmp_path / f"{name}.json"
+    path.write_text("{}", encoding="utf-8")
+    return StoredObject(
+        uri=f"objects://test/{name}.json",
+        sha256="0" * 64,
+        byte_size=2,
+        path=path,
+        created=False,
+    )
+
+
+class _FakeConnection:
+    def __init__(self) -> None:
+        self.cursor_obj = _FakeCursor()
+        self.committed = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+    def cursor(self):
+        return self.cursor_obj
+
+    def commit(self) -> None:
+        self.committed = True
+
+
+class _FakeCursor:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
