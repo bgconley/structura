@@ -11,18 +11,20 @@ git pull --ff-only
 STRUCTURA_MODEL_MODE=live PYTHON=/tank/venvs/structura/bin/python bash scripts/gpu/phase8_5_model_smoke.sh
 ```
 
-On the current 2x 24GB Blackwell node, `models-live` is the co-resident VLM
-profile with role-weighted context budgets:
+On the current 2x 24GB Blackwell node, `models-live` is the default VLM profile
+with role-weighted context budgets:
 
 - GPU0: Qwen3-VL-8B-Instruct-FP8 Smart Parse semantic service at 32K context.
-- GPU1: Granite 4.0 3B Vision at 16K context, then Qwen3-VL-Embedding 2B at 2K.
+- GPU1: Qwen3-VL-Embedding 2B at 2K.
 - Qwen3-Embedding-4B text embeddings remain offload/on-demand on the two-Blackwell
   node; prefer the RTX 3090 node for always-available text embeddings once
   cross-node serving is wired.
+- Granite is not required by the default live runtime. Use the explicit
+  `granite-live` profile only for rollback or E4 comparison gates.
 
-Use managed smoke mode to start the highest-context VLM on each card first, then
-the lower-context companion services, then temporarily offload GPU1 VLM services
-to validate text embeddings, and finally restore the co-resident VLM services:
+Use managed smoke mode to start Qwen and visual embedding services, temporarily
+offload GPU1 VLM services to validate text embeddings, and finally restore the
+default VLM services:
 
 ```bash
 STRUCTURA_MODEL_MODE=live \
@@ -32,8 +34,10 @@ bash scripts/gpu/phase8_5_model_smoke.sh
 ```
 
 The smoke gate waits for first-load health and performs minimal live inference
-requests against Qwen Smart Parse, Granite, visual embeddings, and text
-embeddings before evaluating the private corpus manifest.
+requests against Qwen Smart Parse/Qwen vision fallback, visual embeddings, and
+text embeddings before evaluating the private corpus manifest. Set
+`STRUCTURA_MODEL_SMOKE_INCLUDE_GRANITE=1` only when validating the explicit
+Granite rollback/comparison lane.
 
 The Blackwell runtime uses explicit Docker Compose GPU reservations rather than
 only `gpus: all`. Each live model container is assigned a host GPU with
@@ -46,8 +50,6 @@ The default memory/context settings are intentionally conservative:
 
 - Qwen3-VL-8B-Instruct-FP8 Smart Parse: 32K context, image-only, low concurrency;
   highest allocation because it owns semantic inventory and routing.
-- Granite 4.0 3B Vision: 16K context, image-only, low concurrency; targeted
-  crops/regions should keep extraction prompts narrower than full-document Qwen.
 - Visual embeddings: 2K context with native 2048-dimensional Qwen3-VL-Embedding
   output. It rejects the OpenAI `dimensions` override, so do not configure
   Structura visual embeddings as 1024-dimensional unless a different backend is
@@ -110,10 +112,11 @@ PYTHON=/tank/venvs/structura/bin/python \
 ```
 
 The wrapper first brings up the live runtime with
-`STRUCTURA_QWEN_VISION_FALLBACK=false` for the Granite fallback baseline, then
-runs two-pass resident acceptance into `e4-vision-ab/granite`. It then recreates
-the runtime with `STRUCTURA_QWEN_VISION_FALLBACK=true` for Qwen vision fallback
-and writes the same two-pass acceptance evidence into `e4-vision-ab/qwen`.
+`STRUCTURA_QWEN_VISION_FALLBACK=false` and `--include-granite` for the Granite
+fallback baseline, then runs two-pass resident acceptance into
+`e4-vision-ab/granite`. It then recreates the default runtime with
+`STRUCTURA_QWEN_VISION_FALLBACK=true` for Qwen vision fallback and writes the
+same two-pass acceptance evidence into `e4-vision-ab/qwen`.
 It also fails if the captured report manifests do not record the expected
 fallback provider and Qwen vision profile for each mode.
 Do not remove Granite or flip the default fallback until the Qwen reports match

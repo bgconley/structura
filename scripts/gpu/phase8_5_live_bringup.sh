@@ -3,12 +3,18 @@ set -euo pipefail
 
 export STRUCTURA_MODEL_MODE="${STRUCTURA_MODEL_MODE:-live}"
 export STRUCTURA_EMBEDDING_VISUAL_ENABLED="${STRUCTURA_EMBEDDING_VISUAL_ENABLED:-true}"
+export STRUCTURA_QWEN_VISION_FALLBACK="${STRUCTURA_QWEN_VISION_FALLBACK:-true}"
 
 REBUILD=0
 SKIP_PREFLIGHT=0
+INCLUDE_GRANITE=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --include-granite)
+      INCLUDE_GRANITE=1
+      shift
+      ;;
     --build)
       REBUILD=1
       shift
@@ -43,7 +49,6 @@ APP_SERVICES=(
 )
 LIVE_MODEL_SERVICES=(
   model-qwen-semantic
-  model-granite
   model-vl-embed
 )
 REBUILD_SERVICES=(
@@ -60,6 +65,13 @@ REMOVED_LEGACY_CONTAINERS=(
 compose_live() {
   docker compose "${COMPOSE_PROFILES[@]}" "$@"
 }
+
+if [[ "$INCLUDE_GRANITE" == "1" ]]; then
+  COMPOSE_PROFILES+=(--profile granite-live)
+  LIVE_MODEL_SERVICES+=(model-granite)
+  export STRUCTURA_MODEL_GRANITE_URL="${STRUCTURA_MODEL_GRANITE_URL:-http://model-granite:8101}"
+  export STRUCTURA_E4_INCLUDE_GRANITE=true
+fi
 
 if [[ "$REBUILD" == "1" ]]; then
   compose_live build "${REBUILD_SERVICES[@]}"

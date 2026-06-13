@@ -24,7 +24,7 @@ annotation/model-runtime foundation in progress:
 - Phase 6 contacts, aliases, document-contact links, duplicate merge suggestions, watched-folder PDF intake, filing rules, dry-run explanations, reviewable filing suggestions, operator maintenance CLI commands, and Automation Workbench UI
 - Phase 7 document relationships, relationship suggestions, accept/reject review actions, relationship worker, related-document Viewer panel, timelines, deadlines, relationship/deadline search filters, smart views, and Relationships/Timelines UI
 - Phase 8 difficult-document quality detection, review-required uncertainty, selective fixture visual byte embeddings, Qwen-eligible handwriting fallback with honest Docling provenance until live mode is enabled, visual/hybrid retrieval policy, and difficult-document Viewer/Search/Review cues
-- Phase 8.5 semantic annotation manifests, Qwen3-VL-8B Smart Parse semantic planning on `model-qwen-semantic`, targeted Granite extraction jobs, semantic worker/runtime profile, bounded internal model HTTP clients, fixture-vs-live mode separation, model service health snapshots, and model-corpus gate scaffolding
+- Phase 8.5 semantic annotation manifests, Qwen3-VL-8B Smart Parse semantic planning on `model-qwen-semantic`, extractive-first text lanes, Qwen vision fallback for exceptional difficult pages, semantic worker/runtime profile, bounded internal model HTTP clients, fixture-vs-live mode separation, model service health snapshots, and model-corpus gate scaffolding
 
 ## Local Commands
 
@@ -65,9 +65,9 @@ docker compose --profile models-placeholder up model-granite-placeholder model-e
 ```
 
 Live Phase 8.5 model services are behind explicit profiles. Compose defaults use
-`voipmonitor/vllm:cu130` for co-resident Blackwell Qwen/Granite/visual services
-and TEI CUDA for on-demand/offload text embeddings; release candidates still need
-digest-pinned image evidence:
+`voipmonitor/vllm:cu130` for Qwen Smart Parse/Qwen vision fallback and visual
+embedding services, and TEI CUDA for on-demand/offload text embeddings; release
+candidates still need digest-pinned image evidence. Granite is no longer part of the default required live runtime; start the explicit `granite-live` profile only for rollback or comparison gates.
 
 ```bash
 STRUCTURA_MODEL_MODE=live \
@@ -76,7 +76,8 @@ bash scripts/gpu/phase8_5_model_smoke.sh
 ```
 
 Semantic annotation workers are behind the semantic/extraction profile. They consume
-Docling-grounded page images and route targeted Granite extraction jobs:
+Docling-grounded page images and route targeted extractive-first text or Qwen
+vision fallback jobs:
 
 ```bash
 docker compose --profile semantic up worker-semantic-annotations

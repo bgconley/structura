@@ -38,7 +38,11 @@ def test_phase8_5_live_bringup_forces_live_model_mode() -> None:
     script = Path("scripts/gpu/phase8_5_live_bringup.sh").read_text()
 
     assert 'export STRUCTURA_MODEL_MODE="${STRUCTURA_MODEL_MODE:-live}"' in script
+    assert (
+        'export STRUCTURA_QWEN_VISION_FALLBACK="${STRUCTURA_QWEN_VISION_FALLBACK:-true}"' in script
+    )
     assert "phase8_5_live_runtime_preflight.py" in script
+    assert "--include-granite" in script
     assert "--force-recreate" in script
     assert "REMOVED_LEGACY_CONTAINERS" in script
     assert "structura-model-qwen-1" in script
@@ -54,7 +58,6 @@ def test_phase8_5_live_runtime_preflight_checks_container_modes() -> None:
     assert "STRUCTURA_MODEL_MODE" in script
     assert "Qwen/Qwen3-VL-8B-Instruct-FP8" in script
     assert "model-qwen-semantic" in script
-    assert "model-granite" in script
     assert 'shutil.which("docker")' in script
     assert "_docker_compose_command(" in script
     assert "urlopen(" not in script
@@ -66,8 +69,6 @@ def test_phase8_5_live_runtime_preflight_checks_profile_registry_limits() -> Non
 
     assert "MODEL_LIMIT_TARGETS" in script
     assert "required_live_profile_names" in script
-    assert "STRUCTURA_GRANITE_MAX_MODEL_LEN" in script
-    assert "STRUCTURA_GRANITE_LIMIT_MM_PER_PROMPT" in script
     assert "STRUCTURA_VLLM_MAX_MODEL_LEN" in script
     assert "STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT" in script
     assert "model-vl-embed" in script
@@ -76,30 +77,38 @@ def test_phase8_5_live_runtime_preflight_checks_profile_registry_limits() -> Non
 def test_phase8_5_live_runtime_preflight_limit_checks_use_profile_registry(monkeypatch) -> None:
     from scripts.gpu import phase8_5_live_runtime_preflight as preflight
 
-    granite_env = {
-        "STRUCTURA_GRANITE_MAX_MODEL_LEN": "16384",
-        "STRUCTURA_GRANITE_LIMIT_MM_PER_PROMPT": '{"image":1,"video":0}',
+    qwen_env = {
+        "STRUCTURA_VLLM_MAX_MODEL_LEN": "32768",
+        "STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT": '{"image":4,"video":0}',
     }
-    monkeypatch.setattr(preflight, "_compose_exec_env", lambda _service: granite_env)
+    monkeypatch.setattr(preflight, "_compose_exec_env", lambda _service: qwen_env)
 
     ok_result = preflight._check_model_service_limits(
-        "model-granite",
-        preflight.MODEL_LIMIT_TARGETS["model-granite"],
+        "model-qwen-semantic",
+        preflight.MODEL_LIMIT_TARGETS["model-qwen-semantic"],
     )
     assert ok_result.ok is True
 
-    granite_env["STRUCTURA_GRANITE_MAX_MODEL_LEN"] = "32768"
-    granite_env["STRUCTURA_GRANITE_LIMIT_MM_PER_PROMPT"] = '{"image":4,"video":0}'
+    qwen_env["STRUCTURA_VLLM_MAX_MODEL_LEN"] = "16384"
+    qwen_env["STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT"] = '{"image":1,"video":0}'
     drift_result = preflight._check_model_service_limits(
-        "model-granite",
-        preflight.MODEL_LIMIT_TARGETS["model-granite"],
+        "model-qwen-semantic",
+        preflight.MODEL_LIMIT_TARGETS["model-qwen-semantic"],
     )
     assert drift_result.ok is False
-    assert "16384" in drift_result.message
+    assert "32768" in drift_result.message
     assert "image limit" in drift_result.message
 
     registry_result = preflight._check_required_live_profiles_registered()
     assert registry_result.ok is True
+
+
+def test_phase8_5_live_runtime_preflight_does_not_require_granite_by_default() -> None:
+    from scripts.gpu import phase8_5_live_runtime_preflight as preflight
+
+    assert "model-granite" not in preflight.MODEL_ENV_TARGETS
+    assert "model-granite" not in preflight.MODEL_HEALTH_TARGETS
+    assert "model-granite" not in preflight.MODEL_LIMIT_TARGETS
 
 
 def test_granite_start_script_default_max_model_len_matches_compose() -> None:
@@ -182,17 +191,19 @@ def test_phase8_5_model_smoke_probes_models_before_manifest_gate_when_manifest_i
 def test_phase8_5_model_smoke_restores_gpu1_models_in_staged_order() -> None:
     script = Path("scripts/gpu/phase8_5_model_smoke.sh").read_text()
 
-    assert "compose_model up -d --force-recreate model-granite model-vl-embed" not in script
+    assert "STRUCTURA_MODEL_SMOKE_INCLUDE_GRANITE" in script
+    assert "probe_live_models --skip-text-embed --skip-granite" in script
+    assert "probe_live_models --skip-qwen-semantic --skip-text-embed --skip-granite" in script
     restore_block = script.split("remove_model_services model-embed", maxsplit=1)[1]
-    granite_start = restore_block.index(
-        'compose_model up -d --force-recreate "${BLACKWELL_BASE_SERVICES[@]}"'
+    visual_start = restore_block.index(
+        'compose_model up -d --force-recreate "${RESTORE_VLM_SERVICES[@]}"'
     )
-    granite_health = restore_block.index('probe_health "model-granite" "${GRANITE_URL}"')
-    visual_start = restore_block.index("compose_model up -d --force-recreate model-vl-embed")
     visual_health = restore_block.index('probe_health "model-vl-embed" "${VISUAL_EMBED_URL}"')
-    restored_probe = restore_block.index("probe_live_models --skip-qwen-semantic --skip-text-embed")
+    restored_probe = restore_block.index(
+        "probe_live_models --skip-qwen-semantic --skip-text-embed --skip-granite"
+    )
 
-    assert granite_start < granite_health < visual_start < visual_health < restored_probe
+    assert visual_start < visual_health < restored_probe
 
 
 def test_phase8_5_model_smoke_runs_live_phase8_e2e() -> None:

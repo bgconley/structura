@@ -62,7 +62,7 @@ def test_semantic_service_persists_manifest_and_queues_grounded_granite_jobs() -
     assert payload["job_id"] == str(jobs.created_job_id)
     assert payload["attempt"] == 1
     assert 1 <= payload["priority"] <= 10
-    assert payload["route_profile"] == "docling_plus_granite_structured"
+    assert payload["route_profile"] == "docling_plus_structured_extraction"
     assert payload["target_schema_name"] == "invoice"
     assert payload["semantic_annotation_id"] == str(annotation_id)
     assert payload["semantic_region_id"] == str(region_id)

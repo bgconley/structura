@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace Phase 8 fixture/fake model behavior with real local model services for the intended Docling -> Qwen3-VL-8B-Instruct-FP8 -> Granite Vision pipeline, before Phase 9 analysis begins.
+**Goal:** Replace Phase 8 fixture/fake model behavior with real local model services for the intended Docling -> Qwen3-VL-8B-Instruct-FP8 semantic planning -> extractive-first text lanes -> exceptional Qwen vision fallback pipeline, before Phase 9 analysis begins. Granite is retained only for explicit rollback/comparison gates after E4.
 
 **Architecture:** Phase 8.5 inserts a model-runtime foundation between Phase 8 and Phase 9. API, workers, and services keep deterministic fixture adapters for tests, but production/live GPU mode must use explicit HTTP model adapters with truthful provenance, bounded inputs, dimension validation, and model-backed golden evidence.
 
@@ -58,28 +58,26 @@ Phase 8.5 is therefore a mandatory stop point before Phase 9.
 
 ## Final Model Priority Decision
 
-Treat Qwen3-VL-8B-Instruct-FP8 semantic annotation and Granite 4.0 3B Vision as
+Treat Qwen3-VL-8B-Instruct-FP8 semantic annotation and Qwen vision fallback as
 the default implementation priorities. Default Smart Parse uses the FP8 8B
 semantic service directly, and there is no separate active High Quality or rescue
-Qwen service.
+Qwen service. Granite is no longer a default live-runtime dependency after the
+E4 A/B gate; use `granite-live` only for rollback or comparison.
 
 Qwen3-VL-8B-Instruct-FP8 owns:
 
 - smart semantic annotation over Docling-grounded pages and regions;
-- bounded routing metadata for Granite;
+- bounded routing metadata for extractive fallback work;
 - ambiguity flags and review hints that do not become canonical facts.
 
 Uncertainty stays on review/skip/abstention paths until a future explicit plan
 re-evaluates a separate escalation runtime.
 
-Granite 4.0 3B Vision owns:
+Qwen vision fallback owns:
 
-- layout-sensitive structured extraction;
-- tables;
-- charts;
-- forms;
-- semantic key-value pairs;
-- invoices, bills, receipts, EOBs, statements, and other structure-heavy household documents.
+- exceptional low-text or difficult-page visual extraction;
+- text-lane abstentions that still need bounded visual review;
+- review-required values with quote verification when text exists.
 
 Text embeddings own:
 
@@ -1229,8 +1227,8 @@ Validation rules:
   ssh -i /Users/brennanconley/vibecode/infx/ubuntu24_ed25519 bgconley@10.25.0.50
   cd /tank/repos/structura
   git pull --ff-only
-  docker compose --profile models-live up -d model-qwen-semantic model-granite model-embed
-  docker compose --profile visual-embed-live up -d model-vl-embed
+  docker compose --profile models-live --profile visual-embed-live up -d model-qwen-semantic model-vl-embed
+  docker compose --profile text-embed-live up -d model-embed
   bash scripts/gpu/phase8_5_model_smoke.sh
   ```
 
@@ -1255,11 +1253,11 @@ Validation rules:
 
   ADR must record:
 
-  - Qwen and Granite are equal priorities;
+  - Qwen semantic planning and Qwen vision fallback are default priorities;
   - Blackwell GPU 0 runs Qwen;
-  - Blackwell GPU 1 runs Granite by default;
+  - Granite is excluded from the default live runtime and is available through explicit rollback/comparison profiles only;
   - RTX 3090 runs text embeddings;
-  - visual embedding is real but queued/offline until concurrency with Granite is proven;
+  - visual embedding is real and part of the default live model gate;
   - fixture mode is test-only;
   - provenance must reflect actual adapter invocation.
 
@@ -1292,15 +1290,15 @@ Validation rules:
 Phase 8.5 is complete only when all of the following are true:
 
 - Fixture gateways are explicitly named as fixtures and cannot claim Qwen/Granite provenance.
-- Default ingest uses Docling -> Qwen3-VL-8B-Instruct-FP8 -> Granite.
+- Default ingest uses Docling -> Qwen3-VL-8B-Instruct-FP8 semantic planning -> extractive-first text lanes -> exceptional Qwen vision fallback.
 - No hidden second-pass Qwen escalation runs from validation/review policy.
 - Document-quality ambiguity routes to review states, not job failure.
 - Runtime/system failures are the only `pipeline_failed` cases.
 - Uncertainty remains on review, skip, or abstention paths; separate Qwen
   rescue/escalation is not part of the active runtime.
 - Private corpus standard mode does not secretly run High Quality.
-- Qwen3-VL-8B FP8, historical/canary Qwen profiles, and Granite live adapters persist truthful provenance only when invoked.
-- Granite 4.0 3B Vision live adapter is implemented, invoked, and persists truthful Granite provenance.
+- Qwen3-VL-8B FP8, historical/canary Qwen profiles, and optional Granite comparison adapters persist truthful provenance only when invoked.
+- Granite 4.0 3B Vision live adapter is optional rollback/comparison infrastructure and is not required by the default live runtime.
 - Text embeddings use a real embedding service in live mode and persist 1536-dimensional vectors.
 - Visual embeddings use a real visual embedding service in live mode and persist 2048-dimensional vectors generated from image inputs.
 - Deterministic CI remains green without GPU services.
@@ -1329,7 +1327,8 @@ docker compose --profile extraction --profile search --profile relationships --p
 Required GPU live checks:
 
 ```bash
-docker compose --profile models-live up -d model-qwen-semantic model-granite model-embed
+docker compose --profile models-live --profile visual-embed-live up -d model-qwen-semantic model-vl-embed
+docker compose --profile text-embed-live up -d model-embed
 bash scripts/gpu/phase8_5_model_smoke.sh
 python scripts/run_model_corpus.py --require-model-backed --manifest tests/fixtures/model_corpus/phase8_5_model_manifest.json
 ```

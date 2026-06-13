@@ -333,6 +333,21 @@ def test_default_extraction_gateway_remains_fixture_when_model_mode_is_fixture(m
     assert isinstance(gateway, DoclingHeuristicGateway)
 
 
+def test_default_live_gateway_uses_qwen_vision_without_granite_profile(monkeypatch) -> None:
+    monkeypatch.setenv("STRUCTURA_MODEL_MODE", "live")
+    monkeypatch.setenv("STRUCTURA_GRANITE_PROFILE", "not-a-required-live-profile:v1")
+    get_settings.cache_clear()
+    try:
+        gateway = default_extraction_gateway()
+    finally:
+        get_settings.cache_clear()
+
+    assert isinstance(gateway, ModelRoutingExtractionGateway)
+    assert gateway.qwen_vision_fallback_enabled is True
+    assert gateway.qwen_vision is not None
+    assert gateway.vision is gateway.qwen_vision
+
+
 def test_default_gateway_ignores_qwen_vision_profile_when_fallback_disabled(monkeypatch) -> None:
     monkeypatch.setenv("STRUCTURA_MODEL_MODE", "live")
     monkeypatch.setenv("STRUCTURA_QWEN_VISION_FALLBACK", "false")

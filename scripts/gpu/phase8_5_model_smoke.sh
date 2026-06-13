@@ -8,6 +8,7 @@ VISUAL_EMBED_URL="${STRUCTURA_MODEL_VISUAL_EMBED_URL:-http://127.0.0.1:8103}"
 HEALTH_TIMEOUT_SECONDS="${STRUCTURA_MODEL_SMOKE_HEALTH_TIMEOUT_SECONDS:-1200}"
 HEALTH_POLL_SECONDS="${STRUCTURA_MODEL_SMOKE_HEALTH_POLL_SECONDS:-5}"
 MANAGE_COMPOSE="${STRUCTURA_MODEL_SMOKE_MANAGE_COMPOSE:-0}"
+INCLUDE_GRANITE="${STRUCTURA_MODEL_SMOKE_INCLUDE_GRANITE:-0}"
 MODEL_CORPUS_MANIFEST="${STRUCTURA_MODEL_CORPUS_MANIFEST:-tests/fixtures/model_corpus/phase8_5_model_manifest.json}"
 E2E_WEB_URL="${STRUCTURA_E2E_WEB_URL:-http://10.25.0.50:13000}"
 PLAYWRIGHT_IMAGE="${STRUCTURA_MODEL_SMOKE_PLAYWRIGHT_IMAGE:-mcr.microsoft.com/playwright:v1.59.1-noble}"
@@ -18,22 +19,27 @@ COMPOSE_PROFILES=(
 )
 MODEL_SERVICES=(
   model-qwen-semantic
-  model-granite
   model-embed
   model-vl-embed
 )
 BLACKWELL_CORE_SERVICES=(
   model-qwen-semantic
-  model-granite
   model-vl-embed
 )
-BLACKWELL_BASE_SERVICES=(
-  model-granite
-)
-BLACKWELL_COMPANION_SERVICES=(
-  model-qwen-semantic
+RESTORE_VLM_SERVICES=(
   model-vl-embed
 )
+
+granite_enabled() {
+  [[ "$INCLUDE_GRANITE" == "1" || "$INCLUDE_GRANITE" == "true" ]]
+}
+
+if granite_enabled; then
+  COMPOSE_PROFILES+=(--profile granite-live)
+  MODEL_SERVICES+=(model-granite)
+  BLACKWELL_CORE_SERVICES+=(model-granite)
+  RESTORE_VLM_SERVICES=(model-granite model-vl-embed)
+fi
 
 echo "Phase 8.5 GPU model smoke"
 
@@ -86,23 +92,27 @@ remove_model_services() {
 }
 
 start_core_services() {
-  echo "Starting co-resident Phase 8.5 Blackwell model services"
+  echo "Starting default Phase 8.5 Blackwell model services"
   remove_model_services "${MODEL_SERVICES[@]}"
-  compose_model up -d --force-recreate "${BLACKWELL_BASE_SERVICES[@]}"
-  probe_health "model-granite" "${GRANITE_URL}"
-  compose_model up -d --force-recreate "${BLACKWELL_COMPANION_SERVICES[@]}"
+  compose_model up -d --force-recreate "${BLACKWELL_CORE_SERVICES[@]}"
 }
 
 probe_core_services() {
   probe_health "model-qwen-semantic" "${QWEN_SEMANTIC_URL}"
-  probe_health "model-granite" "${GRANITE_URL}"
+  if granite_enabled; then
+    probe_health "model-granite" "${GRANITE_URL}"
+  fi
   probe_health "model-vl-embed" "${VISUAL_EMBED_URL}"
-  probe_live_models --skip-text-embed
+  if granite_enabled; then
+    probe_live_models --skip-text-embed
+  else
+    probe_live_models --skip-text-embed --skip-granite
+  fi
 }
 
 probe_text_embedding() {
   echo "Validating on-demand text embedding service"
-  remove_model_services model-granite model-vl-embed
+  remove_model_services "${RESTORE_VLM_SERVICES[@]}"
   compose_model up -d --force-recreate model-embed
   probe_health "model-embed" "${TEXT_EMBED_URL}"
   probe_live_models \
@@ -110,11 +120,16 @@ probe_text_embedding() {
     --skip-granite \
     --skip-visual-embed
   remove_model_services model-embed
-  compose_model up -d --force-recreate "${BLACKWELL_BASE_SERVICES[@]}"
-  probe_health "model-granite" "${GRANITE_URL}"
-  compose_model up -d --force-recreate model-vl-embed
+  compose_model up -d --force-recreate "${RESTORE_VLM_SERVICES[@]}"
+  if granite_enabled; then
+    probe_health "model-granite" "${GRANITE_URL}"
+  fi
   probe_health "model-vl-embed" "${VISUAL_EMBED_URL}"
-  probe_live_models --skip-qwen-semantic --skip-text-embed
+  if granite_enabled; then
+    probe_live_models --skip-qwen-semantic --skip-text-embed
+  else
+    probe_live_models --skip-qwen-semantic --skip-text-embed --skip-granite
+  fi
 }
 
 run_phase8_live_e2e() {
@@ -136,10 +151,16 @@ if [[ "$MANAGE_COMPOSE" == "1" || "$MANAGE_COMPOSE" == "true" ]]; then
   probe_text_embedding
 else
   probe_health "model-qwen-semantic" "${QWEN_SEMANTIC_URL}"
-  probe_health "model-granite" "${GRANITE_URL}"
+  if granite_enabled; then
+    probe_health "model-granite" "${GRANITE_URL}"
+  fi
   probe_health "model-embed" "${TEXT_EMBED_URL}"
   probe_health "model-vl-embed" "${VISUAL_EMBED_URL}"
-  probe_live_models
+  if granite_enabled; then
+    probe_live_models
+  else
+    probe_live_models --skip-granite
+  fi
 fi
 
 if [[ ! -f "$MODEL_CORPUS_MANIFEST" ]]; then

@@ -1089,8 +1089,9 @@ Tasks:
 - Quarantine deterministic embedding/extraction gateways as fixture-only test adapters.
 - Use Qwen3-VL-8B-Instruct-FP8 on `model-qwen-semantic` as the default Smart Parse semantic planner and inventory path.
 - Do not run hidden second-pass or escalation Qwen paths; uncertainty routes to `needs_human_review`, `insufficient_signal`, `no_extraction_target`, or a classified skip instead of automatic escalation.
-- Implement live Granite 4.0 3B Vision service invocation for table, chart, form, KVP, invoice, bill, receipt, and EOB structure extraction.
-- Add a closed-world extraction planner with queryable plan persistence, explicit contract registry, family/schema compatibility, grounding checks, bounded fanout, and skip/abstention reporting before Granite enqueue.
+- Default the live vision fallback to the resident Qwen3-VL-8B-Instruct-FP8 service for exceptional difficult pages and text-lane abstentions.
+- Keep Granite available only through explicit rollback/comparison profiles after the E4 A/B gate; Granite is absent from the default live runtime.
+- Add a closed-world extraction planner with queryable plan persistence, explicit contract registry, family/schema compatibility, grounding checks, bounded fanout, and skip/abstention reporting before extractive fallback work is enqueued.
 - Add an internal region envelope as the authoritative intermediate between model-output schemas and candidate insertion, with `normalization_json` retained only as a compatibility projection.
 - Add Structura-owned evidence concretization, candidate admission gates, queryable admission telemetry, and planner/candidate/reconciliation dedupe so prompt artifacts, placeholders, evidence-less facts, incompatible candidates, and duplicate aggregate copies cannot be admitted.
 - Add run manifests, repeatability fingerprints, resident-corpus reliability reports, and truth/review/debug surface separation before Phase 9 consumes model-backed outputs.
@@ -1100,15 +1101,15 @@ Tasks:
 
 Done:
 
-- Qwen and Granite provenance is truthful and tied to actual adapter invocation.
+- Qwen and Granite provenance is truthful and tied to actual adapter invocation; Granite is not required by the default live runtime.
 - Visual embeddings are generated from image content, not descriptor-text or byte-hash fixtures.
 - Phase 9 analysis has real model-backed retrieval and extraction foundations.
 
 Phase 8.5 gate:
 
-- Qwen3-VL, Granite Vision, text embeddings, and visual embeddings pass deterministic tests plus GPU live model validation.
+- Qwen3-VL, text embeddings, and visual embeddings pass deterministic tests plus GPU live model validation; Granite comparison runs are explicit rollback evidence, not default runtime requirements.
 - Model-backed golden corpus evidence exists for handwriting, structured extraction, text retrieval, visual retrieval, and hybrid retrieval.
-- The resident corpus passes the Phase 8.5 reliable-extraction hard invariants: no missing Granite contracts, no missing Granite grounding, no incompatible family/schema Granite tasks, no prompt/placeholder/literal-null candidates admitted, no admitted candidates without concrete evidence, no model-backed semantic-region rows auto-accepted, and no fabricated canonical required fields.
+- The resident corpus passes the Phase 8.5 reliable-extraction hard invariants: no missing extraction contracts, no missing grounding, no incompatible family/schema tasks, no prompt/placeholder/literal-null candidates admitted, no admitted candidates without concrete evidence, no model-backed semantic-region rows auto-accepted, and no fabricated canonical required fields.
 - Phase 9 remains gated until reliability reports distinguish truth, review, and debug surfaces and every document can reach evidence-grounded candidates, bounded review/partial candidates, or a classified abstention/skip.
 
 ## Phase 9 - Analysis Workspace

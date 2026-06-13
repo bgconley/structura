@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import subprocess  # nosec B404
 import sys
@@ -16,7 +17,6 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from lib.model_runtime.profiles import (  # noqa: E402
-    GRANITE_VISION_PROFILE,
     QWEN_SEMANTIC_PROFILE,
     VISUAL_EMBED_PROFILE,
     get_model_profile,
@@ -31,7 +31,6 @@ REQUIRED_LIVE_SERVICES = (
 OPTIONAL_LIVE_SERVICES = ("worker-visual-embeddings",)
 MODEL_HEALTH_TARGETS = {
     "model-qwen-semantic": "http://127.0.0.1:8104",
-    "model-granite": "http://127.0.0.1:8101",
     "model-vl-embed": "http://127.0.0.1:8103",
 }
 MODEL_ENV_TARGETS = {
@@ -40,6 +39,8 @@ MODEL_ENV_TARGETS = {
         "STRUCTURA_VLLM_SERVED_MODEL_NAME": "Qwen/Qwen3-VL-8B-Instruct-FP8",
         "STRUCTURA_MODEL_PROFILE": "qwen3-vl-8b-fp8-semantic:v1",
     },
+}
+GRANITE_COMPARISON_ENV_TARGETS = {
     "model-granite": {
         "STRUCTURA_GRANITE_MODEL_ID": "ibm-granite/granite-4.0-3b-vision",
         "STRUCTURA_MODEL_PROFILE": "granite-4.0-3b-vision-bf16:v1",
@@ -54,18 +55,23 @@ MODEL_LIMIT_TARGETS: dict[str, dict[str, object]] = {
         "limit_mm_env": "STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT",
         "required": True,
     },
-    "model-granite": {
-        "profile_name": GRANITE_VISION_PROFILE,
-        "max_model_len_env": "STRUCTURA_GRANITE_MAX_MODEL_LEN",
-        "limit_mm_env": "STRUCTURA_GRANITE_LIMIT_MM_PER_PROMPT",
-        "required": True,
-    },
     "model-vl-embed": {
         "profile_name": VISUAL_EMBED_PROFILE,
         "max_model_len_env": None,
         "limit_mm_env": "STRUCTURA_VLLM_LIMIT_MM_PER_PROMPT",
         "required": False,
     },
+}
+GRANITE_COMPARISON_LIMIT_TARGETS: dict[str, dict[str, object]] = {
+    "model-granite": {
+        "profile_name": "granite-4.0-3b-vision-bf16:v1",
+        "max_model_len_env": "STRUCTURA_GRANITE_MAX_MODEL_LEN",
+        "limit_mm_env": "STRUCTURA_GRANITE_LIMIT_MM_PER_PROMPT",
+        "required": True,
+    },
+}
+GRANITE_COMPARISON_HEALTH_TARGETS = {
+    "model-granite": "http://127.0.0.1:8101",
 }
 
 
@@ -91,12 +97,12 @@ def main() -> int:
         results.append(_check_service_live_mode(service, required=True))
     for service in OPTIONAL_LIVE_SERVICES:
         results.append(_check_service_live_mode(service, required=False))
-    for service, expected_env in MODEL_ENV_TARGETS.items():
+    for service, expected_env in _model_env_targets().items():
         results.append(_check_model_service_env(service, expected_env))
-    for service, limit_target in MODEL_LIMIT_TARGETS.items():
+    for service, limit_target in _model_limit_targets().items():
         results.append(_check_model_service_limits(service, limit_target))
     if not args.skip_model_health:
-        for service, url in MODEL_HEALTH_TARGETS.items():
+        for service, url in _model_health_targets().items():
             results.append(
                 _check_model_health(
                     service,
@@ -136,6 +142,16 @@ def _check_service_live_mode(service: str, *, required: bool) -> CheckResult:
                 f"STRUCTURA_MODEL_QWEN_SEMANTIC_URL is unexpected: {qwen_url!r}",
             )
     if service in {"api", "worker-extraction"}:
+        qwen_vision_fallback = env.get("STRUCTURA_QWEN_VISION_FALLBACK")
+        if qwen_vision_fallback == "true":
+            return CheckResult(service, True, "live model env verified")
+        if not _granite_comparison_enabled():
+            return CheckResult(
+                service,
+                False,
+                "STRUCTURA_QWEN_VISION_FALLBACK must be true for the default "
+                f"E4 runtime, got {qwen_vision_fallback!r}",
+            )
         granite_url = env.get("STRUCTURA_MODEL_GRANITE_URL")
         if granite_url != "http://model-granite:8101":
             return CheckResult(
@@ -179,6 +195,31 @@ def _check_required_live_profiles_registered() -> CheckResult:
         True,
         f"{len(required_live_profile_names())} required live profiles registered",
     )
+
+
+def _model_env_targets() -> dict[str, dict[str, str]]:
+    targets = dict(MODEL_ENV_TARGETS)
+    if _granite_comparison_enabled():
+        targets.update(GRANITE_COMPARISON_ENV_TARGETS)
+    return targets
+
+
+def _model_limit_targets() -> dict[str, dict[str, object]]:
+    targets = dict(MODEL_LIMIT_TARGETS)
+    if _granite_comparison_enabled():
+        targets.update(GRANITE_COMPARISON_LIMIT_TARGETS)
+    return targets
+
+
+def _model_health_targets() -> dict[str, str]:
+    targets = dict(MODEL_HEALTH_TARGETS)
+    if _granite_comparison_enabled():
+        targets.update(GRANITE_COMPARISON_HEALTH_TARGETS)
+    return targets
+
+
+def _granite_comparison_enabled() -> bool:
+    return os.getenv("STRUCTURA_E4_INCLUDE_GRANITE", "").lower() in {"1", "true", "yes"}
 
 
 def _check_model_service_limits(service: str, target: dict[str, object]) -> CheckResult:

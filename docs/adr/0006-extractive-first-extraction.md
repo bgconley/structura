@@ -194,3 +194,12 @@ classes are unrepresentable.
   telemetry block. Remaining: E4 (vision-lane consolidation / Granite
   retirement; preconditions now satisfied), E5 (representation collapse +
   per-document orchestration).
+- 2026-06-13: E4 default-runtime retirement is in progress. The Qwen-vs-Granite
+  A/B gate at `aabfb25` passed for the BMW and Anthem difficult-document inputs
+  with identical hard/operational acceptance, repeatability fingerprints, and
+  truthful mode lineage. The default live runtime now enables Qwen vision
+  fallback, excludes Granite from required live profiles, removes
+  `model-granite` from `models-live`, and keeps Granite behind explicit
+  comparison/rollback flags only. Remaining: run the post-flip GPU E4 gate,
+  record final evidence, then proceed to E5 representation/orchestration
+  collapse.

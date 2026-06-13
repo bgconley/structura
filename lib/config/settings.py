@@ -56,9 +56,7 @@ class Settings(BaseSettings):
     # and text-lane abstentions.
     text_lane_tables_enabled: bool = Field(default=True, alias="STRUCTURA_TEXT_LANE_TABLES")
     text_lane_kvp_enabled: bool = Field(default=True, alias="STRUCTURA_TEXT_LANE_KVP")
-    qwen_vision_fallback_enabled: bool = Field(
-        default=False, alias="STRUCTURA_QWEN_VISION_FALLBACK"
-    )
+    qwen_vision_fallback_enabled: bool = Field(default=True, alias="STRUCTURA_QWEN_VISION_FALLBACK")
     # Deterministic-primary planning (ADR 0006 X4, E3). Passed its GPU gate
     # on 2026-06-10 (runs 20260610T205327Z/210049Z: identical baseline
     # fingerprints across ingests, zero dead letters, forced-Qwen-failure

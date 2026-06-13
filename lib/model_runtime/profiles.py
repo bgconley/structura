@@ -128,7 +128,6 @@ _PROFILES: dict[str, ModelProfile] = {
 def required_live_profile_names() -> tuple[str, ...]:
     return (
         QWEN_SEMANTIC_PROFILE,
-        GRANITE_VISION_PROFILE,
         TEXT_EMBED_PROFILE,
         VISUAL_EMBED_PROFILE,
     )

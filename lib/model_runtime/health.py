@@ -16,7 +16,6 @@ from lib.model_runtime.profiles import (
 
 _SERVICE_QUEUES = {
     "model-qwen-semantic": "semantic-annotations",
-    "model-granite": "extraction",
     "model-embed": "embeddings",
     "model-vl-embed": "visual-embeddings",
 }
@@ -28,20 +27,13 @@ def configured_model_health_snapshots(
     include_queue_metrics: bool = False,
 ) -> list[dict[str, Any]]:
     resolved = settings or get_settings()
-    return [
+    snapshots = [
         _snapshot(
             service_name="model-qwen-semantic",
             mode=resolved.model_mode,
             profile_name=resolved.qwen_semantic_profile,
             endpoint_role="qwen-vl-semantic-smart",
             queue_metrics=_queue_metrics("model-qwen-semantic", include_queue_metrics),
-        ),
-        _snapshot(
-            service_name="model-granite",
-            mode=resolved.model_mode,
-            profile_name=resolved.granite_profile or GRANITE_VISION_PROFILE,
-            endpoint_role="granite-vision",
-            queue_metrics=_queue_metrics("model-granite", include_queue_metrics),
         ),
         _snapshot(
             service_name="model-embed",
@@ -58,6 +50,18 @@ def configured_model_health_snapshots(
             queue_metrics=_queue_metrics("model-vl-embed", include_queue_metrics),
         ),
     ]
+    if not resolved.qwen_vision_fallback_enabled:
+        snapshots.insert(
+            1,
+            _snapshot(
+                service_name="model-granite",
+                mode=resolved.model_mode,
+                profile_name=resolved.granite_profile or GRANITE_VISION_PROFILE,
+                endpoint_role="granite-vision-rollback",
+                queue_metrics={},
+            ),
+        )
+    return snapshots
 
 
 def probed_model_health_snapshots(
@@ -77,12 +81,6 @@ def probed_model_health_snapshots(
             "qwen-vl-semantic-smart",
         ),
         (
-            "model-granite",
-            resolved.model_granite_url,
-            resolved.granite_profile or GRANITE_VISION_PROFILE,
-            "granite-vision",
-        ),
-        (
             "model-embed",
             resolved.model_text_embed_url,
             resolved.text_embed_profile or TEXT_EMBED_PROFILE,
@@ -95,6 +93,16 @@ def probed_model_health_snapshots(
             "visual-embedding",
         ),
     ]
+    if not resolved.qwen_vision_fallback_enabled:
+        endpoints.insert(
+            1,
+            (
+                "model-granite",
+                resolved.model_granite_url,
+                resolved.granite_profile or GRANITE_VISION_PROFILE,
+                "granite-vision-rollback",
+            ),
+        )
     if resolved.model_mode == "fixture":
         return configured_model_health_snapshots(
             resolved,

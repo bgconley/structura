@@ -67,11 +67,13 @@ def test_e4_vision_ab_runner_recreates_runtime_for_granite_then_qwen(
     qwen_acceptance, qwen_acceptance_env = calls[3]
 
     assert granite_bringup[:2] == ["bash", str(runner.LIVE_BRINGUP)]
+    assert "--include-granite" in granite_bringup
     assert granite_env is not None
     assert granite_env["STRUCTURA_MODEL_MODE"] == "live"
     assert granite_env["STRUCTURA_QWEN_VISION_FALLBACK"] == "false"
 
     assert qwen_bringup[:2] == ["bash", str(runner.LIVE_BRINGUP)]
+    assert "--include-granite" not in qwen_bringup
     assert qwen_env is not None
     assert qwen_env["STRUCTURA_MODEL_MODE"] == "live"
     assert qwen_env["STRUCTURA_QWEN_VISION_FALLBACK"] == "true"

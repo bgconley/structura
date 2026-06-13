@@ -26,6 +26,7 @@ def test_readme_does_not_describe_active_high_quality_qwen_runtime() -> None:
 
     assert "Qwen Smart/High Quality" not in content
     assert "model-qwen-semantic" in content
+    assert "Granite is no longer part of the default required live runtime" in content
 
 
 def test_semantic_plan_does_not_advertise_deferred_hq_rescue_controls() -> None:
@@ -52,9 +53,10 @@ def test_phase85_plan_uses_current_live_model_commands() -> None:
     content = PHASE85_PLAN.read_text(encoding="utf-8")
 
     assert "docker compose --profile models-live up -d model-qwen model-granite" not in content
+    assert "model-qwen-semantic model-granite model-embed" not in content
     assert "Add explicit `--high-quality`, `--allow-8b-rescue`" not in content
     assert "Run optional HQ/rescue gates separately from the standard corpus gate" not in content
-    assert "model-qwen-semantic model-granite model-embed" in content
+    assert "model-qwen-semantic model-vl-embed" in content
 
 
 def test_phase85_plan_does_not_list_legacy_qwen_rescue_runtime_intents() -> None:
@@ -90,6 +92,7 @@ def test_root_plan_model_placeholder_section_matches_current_compose() -> None:
     assert not re.search(r"\bmodel-qwen\b(?!-semantic)", content)
     assert "model-granite-placeholder" in content
     assert "model-qwen-semantic" in content
+    assert "Granite is absent from the default live runtime" in content
 
 
 def test_model_corpus_readme_requires_manifest_run_mode() -> None:

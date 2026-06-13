@@ -645,6 +645,14 @@ absent`, each carrying provenance and a machine-readable `reason_code`.
   text 240 chars). The two previously dead-lettering regions succeed on first
   attempt under the new grammar.
 
+- 2026-06-13: ADR 0006 E4 supersedes Granite as the default live vision-lane
+  service. The default runtime now keeps Docling/text lanes primary and uses
+  Qwen vision fallback for exceptional difficult pages and text-lane
+  abstentions; Granite remains available only for explicit rollback/comparison
+  evidence. Claim/reconciliation invariants from this ADR still apply: model
+  values must be grounded, review policy remains the truth gate, and provenance
+  may name a model only when that adapter actually ran.
+
 ## Deferred Work
 
 - Plan-stage stochasticity (Qwen routing variance) is bounded by greedy/low-temperature

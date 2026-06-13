@@ -20,10 +20,10 @@ from lib.model_runtime.settings import configured_model_profiles
 def test_phase8_5_required_live_profiles_are_registered() -> None:
     assert required_live_profile_names() == (
         QWEN_SEMANTIC_PROFILE,
-        GRANITE_VISION_PROFILE,
         TEXT_EMBED_PROFILE,
         VISUAL_EMBED_PROFILE,
     )
+    assert GRANITE_VISION_PROFILE not in required_live_profile_names()
 
     profiles = [get_model_profile(name) for name in required_live_profile_names()]
 

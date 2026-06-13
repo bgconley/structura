@@ -24,7 +24,6 @@ def test_model_health_snapshots_report_mode_and_profiles_without_private_payload
     names = {snapshot["service_name"] for snapshot in snapshots}
     assert names == {
         "model-qwen-semantic",
-        "model-granite",
         "model-embed",
         "model-vl-embed",
     }
@@ -64,8 +63,7 @@ def test_model_health_probe_reports_live_service_readiness_without_sensitive_pay
 
     by_name = {snapshot["service_name"]: snapshot for snapshot in snapshots}
     assert by_name["model-qwen-semantic"]["status"] == "ok"
-    assert by_name["model-granite"]["status"] == "unavailable"
-    assert by_name["model-granite"]["checked_at"] is not None
+    assert "model-granite" not in by_name
     assert by_name["model-qwen-semantic"]["metrics_json"]["last_success_at"] is None
     assert by_name["model-qwen-semantic"]["metrics_json"]["timeout_count"] == 0
     assert by_name["model-qwen-semantic"]["metrics_json"]["error_count"] == 0
@@ -79,8 +77,8 @@ def test_model_health_probe_reports_live_service_readiness_without_sensitive_pay
 def test_model_health_probe_records_probed_service_url_without_credentials(monkeypatch) -> None:
     monkeypatch.setenv("STRUCTURA_MODEL_MODE", "live")
     monkeypatch.setenv(
-        "STRUCTURA_MODEL_GRANITE_URL",
-        "http://operator:secret-token@127.0.0.1:8101/v1",
+        "STRUCTURA_MODEL_VISUAL_EMBED_URL",
+        "http://operator:secret-token@127.0.0.1:8103/v1",
     )
     get_settings.cache_clear()
 
@@ -95,8 +93,8 @@ def test_model_health_probe_records_probed_service_url_without_credentials(monke
         get_settings.cache_clear()
 
     by_name = {snapshot["service_name"]: snapshot for snapshot in snapshots}
-    granite_metrics = by_name["model-granite"]["metrics_json"]
-    assert granite_metrics["service_url"] == "http://127.0.0.1:8101"
+    visual_metrics = by_name["model-vl-embed"]["metrics_json"]
+    assert visual_metrics["service_url"] == "http://127.0.0.1:8103"
     qwen_metrics = by_name["model-qwen-semantic"]["metrics_json"]
     assert qwen_metrics["service_url"] == "http://127.0.0.1:8104"
     rendered = repr(snapshots)

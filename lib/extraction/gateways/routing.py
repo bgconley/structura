@@ -171,12 +171,12 @@ def default_extraction_gateway() -> ExtractionGateway:
     deterministic = DoclingHeuristicGateway()
     if settings.model_mode == "fixture":
         return deterministic
-    granite_profile = get_model_profile(settings.granite_profile)
     text_lane_tables = (
         TextLaneTableExtractionGateway() if settings.text_lane_tables_enabled else None
     )
     text_lane_kvp = TextLaneKvpExtractionGateway() if settings.text_lane_kvp_enabled else None
-    qwen_vision = None
+    qwen_vision: ExtractionGateway | None = None
+    vision: ExtractionGateway
     if settings.qwen_vision_fallback_enabled:
         qwen_vision_profile = get_model_profile(settings.qwen_vision_profile)
         qwen_vision = QwenVisionExtractionGateway(
@@ -186,14 +186,18 @@ def default_extraction_gateway() -> ExtractionGateway:
             ),
             profile_name=qwen_vision_profile.name,
         )
-    return ModelRoutingExtractionGateway(
-        deterministic=deterministic,
-        vision=GraniteVisionExtractionGateway(
+        vision = qwen_vision
+    else:
+        granite_profile = get_model_profile(settings.granite_profile)
+        vision = GraniteVisionExtractionGateway(
             client=GraniteVisionClient(
                 profile=granite_profile,
                 http_client_base_url=settings.model_granite_url,
             )
-        ),
+        )
+    return ModelRoutingExtractionGateway(
+        deterministic=deterministic,
+        vision=vision,
         qwen_vision=qwen_vision,
         qwen_vision_fallback_enabled=settings.qwen_vision_fallback_enabled,
         text_lane_tables=text_lane_tables,

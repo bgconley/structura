@@ -73,6 +73,7 @@ def test_model_profiles_are_safe_and_gpu_placed() -> None:
 
     assert services["model-embed"]["profiles"] == ["text-embed-live"]
     assert services["model-vl-embed"]["profiles"] == ["models-live", "visual-embed-live"]
+    assert services["model-granite"]["profiles"] == ["granite-live"]
     semantic_worker = services["worker-semantic-annotations"]
     assert "workers.semantic_annotations.worker" in semantic_worker["command"]
     assert "semantic" in semantic_worker["profiles"]
@@ -85,6 +86,18 @@ def test_model_profiles_are_safe_and_gpu_placed() -> None:
         "model-vl-embed-placeholder",
     ):
         assert "models-placeholder" in services[name]["profiles"]
+
+
+def test_default_live_app_runtime_uses_qwen_vision_without_granite_dependency() -> None:
+    compose = yaml.safe_load(Path("compose.yaml").read_text())
+    services = compose["services"]
+
+    for name in ("api", "worker-extraction"):
+        environment = services[name]["environment"]
+        assert environment["STRUCTURA_QWEN_VISION_FALLBACK"] == (
+            "${STRUCTURA_QWEN_VISION_FALLBACK:-true}"
+        )
+        assert environment.get("STRUCTURA_MODEL_GRANITE_URL") != "http://model-granite:8101"
 
 
 def test_live_model_profiles_have_concrete_blackwell_commands() -> None:
@@ -177,10 +190,9 @@ def test_phase8_5_smoke_supports_managed_model_validation() -> None:
     probe = Path("scripts/gpu/probe_phase8_5_live_models.py").read_text()
 
     assert "STRUCTURA_MODEL_SMOKE_MANAGE_COMPOSE" in smoke
+    assert "STRUCTURA_MODEL_SMOKE_INCLUDE_GRANITE" in smoke
     assert "start_core_services" in smoke
     assert "BLACKWELL_CORE_SERVICES" in smoke
-    assert "BLACKWELL_BASE_SERVICES" in smoke
-    assert "BLACKWELL_COMPANION_SERVICES" in smoke
     assert 'probe_health "model-qwen"' not in smoke
     assert "BLACKWELL_HQ_SERVICES" not in smoke
     assert "model-vl-embed" in smoke

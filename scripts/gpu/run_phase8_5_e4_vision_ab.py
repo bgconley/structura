@@ -89,6 +89,8 @@ def _run_live_bringup(
     mode: str,
 ) -> subprocess.CompletedProcess[str]:
     command = ["bash", str(LIVE_BRINGUP)]
+    if mode == "granite":
+        command.append("--include-granite")
     if args.build:
         command.append("--build")
     if args.skip_preflight:
