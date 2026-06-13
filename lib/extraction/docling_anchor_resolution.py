@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from lib.extraction.evidence import normalize_bbox
 from lib.extraction.models import ExtractionSourceDocument, ParsedElementText
-from lib.extraction.region_envelope import EvidenceRef, RegionExtractionEnvelope
+from lib.extraction.region_envelope import (
+    EvidenceRef,
+    RegionExtractionEnvelope,
+    RegionFact,
+    RegionLineItem,
+)
 
 _MIN_ANCHOR_TEXT_LENGTH = 3
 
@@ -23,21 +28,34 @@ def resolve_docling_anchors_for_envelope(
     """
     copied = envelope.model_copy(deep=True)
     resolved_count = 0
-    for owner in (*copied.facts, *copied.line_items, *copied.observations):
-        refs = list(owner.evidence)
-        upgraded: list[EvidenceRef] = []
-        for ref in refs:
-            if _has_structural_locator(ref):
-                upgraded.append(ref)
-                continue
-            resolved = _resolve_ref(ref, source)
-            if resolved is not None:
-                resolved_count += 1
-                upgraded.append(resolved)
-            else:
-                upgraded.append(ref)
-        owner.evidence = upgraded
+    for fact in copied.facts:
+        resolved_count += _upgrade_owner_evidence(fact, source)
+    for line_item in copied.line_items:
+        resolved_count += _upgrade_owner_evidence(line_item, source)
+    for observation in copied.observations:
+        resolved_count += _upgrade_owner_evidence(observation, source)
     return copied, resolved_count
+
+
+def _upgrade_owner_evidence(
+    owner: RegionFact | RegionLineItem,
+    source: ExtractionSourceDocument,
+) -> int:
+    resolved_count = 0
+    refs = list(owner.evidence)
+    upgraded: list[EvidenceRef] = []
+    for ref in refs:
+        if _has_structural_locator(ref):
+            upgraded.append(ref)
+            continue
+        resolved = _resolve_ref(ref, source)
+        if resolved is not None:
+            resolved_count += 1
+            upgraded.append(resolved)
+        else:
+            upgraded.append(ref)
+    owner.evidence = upgraded
+    return resolved_count
 
 
 def _has_structural_locator(ref: EvidenceRef) -> bool:

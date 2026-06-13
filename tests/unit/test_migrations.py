@@ -273,4 +273,3 @@ def test_phase8_5_quality_outcome_migration_is_baseline_migration() -> None:
     assert "quality_outcome IS NULL" in sql
     assert "extraction_observations_status_check" in sql
     assert "'accepted'" in sql
-

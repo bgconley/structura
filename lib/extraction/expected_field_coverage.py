@@ -122,18 +122,14 @@ def _fact_names(facts: Iterable[RegionFact]) -> set[str]:
 
 def _line_item_field_names(line_item: RegionLineItem) -> set[str]:
     names = {
-        field
-        for field in _LINE_ITEM_VALUE_FIELDS
-        if not _is_empty(getattr(line_item, field, None))
+        field for field in _LINE_ITEM_VALUE_FIELDS if not _is_empty(getattr(line_item, field, None))
     }
     names.update(_payload_field_names(line_item.source_payload))
     return names
 
 
 def _table_row_field_names(table_row: RegionTableRow) -> set[str]:
-    return _payload_field_names(table_row.normalized_fields) | _payload_field_names(
-        table_row.cells
-    )
+    return _payload_field_names(table_row.normalized_fields) | _payload_field_names(table_row.cells)
 
 
 def _payload_field_names(payload: dict[str, Any]) -> set[str]:

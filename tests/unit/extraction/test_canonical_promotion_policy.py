@@ -4,9 +4,7 @@ from lib.extraction.canonical_promotion_policy import (
     candidate_auto_promotion_rejection_reason,
 )
 
-_CONCRETE_EVIDENCE = [
-    {"page_number": 1, "element_id": "el-1", "source_engine": "docling"}
-]
+_CONCRETE_EVIDENCE = [{"page_number": 1, "element_id": "el-1", "source_engine": "docling"}]
 
 
 def test_deterministic_candidate_with_concrete_evidence_is_promotable() -> None:
@@ -28,8 +26,7 @@ def test_model_backed_candidate_never_auto_promotes_regardless_of_confidence() -
         "evidence_json": _CONCRETE_EVIDENCE,
     }
     assert (
-        candidate_auto_promotion_rejection_reason(candidate)
-        == "model_backed_value_requires_review"
+        candidate_auto_promotion_rejection_reason(candidate) == "model_backed_value_requires_review"
     )
 
 

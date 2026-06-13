@@ -31,7 +31,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _load(path: Path) -> dict[str, Any]:
-    return json.loads(path.read_text())
+    payload = json.loads(path.read_text())
+    if not isinstance(payload, dict):
+        raise ValueError(f"Expected report object in {path}")
+    return payload
 
 
 def _filename(document: dict[str, Any]) -> str:
@@ -52,8 +55,8 @@ def _doc_stats(report: dict[str, Any]) -> dict[str, dict[str, Any]]:
         jobs = document.get("jobs") or []
         job_counter = Counter(str(job.get("status")) for job in jobs if isinstance(job, dict))
         extractions = document.get("extractions") or []
-        lanes = Counter()
-        quality = Counter()
+        lanes: Counter[str] = Counter()
+        quality: Counter[str] = Counter()
         for row in extractions:
             if not isinstance(row, dict):
                 continue
@@ -133,8 +136,8 @@ def main() -> int:
     base_cov = _coverage_mean(baseline)
     cand_cov = _coverage_mean(candidate)
     print(f"expected-field coverage mean: {base_cov} -> {cand_cov}")
-    base_quality = Counter()
-    cand_quality = Counter()
+    base_quality: Counter[str] = Counter()
+    cand_quality: Counter[str] = Counter()
     for stats, counter in ((base_stats, base_quality), (cand_stats, cand_quality)):
         for doc in stats.values():
             counter.update(doc.get("quality_outcomes", {}))

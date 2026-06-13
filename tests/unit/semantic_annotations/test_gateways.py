@@ -1407,9 +1407,7 @@ def test_live_qwen_gateway_attaches_input_budget_warning_when_estimate_exceeds_b
     try:
         monkeypatch.setenv("STRUCTURA_QWEN_INPUT_BUDGET_WARN_FRACTION", "0.0001")
         get_settings.cache_clear()
-        result = QwenSemanticAnnotationGateway(client=client).annotate(
-            source, quality_mode="smart"
-        )
+        result = QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
     finally:
         get_settings.cache_clear()
 
@@ -1441,9 +1439,7 @@ def test_live_qwen_gateway_omits_input_budget_warning_within_budget(monkeypatch)
     try:
         monkeypatch.delenv("STRUCTURA_QWEN_INPUT_BUDGET_WARN_FRACTION", raising=False)
         get_settings.cache_clear()
-        result = QwenSemanticAnnotationGateway(client=client).annotate(
-            source, quality_mode="smart"
-        )
+        result = QwenSemanticAnnotationGateway(client=client).annotate(source, quality_mode="smart")
     finally:
         get_settings.cache_clear()
 

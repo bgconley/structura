@@ -97,8 +97,7 @@ def baseline_plan_fingerprint(
         for element in source.elements
     }
     entries = sorted(
-        _region_identity(region, page_numbers, element_positions)
-        for region in manifest.regions
+        _region_identity(region, page_numbers, element_positions) for region in manifest.regions
     )
     payload = json.dumps(entries, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
@@ -183,9 +182,7 @@ def _baseline_region_covered(
     baseline_region: SemanticRegionAnnotation,
     plan_regions: list[SemanticRegionAnnotation],
 ) -> bool:
-    return any(
-        _region_covers_baseline(region, baseline_region) for region in plan_regions
-    )
+    return any(_region_covers_baseline(region, baseline_region) for region in plan_regions)
 
 
 def _region_identity(

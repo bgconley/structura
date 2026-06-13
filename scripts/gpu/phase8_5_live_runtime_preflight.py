@@ -47,7 +47,7 @@ MODEL_ENV_TARGETS = {
 }
 # Profile registry is the single source of truth for server token/image
 # limits; the running container env must agree with it.
-MODEL_LIMIT_TARGETS = {
+MODEL_LIMIT_TARGETS: dict[str, dict[str, object]] = {
     "model-qwen-semantic": {
         "profile_name": QWEN_SEMANTIC_PROFILE,
         "max_model_len_env": "STRUCTURA_VLLM_MAX_MODEL_LEN",
