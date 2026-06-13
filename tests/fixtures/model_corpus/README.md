@@ -33,6 +33,14 @@ Release reports generated from these manifests include `documentOutcomes` and
 `documentOutcomeSummary`; `documentOutcomeSummary` must report zero
 `pipelineFailedCount` unless the run intentionally injects runtime failures.
 
+Private resident-corpus manifests may also include corpus-level `goldMetrics`
+and `goldThresholds`, or per-document overrides with the same keys, when an
+approved gold-labeling pass has produced those values. Do not synthesize,
+infer, or backfill gold metrics from a passing pipeline report. A two-pass
+resident run can prove UAT pipeline health without gold annotations, but strict
+release-gold validation with `--require-gold` requires all required
+`goldCorpusQuality` metrics to be present, finite, thresholded, and passing.
+
 Each model-backed evidence section (`qwen`, `granite`, `textEmbedding`, and
 `visualEmbedding`) must include non-empty `profile`, `runId`, `measuredAt`, and
 `evidencePath` fields. `measuredAt` must be an ISO-8601 timestamp with timezone.

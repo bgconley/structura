@@ -100,6 +100,29 @@ copies those values into report document rows so
 evidence. Use `--require-gold` only with a private manifest that contains those
 gold annotations.
 
+Latest two-document UAT pipeline proof:
+
+```text
+commit: e8bb26b
+report directory: /srv/structura/objects/exports/phase85-runs/uat-e8bb26b
+reports:
+  20260613T053814Z-uat-e8bb26b-pass-1-report.json
+  20260613T053814Z-uat-e8bb26b-pass-2-report.json
+documents:
+  MRI Anthem Denial 01-26.pdf
+  BMW CE-04 600mi run in service and tire service 04-23.pdf
+```
+
+Those reports are `fixtureType = model_backed` and pass report acceptance without
+`--require-gold`: hard correctness, operational SLO, lineage, required summaries,
+repeatability, planner, candidate admission, evidence, safe outcomes, visual-plan,
+and retry-summary checks are green. Both documents have safe
+`needs_human_review` outcomes, zero `pipeline_failed` documents, and zero target
+dead letters. They are not release-gold evidence because the private
+two-document holdout manifest does not include `goldMetrics` and
+`goldThresholds`; `goldCorpusQuality` is therefore `not_evaluated`. Do not add
+placeholder or inferred gold metrics to make `--require-gold` pass.
+
 For the E4 vision-lane A/B gate, run the host-side wrapper so the app and
 extraction worker containers are recreated with the correct fallback mode before
 each resident acceptance run:

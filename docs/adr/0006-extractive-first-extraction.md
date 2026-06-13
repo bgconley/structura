@@ -225,3 +225,36 @@ classes are unrepresentable.
   Hard invariants also reject missing deterministic-baseline telemetry,
   deterministic-baseline coverage regressions, current aggregate rows without
   source-run lineage, and duplicate current aggregate rows after retry.
+- 2026-06-13: UAT hardening gate at commit `e8bb26b` validated the two private
+  holdout documents after three production-shaped fixes: aggregate lineage is
+  projected into resident reports, Qwen3-VL visual query embeddings no longer
+  send an unsupported OpenAI-compatible `dimensions` override, and ingest
+  acknowledgement now finds the original upload asset by document/role after
+  Docling refreshes `canonical_asset_id` to a derived parse artifact. Local
+  gates passed (`pytest tests/unit -q` with 1160 tests, ruff, format check,
+  contract validation, pyright, mypy, `make sast`, Compose config, and diff
+  whitespace). On the GPU node, `api` and `worker-ingest` were rebuilt at
+  `e8bb26b`; live Playwright phases 1-8 passed; retrying the exact previously
+  failed ingest jobs succeeded and recorded original asset IDs; the live queue
+  ended with zero queued/running/failed jobs. Resident reports
+  `/srv/structura/objects/exports/phase85-runs/uat-e8bb26b/20260613T053814Z-uat-e8bb26b-pass-1-report.json`
+  and `...pass-2-report.json` are `fixtureType = model_backed`, include two
+  `private_holdout` documents not used for prompt tuning, and passed report
+  lineage, hard correctness, operational SLO, safe outcome, planner,
+  candidate-admission, contract, evidence, visual-plan, retry-summary, and
+  repeatability checks. Both documents resolved to `needs_human_review`, with
+  `pipelineFailedCount = 0`, `targetQueueDeadLetterCount = 0`, and identical
+  repeatability fingerprints:
+  `candidateFingerprints=4565152190f8b7dff7dff7d09e33659591bd875597e1adcb59d0afa43a415a2766da`,
+  `canonicalOutput=6b9afd7e2720ce20c60bc622e638c525507ee7323ea91fc3a92b8187d365b074`,
+  `documentFamily=0f66d740276d7b2e1ec8b562d72b348712b73de7b1dd7fe2ccd2e56ee70d7cb6`,
+  `plannerTasks=db567b6ee5cd0494b7e2581b278daab9119a7de445f4580f3d4fa376b204f97e`,
+  `reviewTasks=23ccc4148000f1c5922563115c2ac6bc24c6c690319a0ea2c48d742f8d7f5d90`,
+  and
+  `semanticRegions=87f33ece784e660ac8fe5c25b7a40de858c4ade1f829289eafa1529d5fdf424c`.
+  Strict gold-corpus mode was intentionally not claimed: `--require-gold`
+  fails for this private holdout manifest because it contains no
+  `goldMetrics`/`goldThresholds`, so `goldCorpusQuality` remains
+  `not_evaluated` until a gold-annotated private manifest is supplied. This
+  evidence supports UAT pipeline readiness for the two documents, not final
+  release-quality scoring or Phase 9 authorization.

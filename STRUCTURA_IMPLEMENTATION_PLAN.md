@@ -1105,6 +1105,17 @@ Done:
 - Qwen and Granite provenance is truthful and tied to actual adapter invocation; Granite is not required by the default live runtime.
 - Visual embeddings are generated from image content, not descriptor-text or byte-hash fixtures.
 - Phase 9 analysis has real model-backed retrieval and extraction foundations.
+- Commit `e8bb26b` passed the two-document model-backed UAT pipeline gate on the
+  GPU node for the Anthem denial and BMW service documents. Reports
+  `/srv/structura/objects/exports/phase85-runs/uat-e8bb26b/20260613T053814Z-uat-e8bb26b-pass-1-report.json`
+  and `...pass-2-report.json` passed hard correctness, operational SLO,
+  lineage, repeatability, safe-outcome, planner, evidence, visual-plan, and
+  retry-summary checks with zero `pipeline_failed` documents and zero target
+  dead letters.
+- The `e8bb26b` UAT reports do not satisfy strict gold-corpus scoring:
+  `goldCorpusQuality` is `not_evaluated` because the private two-document
+  holdout manifest has no `goldMetrics`/`goldThresholds`. Do not treat that run
+  as final release-gold evidence.
 
 Phase 8.5 gate:
 

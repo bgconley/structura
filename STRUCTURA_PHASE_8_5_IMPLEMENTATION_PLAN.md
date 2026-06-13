@@ -6,7 +6,7 @@
 
 **Architecture:** Phase 8.5 inserts a model-runtime foundation between Phase 8 and Phase 9. API, workers, and services keep deterministic fixture adapters for tests, but production/live GPU mode must use explicit HTTP model adapters with truthful provenance, bounded inputs, dimension validation, and model-backed golden evidence.
 
-**Tech Stack:** FastAPI/Python workers, PostgreSQL/pgvector, Docker Compose profiles, vLLM/OpenAI-compatible model APIs, TEI-compatible embedding APIs, Qwen3-VL-8B-Instruct-FP8 semantic annotation, Granite 4.0 3B Vision, Qwen3-Embedding, Qwen3-VL-Embedding, RTX PRO 4000 Blackwell SM120 GPUs, RTX 3090.
+**Tech Stack:** FastAPI/Python workers, PostgreSQL/pgvector, Docker Compose profiles, vLLM/OpenAI-compatible model APIs, TEI-compatible embedding APIs, Qwen3-VL-8B-Instruct-FP8 semantic annotation and exceptional vision fallback, optional Granite 4.0 3B Vision rollback/comparison profiles, Qwen3-Embedding, Qwen3-VL-Embedding, RTX PRO 4000 Blackwell SM120 GPUs, RTX 3090.
 
 ## Phase 8.5 Realignment
 
@@ -15,10 +15,15 @@ Canonical default pipeline:
 ```text
 Docling physical parse
 -> Qwen3-VL-8B-Instruct-FP8 smart semantic annotation
--> Granite 4.0 3B Vision targeted extraction
+-> extractive-first text lanes
+-> exceptional Qwen vision fallback for difficult pages and text-lane abstentions
 -> validators / provenance / review policy
 -> canonical facts + evidence/search layer
 ```
+
+Granite 4.0 3B Vision remains available only through explicit rollback or
+comparison profiles after the E4 gate. It is no longer part of the default live
+runtime path.
 
 Active operator-visible modes:
 
@@ -197,12 +202,12 @@ P620 Blackwell node, GPU 0:
   Qwen3-VL-8B-Instruct-FP8 smart semantic annotation.
 
 P620 Blackwell node, GPU 1:
+  model-vl-embed
+  Qwen3-VL-Embedding-2B at native 2048 dimensions.
+
+Explicit rollback/comparison profile only:
   model-granite
   Granite 4.0 3B Vision.
-
-P620 Blackwell node, GPU 1 alternate scheduled profile:
-  model-vl-embed
-  Qwen3-VL-Embedding-2B at native 2048 dimensions; benchmark 8B before promotion.
 
 RTX 3090 node:
   model-embed
@@ -217,10 +222,12 @@ Default live profiles:
 STRUCTURA_MODEL_MODE=live
 STRUCTURA_QWEN_SEMANTIC_PROFILE=qwen3-vl-8b-fp8-semantic:v1
 STRUCTURA_QWEN_PROFILE=qwen3-vl-8b-instruct-nvfp4-local:v1
-STRUCTURA_GRANITE_PROFILE=granite-4.0-3b-vision-bf16:v1
 STRUCTURA_TEXT_EMBED_PROFILE=qwen3-embedding-4b-1536:v1
 STRUCTURA_VISUAL_EMBED_PROFILE=qwen3-vl-embedding-2b-2048:v1
 ```
+
+`STRUCTURA_GRANITE_PROFILE=granite-4.0-3b-vision-bf16:v1` is valid only when an
+explicit Granite rollback/comparison profile is selected.
 
 Test/CI fixture profile:
 
@@ -1306,6 +1313,19 @@ Phase 8.5 is complete only when all of the following are true:
 - Model-backed golden corpus evidence exists for handwriting, structured tables/KVPs, text retrieval, visual retrieval, and hybrid retrieval.
 - Model service health is visible without leaking private content.
 - Phase 9 plan is updated to depend on Phase 8.5.
+
+Current measured evidence at commit `e8bb26b` proves the two-document
+model-backed UAT pipeline on the GPU node, but it is not a full release-gold
+proof. Reports
+`/srv/structura/objects/exports/phase85-runs/uat-e8bb26b/20260613T053814Z-uat-e8bb26b-pass-1-report.json`
+and
+`/srv/structura/objects/exports/phase85-runs/uat-e8bb26b/20260613T053814Z-uat-e8bb26b-pass-2-report.json`
+passed hard correctness, operational SLO, lineage, required summary,
+repeatability, safe-outcome, planner, evidence, and visual-plan checks. The
+same reports have `goldCorpusQuality = not_evaluated` because the private
+two-document holdout manifest does not include `goldMetrics` and
+`goldThresholds`; strict `--require-gold` release evidence still requires a
+gold-annotated private manifest.
 
 Required deterministic checks:
 
