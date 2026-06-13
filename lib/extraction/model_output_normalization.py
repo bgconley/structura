@@ -66,9 +66,6 @@ from lib.extraction.model_output_value_parsing import (
 from lib.extraction.model_output_value_parsing import (
     number_value as _number,
 )
-from lib.extraction.model_output_wrappers import (
-    unwrap_model_output_payload as _unwrapped_payload,
-)
 from lib.extraction.models import ExtractionSourceDocument
 from lib.extraction.region_envelope_projection import finalized_region_output
 
@@ -81,6 +78,12 @@ _REVIEW_ONLY_RECEIPT_LIKE_SEMANTIC_TYPES = frozenset(
         "service_record_line_item_table",
     }
 )
+
+
+def _unwrapped_payload(payload: Any) -> tuple[dict[str, Any], list[str]]:
+    if not isinstance(payload, dict):
+        return {}, [f"dropped_non_object_{type(payload).__name__}_model_output_payload"]
+    return payload, []
 
 
 def normalize_granite_region_output(

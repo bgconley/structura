@@ -229,3 +229,64 @@ def test_dotless_observation_claims_aggregate_into_document_observation() -> Non
     assert [item["field_name"] for item in projection.claim_projection.observations] == [
         "loan_number"
     ]
+
+
+def test_receipt_compatible_retail_order_regions_aggregate_as_observations() -> None:
+    document_id = uuid4()
+    region_id = uuid4()
+    extraction_id = uuid4()
+    anchor = ClaimAnchor(
+        page_number=2,
+        semantic_region_id=str(region_id),
+        table_id="retail-order-table",
+        row_index=1,
+    )
+
+    projection = resolve_claim_regions_for_family(
+        family="document_observation",
+        missing_claims_reason="claims_required_for_document_observation_aggregate",
+        regions=[
+            RegionExtraction(
+                extraction_id=extraction_id,
+                semantic_region_id=region_id,
+                semantic_type="retail_order_line_item_table",
+                claims=(
+                    Claim(
+                        claim_id="claim-retail-merchant",
+                        document_id=str(document_id),
+                        source_engine="docling",
+                        anchor=anchor,
+                        canonical_key="retail_order.merchant_name",
+                        raw_value="Apple Store",
+                        typed_value="Apple Store",
+                        value_type="text",
+                        confidence=0.91,
+                        method="docling_text_table.v1",
+                    ),
+                    Claim(
+                        claim_id="claim-retail-line",
+                        document_id=str(document_id),
+                        source_engine="docling",
+                        anchor=anchor,
+                        canonical_key="retail_order.line_item.description",
+                        raw_value="Replacement charging cable",
+                        typed_value="Replacement charging cable",
+                        value_type="text",
+                        confidence=0.91,
+                        method="docling_text_table.v1",
+                    ),
+                ),
+            )
+        ],
+    )
+
+    assert projection is not None
+    assert projection.region_count == 1
+    assert projection.metadata["source_families"] == ["retail_order"]
+    observations = {
+        (item["family"], item["field_name"]) for item in projection.claim_projection.observations
+    }
+    assert observations == {
+        ("retail_order", "line_item.description"),
+        ("retail_order", "merchant_name"),
+    }
