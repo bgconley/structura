@@ -487,6 +487,25 @@ def test_phase8_5_event_contracts_reject_removed_rescue_fields() -> None:
             registry.validate_event_instance(schema_name, payload)
 
 
+def test_extract_document_job_contract_accepts_review_rerun_actor() -> None:
+    registry = ContractRegistry.load("contracts")
+    payload = {
+        "schema_name": "extract_document_job",
+        "schema_version": "v1",
+        "job_id": UUID_1,
+        "created_at": TIMESTAMP,
+        "attempt": 1,
+        "priority": 5,
+        "requested_by": "reviewer",
+        "document_id": UUID_2,
+        "target_schema_name": "invoice",
+        "target_schema_version": "v1",
+        "semantic_quality_mode": "smart",
+    }
+
+    registry.validate_event_instance("extract_document_job.v1.schema.json", payload)
+
+
 def test_extract_document_job_contract_accepts_document_orchestration_mode() -> None:
     registry = ContractRegistry.load("contracts")
     payload = {

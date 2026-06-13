@@ -57,8 +57,15 @@ def persist_semantic_manifest_with_cursor(
           AND profile_name = %s
           AND quality_mode = %s
           AND is_current
+        RETURNING id
         """,
         (manifest.document_id, manifest.profile_name, manifest.quality_mode),
+    )
+    superseded_annotation_ids = [cast(UUID, row["id"]) for row in cur.fetchall()]
+    _supersede_semantic_region_outputs_for_annotations(
+        cur,
+        manifest.document_id,
+        superseded_annotation_ids,
     )
     cur.execute(
         """
@@ -121,6 +128,41 @@ def persist_semantic_manifest_with_cursor(
     return PersistedSemanticManifest(
         annotation_id=annotation_id,
         region_ids=tuple(region_ids),
+    )
+
+
+def _supersede_semantic_region_outputs_for_annotations(
+    cur: Cursor[dict[str, Any]],
+    document_id: UUID,
+    annotation_ids: list[UUID],
+) -> None:
+    if not annotation_ids:
+        return
+    cur.execute(
+        """
+        UPDATE document_extractions
+        SET is_current = false,
+            status = CASE WHEN status = 'completed' THEN 'superseded' ELSE status END,
+            updated_at = now()
+        WHERE document_id = %s
+          AND extraction_scope = 'semantic_region'
+          AND semantic_annotation_id = ANY(%s::uuid[])
+          AND is_current
+        """,
+        (document_id, annotation_ids),
+    )
+    cur.execute(
+        """
+        UPDATE document_assets
+        SET is_current = false,
+            updated_at = now()
+        WHERE document_id = %s
+          AND asset_role IN ('raw_model_output', 'normalized_extraction_json')
+          AND metadata_json ->> 'extractionScope' = 'semantic_region'
+          AND metadata_json ->> 'semanticAnnotationId' = ANY(%s::text[])
+          AND is_current
+        """,
+        (document_id, [str(annotation_id) for annotation_id in annotation_ids]),
     )
 
 

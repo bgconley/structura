@@ -46,7 +46,8 @@
         "system",
         "user",
         "agent",
-        "scheduler"
+        "scheduler",
+        "reviewer"
       ]
     },
     "metadata": {
