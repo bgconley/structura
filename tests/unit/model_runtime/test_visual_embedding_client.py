@@ -200,18 +200,24 @@ def test_visual_embedding_client_rejects_images_above_profile_byte_limit() -> No
 def test_visual_query_embedding_client_accepts_text_query_without_image_bytes() -> None:
     vector = [0.0] * 2048
     vector[11] = 1.0
+    seen_payloads: list[dict[str, object]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/v1/embeddings"
+        payload = __import__("json").loads(request.read().decode())
+        seen_payloads.append(payload)
+        return httpx.Response(
+            200,
+            json={
+                "model": "Qwen/Qwen3-VL-Embedding-2B",
+                "data": [{"embedding": vector}],
+            },
+        )
+
     client = VisualQueryEmbeddingClient(
         profile=get_model_profile(VISUAL_EMBED_PROFILE),
         http_client_base_url="http://model-vl-embed:8103",
-        transport=httpx.MockTransport(
-            lambda _request: httpx.Response(
-                200,
-                json={
-                    "model": "Qwen/Qwen3-VL-Embedding-2B",
-                    "data": [{"embedding": vector}],
-                },
-            )
-        ),
+        transport=httpx.MockTransport(handler),
     )
 
     response = client.embed(
@@ -224,3 +230,10 @@ def test_visual_query_embedding_client_accepts_text_query_without_image_bytes() 
     )
 
     assert response.vectors == (tuple(vector),)
+    assert seen_payloads == [
+        {
+            "model": "Qwen/Qwen3-VL-Embedding-2B",
+            "input": ["handwritten receipt"],
+            "metadata": {"profile_name": VISUAL_EMBED_PROFILE},
+        }
+    ]

@@ -278,12 +278,14 @@ class EmbeddingHttpClient:
 
     def _openai_embedding_payload(self, request: EmbeddingRequest) -> dict[str, Any]:
         if not self.requires_image:
-            return {
+            payload: dict[str, Any] = {
                 "model": self.profile.base_model,
                 "input": [item.text for item in request.inputs],
-                "dimensions": request.output_dimensions,
                 "metadata": {"profile_name": request.profile_name},
             }
+            if self.profile.engine != "visual_embedding":
+                payload["dimensions"] = request.output_dimensions
+            return payload
         if len(request.inputs) != 1:
             raise ModelProtocolError(
                 "OpenAI-compatible visual embedding supports one image at a time."
