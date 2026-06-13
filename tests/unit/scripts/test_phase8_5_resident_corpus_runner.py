@@ -167,6 +167,14 @@ def test_semantic_report_query_projects_deterministic_baseline_telemetry() -> No
     )
 
 
+def test_extraction_report_query_projects_identity_and_metadata_lineage() -> None:
+    runner = _load_resident_runner()
+
+    assert "SELECT id, schema_name" in runner._EXTRACTIONS_SQL
+    assert "normalization_json, metadata_json" in runner._EXTRACTIONS_SQL
+    assert "metadata_json -> 'visualInputPlan' AS visual_plan" in runner._EXTRACTIONS_SQL
+
+
 def test_candidate_report_queries_project_admission_fingerprints() -> None:
     runner = _load_resident_runner()
 

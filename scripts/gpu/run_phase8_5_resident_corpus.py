@@ -586,11 +586,11 @@ ORDER BY created_at
 """
 
 _EXTRACTIONS_SQL = """
-SELECT schema_name, schema_version, extraction_scope, semantic_type, granite_task,
+SELECT id, schema_name, schema_version, extraction_scope, semantic_type, granite_task,
        semantic_annotation_id, source_semantic_region_id,
        model_output_schema_name, source_engine::text AS source_engine, model_name,
        prompt_version, status::text AS status, review_status::text AS review_status,
-       confidence, is_current, validation_json, normalization_json,
+       confidence, is_current, validation_json, normalization_json, metadata_json,
        metadata_json -> 'visualInputPlan' AS visual_plan,
        metadata_json -> 'visualInputAttempts' AS visual_input_attempts
 FROM document_extractions
