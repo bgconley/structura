@@ -4,7 +4,7 @@ import hashlib
 import os
 from dataclasses import dataclass
 from io import BytesIO
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 from lib.extraction.claims import claims_from_region_envelope
@@ -58,6 +58,8 @@ _FULL_PAGE_TYPES = {
     "billing_summary",
 }
 _HEADER_FOOTER_BAND_RATIO = 0.08
+VISION_INPUT_MODE_ENV = "STRUCTURA_VISION_INPUT_MODE"
+LEGACY_GRANITE_VISUAL_INPUT_MODE_ENV = "STRUCTURA_GRANITE_VISUAL_INPUT_MODE"
 
 
 @dataclass(frozen=True)
@@ -80,13 +82,45 @@ class _BBoxCandidate:
 
 
 def visual_input_mode_from_env() -> VisualInputMode:
-    value = os.getenv("STRUCTURA_GRANITE_VISUAL_INPUT_MODE", "shadow_full_page").strip()
+    return vision_input_mode_from_env()
+
+
+def vision_input_mode_from_env() -> VisualInputMode:
+    mode, _env_var, _deprecated = _visual_input_mode_env_selection()
+    return mode
+
+
+def visual_input_mode_env_telemetry() -> dict[str, object]:
+    mode, env_var, deprecated = _visual_input_mode_env_selection()
+    return {
+        "mode": mode,
+        "envVar": env_var,
+        "deprecatedEnvVar": deprecated,
+    }
+
+
+def _visual_input_mode_env_selection() -> tuple[VisualInputMode, str | None, bool]:
+    for env_var, deprecated in (
+        (VISION_INPUT_MODE_ENV, False),
+        (LEGACY_GRANITE_VISUAL_INPUT_MODE_ENV, True),
+    ):
+        raw_value = os.getenv(env_var)
+        if raw_value is None:
+            continue
+        value = raw_value.strip()
+        mode = _coerce_visual_input_mode(value)
+        if mode is not None:
+            return mode, env_var, deprecated
+    return "shadow_full_page", None, False
+
+
+def _coerce_visual_input_mode(value: str) -> VisualInputMode | None:
     if value in {"full_page", "shadow_full_page", "planned"}:
-        return value  # type: ignore[return-value]
-    return "shadow_full_page"
+        return cast(VisualInputMode, value)
+    return None
 
 
-def plan_granite_visual_inputs(
+def plan_vision_inputs(
     source: ExtractionSourceDocument,
     *,
     semantic_task: SemanticExtractionTask | None,
@@ -115,6 +149,25 @@ def plan_granite_visual_inputs(
     return VisualInputDecision(inputs=tuple(planned))
 
 
+def plan_granite_visual_inputs(
+    source: ExtractionSourceDocument,
+    *,
+    semantic_task: SemanticExtractionTask | None,
+    max_images: int,
+    page_image_loader: Any,
+    mode: VisualInputMode | None = None,
+    retry_scope: VisualInputScope | None = None,
+) -> VisualInputDecision:
+    return plan_vision_inputs(
+        source,
+        semantic_task=semantic_task,
+        max_images=max_images,
+        page_image_loader=page_image_loader,
+        mode=mode,
+        retry_scope=retry_scope,
+    )
+
+
 def visual_input_attempt_json(
     *,
     decision: VisualInputDecision,
@@ -135,7 +188,7 @@ def crop_retry_allowed(decision: VisualInputDecision) -> bool:
     return plan.effective_scope in {"element_crop", "table_crop", "bbox_crop", "expanded_crop"}
 
 
-def is_useful_granite_output(
+def is_useful_vision_output(
     *,
     normalized_json: dict[str, Any],
     normalization_json: dict[str, Any] | None = None,
@@ -159,6 +212,19 @@ def is_useful_granite_output(
     if isinstance(observations, list) and semantic_task and semantic_task.expected_fields:
         return any(not _is_all_null_or_empty(item) for item in observations)
     return True
+
+
+def is_useful_granite_output(
+    *,
+    normalized_json: dict[str, Any],
+    normalization_json: dict[str, Any] | None = None,
+    semantic_task: SemanticExtractionTask | None,
+) -> bool:
+    return is_useful_vision_output(
+        normalized_json=normalized_json,
+        normalization_json=normalization_json,
+        semantic_task=semantic_task,
+    )
 
 
 def _is_useful_region_envelope(
@@ -453,7 +519,7 @@ def _crop_model_input(page_image: _PageImage, plan: VisualInputPlan) -> ModelIma
     try:
         from PIL import Image
     except ImportError as exc:  # pragma: no cover - dependency is declared for runtime.
-        raise ModelProtocolError("Pillow is required for planned Granite crop inputs.") from exc
+        raise ModelProtocolError("Pillow is required for planned vision crop inputs.") from exc
     with Image.open(BytesIO(page_image.content)) as image:
         cropped = image.crop(crop_box(plan.bbox))
         output = BytesIO()

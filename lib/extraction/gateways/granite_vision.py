@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from lib.extraction.gateways._vision import VisionClientProtocol, VisionExtractionGateway
+from lib.extraction.gateways.vision_lane import GRANITE_VISION_PROVIDER
 from lib.extraction.granite_budgets import (
     GraniteTaskBudget,
     granite_budget_for_task,
@@ -16,6 +17,7 @@ class GraniteVisionExtractionGateway(VisionExtractionGateway):
     prompt_version = "phase8_5-granite-structured-v1"
     profile_name = GRANITE_VISION_PROFILE
     max_image_inputs = 1
+    vision_provider = GRANITE_VISION_PROVIDER
 
     def __init__(self, *, client: VisionClientProtocol) -> None:
         super().__init__(client=client)

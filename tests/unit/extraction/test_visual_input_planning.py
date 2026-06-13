@@ -7,7 +7,9 @@ from uuid import UUID, uuid4
 
 from PIL import Image, ImageDraw
 
+import lib.extraction.visual_input_planning as visual_input_planning
 from lib.extraction.gateways.granite_vision import GraniteVisionExtractionGateway
+from lib.extraction.gateways.vision_lane import GRANITE_VISION_PROVIDER, VISION_LANE_NAME
 from lib.extraction.models import (
     ExtractionSourceDocument,
     ParsedElementText,
@@ -68,6 +70,52 @@ def test_shadow_mode_records_element_crop_intent_but_sends_full_page() -> None:
     assert plan.effective_scope == "full_page"
     assert plan.fallback_reason == "shadow_mode_sends_full_page"
     assert plan.bbox_basis == "pdf_points"
+
+
+def test_neutral_vision_input_mode_env_alias_takes_precedence(monkeypatch) -> None:
+    monkeypatch.setenv("STRUCTURA_GRANITE_VISUAL_INPUT_MODE", "full_page")
+    monkeypatch.setenv("STRUCTURA_VISION_INPUT_MODE", "planned")
+
+    assert hasattr(visual_input_planning, "vision_input_mode_from_env")
+    assert visual_input_planning.vision_input_mode_from_env() == "planned"
+
+
+def test_legacy_granite_visual_input_env_alias_still_works(monkeypatch) -> None:
+    monkeypatch.delenv("STRUCTURA_VISION_INPUT_MODE", raising=False)
+    monkeypatch.setenv("STRUCTURA_GRANITE_VISUAL_INPUT_MODE", "full_page")
+
+    assert hasattr(visual_input_planning, "vision_input_mode_from_env")
+    assert visual_input_planning.vision_input_mode_from_env() == "full_page"
+
+
+def test_neutral_vision_planner_alias_preserves_current_visual_plan() -> None:
+    assert hasattr(visual_input_planning, "plan_vision_inputs")
+    source, element_id = _source_with_geometry()
+    task = _line_item_task(source, element_id=element_id)
+
+    vision_decision = visual_input_planning.plan_vision_inputs(
+        source,
+        semantic_task=task,
+        max_images=1,
+        page_image_loader=lambda page: page.image_bytes,
+        mode="planned",
+    )
+    legacy_decision = plan_granite_visual_inputs(
+        source,
+        semantic_task=task,
+        max_images=1,
+        page_image_loader=lambda page: page.image_bytes,
+        mode="planned",
+    )
+
+    assert vision_decision.primary_plan is not None
+    assert legacy_decision.primary_plan is not None
+    assert vision_decision.primary_plan.effective_scope == (
+        legacy_decision.primary_plan.effective_scope
+    )
+    assert vision_decision.model_inputs[0].validated_sha256() == (
+        legacy_decision.model_inputs[0].validated_sha256()
+    )
 
 
 def test_page_grounded_task_uses_full_page() -> None:
@@ -387,6 +435,32 @@ def test_planned_crop_evidence_records_visual_bbox(monkeypatch) -> None:
     assert evidence["bbox"]
     assert evidence["bbox_basis"] == "pdf_points"
     assert evidence["semantic_region_id"] == str(task.region_id)
+
+
+def test_granite_backed_gateway_reports_neutral_vision_lane(monkeypatch) -> None:
+    monkeypatch.setenv("STRUCTURA_VISION_INPUT_MODE", "planned")
+    source, element_id = _source_with_geometry()
+    task = _line_item_task(source, element_id=element_id)
+    client = SequencedVisionClient(
+        payloads=[
+            _invoice_line_items_payload([{"description": "600 mile service", "amount": 250.0}]),
+        ]
+    )
+
+    result = GraniteVisionExtractionGateway(client=client).extract(
+        source,
+        schema_name="invoice",
+        route_profile="docling_plus_granite_structured",
+        semantic_task=task,
+    )
+
+    assert result.route.source_engine == "granite_vision_3b"
+    assert result.normalization_json["lane"] == VISION_LANE_NAME
+    assert result.normalization_json["visionProvider"] == GRANITE_VISION_PROVIDER
+    assert result.raw_output_json["lane"] == VISION_LANE_NAME
+    assert result.raw_output_json["visionProvider"] == GRANITE_VISION_PROVIDER
+    assert result.metadata["lane"] == VISION_LANE_NAME
+    assert result.metadata["visionProvider"] == GRANITE_VISION_PROVIDER
 
 
 def _source_with_geometry(

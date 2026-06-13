@@ -24,13 +24,15 @@ DISABLED_ROUTE_PROFILES = {
     "granite_then_qwen_fallback_review_required",
     "qwen_primary_review_required",
 }
-GRANITE_ROUTE_PROFILES = {
+VISION_ROUTE_PROFILES = {
     "docling_plus_structured_extraction",
     "docling_plus_granite_structured",
     "granite_primary_review_required",
 }
+# Backward-compatible name for staged E4 migration.
+GRANITE_ROUTE_PROFILES = VISION_ROUTE_PROFILES
 # Every target extraction schema (including document_observation) routes to
-# Granite so non-Granite route profiles cannot silently fall back to the
+# the vision lane so non-vision route profiles cannot silently fall back to the
 # deterministic gateway for a structured schema.
 STRUCTURED_SCHEMAS = frozenset(TARGET_EXTRACTION_SCHEMAS)
 
@@ -40,12 +42,20 @@ class ModelRoutingExtractionGateway:
         self,
         *,
         deterministic: ExtractionGateway,
-        granite: ExtractionGateway,
+        vision: ExtractionGateway | None = None,
+        granite: ExtractionGateway | None = None,
         text_lane_tables: TextLaneTableExtractionGateway | None = None,
         text_lane_kvp: TextLaneKvpExtractionGateway | None = None,
     ) -> None:
+        if vision is None:
+            if granite is None:
+                raise TypeError("ModelRoutingExtractionGateway requires a vision gateway.")
+            vision = granite
         self.deterministic = deterministic
-        self.granite = granite
+        self.vision = vision
+        # Compatibility alias for callers that still inspect the staged Granite
+        # dependency during E4 migration.
+        self.granite = vision
         self.text_lane_tables = text_lane_tables
         self.text_lane_kvp = text_lane_kvp
 
@@ -60,15 +70,16 @@ class ModelRoutingExtractionGateway:
         if route_profile in DISABLED_ROUTE_PROFILES:
             raise ModelProtocolError(
                 f"Route profile {route_profile} is disabled in Phase 8.5 production. "
-                "Qwen is semantic-only; extraction must be Granite or deterministic fixture."
+                "Qwen is semantic-only; extraction must be the vision lane "
+                "or deterministic fixture."
             )
-        granite_requested = (
-            route_profile in GRANITE_ROUTE_PROFILES or schema_name in STRUCTURED_SCHEMAS
+        vision_requested = (
+            route_profile in VISION_ROUTE_PROFILES or schema_name in STRUCTURED_SCHEMAS
         )
-        if granite_requested:
+        if vision_requested:
             if semantic_task is None:
                 raise ModelProtocolError(
-                    "Live Granite extraction requires a grounded semantic region task. "
+                    "Live vision extraction requires a grounded semantic region task. "
                     "Broad document-level structured extraction is disabled."
                 )
             lane_decision: LaneDecision | None = None
@@ -107,7 +118,7 @@ class ModelRoutingExtractionGateway:
                             page_number=lane_decision.page_number,
                             table_id=lane_decision.table_id,
                         )
-            result = self.granite.extract(
+            result = self.vision.extract(
                 source,
                 schema_name=schema_name,
                 route_profile=route_profile,
@@ -150,7 +161,7 @@ def default_extraction_gateway() -> ExtractionGateway:
     text_lane_kvp = TextLaneKvpExtractionGateway() if settings.text_lane_kvp_enabled else None
     return ModelRoutingExtractionGateway(
         deterministic=deterministic,
-        granite=GraniteVisionExtractionGateway(
+        vision=GraniteVisionExtractionGateway(
             client=GraniteVisionClient(
                 profile=granite_profile,
                 http_client_base_url=settings.model_granite_url,

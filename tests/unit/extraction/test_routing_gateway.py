@@ -13,6 +13,7 @@ from lib.extraction.gateways.routing import (
     ModelRoutingExtractionGateway,
     default_extraction_gateway,
 )
+from lib.extraction.gateways.vision_lane import GRANITE_VISION_PROVIDER, VISION_LANE_NAME
 from lib.extraction.models import ExtractionSourceDocument
 from lib.model_runtime.http_client import ModelProtocolError
 from lib.semantic_annotations.models import SemanticExtractionTask, SemanticGroundingRef
@@ -49,6 +50,30 @@ def test_live_routing_gateway_has_no_qwen_extraction_dependency() -> None:
 
     assert "qwen" not in constructor.parameters
     assert "QwenVLExtractionGateway" not in routing_source
+
+
+def test_routing_gateway_accepts_neutral_vision_gateway_name() -> None:
+    constructor = inspect.signature(ModelRoutingExtractionGateway)
+    assert "vision" in constructor.parameters
+
+    vision_client = FakeVisionClient(source_engine="granite_vision_3b", profile_name="granite")
+    source = _source_with_page_image()
+    gateway = ModelRoutingExtractionGateway(
+        deterministic=RecordingDeterministicGateway(),
+        vision=GraniteVisionExtractionGateway(client=vision_client),
+    )
+
+    result = gateway.extract(
+        source,
+        schema_name="invoice",
+        route_profile="docling_plus_structured_extraction",
+        semantic_task=_invoice_semantic_task(source),
+    )
+
+    assert result.route.source_engine == "granite_vision_3b"
+    assert result.normalization_json["lane"] == VISION_LANE_NAME
+    assert result.normalization_json["visionProvider"] == GRANITE_VISION_PROVIDER
+    assert vision_client.request is not None
 
 
 def test_routing_gateway_rejects_live_qwen_extraction_route() -> None:

@@ -5,6 +5,7 @@ from typing import Protocol
 from lib.extraction.contract_registry import resolved_document_type_from_task_metadata
 from lib.extraction.docling_table_quality import DoclingTableQuality, evaluate_docling_table_quality
 from lib.extraction.evidence_context import evidence_context_for_task
+from lib.extraction.gateways.vision_lane import VISION_LANE_NAME
 from lib.extraction.granite_budgets import GraniteTaskBudget
 from lib.extraction.granite_prompting import granite_prompt
 from lib.extraction.model_output_normalization import normalize_granite_region_output
@@ -16,10 +17,11 @@ from lib.extraction.models import (
 )
 from lib.extraction.visual_input_planning import (
     crop_retry_allowed,
-    is_useful_granite_output,
-    plan_granite_visual_inputs,
+    is_useful_vision_output,
+    plan_vision_inputs,
+    vision_input_mode_from_env,
     visual_input_attempt_json,
-    visual_input_mode_from_env,
+    visual_input_mode_env_telemetry,
 )
 from lib.extraction.visual_input_types import VisualInputDecision
 from lib.model_runtime.contracts import (
@@ -41,6 +43,7 @@ class VisionExtractionGateway:
     max_image_inputs = 4
     max_output_tokens = 2048
     timeout_seconds = 60
+    vision_provider = "vision"
 
     def __init__(
         self,
@@ -71,8 +74,8 @@ class VisionExtractionGateway:
             schema_name=schema_name,
             semantic_task=semantic_task,
         )
-        visual_mode = visual_input_mode_from_env()
-        decision = plan_granite_visual_inputs(
+        visual_mode = vision_input_mode_from_env()
+        decision = plan_vision_inputs(
             source,
             semantic_task=semantic_task,
             max_images=self.max_image_inputs,
@@ -108,7 +111,7 @@ class VisionExtractionGateway:
             docling_table_quality=_docling_table_quality(source, semantic_task),
             source=source,
         )
-        useful = is_useful_granite_output(
+        useful = is_useful_vision_output(
             normalized_json=normalized_json,
             normalization_json=normalization_json,
             semantic_task=semantic_task,
@@ -121,7 +124,7 @@ class VisionExtractionGateway:
             )
         ]
         if not useful and budget.max_attempts > 1 and crop_retry_allowed(decision):
-            retry_decision = plan_granite_visual_inputs(
+            retry_decision = plan_vision_inputs(
                 source,
                 semantic_task=semantic_task,
                 max_images=self.max_image_inputs,
@@ -162,7 +165,7 @@ class VisionExtractionGateway:
                 docling_table_quality=_docling_table_quality(source, semantic_task),
                 source=source,
             )
-            retry_useful = is_useful_granite_output(
+            retry_useful = is_useful_vision_output(
                 normalized_json=retry_normalized_json,
                 normalization_json=retry_normalization_json,
                 semantic_task=semantic_task,
@@ -186,9 +189,16 @@ class VisionExtractionGateway:
                 ),
             }
             decision = retry_decision
+        normalization_json = {
+            **normalization_json,
+            "lane": VISION_LANE_NAME,
+            "visionProvider": self.vision_provider,
+        }
         visual_input_plan = decision.primary_plan.as_json() if decision.primary_plan else None
         raw_output_json = {
             "modelInvoked": True,
+            "lane": VISION_LANE_NAME,
+            "visionProvider": self.vision_provider,
             "profileName": response.profile_name,
             "modelName": response.model_name,
             "modelVersion": response.model_version,
@@ -204,6 +214,7 @@ class VisionExtractionGateway:
             "semanticTask": _semantic_task_json(semantic_task),
             "visualInputPlan": visual_input_plan,
             "visualInputAttempts": attempts,
+            "visualInputModeEnv": visual_input_mode_env_telemetry(),
             "requestBudget": {
                 "maxOutputTokens": response_budget.max_output_tokens,
                 "timeoutSeconds": response_budget.timeout_seconds,
@@ -236,6 +247,8 @@ class VisionExtractionGateway:
             ),
             normalization_json=normalization_json,
             metadata={
+                "lane": VISION_LANE_NAME,
+                "visionProvider": self.vision_provider,
                 "visualInputPlan": visual_input_plan,
                 "visualInputAttempts": attempts,
             },
