@@ -1,5 +1,6 @@
 import {expect, test} from "@playwright/test";
-import {writeFile} from "node:fs/promises";
+
+import {writeSimplePdf} from "./support/pdf";
 
 const liveStackEnabled = process.env.STRUCTURA_E2E_LIVE === "1";
 const email = process.env.STRUCTURA_E2E_EMAIL ?? "phase1-live@example.com";
@@ -15,8 +16,8 @@ test.describe("Phase 7 live GPU stack", () => {
     const secondTitle = `phase7-live-receipt-${unique}`;
     const firstPath = testInfo.outputPath(`${firstTitle}.pdf`);
     const secondPath = testInfo.outputPath(`${secondTitle}.pdf`);
-    await writeFile(firstPath, `%PDF-1.7\n% ${firstTitle}\n%%EOF\n`);
-    await writeFile(secondPath, `%PDF-1.7\n% ${secondTitle}\n%%EOF\n`);
+    await writeSimplePdf(firstPath, [firstTitle, "Phase 7 live warranty smoke document."]);
+    await writeSimplePdf(secondPath, [secondTitle, "Phase 7 live receipt smoke document."]);
 
     await page.goto("/");
     await page.getByLabel("Email").fill(email);

@@ -1,5 +1,6 @@
 import {expect, test} from "@playwright/test";
-import {writeFile} from "node:fs/promises";
+
+import {writeSimplePdf} from "./support/pdf";
 
 const liveStackEnabled = process.env.STRUCTURA_E2E_LIVE === "1";
 const email = process.env.STRUCTURA_E2E_EMAIL ?? "phase1-live@example.com";
@@ -11,7 +12,7 @@ test.describe("Phase 1 live Compose stack", () => {
   test("logs in, uploads a document, and opens the viewer through the real API", async ({page}, testInfo) => {
     const title = `phase1-live-${Date.now()}`;
     const uploadPath = testInfo.outputPath(`${title}.pdf`);
-    await writeFile(uploadPath, `%PDF-1.7\n% ${title}\n%%EOF\n`);
+    await writeSimplePdf(uploadPath, [title, "Phase 1 live upload smoke document."]);
 
     await page.goto("/");
     await page.getByLabel("Email").fill(email);
