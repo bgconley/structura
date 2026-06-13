@@ -317,6 +317,8 @@ def _report(*, hard_status: str) -> dict[str, object]:
             "model_mode": "live",
             "semantic_profile": QWEN_SEMANTIC_PROFILE,
             "granite_profile": GRANITE_VISION_PROFILE,
+            "vision_fallback_provider": "granite",
+            "qwen_vision_fallback_enabled": False,
             "text_embedding_profile": TEXT_EMBED_PROFILE,
             "visual_embedding_profile": VISUAL_EMBED_PROFILE,
             **_task12_manifest_lineage(),

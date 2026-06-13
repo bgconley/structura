@@ -10,6 +10,7 @@ PHASE85_PLAN = Path("STRUCTURA_PHASE_8_5_IMPLEMENTATION_PLAN.md")
 PHASE9_PLAN = Path("STRUCTURA_PHASE_9_IMPLEMENTATION_PLAN.md")
 ROOT_PLAN = Path("STRUCTURA_IMPLEMENTATION_PLAN.md")
 MODEL_CORPUS_README = Path("tests/fixtures/model_corpus/README.md")
+PHASE85_GPU_VALIDATION = Path("docs/model-runtime/phase8_5_gpu_validation.md")
 
 
 def test_readme_uses_model_corpus_runner_for_model_backed_release_gate() -> None:
@@ -137,6 +138,15 @@ def test_model_corpus_readme_rejects_not_evaluated_release_evidence() -> None:
     normalized = re.sub(r"\s+", " ", content)
 
     assert "`not_evaluated` is not valid release evidence" in normalized
+
+
+def test_gpu_validation_docs_include_e4_vision_ab_gate() -> None:
+    content = PHASE85_GPU_VALIDATION.read_text(encoding="utf-8")
+    normalized = re.sub(r"\s+", " ", content)
+
+    assert "scripts/gpu/run_phase8_5_e4_vision_ab.py" in content
+    assert "STRUCTURA_QWEN_VISION_FALLBACK=false" in normalized
+    assert "STRUCTURA_QWEN_VISION_FALLBACK=true" in normalized
 
 
 def test_model_corpus_readme_rejects_artifact_failure_lists() -> None:

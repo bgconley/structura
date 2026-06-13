@@ -97,6 +97,27 @@ copies those values into report document rows so
 `acceptanceGates.goldCorpusQuality` is recomputable from captured report
 evidence. Use `--require-gold` only with a private manifest that contains those
 gold annotations.
+
+For the E4 vision-lane A/B gate, run the host-side wrapper so the app and
+extraction worker containers are recreated with the correct fallback mode before
+each resident acceptance run:
+
+```bash
+PYTHON=/tank/venvs/structura/bin/python \
+/tank/venvs/structura/bin/python scripts/gpu/run_phase8_5_e4_vision_ab.py \
+  --manifest /tank/structura/private/phase8_5_resident_manifest.json \
+  --report-dir /srv/structura/objects/exports/phase85-runs/e4-vision-ab
+```
+
+The wrapper first brings up the live runtime with
+`STRUCTURA_QWEN_VISION_FALLBACK=false` for the Granite fallback baseline, then
+runs two-pass resident acceptance into `e4-vision-ab/granite`. It then recreates
+the runtime with `STRUCTURA_QWEN_VISION_FALLBACK=true` for Qwen vision fallback
+and writes the same two-pass acceptance evidence into `e4-vision-ab/qwen`.
+Do not remove Granite or flip the default fallback until the Qwen reports match
+or safely abstain relative to the Granite baseline with no hard invariant,
+dead-letter, provenance, or hidden-second-Qwen regressions.
+
 Report acceptance also requires `fixtureType`, `measuredAt`, and
 `runManifest.model_mode` so stale fixture or pre-lineage reports cannot pass as
 release evidence; the top-level `runId` must match `runManifest.run_id`; live or
