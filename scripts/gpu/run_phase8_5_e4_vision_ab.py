@@ -134,8 +134,9 @@ def _run_resident_acceptance(
         command.append("--allow-target-dead-letter")
     if args.require_gold:
         command.append("--require-gold")
+    env = _mode_env(mode=mode, qwen_vision_profile=args.qwen_vision_profile)
     # Fixed Python script path and argv-only forwarding; no shell.
-    return subprocess.run(command, cwd=ROOT, check=False, text=True)  # nosec B603
+    return subprocess.run(command, cwd=ROOT, check=False, text=True, env=env)  # nosec B603
 
 
 def _mode_report_paths(args: argparse.Namespace, *, mode: str) -> list[Path]:

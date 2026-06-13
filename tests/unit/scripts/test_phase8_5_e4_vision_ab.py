@@ -62,9 +62,9 @@ def test_e4_vision_ab_runner_recreates_runtime_for_granite_then_qwen(
 
     assert len(calls) == 4
     granite_bringup, granite_env = calls[0]
-    granite_acceptance, _ = calls[1]
+    granite_acceptance, granite_acceptance_env = calls[1]
     qwen_bringup, qwen_env = calls[2]
-    qwen_acceptance, _ = calls[3]
+    qwen_acceptance, qwen_acceptance_env = calls[3]
 
     assert granite_bringup[:2] == ["bash", str(runner.LIVE_BRINGUP)]
     assert granite_env is not None
@@ -77,11 +77,17 @@ def test_e4_vision_ab_runner_recreates_runtime_for_granite_then_qwen(
     assert qwen_env["STRUCTURA_QWEN_VISION_FALLBACK"] == "true"
 
     assert granite_acceptance[:2] == [sys.executable, str(runner.RESIDENT_ACCEPTANCE)]
+    assert granite_acceptance_env is not None
+    assert granite_acceptance_env["STRUCTURA_MODEL_MODE"] == "live"
+    assert granite_acceptance_env["STRUCTURA_QWEN_VISION_FALLBACK"] == "false"
     assert granite_acceptance[granite_acceptance.index("--run-id-prefix") + 1] == (
         "phase85-e4-test-granite"
     )
     assert str(report_dir / "granite") in granite_acceptance
     assert qwen_acceptance[:2] == [sys.executable, str(runner.RESIDENT_ACCEPTANCE)]
+    assert qwen_acceptance_env is not None
+    assert qwen_acceptance_env["STRUCTURA_MODEL_MODE"] == "live"
+    assert qwen_acceptance_env["STRUCTURA_QWEN_VISION_FALLBACK"] == "true"
     assert qwen_acceptance[qwen_acceptance.index("--run-id-prefix") + 1] == ("phase85-e4-test-qwen")
     assert str(report_dir / "qwen") in qwen_acceptance
 
