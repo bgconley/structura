@@ -440,6 +440,55 @@ def test_semantic_service_uses_docling_service_record_targets_when_qwen_emits_no
     assert payload["metadata"]["region_source"] == "docling_structural"
 
 
+def test_semantic_service_builds_baseline_after_semantic_family_resolution() -> None:
+    document_id = uuid4()
+    household_id = uuid4()
+    page_ids = {1: uuid4(), 2: uuid4()}
+    annotation_id = uuid4()
+    source = _source_with_pages(
+        document_id=document_id,
+        household_id=household_id,
+        family="generic",
+        title="Anthem coverage notice",
+        original_filename="anthem-denial.pdf",
+        page_ids=page_ids,
+        page_texts={
+            1: "Claim denied because the request was not medically necessary. Appeal rights.",
+            2: "Grievance rights include contact phone, fax, and external review deadline.",
+        },
+    )
+    manifest = _manifest_with_regions_for_pages(
+        document_id=document_id,
+        household_id=household_id,
+        page_ids=page_ids,
+        regions=[],
+        document_type="medical_eob",
+    )
+    jobs = RecordingJobs()
+    persisted_manifests: list[DocumentSemanticManifest] = []
+
+    SemanticAnnotationService(
+        source_loader=lambda loaded_document_id: source,
+        gateway=StaticGateway(manifest),
+        manifest_persister=lambda persisted_manifest: _persist_dynamic_manifest(
+            persisted_manifest,
+            annotation_id=annotation_id,
+            captured=persisted_manifests,
+        ),
+        jobs=jobs,
+    ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+
+    persisted_regions = persisted_manifests[0].regions
+    assert {
+        (region.semantic_type, region.target_schema, region.grounding.page_id)
+        for region in persisted_regions
+    } == {
+        ("denial_or_coverage_decision", "medical_eob", page_ids[1]),
+        ("generic_form_kvp", "document_observation", page_ids[2]),
+    }
+    assert len(jobs.created) == 2
+
+
 def test_semantic_service_suppresses_weak_docling_table_duplicate_when_qwen_has_type() -> None:
     document_id = uuid4()
     household_id = uuid4()
@@ -1132,8 +1181,9 @@ def test_semantic_service_drops_incompatible_docling_structural_target() -> None
 
     payloads = [job["payload"] for job in jobs.created]
     assert all(payload["semantic_type"] != "invoice_line_item_table" for payload in payloads)
-    # Structural-only normalization synthesizes nothing in its place.
-    assert payloads == []
+    assert [payload["semantic_type"] for payload in payloads] == ["receipt_payment_summary"]
+    assert payloads[0]["target_schema_name"] == "receipt"
+    assert payloads[0]["metadata"]["region_source"] == DOCLING_STRUCTURAL_REGION_SOURCE
 
 
 def test_semantic_service_uses_docling_observation_targets_when_qwen_emits_no_regions() -> None:

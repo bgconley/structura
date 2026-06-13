@@ -194,10 +194,10 @@ class SemanticAnnotationService:
 
         Default path: Qwen annotates, then Docling structural targets and
         structural normalization repair the plan. With the deterministic
-        planner enabled (ADR 0006 X4 / E3), the Docling baseline is built
-        first, a Qwen failure degrades to that baseline instead of failing
-        the annotation, and the final plan is enforced to be a superset of
-        the baseline with plan-identity telemetry.
+        planner enabled (ADR 0006 X4 / E3), Qwen document-family evidence is
+        first reconciled into an effective source, the Docling baseline is
+        built from that effective source, and the final active extraction
+        plan is constrained to that baseline with plan-identity telemetry.
         """
         settings = get_settings()
         if not settings.deterministic_planner_enabled:
@@ -206,11 +206,6 @@ class SemanticAnnotationService:
                 source, manifest_result
             )
             return normalize_result_for_planning(source, manifest_result)
-        baseline = deterministic_baseline_manifest(
-            source,
-            quality_mode=quality_mode,
-            profile_name=settings.qwen_semantic_profile,
-        )
         try:
             manifest_result = self.gateway.annotate(source, quality_mode=quality_mode)
         except ModelProtocolError as exc:
@@ -218,14 +213,29 @@ class SemanticAnnotationService:
             # dead-lettered the document on first failure (the phase8-live
             # incident). Transient timeout/service errors keep propagating so
             # the job layer's retry can still recover the full Qwen plan.
+            baseline = deterministic_baseline_manifest(
+                source,
+                quality_mode=quality_mode,
+                profile_name=settings.qwen_semantic_profile,
+            )
             return baseline_only_result(
                 source,
                 baseline,
                 failure_reason=f"{type(exc).__name__}: {exc}",
             )
-        manifest_result = augment_result_with_docling_structural_targets(source, manifest_result)
-        manifest_result = normalize_result_for_planning(source, manifest_result)
-        return apply_baseline_invariant(source, baseline, manifest_result)
+        family_decision = semantic_document_family_decision(source, manifest_result.manifest)
+        effective_source = source_with_semantic_family(source, family_decision)
+        baseline = deterministic_baseline_manifest(
+            effective_source,
+            quality_mode=quality_mode,
+            profile_name=settings.qwen_semantic_profile,
+        )
+        manifest_result = augment_result_with_docling_structural_targets(
+            effective_source,
+            manifest_result,
+        )
+        manifest_result = normalize_result_for_planning(effective_source, manifest_result)
+        return apply_baseline_invariant(effective_source, baseline, manifest_result)
 
     def _persist_and_enqueue_atomically(
         self,

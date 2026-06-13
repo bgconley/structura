@@ -15,6 +15,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from lib.extraction.candidate_quality import zero_amount_line_requires_context
 from lib.extraction.model_output_value_parsing import parse_decimal_text
 from lib.extraction.models import ExtractionSourceDocument
 from lib.extraction.region_envelope import (
@@ -59,6 +60,17 @@ _ROLE_TO_LINE_ITEM_FIELD = {
     "tax_category_hint": "tax_category_hint",
     "category_hint": "category_hint",
 }
+_LINE_ITEM_MONEY_FIELDS = frozenset(
+    {
+        "unit_price",
+        "gross_amount",
+        "allowed_amount",
+        "plan_paid_amount",
+        "discount_amount",
+        "tax_amount",
+        "net_amount",
+    }
+)
 _MAX_TOTALS_LABEL_WORDS = 5
 _MAX_ROW_SOURCE_TEXT_CHARS = 400
 # Roles whose populated values mark a row as a line item even when its
@@ -269,6 +281,8 @@ def _line_item(
         values[field_name] = parsed
     if not values:
         return None
+    if _low_signal_zero_amount_line(values):
+        return None
     return RegionLineItem(
         ordinal=row_index,
         description=values.get("description"),
@@ -290,6 +304,26 @@ def _line_item(
         table_id=grid.table_id,
         page_number=grid.page_number,
     )
+
+
+def _low_signal_zero_amount_line(values: dict[str, Any]) -> bool:
+    if not _has_explicit_zero_money(values):
+        return False
+    rejected, _reason = zero_amount_line_requires_context(values)
+    return rejected
+
+
+def _has_explicit_zero_money(values: dict[str, Any]) -> bool:
+    for field_name in _LINE_ITEM_MONEY_FIELDS:
+        value = values.get(field_name)
+        if value is None:
+            continue
+        try:
+            if float(value) == 0.0:
+                return True
+        except (TypeError, ValueError):
+            continue
+    return False
 
 
 def _parsed_role_value(role: str, text: str) -> Any | None:

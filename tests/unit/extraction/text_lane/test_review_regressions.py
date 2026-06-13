@@ -187,6 +187,26 @@ def test_totals_value_prefers_amount_column_over_rate_column() -> None:
     assert facts == {"invoice.tax_total": {"amount": 24.75}}
 
 
+def test_service_record_zero_amount_adjustment_rows_do_not_mint_line_item_claims() -> None:
+    rows = [
+        [_cell("Description", 0, 0, ch=True), _cell("Amount", 0, 1, ch=True)],
+        [_cell("PERFORM 600 MILE RUNNING-IN CHECK", 1, 0), _cell("250.00", 1, 1)],
+        [_cell("DEDUCTIBLE", 2, 0), _cell(".00", 2, 1)],
+        [_cell("SPECIAL ORDER DEPOSIT", 3, 0), _cell(".00", 3, 1)],
+    ]
+    extraction = _extract(rows, {0: "description", 1: "amount"}, family="service_record")
+
+    assert [item.description for item in extraction.envelope.line_items] == [
+        "PERFORM 600 MILE RUNNING-IN CHECK"
+    ]
+    amount_claims = [
+        claim
+        for claim in claims_from_region_envelope(extraction.envelope)
+        if claim.canonical_key == "service_record.line_item.amount"
+    ]
+    assert [claim.typed_value for claim in amount_claims] == [{"amount": 250.0}]
+
+
 def test_unmapped_totals_rows_are_suppressed_not_line_itemized() -> None:
     rows = [
         [
