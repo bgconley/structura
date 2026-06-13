@@ -37,6 +37,7 @@ BASELINE_SQL_FILES = (
     "086_phase8_5_service_health.sql",
     "087_phase8_5_quality_outcome.sql",
     "088_phase8_5_line_item_payer_amounts.sql",
+    "089_phase8_5_claim_currency.sql",
 )
 
 
