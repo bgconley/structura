@@ -241,6 +241,14 @@ def _region_observations(
         if quote and text_present and not _quote_in_text(quote, docling_text):
             rejected.append({"fieldName": field_name, "reason": "quote_not_found_in_docling_text"})
             continue
+        if text_present:
+            rejected.append(
+                {
+                    "fieldName": field_name,
+                    "reason": "text_present_qwen_value_not_admitted",
+                }
+            )
+            continue
         value = item.get("value")
         if value in (None, ""):
             continue

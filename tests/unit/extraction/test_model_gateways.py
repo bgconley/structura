@@ -227,6 +227,43 @@ def test_qwen_vision_gateway_rejects_text_present_free_form_fields() -> None:
     ]
 
 
+def test_qwen_vision_gateway_rejects_text_present_value_candidates() -> None:
+    gateway_cls = _qwen_vision_gateway_cls()
+    source = _source_with_page_image()
+    task = _payment_summary_task(source)
+    client = PayloadVisionClient(
+        payload={
+            "observations": [
+                {
+                    "field_name": "invoice_total",
+                    "value": "$42",
+                    "value_type": "money",
+                    "quote": "Invoice total $42",
+                    "confidence": 0.91,
+                }
+            ],
+            "confidence": {"overall": 0.91},
+        }
+    )
+
+    result = gateway_cls(client=client).extract(
+        source,
+        schema_name="document_observation",
+        route_profile="docling_plus_structured_extraction",
+        semantic_task=task,
+    )
+
+    envelope = region_envelope_from_normalization_json(result.normalization_json)
+    assert envelope is not None
+    assert envelope.observations == []
+    assert result.raw_output_json["rejectedObservations"] == [
+        {
+            "fieldName": "invoice_total",
+            "reason": "text_present_qwen_value_not_admitted",
+        }
+    ]
+
+
 def test_granite_extraction_gateway_rejects_missing_semantic_task() -> None:
     client = FakeVisionClient(
         source_engine="granite_vision_3b",
