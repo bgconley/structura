@@ -6,6 +6,7 @@ from typing import Any
 from lib.model_runtime.profiles import (
     GRANITE_VISION_PROFILE,
     QWEN_SEMANTIC_PROFILE,
+    QWEN_VISION_PROFILE,
     TEXT_EMBED_PROFILE,
     VISUAL_EMBED_PROFILE,
     get_model_profile,
@@ -172,6 +173,8 @@ def _validate_run_manifest_lineage(
         elif actual_profile.strip() != expected_profile:
             invalid.append(lineage_name)
 
+    _validate_vision_fallback_lineage(missing, invalid, run_manifest)
+
     docling_version = get_value(run_manifest, "docling_version", "doclingVersion")
     if not isinstance(docling_version, str) or not docling_version.strip():
         missing.append("runManifest.docling_version")
@@ -193,6 +196,42 @@ def _validate_run_manifest_lineage(
             missing.append(f"runManifest.decoding.{key}")
         elif decoding[key] != expected_decoding_value:
             invalid.append(f"runManifest.decoding.{key}")
+
+
+def _validate_vision_fallback_lineage(
+    missing: list[str],
+    invalid: list[str],
+    run_manifest: dict[str, Any],
+) -> None:
+    provider = get_value(run_manifest, "vision_fallback_provider", "visionFallbackProvider")
+    enabled = get_value(
+        run_manifest,
+        "qwen_vision_fallback_enabled",
+        "qwenVisionFallbackEnabled",
+    )
+    if not isinstance(provider, str) or not provider.strip():
+        missing.append("runManifest.vision_fallback_provider")
+    normalized_provider = provider.strip() if isinstance(provider, str) else ""
+    if normalized_provider and normalized_provider not in {"granite", "qwen"}:
+        invalid.append("runManifest.vision_fallback_provider")
+
+    if enabled is None:
+        missing.append("runManifest.qwen_vision_fallback_enabled")
+        return
+    if not isinstance(enabled, bool):
+        invalid.append("runManifest.qwen_vision_fallback_enabled")
+        return
+
+    if enabled:
+        profile = get_value(run_manifest, "qwen_vision_profile", "qwenVisionProfile")
+        if normalized_provider != "qwen":
+            invalid.append("runManifest.vision_fallback_provider")
+        if not isinstance(profile, str) or not profile.strip():
+            missing.append("runManifest.qwen_vision_profile")
+        elif profile.strip() != QWEN_VISION_PROFILE:
+            invalid.append("runManifest.qwen_vision_profile")
+    elif normalized_provider != "granite":
+        invalid.append("runManifest.vision_fallback_provider")
 
 
 def _camelize(value: str) -> str:

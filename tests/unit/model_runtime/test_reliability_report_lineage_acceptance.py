@@ -8,10 +8,12 @@ from lib.extraction.region_envelope import REGION_ENVELOPE_VERSION
 from lib.model_runtime.profiles import (
     GRANITE_VISION_PROFILE,
     QWEN_SEMANTIC_PROFILE,
+    QWEN_VISION_PROFILE,
     TEXT_EMBED_PROFILE,
     VISUAL_EMBED_PROFILE,
     get_model_profile,
 )
+from lib.model_runtime.reliability_report import build_phase85_run_manifest
 from lib.model_runtime.reliability_report_lineage_acceptance import report_lineage_check
 from lib.model_runtime.reliability_versions import (
     GRANITE_PROMPT_VERSION,
@@ -90,6 +92,66 @@ def test_report_lineage_fails_for_missing_task12_manifest_lineage() -> None:
             "invalid": [],
         }
     ]
+
+
+def test_report_lineage_requires_vision_fallback_lineage() -> None:
+    report = _lineage_report()
+    report["runManifest"].pop("vision_fallback_provider")
+    report["runManifest"].pop("qwen_vision_fallback_enabled")
+
+    summary = report_lineage_check([report])
+
+    assert summary["status"] == "failed"
+    assert summary["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "missing": [
+                "runManifest.vision_fallback_provider",
+                "runManifest.qwen_vision_fallback_enabled",
+            ],
+            "invalid": [],
+        }
+    ]
+
+
+def test_report_lineage_validates_qwen_vision_profile_when_fallback_enabled() -> None:
+    report = _lineage_report()
+    report["runManifest"].update(
+        {
+            "vision_fallback_provider": "qwen",
+            "qwen_vision_fallback_enabled": True,
+            "qwen_vision_profile": "qwen3-vl-unreviewed-floating-latest",
+        }
+    )
+
+    summary = report_lineage_check([report])
+
+    assert summary["status"] == "failed"
+    assert summary["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "missing": [],
+            "invalid": ["runManifest.qwen_vision_profile"],
+        }
+    ]
+
+
+def test_run_manifest_records_qwen_vision_fallback_lineage(monkeypatch) -> None:
+    from lib.config import get_settings
+
+    monkeypatch.setenv("STRUCTURA_QWEN_VISION_FALLBACK", "true")
+    monkeypatch.setenv("STRUCTURA_QWEN_VISION_PROFILE", QWEN_VISION_PROFILE)
+    get_settings.cache_clear()
+    try:
+        manifest = build_phase85_run_manifest(run_id="phase85-qwen-vision")
+    finally:
+        get_settings.cache_clear()
+
+    assert manifest["vision_fallback_provider"] == "qwen"
+    assert manifest["qwen_vision_fallback_enabled"] is True
+    assert manifest["qwen_vision_profile"] == QWEN_VISION_PROFILE
 
 
 def test_report_lineage_fails_for_stale_task12_manifest_lineage() -> None:
@@ -217,6 +279,8 @@ def _lineage_report(
             "model_mode": model_mode,
             "semantic_profile": QWEN_SEMANTIC_PROFILE,
             "granite_profile": GRANITE_VISION_PROFILE,
+            "vision_fallback_provider": "granite",
+            "qwen_vision_fallback_enabled": False,
             "text_embedding_profile": TEXT_EMBED_PROFILE,
             "visual_embedding_profile": VISUAL_EMBED_PROFILE,
             **_task12_manifest_lineage(),
