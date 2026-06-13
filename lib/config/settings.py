@@ -56,6 +56,9 @@ class Settings(BaseSettings):
     # and text-lane abstentions.
     text_lane_tables_enabled: bool = Field(default=True, alias="STRUCTURA_TEXT_LANE_TABLES")
     text_lane_kvp_enabled: bool = Field(default=True, alias="STRUCTURA_TEXT_LANE_KVP")
+    qwen_vision_fallback_enabled: bool = Field(
+        default=False, alias="STRUCTURA_QWEN_VISION_FALLBACK"
+    )
     # Deterministic-primary planning (ADR 0006 X4, E3). Passed its GPU gate
     # on 2026-06-10 (runs 20260610T205327Z/210049Z: identical baseline
     # fingerprints across ingests, zero dead letters, forced-Qwen-failure
@@ -68,6 +71,9 @@ class Settings(BaseSettings):
     model_text_embed_url: str = "http://127.0.0.1:8102"
     model_visual_embed_url: str = "http://127.0.0.1:8103"
     qwen_semantic_profile: str = "qwen3-vl-8b-fp8-semantic:v1"
+    qwen_vision_profile: str = Field(
+        default="qwen3-vl-8b-fp8-semantic:v1", alias="STRUCTURA_QWEN_VISION_PROFILE"
+    )
     model_qwen_semantic_timeout_seconds: int = 300
     # Warn when the conservative pre-dispatch Qwen input estimate (prompt +
     # schema + visual tokens + requested output budget) exceeds this fraction

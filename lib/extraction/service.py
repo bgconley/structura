@@ -267,6 +267,7 @@ class ExtractionService:
             observation_candidates = observation_candidates_from_region_envelope(
                 envelope=region_envelope,
                 validation=validation,
+                source_engine=gateway_result.route.source_engine,
                 require_concrete_evidence=require_concrete_candidate_evidence,
             )
         elif model_semantic_region_missing_envelope:

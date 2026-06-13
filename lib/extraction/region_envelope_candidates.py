@@ -9,6 +9,11 @@ from lib.extraction.claim_candidates import (
 )
 from lib.extraction.claim_registry import CLAIM_FAMILY_REGISTRIES
 from lib.extraction.claims import claims_from_region_envelope
+from lib.extraction.evidence import has_concrete_evidence
+from lib.extraction.gateways.vision_lane import (
+    QWEN_VISION_OBSERVATIONS_SCHEMA,
+    QWEN_VISION_PROVIDER,
+)
 from lib.extraction.models import (
     CandidateFact,
     LineItemCandidateFact,
@@ -16,6 +21,7 @@ from lib.extraction.models import (
     ValidationReport,
 )
 from lib.extraction.region_envelope import RegionExtractionEnvelope
+from lib.model_runtime.source_engines import is_qwen_source_engine
 
 
 def field_candidates_from_region_envelope(
@@ -56,11 +62,19 @@ def observation_candidates_from_region_envelope(
     *,
     envelope: RegionExtractionEnvelope,
     validation: ValidationReport,
+    source_engine: str | None = None,
     require_concrete_evidence: bool = False,
 ) -> list[ObservationCandidateFact]:
+    claims = claims_from_region_envelope(envelope)
+    if not claims and _is_qwen_vision_envelope(envelope, source_engine):
+        return _qwen_vision_observation_candidates(
+            envelope=envelope,
+            validation=validation,
+            require_concrete_evidence=require_concrete_evidence,
+        )
     return observation_candidates_from_claims(
         family=_claim_family(envelope),
-        claims=claims_from_region_envelope(envelope),
+        claims=claims,
         validation=validation,
         require_concrete_evidence=require_concrete_evidence,
     )
@@ -72,3 +86,47 @@ def _claim_family(envelope: RegionExtractionEnvelope) -> str:
         return resolved
     target = (envelope.target_schema or "").strip()
     return target or resolved or "document_observation"
+
+
+def _is_qwen_vision_envelope(
+    envelope: RegionExtractionEnvelope,
+    source_engine: str | None,
+) -> bool:
+    return (
+        envelope.model_output_schema_name == QWEN_VISION_OBSERVATIONS_SCHEMA
+        and source_engine is not None
+        and is_qwen_source_engine(source_engine)
+    )
+
+
+def _qwen_vision_observation_candidates(
+    *,
+    envelope: RegionExtractionEnvelope,
+    validation: ValidationReport,
+    require_concrete_evidence: bool,
+) -> list[ObservationCandidateFact]:
+    candidates: list[ObservationCandidateFact] = []
+    for observation in envelope.observations:
+        evidence = [ref.model_dump(mode="json", exclude_none=True) for ref in observation.evidence]
+        if require_concrete_evidence and not has_concrete_evidence(evidence):
+            continue
+        candidates.append(
+            ObservationCandidateFact(
+                observation_family="qwen_vision",
+                field_name=observation.name,
+                value_type=observation.value_type,
+                value=observation.value,
+                evidence=evidence,
+                confidence=observation.confidence,
+                validation=validation.as_json(),
+                status="needs_review",
+                metadata={
+                    **observation.source_payload,
+                    "visualDerived": True,
+                    "requiresReview": True,
+                    "visionProvider": QWEN_VISION_PROVIDER,
+                    "semantic_type": envelope.semantic_type,
+                },
+            )
+        )
+    return candidates

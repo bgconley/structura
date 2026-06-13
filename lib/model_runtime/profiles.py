@@ -6,6 +6,7 @@ QWEN_VL_PROFILE = "qwen3-vl-8b-instruct-nvfp4-local:v1"
 QWEN_HISTORICAL_SEMANTIC_2B_PROFILE = "qwen3-vl-2b-semantic:v1"
 QWEN_HISTORICAL_SEMANTIC_4B_PROFILE = "qwen3-vl-4b-semantic:v1"
 QWEN_SEMANTIC_PROFILE = "qwen3-vl-8b-fp8-semantic:v1"
+QWEN_VISION_PROFILE = QWEN_SEMANTIC_PROFILE
 GRANITE_VISION_PROFILE = "granite-4.0-3b-vision-bf16:v1"
 TEXT_EMBED_PROFILE = "qwen3-embedding-4b-1536:v1"
 VISUAL_EMBED_PROFILE = "qwen3-vl-embedding-2b-2048:v1"

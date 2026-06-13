@@ -46,6 +46,7 @@ from lib.extraction.candidate_schema_policy import (
     field_path_schema_rejection_reason,
 )
 from lib.extraction.candidate_source_policy import title_derived_counterparty_rejection_reason
+from lib.extraction.evidence import has_concrete_evidence
 from lib.extraction.models import (
     CandidateFact,
     LineItemCandidateFact,
@@ -232,7 +233,7 @@ def _admit_observation_candidate(
 ) -> tuple[CandidateAdmissionEvent, ObservationCandidateFact | None]:
     payload = _observation_payload(candidate)
     fingerprint = observation_fingerprint(candidate, context)
-    evidence_concrete = candidate_evidence_concrete(context, candidate.evidence)
+    evidence_concrete = _observation_evidence_concrete(context, candidate)
     decision, reasons = _observation_rejection_decision(context, candidate, evidence_concrete)
     if fingerprint in admitted_fingerprints:
         decision, reasons = "rejected_duplicate", ("duplicate_candidate_fingerprint",)
@@ -267,6 +268,15 @@ def _admit_observation_candidate(
         ),
         admitted,
     )
+
+
+def _observation_evidence_concrete(
+    context: CandidateAdmissionContext,
+    candidate: ObservationCandidateFact,
+) -> bool:
+    if _qwen_vision_review_observation(context, candidate):
+        return has_concrete_evidence(candidate.evidence)
+    return candidate_evidence_concrete(context, candidate.evidence)
 
 
 def _field_rejection_decision(
@@ -330,7 +340,7 @@ def _observation_rejection_decision(
     candidate: ObservationCandidateFact,
     evidence_concrete: bool,
 ) -> tuple[str | None, tuple[str, ...]]:
-    source_reason = _value_source_rejection_reason(context)
+    source_reason = _observation_source_rejection_reason(context, candidate)
     if source_reason:
         return "rejected_source_provenance", (source_reason,)
     rejected, reason = reject_observation(candidate.field_name, candidate.value)
@@ -350,6 +360,29 @@ def _value_source_rejection_reason(context: CandidateAdmissionContext) -> str | 
     if is_qwen_source_engine(context.source_engine):
         return "qwen_semantic_source_cannot_emit_value_candidate"
     return None
+
+
+def _observation_source_rejection_reason(
+    context: CandidateAdmissionContext,
+    candidate: ObservationCandidateFact,
+) -> str | None:
+    if not is_qwen_source_engine(context.source_engine):
+        return None
+    if _qwen_vision_review_observation(context, candidate):
+        return None
+    return "qwen_semantic_source_cannot_emit_value_candidate"
+
+
+def _qwen_vision_review_observation(
+    context: CandidateAdmissionContext,
+    candidate: ObservationCandidateFact,
+) -> bool:
+    return (
+        is_qwen_source_engine(context.source_engine)
+        and candidate.metadata.get("visualDerived") is True
+        and candidate.metadata.get("requiresReview") is True
+        and str(candidate.metadata.get("visionProvider") or "").strip().lower() == "qwen"
+    )
 
 
 def _review_required_candidate(

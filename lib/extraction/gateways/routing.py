@@ -6,6 +6,7 @@ from lib.config import get_settings
 from lib.extraction.classification import TARGET_EXTRACTION_SCHEMAS
 from lib.extraction.gateway import DoclingHeuristicGateway, ExtractionGateway
 from lib.extraction.gateways.granite_vision import GraniteVisionExtractionGateway
+from lib.extraction.gateways.qwen_vision import QwenVisionExtractionGateway
 from lib.extraction.models import ExtractionSourceDocument, GatewayExtraction
 from lib.extraction.text_lane.eligibility import (
     LaneDecision,
@@ -15,6 +16,7 @@ from lib.extraction.text_lane.eligibility import (
 from lib.extraction.text_lane.gateway import TextLaneAbstention, TextLaneTableExtractionGateway
 from lib.extraction.text_lane.kvp_gateway import TextLaneKvpExtractionGateway
 from lib.model_runtime.clients.granite_vision import GraniteVisionClient
+from lib.model_runtime.clients.qwen_vl import QwenVLClient
 from lib.model_runtime.http_client import ModelProtocolError
 from lib.model_runtime.profiles import get_model_profile
 from lib.semantic_annotations.models import SemanticExtractionTask
@@ -44,6 +46,8 @@ class ModelRoutingExtractionGateway:
         deterministic: ExtractionGateway,
         vision: ExtractionGateway | None = None,
         granite: ExtractionGateway | None = None,
+        qwen_vision: ExtractionGateway | None = None,
+        qwen_vision_fallback_enabled: bool = False,
         text_lane_tables: TextLaneTableExtractionGateway | None = None,
         text_lane_kvp: TextLaneKvpExtractionGateway | None = None,
     ) -> None:
@@ -53,6 +57,8 @@ class ModelRoutingExtractionGateway:
             vision = granite
         self.deterministic = deterministic
         self.vision = vision
+        self.qwen_vision = qwen_vision
+        self.qwen_vision_fallback_enabled = qwen_vision_fallback_enabled
         # Compatibility alias for callers that still inspect the staged Granite
         # dependency during E4 migration.
         self.granite = vision
@@ -118,7 +124,8 @@ class ModelRoutingExtractionGateway:
                             page_number=lane_decision.page_number,
                             table_id=lane_decision.table_id,
                         )
-            result = self.vision.extract(
+            vision_gateway = self._vision_gateway_for(lane_decision)
+            result = vision_gateway.extract(
                 source,
                 schema_name=schema_name,
                 route_profile=route_profile,
@@ -133,6 +140,16 @@ class ModelRoutingExtractionGateway:
             route_profile=route_profile,
             semantic_task=semantic_task,
         )
+
+    def _vision_gateway_for(self, lane_decision: LaneDecision | None) -> ExtractionGateway:
+        if (
+            self.qwen_vision_fallback_enabled
+            and self.qwen_vision is not None
+            and lane_decision is not None
+            and lane_decision.lane == "vision"
+        ):
+            return self.qwen_vision
+        return self.vision
 
 
 def _with_lane_telemetry(
@@ -159,6 +176,16 @@ def default_extraction_gateway() -> ExtractionGateway:
         TextLaneTableExtractionGateway() if settings.text_lane_tables_enabled else None
     )
     text_lane_kvp = TextLaneKvpExtractionGateway() if settings.text_lane_kvp_enabled else None
+    qwen_vision = None
+    if settings.qwen_vision_fallback_enabled:
+        qwen_vision_profile = get_model_profile(settings.qwen_vision_profile)
+        qwen_vision = QwenVisionExtractionGateway(
+            client=QwenVLClient(
+                profile=qwen_vision_profile,
+                http_client_base_url=settings.model_qwen_semantic_url,
+            ),
+            profile_name=qwen_vision_profile.name,
+        )
     return ModelRoutingExtractionGateway(
         deterministic=deterministic,
         vision=GraniteVisionExtractionGateway(
@@ -167,6 +194,8 @@ def default_extraction_gateway() -> ExtractionGateway:
                 http_client_base_url=settings.model_granite_url,
             )
         ),
+        qwen_vision=qwen_vision,
+        qwen_vision_fallback_enabled=settings.qwen_vision_fallback_enabled,
         text_lane_tables=text_lane_tables,
         text_lane_kvp=text_lane_kvp,
     )

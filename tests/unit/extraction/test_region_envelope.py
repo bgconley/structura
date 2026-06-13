@@ -2,14 +2,23 @@ from __future__ import annotations
 
 from uuid import uuid4
 
+from lib.extraction.candidate_admission import admit_extraction_candidates
+from lib.extraction.candidate_admission_models import CandidateAdmissionContext
+from lib.extraction.claims import claims_from_region_envelope
 from lib.extraction.evidence import has_concrete_evidence
 from lib.extraction.evidence_concretizer import attach_evidence_to_envelope, has_concrete_locator
 from lib.extraction.evidence_context import EvidenceContext
+from lib.extraction.models import ExtractionRunScope, ValidationReport
 from lib.extraction.region_envelope import (
     EvidenceRef,
     RegionExtractionEnvelope,
     RegionFact,
     envelope_from_normalization_projection,
+)
+from lib.extraction.region_envelope_candidates import (
+    field_candidates_from_region_envelope,
+    line_item_candidates_from_region_envelope,
+    observation_candidates_from_region_envelope,
 )
 
 
@@ -129,6 +138,98 @@ def test_attach_evidence_to_envelope_uses_structura_context() -> None:
     assert ref.semantic_region_id == str(region_id)
     assert ref.page_number == 1
     assert has_concrete_locator(ref) is True
+
+
+def test_qwen_vision_observations_project_to_review_candidates_without_claims() -> None:
+    document_id = uuid4()
+    annotation_id = uuid4()
+    region_id = uuid4()
+    envelope = RegionExtractionEnvelope(
+        document_id=str(document_id),
+        semantic_annotation_id=str(annotation_id),
+        semantic_region_id=str(region_id),
+        resolved_document_type="document_observation",
+        semantic_type="payment_summary",
+        target_schema="document_observation",
+        model_output_schema_name="qwen_vision_observations.v1",
+        observations=[
+            RegionFact(
+                name="invoice_total",
+                value="$42.00",
+                value_type="string",
+                confidence=0.71,
+                evidence=[
+                    EvidenceRef(
+                        document_id=str(document_id),
+                        semantic_annotation_id=str(annotation_id),
+                        semantic_region_id=str(region_id),
+                        page_number=1,
+                        source_engine="qwen3_vl_8b",
+                        visual_input_scope="full_page",
+                        visual_input_sha256="0" * 64,
+                    )
+                ],
+                source_payload={
+                    "field_name": "invoice_total",
+                    "value": "$42.00",
+                    "value_type": "string",
+                    "visualDerived": True,
+                    "requiresReview": True,
+                    "visionProvider": "qwen",
+                },
+            )
+        ],
+    )
+    validation = ValidationReport(needs_review=True, checks=[])
+
+    assert claims_from_region_envelope(envelope) == []
+    assert (
+        field_candidates_from_region_envelope(
+            document_id=document_id,
+            envelope=envelope,
+            validation=validation,
+            source_engine="qwen3_vl_8b",
+            require_concrete_evidence=True,
+        )
+        == []
+    )
+    assert (
+        line_item_candidates_from_region_envelope(
+            envelope=envelope,
+            validation=validation,
+            source_engine="qwen3_vl_8b",
+            require_concrete_evidence=True,
+        )
+        == []
+    )
+    observations = observation_candidates_from_region_envelope(
+        envelope=envelope,
+        validation=validation,
+        source_engine="qwen3_vl_8b",
+        require_concrete_evidence=True,
+    )
+
+    assert len(observations) == 1
+    assert observations[0].status == "needs_review"
+    assert observations[0].metadata["visualDerived"] is True
+    admission = admit_extraction_candidates(
+        context=CandidateAdmissionContext(
+            document_id=document_id,
+            run_scope=ExtractionRunScope.semantic_region(
+                semantic_annotation_id=annotation_id,
+                source_semantic_region_id=region_id,
+                semantic_type="payment_summary",
+                granite_task="kvp",
+            ),
+            source_engine="qwen3_vl_8b",
+            model_output_schema_name="qwen_vision_observations.v1",
+        ),
+        field_candidates=[],
+        line_item_candidates=[],
+        observation_candidates=observations,
+    )
+    assert len(admission.observation_candidates) == 1
+    assert admission.events[0].decision == "admitted_review_required"
 
 
 def test_medical_eob_envelope_preserves_allowed_and_paid_line_amounts() -> None:

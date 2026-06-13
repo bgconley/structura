@@ -10,7 +10,12 @@ import pytest
 from lib.model_runtime.clients.qwen_vl import QwenVLClient
 from lib.model_runtime.contracts import ModelImageInput, VisionGenerateRequest
 from lib.model_runtime.http_client import ModelProtocolError
-from lib.model_runtime.profiles import QWEN_SEMANTIC_PROFILE, QWEN_VL_PROFILE, get_model_profile
+from lib.model_runtime.profiles import (
+    QWEN_SEMANTIC_PROFILE,
+    QWEN_VISION_PROFILE,
+    QWEN_VL_PROFILE,
+    get_model_profile,
+)
 from lib.semantic_annotations.schema import semantic_annotation_manifest_schema
 
 
@@ -50,6 +55,14 @@ def test_qwen_semantic_client_requires_json_schema_before_transport() -> None:
         )
 
     assert calls == 0
+
+
+def test_qwen_vision_profile_reuses_active_semantic_runtime() -> None:
+    profile = get_model_profile(QWEN_VISION_PROFILE)
+
+    assert QWEN_VISION_PROFILE == QWEN_SEMANTIC_PROFILE
+    assert profile.source_engine == "qwen3_vl_8b"
+    assert profile.max_images_per_request == 4
 
 
 def test_qwen_client_builds_multimodal_payload_and_returns_truthful_provenance() -> None:

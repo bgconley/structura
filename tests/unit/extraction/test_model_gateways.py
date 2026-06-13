@@ -1,21 +1,26 @@
 from __future__ import annotations
 
 import hashlib
+import importlib
+import importlib.util
 from dataclasses import dataclass
+from dataclasses import replace as dataclass_replace
 from uuid import uuid4
 
 import pytest
 
 from lib.extraction.gateways.granite_vision import GraniteVisionExtractionGateway
+from lib.extraction.gateways.vision_lane import QWEN_VISION_PROVIDER, VISION_LANE_NAME
 from lib.extraction.models import (
     ExtractionSourceDocument,
     ParsedElementText,
     ParsedPageText,
     ParsedTableText,
 )
+from lib.extraction.region_envelope import region_envelope_from_normalization_json
 from lib.model_runtime.contracts import VisionGenerateRequest, VisionGenerateResponse
 from lib.model_runtime.http_client import ModelProtocolError
-from lib.model_runtime.profiles import GRANITE_VISION_PROFILE
+from lib.model_runtime.profiles import GRANITE_VISION_PROFILE, QWEN_SEMANTIC_PROFILE
 from lib.semantic_annotations.models import SemanticExtractionTask, SemanticGroundingRef
 
 
@@ -41,6 +46,36 @@ class FakeVisionClient:
         )
 
 
+@dataclass
+class PayloadVisionClient:
+    payload: dict[str, object]
+    source_engine: str = "qwen3_vl_8b"
+    profile_name: str = QWEN_SEMANTIC_PROFILE
+    request: VisionGenerateRequest | None = None
+
+    def generate(self, request: VisionGenerateRequest) -> VisionGenerateResponse:
+        self.request = request
+        return VisionGenerateResponse(
+            profile_name=request.profile_name,
+            model_name="fake-qwen",
+            model_version="test",
+            source_engine=self.source_engine,
+            prompt_version=request.prompt_version,
+            raw_text="{}",
+            normalized_json=self.payload,
+            confidence_json={"overall": 0.71},
+            input_sha256=tuple(image.validated_sha256() for image in request.image_inputs),
+            latency_ms=1,
+            structured_output_used=True,
+        )
+
+
+def _qwen_vision_gateway_cls():  # noqa: ANN202
+    assert importlib.util.find_spec("lib.extraction.gateways.qwen_vision") is not None
+    module = importlib.import_module("lib.extraction.gateways.qwen_vision")
+    return module.QwenVisionExtractionGateway
+
+
 def _invoice_line_item_task(source: ExtractionSourceDocument) -> SemanticExtractionTask:
     return SemanticExtractionTask(
         region_id=uuid4(),
@@ -54,6 +89,105 @@ def _invoice_line_item_task(source: ExtractionSourceDocument) -> SemanticExtract
         reason="Qwen identified a grounded invoice table.",
         confidence=0.92,
     )
+
+
+def _payment_summary_task(source: ExtractionSourceDocument) -> SemanticExtractionTask:
+    return SemanticExtractionTask(
+        region_id=uuid4(),
+        annotation_id=uuid4(),
+        document_id=source.document_id,
+        semantic_type="payment_summary",
+        granite_task="kvp",
+        target_schema="document_observation",
+        expected_fields=("invoice_total",),
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[0].page_id),
+        reason="Text lane abstained; use review-only Qwen vision fallback.",
+        confidence=0.71,
+    )
+
+
+def test_qwen_vision_gateway_marks_no_text_values_visual_derived_review_only() -> None:
+    gateway_cls = _qwen_vision_gateway_cls()
+    source = _source_with_page_image()
+    source = dataclass_replace(
+        source,
+        pages=[dataclass_replace(source.pages[0], text="", has_text_layer=False)],
+        elements=[],
+    )
+    task = _payment_summary_task(source)
+    client = PayloadVisionClient(
+        payload={
+            "observations": [
+                {
+                    "field_name": "invoice_total",
+                    "value": "$42.00",
+                    "value_type": "string",
+                    "quote": None,
+                    "confidence": 0.71,
+                }
+            ],
+            "confidence": {"overall": 0.71},
+        }
+    )
+
+    result = gateway_cls(client=client).extract(
+        source,
+        schema_name="document_observation",
+        route_profile="docling_plus_structured_extraction",
+        semantic_task=task,
+    )
+
+    assert result.route.source_engine == "qwen3_vl_8b"
+    assert result.model_output_schema_name == "qwen_vision_observations.v1"
+    assert result.normalization_json["lane"] == VISION_LANE_NAME
+    assert result.normalization_json["visionProvider"] == QWEN_VISION_PROVIDER
+    envelope = region_envelope_from_normalization_json(result.normalization_json)
+    assert envelope is not None
+    assert len(envelope.observations) == 1
+    observation = envelope.observations[0]
+    assert observation.name == "invoice_total"
+    assert observation.source_payload["visualDerived"] is True
+    assert observation.source_payload["requiresReview"] is True
+    assert observation.evidence[0].source_engine == "qwen3_vl_8b"
+    assert observation.evidence[0].semantic_region_id == str(task.region_id)
+    assert observation.evidence[0].page_number == 1
+
+
+def test_qwen_vision_gateway_drops_text_present_quote_mismatch() -> None:
+    gateway_cls = _qwen_vision_gateway_cls()
+    source = _source_with_page_image()
+    task = _payment_summary_task(source)
+    client = PayloadVisionClient(
+        payload={
+            "observations": [
+                {
+                    "field_name": "invoice_total",
+                    "value": "$99.00",
+                    "value_type": "string",
+                    "quote": "Invoice total $99",
+                    "confidence": 0.71,
+                }
+            ],
+            "confidence": {"overall": 0.71},
+        }
+    )
+
+    result = gateway_cls(client=client).extract(
+        source,
+        schema_name="document_observation",
+        route_profile="docling_plus_structured_extraction",
+        semantic_task=task,
+    )
+
+    envelope = region_envelope_from_normalization_json(result.normalization_json)
+    assert envelope is not None
+    assert envelope.observations == []
+    assert result.raw_output_json["rejectedObservations"] == [
+        {
+            "fieldName": "invoice_total",
+            "reason": "quote_not_found_in_docling_text",
+        }
+    ]
 
 
 def test_granite_extraction_gateway_rejects_missing_semantic_task() -> None:
