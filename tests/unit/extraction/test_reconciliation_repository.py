@@ -135,6 +135,37 @@ def test_maybe_reconcile_semantic_annotation_persists_document_observation_aggre
     assert captured["line_item_candidates"] == []
 
 
+def test_reconcile_current_regions_skips_region_job_status_gate(monkeypatch) -> None:
+    document_id = uuid4()
+    semantic_annotation_id = uuid4()
+    region_id = uuid4()
+    extraction_id = uuid4()
+    envelope = _receipt_envelope_for_reconciliation(document_id, semantic_annotation_id, region_id)
+    captured = _patch_reconciliation_helpers(
+        monkeypatch,
+        envelope=envelope,
+        extraction_id=extraction_id,
+        semantic_type="receipt_line_item_table",
+        job_counts={"failed": 1},
+    )
+
+    def fail_if_region_jobs_are_read(*_args, **_kwargs):
+        raise AssertionError("document orchestration must not wait on region job status")
+
+    monkeypatch.setattr(repo, "_region_job_status_counts", fail_if_region_jobs_are_read)
+
+    persisted = repo.reconcile_semantic_annotation_from_current_regions(
+        document_id=document_id,
+        semantic_annotation_id=semantic_annotation_id,
+        schema_name="receipt",
+    )
+
+    assert persisted is not None
+    extraction = cast(GatewayExtraction, captured["extraction"])
+    assert extraction.schema_name == "receipt"
+    assert extraction.normalized_json["metadata"]["region_job_coverage"]["expected_jobs"] == 1
+
+
 def test_maybe_reconcile_semantic_annotation_rejects_region_without_claims(
     monkeypatch,
 ) -> None:

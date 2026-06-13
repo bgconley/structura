@@ -20,6 +20,9 @@ from lib.extraction.normalization import (
     line_item_candidates_from_extraction,
     observation_candidates_from_extraction,
 )
+from lib.extraction.reconciliation_repository import (
+    reconcile_semantic_annotation_from_current_regions,
+)
 from lib.extraction.region_envelope import (
     region_envelope_from_normalization_json,
     to_normalization_projection,
@@ -44,6 +47,10 @@ from lib.extraction.validators import (
 from lib.jobs import JobService
 from lib.jobs.event_payloads import build_extract_document_job_payload
 from lib.model_runtime.source_engines import is_model_source_engine
+from lib.semantic_annotations.extraction_plan_repository import (
+    PlannedExtractionTask,
+    load_selected_extraction_tasks_for_annotation,
+)
 from lib.semantic_annotations.models import SemanticExtractionTask
 from lib.semantic_annotations.repository import load_semantic_extraction_task
 from lib.semantic_annotations.task_routing import corrected_granite_task_for_semantic_type
@@ -89,6 +96,15 @@ class ClassificationResult:
     queued_extraction_job_id: UUID | None
 
 
+@dataclass(frozen=True)
+class DocumentExtractionOrchestrationResult:
+    region_extraction_ids: tuple[UUID, ...]
+    aggregate_extraction_ids: tuple[UUID, ...]
+    candidate_count: int
+    canonical_count: int
+    review_task_count: int
+
+
 def _classifier_document_extract_enabled() -> bool:
     # Live Phase 8.5 extraction must be region-scoped from Qwen/Docling semantic
     # targets. The Phase 4 classifier can still persist classification evidence,
@@ -107,6 +123,9 @@ class ExtractionService:
         semantic_task_loader: Callable[[UUID], SemanticExtractionTask] = (
             load_semantic_extraction_task
         ),
+        planned_task_loader: Callable[..., list[PlannedExtractionTask]] = (
+            load_selected_extraction_tasks_for_annotation
+        ),
         persister: Callable[..., PersistedExtraction] = persist_extraction_run,
     ) -> None:
         self.registry = registry or ExtractionSchemaRegistry()
@@ -114,6 +133,7 @@ class ExtractionService:
         self.jobs = jobs or JobService()
         self.source_loader = source_loader
         self.semantic_task_loader = semantic_task_loader
+        self.planned_task_loader = planned_task_loader
         self.persister = persister
 
     def classify_document(
@@ -336,6 +356,83 @@ class ExtractionService:
             semantic_task=semantic_task,
         )
         return persisted
+
+    def extract_semantic_annotation_document(
+        self,
+        document_id: UUID,
+        *,
+        semantic_annotation_id: UUID,
+        plan_id: UUID | None = None,
+        route_profile: str = "docling_plus_structured_extraction",
+        run_id: str | None = None,
+        requested_by: str = "system",
+        requested_by_user_id: UUID | None = None,
+        user_intent_reason: str | None = None,
+    ) -> DocumentExtractionOrchestrationResult:
+        tasks = self.planned_task_loader(
+            document_id=document_id,
+            semantic_annotation_id=semantic_annotation_id,
+            plan_id=plan_id,
+        )
+        region_results: list[PersistedExtraction] = []
+        aggregate_targets: list[tuple[str, str | None]] = []
+        seen_targets: set[tuple[str, str | None]] = set()
+        for task in tasks:
+            region_results.append(
+                self.extract_document(
+                    document_id,
+                    schema_name=task.target_schema,
+                    route_profile=route_profile,
+                    semantic_region_id=task.semantic_region_id,
+                    plan_id=task.plan_id,
+                    plan_task_id=task.plan_task_id,
+                    canonical_target_schema=task.canonical_target_schema,
+                    compatibility_mode=task.compatibility_mode,
+                    contract_resolution_reason=task.contract_resolution_reason,
+                    region_envelope_version=task.region_envelope_version,
+                    run_id=run_id,
+                    requested_by=requested_by,
+                    requested_by_user_id=requested_by_user_id,
+                    user_intent_reason=user_intent_reason,
+                )
+            )
+            target = (task.target_schema, task.canonical_target_schema)
+            if target not in seen_targets:
+                aggregate_targets.append(target)
+                seen_targets.add(target)
+        aggregate_results: list[PersistedExtraction] = []
+        for schema_name, canonical_target_schema in aggregate_targets:
+            aggregate = self.reconcile_semantic_annotation(
+                document_id=document_id,
+                semantic_annotation_id=semantic_annotation_id,
+                schema_name=schema_name,
+                canonical_target_schema=canonical_target_schema,
+            )
+            if aggregate is not None:
+                aggregate_results.append(aggregate)
+        results = [*region_results, *aggregate_results]
+        return DocumentExtractionOrchestrationResult(
+            region_extraction_ids=tuple(result.extraction_id for result in region_results),
+            aggregate_extraction_ids=tuple(result.extraction_id for result in aggregate_results),
+            candidate_count=sum(result.candidate_count for result in results),
+            canonical_count=sum(result.canonical_count for result in results),
+            review_task_count=sum(result.review_task_count for result in results),
+        )
+
+    def reconcile_semantic_annotation(
+        self,
+        *,
+        document_id: UUID,
+        semantic_annotation_id: UUID,
+        schema_name: str,
+        canonical_target_schema: str | None,
+    ) -> PersistedExtraction | None:
+        return reconcile_semantic_annotation_from_current_regions(
+            document_id=document_id,
+            semantic_annotation_id=semantic_annotation_id,
+            schema_name=schema_name,
+            canonical_target_schema=canonical_target_schema,
+        )
 
     def _semantic_task_for_document(
         self,

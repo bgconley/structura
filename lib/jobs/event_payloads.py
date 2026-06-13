@@ -18,6 +18,7 @@ def build_extract_document_job_payload(
     priority: int,
     requested_by: str = "system",
     route_profile: str | None = None,
+    orchestration_mode: str | None = None,
     force_reextract: bool = False,
     semantic_annotation_id: UUID | None = None,
     semantic_region_id: UUID | None = None,
@@ -54,6 +55,7 @@ def build_extract_document_job_payload(
             "target_schema_version": target_schema_version,
             "requested_by": requested_by,
             "route_profile": route_profile,
+            "orchestration_mode": orchestration_mode,
             "force_reextract": force_reextract or None,
             "semantic_annotation_id": (
                 str(semantic_annotation_id) if semantic_annotation_id else None

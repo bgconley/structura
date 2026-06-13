@@ -77,6 +77,42 @@ def maybe_reconcile_semantic_annotation(
                 canonical_target_schema=canonical_target_schema,
                 aggregate_schema_name=aggregate_schema_name,
                 settled_job_id=settled_job_id,
+                wait_for_region_jobs=True,
+            )
+        finally:
+            with lock_conn.cursor() as lock_cur:
+                lock_cur.execute(
+                    "SELECT pg_advisory_unlock(hashtextextended(%s, 0))",
+                    (lock_key,),
+                )
+
+
+def reconcile_semantic_annotation_from_current_regions(
+    *,
+    document_id: UUID,
+    semantic_annotation_id: UUID | None,
+    schema_name: str,
+    canonical_target_schema: str | None = None,
+) -> PersistedExtraction | None:
+    aggregate_schema_name = _aggregate_schema_name(
+        schema_name=schema_name,
+        canonical_target_schema=canonical_target_schema,
+    )
+    if semantic_annotation_id is None or aggregate_schema_name is None:
+        return None
+    lock_key = f"phase85_document_aggregate:{semantic_annotation_id}:{schema_name}"
+    with db_connection() as lock_conn:
+        with lock_conn.cursor() as lock_cur:
+            lock_cur.execute("SELECT pg_advisory_lock(hashtextextended(%s, 0))", (lock_key,))
+        try:
+            return _reconcile_semantic_annotation_locked(
+                document_id=document_id,
+                semantic_annotation_id=semantic_annotation_id,
+                schema_name=schema_name,
+                canonical_target_schema=canonical_target_schema,
+                aggregate_schema_name=aggregate_schema_name,
+                settled_job_id=None,
+                wait_for_region_jobs=False,
             )
         finally:
             with lock_conn.cursor() as lock_cur:
@@ -94,15 +130,20 @@ def _reconcile_semantic_annotation_locked(
     canonical_target_schema: str | None,
     aggregate_schema_name: str,
     settled_job_id: UUID | None,
+    wait_for_region_jobs: bool,
 ) -> PersistedExtraction | None:
     with db_connection() as conn:
         with conn.cursor() as cur:
-            job_counts = _region_job_status_counts(
-                cur,
-                document_id=document_id,
-                semantic_annotation_id=semantic_annotation_id,
-                schema_name=schema_name,
-                settled_job_id=settled_job_id,
+            job_counts = (
+                _region_job_status_counts(
+                    cur,
+                    document_id=document_id,
+                    semantic_annotation_id=semantic_annotation_id,
+                    schema_name=schema_name,
+                    settled_job_id=settled_job_id,
+                )
+                if wait_for_region_jobs
+                else {}
             )
             rows = _current_region_extraction_rows(
                 cur,
@@ -121,6 +162,8 @@ def _reconcile_semantic_annotation_locked(
                 document_id=document_id,
                 semantic_annotation_id=semantic_annotation_id,
             )
+    if not wait_for_region_jobs:
+        job_counts = {"succeeded": len(rows)}
     total_jobs = sum(job_counts.values())
     pending_jobs = sum(job_counts.get(status, 0) for status in PENDING_REGION_JOB_STATUSES)
     if total_jobs == 0 or pending_jobs > 0 or not rows:

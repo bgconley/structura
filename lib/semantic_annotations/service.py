@@ -288,6 +288,17 @@ class SemanticAnnotationService:
         queued: list[UUID] = []
         plan = _granite_extraction_plan(source, manifest_result, persisted)
         run_id = _run_id_from_source(source)
+        if _document_orchestration_enabled():
+            return self._enqueue_document_orchestration_job(
+                source,
+                persisted,
+                plan=plan,
+                plan_id=None,
+                run_id=run_id,
+                requested_by=requested_by,
+                requested_by_user_id=requested_by_user_id,
+                user_intent_reason=user_intent_reason,
+            )
         for spec in plan.selected:
             job_id = uuid4()
             created_job = self.jobs.create_job(
@@ -358,6 +369,18 @@ class SemanticAnnotationService:
             plan=plan,
             run_id=run_id,
         )
+        if _document_orchestration_enabled():
+            return self._enqueue_document_orchestration_job_with_cursor(
+                cur,
+                source,
+                persisted,
+                plan=plan,
+                plan_id=persisted_plan.plan_id,
+                run_id=run_id,
+                requested_by=requested_by,
+                requested_by_user_id=requested_by_user_id,
+                user_intent_reason=user_intent_reason,
+            )
         for spec in plan.selected:
             plan_task_id = persisted_plan.selected_task_ids.get(spec.region_id)
             job_id = uuid4()
@@ -407,6 +430,87 @@ class SemanticAnnotationService:
             )
             queued.append(job_id)
         return queued
+
+    def _enqueue_document_orchestration_job(
+        self,
+        source: ExtractionSourceDocument,
+        persisted: PersistedSemanticManifest,
+        *,
+        plan: GraniteExtractionPlan,
+        plan_id: UUID | None,
+        run_id: str | None,
+        requested_by: str,
+        requested_by_user_id: UUID | None,
+        user_intent_reason: str | None,
+    ) -> list[UUID]:
+        if not plan.selected:
+            return []
+        priority = _document_orchestration_priority(plan)
+        job_id = uuid4()
+        created_job = self.jobs.create_job(
+            job_id=job_id,
+            job_type="extract",
+            household_id=source.household_id,
+            document_id=source.document_id,
+            payload=_document_orchestration_payload(
+                job_id=job_id,
+                document_id=source.document_id,
+                priority=priority,
+                semantic_annotation_id=persisted.annotation_id,
+                plan_id=plan_id,
+                run_id=run_id,
+                selected_task_count=len(plan.selected),
+                requested_by=requested_by,
+                requested_by_user_id=requested_by_user_id,
+                user_intent_reason=user_intent_reason,
+            ),
+            priority=priority,
+            queue_name="extraction",
+            max_attempts=3,
+        )
+        created_job_id = getattr(created_job, "job_id", None)
+        return [created_job_id] if isinstance(created_job_id, UUID) else []
+
+    def _enqueue_document_orchestration_job_with_cursor(
+        self,
+        cur: object,
+        source: ExtractionSourceDocument,
+        persisted: PersistedSemanticManifest,
+        *,
+        plan: GraniteExtractionPlan,
+        plan_id: UUID | None,
+        run_id: str | None,
+        requested_by: str,
+        requested_by_user_id: UUID | None,
+        user_intent_reason: str | None,
+    ) -> list[UUID]:
+        if not plan.selected:
+            return []
+        priority = _document_orchestration_priority(plan)
+        job_id = uuid4()
+        create_job_with_cursor(
+            cur,
+            job_id=job_id,
+            job_type="extract",
+            household_id=source.household_id,
+            document_id=source.document_id,
+            payload=_document_orchestration_payload(
+                job_id=job_id,
+                document_id=source.document_id,
+                priority=priority,
+                semantic_annotation_id=persisted.annotation_id,
+                plan_id=plan_id,
+                run_id=run_id,
+                selected_task_count=len(plan.selected),
+                requested_by=requested_by,
+                requested_by_user_id=requested_by_user_id,
+                user_intent_reason=user_intent_reason,
+            ),
+            priority=priority,
+            queue_name="extraction",
+            max_attempts=3,
+        )
+        return [job_id]
 
 
 class SemanticAnnotationServiceError(Exception):
@@ -562,6 +666,48 @@ def _granite_extraction_plan(
     return plan_granite_jobs(
         specs,
         quality_mode=manifest_result.manifest.quality_mode,
+    )
+
+
+def _document_orchestration_enabled() -> bool:
+    return get_settings().document_extraction_orchestration_enabled
+
+
+def _document_orchestration_priority(plan: GraniteExtractionPlan) -> int:
+    return min((spec.priority for spec in plan.selected), default=35)
+
+
+def _document_orchestration_payload(
+    *,
+    job_id: UUID,
+    document_id: UUID,
+    priority: int,
+    semantic_annotation_id: UUID,
+    plan_id: UUID | None,
+    run_id: str | None,
+    selected_task_count: int,
+    requested_by: str,
+    requested_by_user_id: UUID | None,
+    user_intent_reason: str | None,
+) -> dict[str, object]:
+    return build_extract_document_job_payload(
+        job_id=job_id,
+        document_id=document_id,
+        target_schema_name="semantic_document",
+        target_schema_version="v1",
+        route_profile="docling_plus_structured_extraction",
+        orchestration_mode="semantic_document",
+        requested_by=requested_by,
+        priority=priority,
+        semantic_annotation_id=semantic_annotation_id,
+        plan_id=plan_id,
+        semantic_quality_mode="smart",
+        requested_by_user_id=requested_by_user_id,
+        user_intent_reason=user_intent_reason,
+        metadata={
+            "selected_task_count": selected_task_count,
+            **({"run_id": run_id} if run_id else {}),
+        },
     )
 
 

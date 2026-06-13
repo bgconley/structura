@@ -64,6 +64,10 @@ class Settings(BaseSettings):
     deterministic_planner_enabled: bool = Field(
         default=True, alias="STRUCTURA_DETERMINISTIC_PLANNER"
     )
+    document_extraction_orchestration_enabled: bool = Field(
+        default=False,
+        alias="STRUCTURA_DOCUMENT_EXTRACTION_ORCHESTRATION",
+    )
     model_qwen_semantic_url: str = "http://127.0.0.1:8104"
     model_granite_url: str = "http://127.0.0.1:8101"
     model_text_embed_url: str = "http://127.0.0.1:8102"

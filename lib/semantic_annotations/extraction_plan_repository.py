@@ -6,6 +6,7 @@ from uuid import UUID
 
 from psycopg.types.json import Jsonb
 
+from lib.db.connection import db_connection
 from lib.model_runtime.reliability_versions import PLANNER_VERSION
 from lib.semantic_annotations.extraction_plan import (
     GraniteExtractionPlan,
@@ -19,6 +20,88 @@ from lib.semantic_annotations.models import SemanticAnnotationResult
 class PersistedExtractionPlan:
     plan_id: UUID
     selected_task_ids: dict[UUID, UUID]
+
+
+@dataclass(frozen=True)
+class PlannedExtractionTask:
+    plan_id: UUID
+    plan_task_id: UUID
+    semantic_annotation_id: UUID
+    semantic_region_id: UUID
+    semantic_type: str
+    target_schema: str
+    canonical_target_schema: str | None
+    compatibility_mode: str | None
+    contract_resolution_reason: str | None
+    region_envelope_version: str | None
+
+
+def load_selected_extraction_tasks_for_annotation(
+    *,
+    document_id: UUID,
+    semantic_annotation_id: UUID,
+    plan_id: UUID | None = None,
+) -> list[PlannedExtractionTask]:
+    with db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                WITH selected_plan AS (
+                  SELECT id, semantic_annotation_id
+                  FROM semantic_extraction_plans
+                  WHERE document_id = %s
+                    AND semantic_annotation_id = %s
+                    AND (%s::uuid IS NULL OR id = %s)
+                  ORDER BY created_at DESC
+                  LIMIT 1
+                )
+                SELECT
+                  task.id AS plan_task_id,
+                  task.plan_id,
+                  selected_plan.semantic_annotation_id,
+                  task.semantic_region_id,
+                  task.semantic_type,
+                  task.target_schema,
+                  task.canonical_target_schema,
+                  task.compatibility_mode,
+                  task.contract_resolution_reason,
+                  task.task_json ->> 'regionEnvelopeVersion' AS region_envelope_version
+                FROM semantic_extraction_plan_tasks task
+                JOIN selected_plan ON selected_plan.id = task.plan_id
+                WHERE task.status = 'selected'
+                ORDER BY
+                  COALESCE((task.task_json ->> 'ordinal')::integer, 0),
+                  task.created_at,
+                  task.id
+                """,
+                (document_id, semantic_annotation_id, plan_id, plan_id),
+            )
+            rows = cur.fetchall()
+    return [
+        PlannedExtractionTask(
+            plan_id=cast(UUID, row["plan_id"]),
+            plan_task_id=cast(UUID, row["plan_task_id"]),
+            semantic_annotation_id=cast(UUID, row["semantic_annotation_id"]),
+            semantic_region_id=cast(UUID, row["semantic_region_id"]),
+            semantic_type=str(row["semantic_type"]),
+            target_schema=str(row["target_schema"]),
+            canonical_target_schema=(
+                str(row["canonical_target_schema"]) if row.get("canonical_target_schema") else None
+            ),
+            compatibility_mode=(
+                str(row["compatibility_mode"]) if row.get("compatibility_mode") else None
+            ),
+            contract_resolution_reason=(
+                str(row["contract_resolution_reason"])
+                if row.get("contract_resolution_reason")
+                else None
+            ),
+            region_envelope_version=(
+                str(row["region_envelope_version"]) if row.get("region_envelope_version") else None
+            ),
+        )
+        for row in rows
+    ]
 
 
 def persist_extraction_plan_with_cursor(

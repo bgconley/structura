@@ -99,6 +99,60 @@ def process_next_extraction_job(
                     details={"model_failure_policy": "removed_semantic_rescue_control"},
                 )
                 return True
+            if _optional_str(claimed.payload.get("orchestration_mode")) == "semantic_document":
+                semantic_annotation_id = _optional_uuid(
+                    claimed.payload.get("semantic_annotation_id")
+                )
+                if semantic_annotation_id is None:
+                    raise ExtractionWorkerError(
+                        "Document orchestration extraction job is missing semantic_annotation_id."
+                    )
+                document_result = extraction_service.extract_semantic_annotation_document(
+                    target_document_id,
+                    semantic_annotation_id=semantic_annotation_id,
+                    plan_id=_optional_uuid(claimed.payload.get("plan_id")),
+                    route_profile=route_profile,
+                    run_id=_metadata_run_id(claimed.payload),
+                    requested_by=str(claimed.payload.get("requested_by") or "system"),
+                    requested_by_user_id=_optional_uuid(
+                        claimed.payload.get("requested_by_user_id")
+                    ),
+                    user_intent_reason=(
+                        str(claimed.payload["user_intent_reason"])
+                        if claimed.payload.get("user_intent_reason")
+                        else None
+                    ),
+                )
+                completed = job_service.complete_job(
+                    job_id=claimed.state.job_id,
+                    result={
+                        "extraction_status": "succeeded",
+                        "orchestration_mode": "semantic_document",
+                        "region_extraction_ids": [
+                            str(extraction_id)
+                            for extraction_id in document_result.region_extraction_ids
+                        ],
+                        "aggregate_extraction_ids": [
+                            str(extraction_id)
+                            for extraction_id in document_result.aggregate_extraction_ids
+                        ],
+                        "candidate_count": document_result.candidate_count,
+                        "canonical_count": document_result.canonical_count,
+                        "review_task_count": document_result.review_task_count,
+                    },
+                )
+                if getattr(completed, "status", None) == "cancelled":
+                    return True
+                _enqueue_embedding_refresh(
+                    target_document_id,
+                    household_id=claimed.household_id,
+                    force_reembed=False,
+                )
+                _enqueue_relationship_refresh(
+                    target_document_id,
+                    household_id=claimed.household_id,
+                )
+                return True
             persisted = extraction_service.extract_document(
                 target_document_id,
                 schema_name=schema_name,
@@ -202,6 +256,8 @@ def _maybe_reconcile_after_failure(
     ever fire it, permanently suppressing the (partial) aggregate.
     """
     if job_type != "extract" or document_id is None:
+        return
+    if _optional_str(payload.get("orchestration_mode")) == "semantic_document":
         return
     try:
         maybe_reconcile_semantic_annotation(

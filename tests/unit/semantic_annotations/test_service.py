@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
+from lib.config import get_settings
 from lib.contracts.registry import ContractRegistry
 from lib.extraction.models import ExtractionSourceDocument, ParsedPageText, ParsedTableText
 from lib.model_runtime.reliability_versions import REGION_ENVELOPE_VERSION
@@ -78,6 +79,46 @@ def test_semantic_service_persists_manifest_and_queues_grounded_granite_jobs() -
     assert "allow_8b_rescue" not in payload
     assert "semantic_rescue" not in payload
     assert payload["metadata"]["run_id"] == "phase85-20260604-smoke-001"
+
+
+def test_semantic_service_queues_single_document_orchestration_job_when_enabled(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("STRUCTURA_DOCUMENT_EXTRACTION_ORCHESTRATION", "true")
+    get_settings.cache_clear()
+    document_id = uuid4()
+    household_id = uuid4()
+    page_id = uuid4()
+    annotation_id = uuid4()
+    region_id = uuid4()
+    source = _source(document_id=document_id, household_id=household_id, page_id=page_id)
+    manifest = _manifest(document_id=document_id, household_id=household_id, page_id=page_id)
+    jobs = RecordingJobs()
+
+    try:
+        result = SemanticAnnotationService(
+            source_loader=lambda loaded_document_id: source,
+            gateway=StaticGateway(manifest),
+            manifest_persister=lambda persisted_manifest: PersistedSemanticManifest(
+                annotation_id=annotation_id,
+                region_ids=(region_id,),
+            ),
+            jobs=jobs,
+        ).annotate_document(document_id, quality_mode="smart", requested_by="system")
+    finally:
+        get_settings.cache_clear()
+
+    assert result.queued_granite_job_ids == (jobs.created_job_id,)
+    assert len(jobs.created) == 1
+    payload = jobs.created[0]["payload"]
+    ContractRegistry.load("contracts").validate_event_instance(
+        "extract_document_job.v1.schema.json",
+        payload,
+    )
+    assert payload["target_schema_name"] == "semantic_document"
+    assert payload["orchestration_mode"] == "semantic_document"
+    assert payload["semantic_annotation_id"] == str(annotation_id)
+    assert "semantic_region_id" not in payload
 
 
 def test_semantic_service_rejects_removed_rescue_permission() -> None:

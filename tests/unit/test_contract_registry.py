@@ -487,6 +487,26 @@ def test_phase8_5_event_contracts_reject_removed_rescue_fields() -> None:
             registry.validate_event_instance(schema_name, payload)
 
 
+def test_extract_document_job_contract_accepts_document_orchestration_mode() -> None:
+    registry = ContractRegistry.load("contracts")
+    payload = {
+        "schema_name": "extract_document_job",
+        "schema_version": "v1",
+        "job_id": UUID_1,
+        "created_at": TIMESTAMP,
+        "attempt": 1,
+        "priority": 5,
+        "document_id": UUID_2,
+        "target_schema_name": "semantic_document",
+        "target_schema_version": "v1",
+        "semantic_annotation_id": UUID_1,
+        "orchestration_mode": "semantic_document",
+        "semantic_quality_mode": "smart",
+    }
+
+    registry.validate_event_instance("extract_document_job.v1.schema.json", payload)
+
+
 def test_phase8_5_semantic_annotation_contract_has_qwen2b_and_response_schema() -> None:
     registry = ContractRegistry.load("contracts")
     common_defs = registry.schemas["common_defs.schema.json"]

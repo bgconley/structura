@@ -59,6 +59,7 @@
       "type": "string",
       "enum": [
         "document_classification",
+        "semantic_document",
         "receipt",
         "invoice",
         "medical_eob",
@@ -70,6 +71,13 @@
     },
     "route_profile": {
       "type": "string"
+    },
+    "orchestration_mode": {
+      "type": "string",
+      "enum": [
+        "semantic_region",
+        "semantic_document"
+      ]
     },
     "target_pages": {
       "type": "array",
