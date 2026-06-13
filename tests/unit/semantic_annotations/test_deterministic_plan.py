@@ -244,10 +244,10 @@ def test_table_region_wrong_semantic_type_does_not_cover_baseline_table_target()
 
     telemetry = enforced.manifest.manifest["deterministic_baseline"]
     assert telemetry["enforced_region_count"] == 1
+    assert telemetry["suppressed_extra_region_count"] == 1
     assert {
         (region.semantic_type, region.target_schema) for region in enforced.manifest.regions
     } == {
-        ("receipt_line_item_table", "receipt"),
         (baseline.regions[0].semantic_type, baseline.regions[0].target_schema),
     }
 
@@ -425,8 +425,9 @@ def test_table_grounded_kvp_region_does_not_cover_baseline_table_target() -> Non
     enforced = apply_baseline_invariant(source, baseline, plan)
     telemetry = enforced.manifest.manifest["deterministic_baseline"]
     assert telemetry["enforced_region_count"] == len(baseline.regions)
+    assert telemetry["suppressed_extra_region_count"] == 1
     tasks = {(region.semantic_type, region.granite_task) for region in enforced.manifest.regions}
-    assert ("billing_summary", "kvp") in tasks
+    assert ("billing_summary", "kvp") not in tasks
     assert any(task == "tables_json" for _stype, task in tasks)
 
 
@@ -459,8 +460,8 @@ def test_wrong_page_escrow_region_does_not_cover_baseline_escrow_target() -> Non
 
     telemetry = enforced.manifest.manifest["deterministic_baseline"]
     assert telemetry["enforced_region_count"] == 1
+    assert telemetry["suppressed_extra_region_count"] == 1
     assert {region.grounding.page_id for region in enforced.manifest.regions} == {
-        source.pages[0].page_id,
         source.pages[1].page_id,
     }
 
@@ -494,8 +495,8 @@ def test_wrong_page_seller_region_does_not_cover_baseline_seller_target() -> Non
 
     telemetry = enforced.manifest.manifest["deterministic_baseline"]
     assert telemetry["enforced_region_count"] == 1
+    assert telemetry["suppressed_extra_region_count"] == 1
     assert {region.grounding.page_id for region in enforced.manifest.regions} == {
-        source.pages[0].page_id,
         source.pages[1].page_id,
     }
 
@@ -532,8 +533,8 @@ def test_wrong_page_generic_kvp_region_does_not_cover_baseline_target() -> None:
 
     telemetry = enforced.manifest.manifest["deterministic_baseline"]
     assert telemetry["enforced_region_count"] == 1
+    assert telemetry["suppressed_extra_region_count"] == 1
     assert {region.grounding.page_id for region in enforced.manifest.regions} == {
-        source.pages[0].page_id,
         source.pages[1].page_id,
     }
 
@@ -568,6 +569,112 @@ def test_same_page_observation_region_covers_baseline_target() -> None:
     telemetry = enforced.manifest.manifest["deterministic_baseline"]
     assert telemetry["enforced_region_count"] == 0
     assert enforced.manifest.regions == [qwen_region]
+
+
+def test_text_model_page_kvp_regions_outside_baseline_are_suppressed() -> None:
+    source = _page_observation_source(
+        family="medical_eob",
+        title="Medical Denial",
+        page_texts=[
+            "Claim denied because the request was not medically necessary. Appeal rights.",
+            "General clinical criteria discussion without a specific procedural deadline.",
+            "Administrative notice with no extraction target.",
+            "More boilerplate.",
+            "Grievance rights include contact phone, fax, and external review deadline.",
+            "Procedural information that Qwen may label as useful but Docling does not.",
+            "Additional procedural boilerplate that must not create a new extraction task.",
+        ],
+    )
+    baseline = deterministic_baseline_manifest(source)
+    baseline_regions = {
+        (region.semantic_type, region.grounding.page_id): region for region in baseline.regions
+    }
+    denial = baseline_regions[("denial_or_coverage_decision", source.pages[0].page_id)]
+    grievance = baseline_regions[("generic_form_kvp", source.pages[4].page_id)]
+    qwen_regions = [
+        SemanticRegionAnnotation(
+            semantic_type="denial_or_coverage_decision",
+            priority="high",
+            granite_task="kvp",
+            grounding=denial.grounding,
+            target_schema=denial.target_schema,
+            expected_fields=denial.expected_fields,
+            metadata={"source_signal": "text"},
+        ),
+        SemanticRegionAnnotation(
+            semantic_type="denial_or_coverage_decision",
+            priority="high",
+            granite_task="kvp",
+            grounding=SemanticGroundingRef(kind="page", page_id=source.pages[1].page_id),
+            target_schema="medical_eob",
+            expected_fields=denial.expected_fields,
+            metadata={"source_signal": "text"},
+        ),
+        SemanticRegionAnnotation(
+            semantic_type="generic_form_kvp",
+            priority="high",
+            granite_task="kvp",
+            grounding=grievance.grounding,
+            target_schema=grievance.target_schema,
+            expected_fields=grievance.expected_fields,
+            metadata={"source_signal": "text"},
+        ),
+        SemanticRegionAnnotation(
+            semantic_type="generic_form_kvp",
+            priority="high",
+            granite_task="kvp",
+            grounding=SemanticGroundingRef(kind="page", page_id=source.pages[5].page_id),
+            target_schema="document_observation",
+            expected_fields=grievance.expected_fields,
+            metadata={"source_signal": "text"},
+        ),
+    ]
+    plan = SemanticAnnotationResult(
+        manifest=_manifest_like_baseline_with_regions(baseline, qwen_regions)
+    )
+
+    enforced = apply_baseline_invariant(source, baseline, plan)
+
+    telemetry = enforced.manifest.manifest["deterministic_baseline"]
+    assert telemetry["suppressed_extra_region_count"] == 2
+    assert {
+        (region.semantic_type, region.grounding.page_id)
+        for region in enforced.manifest.regions
+        if region.granite_task != "ignore"
+    } == {
+        ("denial_or_coverage_decision", source.pages[0].page_id),
+        ("generic_form_kvp", source.pages[4].page_id),
+    }
+
+
+def test_visual_model_region_outside_baseline_is_preserved() -> None:
+    source = _page_observation_source(
+        family="medical_eob",
+        title="Scanned Medical Denial",
+        page_texts=[
+            "Claim denied because the request was not medically necessary. Appeal rights.",
+            "Sparse OCR text for a degraded scanned page.",
+        ],
+    )
+    baseline = deterministic_baseline_manifest(source)
+    visual_region = SemanticRegionAnnotation(
+        semantic_type="generic_form_kvp",
+        priority="high",
+        granite_task="kvp",
+        grounding=SemanticGroundingRef(kind="page", page_id=source.pages[1].page_id),
+        target_schema="document_observation",
+        expected_fields=("visible_form_fields",),
+        metadata={"source_signal": "visual", "requires_full_page_image": True},
+    )
+    plan = SemanticAnnotationResult(
+        manifest=_manifest_like_baseline_with_regions(baseline, [*baseline.regions, visual_region])
+    )
+
+    enforced = apply_baseline_invariant(source, baseline, plan)
+
+    telemetry = enforced.manifest.manifest["deterministic_baseline"]
+    assert telemetry["suppressed_extra_region_count"] == 0
+    assert visual_region in enforced.manifest.regions
 
 
 def test_baseline_manifest_uses_active_profile_when_supplied() -> None:

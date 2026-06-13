@@ -108,20 +108,26 @@ def apply_baseline_invariant(
     baseline: DocumentSemanticManifest,
     result: SemanticAnnotationResult,
 ) -> SemanticAnnotationResult:
-    """Enforce plan ⊇ deterministic baseline and record plan-identity telemetry.
+    """Enforce deterministic-primary coverage and record plan-identity telemetry.
 
-    The docling structural augmentation already unions uncovered targets into
-    the plan; what can still drop a baseline region is its additions cap.
-    Any baseline region whose structural target is absent from the final
-    plan is appended here, so coverage is enforced rather than asserted.
+    ADR 0006 makes the Docling-derived baseline the active extraction plan.
+    Qwen may label, merge with, or visually augment it, but text-backed model
+    variance must not introduce additional active extraction obligations.
+    Any baseline region whose structural target is absent from the final plan
+    is appended here, while model-only text regions outside the baseline are
+    suppressed before Granite fanout can select them.
     """
     manifest = result.manifest
+    constrained_regions, suppressed_extra_count = _constrain_regions_to_baseline(
+        manifest.regions,
+        baseline.regions,
+    )
     uncovered = [
         region
         for region in baseline.regions
-        if not _baseline_region_covered(region, manifest.regions)
+        if not _baseline_region_covered(region, constrained_regions)
     ]
-    regions = list(manifest.regions)
+    regions = list(constrained_regions)
     if uncovered:
         regions = [*regions, *uncovered]
     telemetry = {
@@ -129,11 +135,12 @@ def apply_baseline_invariant(
         "fingerprint": baseline_plan_fingerprint(source, baseline),
         "baseline_region_count": len(baseline.regions),
         "enforced_region_count": len(uncovered),
+        "suppressed_extra_region_count": suppressed_extra_count,
         "plan_region_count": len(regions),
     }
     manifest_payload = dict(manifest.manifest)
     manifest_payload["deterministic_baseline"] = telemetry
-    if uncovered:
+    if uncovered or suppressed_extra_count:
         manifest_payload["regions"] = [region_manifest_json(region) for region in regions]
     confidence = dict(manifest.confidence)
     confidence["deterministic_baseline"] = telemetry
@@ -185,6 +192,38 @@ def _baseline_region_covered(
     return any(_region_covers_baseline(region, baseline_region) for region in plan_regions)
 
 
+def _constrain_regions_to_baseline(
+    regions: list[SemanticRegionAnnotation],
+    baseline_regions: list[SemanticRegionAnnotation],
+) -> tuple[list[SemanticRegionAnnotation], int]:
+    if not any(_is_active_extraction_region(region) for region in baseline_regions):
+        return regions, 0
+
+    constrained: list[SemanticRegionAnnotation] = []
+    suppressed_extra_count = 0
+    for region in regions:
+        if not _is_active_extraction_region(region):
+            constrained.append(region)
+            continue
+        if _region_covers_any_baseline(region, baseline_regions):
+            constrained.append(region)
+            continue
+        if _is_visual_lane_region(region):
+            constrained.append(region)
+            continue
+        suppressed_extra_count += 1
+    return constrained, suppressed_extra_count
+
+
+def _region_covers_any_baseline(
+    region: SemanticRegionAnnotation,
+    baseline_regions: list[SemanticRegionAnnotation],
+) -> bool:
+    return any(
+        _region_covers_baseline(region, baseline_region) for baseline_region in baseline_regions
+    )
+
+
 def _region_identity(
     region: SemanticRegionAnnotation,
     page_numbers: dict[str, int],
@@ -228,6 +267,12 @@ def _region_covers_baseline(
 
 def _is_active_extraction_region(region: SemanticRegionAnnotation) -> bool:
     return region.granite_task is not None and region.granite_task != "ignore"
+
+
+def _is_visual_lane_region(region: SemanticRegionAnnotation) -> bool:
+    metadata = region.metadata
+    source_signal = str(metadata.get("source_signal") or "").strip().lower()
+    return source_signal in {"visual", "mixed"} and metadata.get("requires_full_page_image") is True
 
 
 def _granite_tasks_compatible(
