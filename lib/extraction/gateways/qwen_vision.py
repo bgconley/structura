@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Protocol, cast
 
+from lib.extraction.expected_field_coverage import normalized_field_name
 from lib.extraction.gateways.vision_lane import (
     QWEN_VISION_OBSERVATIONS_SCHEMA,
     QWEN_VISION_PROVIDER,
@@ -206,6 +207,7 @@ def _region_observations(
         return [], []
     docling_text = _docling_text_for_region(source, semantic_task)
     text_present = bool(docling_text)
+    expected_fields = _expected_field_names(semantic_task)
     observations: list[RegionFact] = []
     rejected: list[dict[str, object]] = []
     for item in raw_items:
@@ -213,6 +215,22 @@ def _region_observations(
             continue
         field_name = _non_empty_str(item.get("field_name"))
         if field_name is None:
+            continue
+        if text_present and not expected_fields:
+            rejected.append(
+                {
+                    "fieldName": field_name,
+                    "reason": "no_expected_fields_for_text_present_region",
+                }
+            )
+            continue
+        if text_present and normalized_field_name(field_name) not in expected_fields:
+            rejected.append(
+                {
+                    "fieldName": field_name,
+                    "reason": "unexpected_field_for_text_present_region",
+                }
+            )
             continue
         quote = _optional_str(item.get("quote"))
         if text_present and not quote:
@@ -257,6 +275,14 @@ def _region_observations(
             )
         )
     return observations, rejected
+
+
+def _expected_field_names(semantic_task: SemanticExtractionTask) -> set[str]:
+    return {
+        normalized
+        for raw in semantic_task.expected_fields
+        if (normalized := normalized_field_name(str(raw)))
+    }
 
 
 def _evidence_ref(
