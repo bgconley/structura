@@ -77,7 +77,7 @@ class TextLaneTableExtractionGateway:
         if "description" not in labeled_roles.values():
             raise TextLaneAbstention("no_description_column")
         money_columns = [index for index, role in labeled_roles.items() if role in MONEY_ROLES]
-        if not money_columns:
+        if not money_columns and not _supports_non_money_service_lines(family, labeled_roles):
             raise TextLaneAbstention("no_money_column")
         # Docling can lose cell text the page image still shows (weak scans,
         # span misalignment). If most data rows have no parseable money cell,
@@ -88,7 +88,7 @@ class TextLaneTableExtractionGateway:
             for row_index in grid.data_row_indexes
             if _row_has_parseable_money(grid, row_index, money_columns)
         )
-        if populated * 2 < len(grid.data_row_indexes):
+        if money_columns and populated * 2 < len(grid.data_row_indexes):
             raise TextLaneAbstention("money_columns_sparse")
         extraction = extract_table_region(
             source=source,
@@ -190,3 +190,9 @@ def _row_has_parseable_money(
         if parse_decimal_text(cell.normalized_text) is not None:
             return True
     return False
+
+
+def _supports_non_money_service_lines(family: str, roles: dict[int, str]) -> bool:
+    if family != "medical_eob":
+        return False
+    return bool({"code", "service_date"} & set(roles.values()))

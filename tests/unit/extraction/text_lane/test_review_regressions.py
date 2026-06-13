@@ -363,6 +363,44 @@ def test_medical_eob_prompt_gloss_matches_registry_meaning() -> None:
     assert "extended/net total" in invoice_prompt
 
 
+def test_medical_eob_service_lines_do_not_require_money_columns() -> None:
+    class _Labeler:
+        def label_columns(self, *, family: str, grid: TableGrid) -> ColumnLabeling:
+            del family, grid
+            return _labeling({0: "description", 1: "service_date", 2: "code"})
+
+    rows = [
+        [
+            _cell("Care", 0, 0, ch=True),
+            _cell("Date", 0, 1, ch=True),
+            _cell("Code", 0, 2, ch=True),
+        ],
+        [_cell("MRI/CAT Scan", 1, 0), _cell("01/07/2026", 1, 1), _cell("CPT 72141", 1, 2)],
+        [
+            _cell("Physical Therapy", 2, 0),
+            _cell("01/09/2026", 2, 1),
+            _cell("CPT 97110", 2, 2),
+        ],
+    ]
+    table = _table(rows)
+    gateway = TextLaneTableExtractionGateway(labeler=_Labeler())
+
+    result = gateway.extract(
+        _source(table),
+        schema_name="medical_eob",
+        route_profile="docling_plus_structured_extraction",
+        semantic_task=_task(table, semantic_type="covered_services_line_item_table"),
+    )
+
+    assert result.route.source_engine == "docling"
+    assert result.normalization_json["lane"] == "text"
+    line_items = result.normalized_json.get("line_items")
+    assert isinstance(line_items, list)
+    assert [item["description"] for item in line_items] == ["MRI/CAT Scan", "Physical Therapy"]
+    assert [item["service_date"] for item in line_items] == ["01/07/2026", "01/09/2026"]
+    assert [item["code"] for item in line_items] == ["CPT 72141", "CPT 97110"]
+
+
 def test_gateway_abstains_without_money_column_and_on_sparse_money() -> None:
     class _Labeler:
         def __init__(self, roles: dict[int, str]) -> None:
