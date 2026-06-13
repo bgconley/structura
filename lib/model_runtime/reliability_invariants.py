@@ -8,6 +8,7 @@ from lib.model_runtime.reliability_invariant_rules import (
     evaluate_canonical_fields,
     evaluate_extractions,
     evaluate_planner_tasks,
+    evaluate_semantic_annotations,
 )
 from lib.model_runtime.reliability_rejected_candidates import evaluate_rejected_candidate_insertions
 
@@ -23,6 +24,10 @@ _INVARIANTS: tuple[tuple[str, str], ...] = (
     (
         "selectedGraniteTasksIncompatibleFamilySchema",
         "Selected or enqueued Granite semantic-region tasks must be family/schema compatible.",
+    ),
+    (
+        "semanticAnnotationsMissingDeterministicBaseline",
+        "Qwen/Docling semantic annotations must carry deterministic baseline coverage telemetry.",
     ),
     (
         "promptSchemaArtifactsAdmitted",
@@ -62,6 +67,14 @@ _INVARIANTS: tuple[tuple[str, str], ...] = (
         "aggregateSchemasFromIncompatibleFamilies",
         "Aggregate extraction schemas must not be created from incompatible source families.",
     ),
+    (
+        "aggregateExtractionsMissingRunLineage",
+        "Current aggregate extractions must carry source run and region-extraction lineage.",
+    ),
+    (
+        "duplicateCurrentAggregateExtractions",
+        "At most one current aggregate extraction may exist per document, schema, and scope.",
+    ),
 )
 
 __all__ = ["evaluate_hard_correctness_invariants"]
@@ -73,6 +86,7 @@ def evaluate_hard_correctness_invariants(
     violations: ViolationMap = {key: [] for key, _ in _INVARIANTS}
 
     evaluate_planner_tasks(documents, violations)
+    evaluate_semantic_annotations(documents, violations)
     evaluate_admission_events(documents, violations)
     evaluate_rejected_candidate_insertions(documents, violations)
     evaluate_extractions(documents, violations)

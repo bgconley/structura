@@ -222,3 +222,6 @@ classes are unrepresentable.
   `pipeline_failed` as valid only for intentional failure-injection runs or
   real runtime defects. Safe review, insufficient-signal, and no-target
   outcomes remain valid document-quality outcomes rather than job failures.
+  Hard invariants also reject missing deterministic-baseline telemetry,
+  deterministic-baseline coverage regressions, current aggregate rows without
+  source-run lineage, and duplicate current aggregate rows after retry.

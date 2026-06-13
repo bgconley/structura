@@ -159,6 +159,14 @@ def test_planner_task_report_query_derives_missing_page_number() -> None:
     assert "LEFT JOIN document_tables dt" in runner._PLANNER_TASKS_SQL
 
 
+def test_semantic_report_query_projects_deterministic_baseline_telemetry() -> None:
+    runner = _load_resident_runner()
+
+    assert "manifest_json -> 'deterministic_baseline' AS deterministic_baseline" in (
+        runner._SEMANTIC_SQL
+    )
+
+
 def test_candidate_report_queries_project_admission_fingerprints() -> None:
     runner = _load_resident_runner()
 

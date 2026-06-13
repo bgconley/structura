@@ -1110,7 +1110,7 @@ Phase 8.5 gate:
 
 - Qwen3-VL, text embeddings, and visual embeddings pass deterministic tests plus GPU live model validation; Granite comparison runs are explicit rollback evidence, not default runtime requirements.
 - Model-backed golden corpus evidence exists for handwriting, structured extraction, text retrieval, visual retrieval, and hybrid retrieval.
-- The resident corpus passes the Phase 8.5 reliable-extraction hard invariants: no missing extraction contracts, no missing grounding, no incompatible family/schema tasks, no prompt/placeholder/literal-null candidates admitted, no admitted candidates without concrete evidence, no model-backed semantic-region rows auto-accepted, and no fabricated canonical required fields.
+- The resident corpus passes the Phase 8.5 reliable-extraction hard invariants: no missing extraction contracts, no missing grounding, no incompatible family/schema tasks, no missing deterministic-baseline telemetry, no prompt/placeholder/literal-null candidates admitted, no admitted candidates without concrete evidence, no model-backed semantic-region rows auto-accepted, no fabricated canonical required fields, no aggregate rows without run lineage, and no duplicate current aggregate rows after retry.
 - Model-backed acceptance reports include `documentOutcomes` and `documentOutcomeSummary`; they must include a private holdout or synthetic-adversarial slice, reject prompt-tuned holdouts, and report zero `pipeline_failed` outcomes unless the run intentionally injects runtime failures.
 - Phase 9 remains gated until reliability reports distinguish truth, review, and debug surfaces and every document can reach evidence-grounded candidates, bounded review/partial candidates, or a classified abstention/skip.
 

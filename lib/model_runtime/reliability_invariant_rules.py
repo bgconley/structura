@@ -7,6 +7,7 @@ from lib.model_runtime.reliability_report_normalization import (
     bool_value,
     dict_value,
     get_value,
+    int_value,
     list_value,
     snake,
 )
@@ -60,25 +61,68 @@ def evaluate_planner_tasks(documents: list[dict[str, Any]], violations: Violatio
             )
 
 
+def evaluate_semantic_annotations(
+    documents: list[dict[str, Any]],
+    violations: ViolationMap,
+) -> None:
+    for doc in documents:
+        document = dict_value(get_value(doc, "document"))
+        for semantic in list_value(get_value(doc, "semantic")):
+            if not isinstance(semantic, dict):
+                continue
+            if not _requires_deterministic_baseline_telemetry(semantic):
+                continue
+            telemetry = dict_value(
+                get_value(semantic, "deterministic_baseline", "deterministicBaseline")
+            )
+            if not telemetry:
+                _add_violation(
+                    violations,
+                    "semanticAnnotationsMissingDeterministicBaseline",
+                    semantic,
+                    "missing_deterministic_baseline_telemetry",
+                    document=document,
+                )
+                continue
+            if _deterministic_baseline_coverage_regressed(telemetry):
+                _add_violation(
+                    violations,
+                    "semanticAnnotationsMissingDeterministicBaseline",
+                    semantic,
+                    "deterministic_baseline_coverage_regressed",
+                    document=document,
+                )
+
+
 def evaluate_extractions(documents: list[dict[str, Any]], violations: ViolationMap) -> None:
-    for extraction in [
-        *all_rows(documents, "extractions"),
-        *all_rows(documents, "semanticRegionExtractions"),
-    ]:
-        if _is_auto_accepted_model_semantic_region_extraction(extraction):
-            _add_violation(
-                violations,
-                "modelBackedSemanticRegionAutoAccepted",
-                extraction,
-                "model_backed_semantic_region_auto_accepted",
-            )
-        if _is_incompatible_aggregate_extraction(extraction):
-            _add_violation(
-                violations,
-                "aggregateSchemasFromIncompatibleFamilies",
-                extraction,
-                "aggregate_schema_from_incompatible_source_family",
-            )
+    for doc in documents:
+        extraction_rows = _extraction_rows(doc)
+        for extraction in extraction_rows:
+            if _is_auto_accepted_model_semantic_region_extraction(extraction):
+                _add_violation(
+                    violations,
+                    "modelBackedSemanticRegionAutoAccepted",
+                    extraction,
+                    "model_backed_semantic_region_auto_accepted",
+                )
+            if _is_incompatible_aggregate_extraction(extraction):
+                _add_violation(
+                    violations,
+                    "aggregateSchemasFromIncompatibleFamilies",
+                    extraction,
+                    "aggregate_schema_from_incompatible_source_family",
+                )
+            if _is_current_aggregate_extraction(extraction) and _aggregate_lineage_missing(
+                extraction
+            ):
+                _add_violation(
+                    violations,
+                    "aggregateExtractionsMissingRunLineage",
+                    extraction,
+                    "missing_aggregate_run_lineage",
+                    document=dict_value(get_value(doc, "document")),
+                )
+        _evaluate_duplicate_current_aggregates(doc, extraction_rows, violations)
 
 
 def evaluate_canonical_fields(documents: list[dict[str, Any]], violations: ViolationMap) -> None:
@@ -111,6 +155,79 @@ def _canonical_field_rows(doc: dict[str, Any]) -> list[dict[str, Any]]:
     for key in ("fields", "canonicalFields", "canonical_fields"):
         rows.extend(row for row in list_value(get_value(doc, key)) if isinstance(row, dict))
     return rows
+
+
+def _extraction_rows(doc: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for key in ("extractions", "semanticRegionExtractions"):
+        rows.extend(row for row in list_value(get_value(doc, key)) if isinstance(row, dict))
+    return rows
+
+
+def _requires_deterministic_baseline_telemetry(semantic: dict[str, Any]) -> bool:
+    source_engine = _normalized_text(get_value(semantic, "source_engine", "sourceEngine"))
+    return source_engine in {"qwen3_vl_8b", "docling"}
+
+
+def _deterministic_baseline_coverage_regressed(telemetry: dict[str, Any]) -> bool:
+    if bool_value(get_value(telemetry, "qwen_annotation_failed", "qwenAnnotationFailed")):
+        return False
+    baseline_region_count = get_value(
+        telemetry,
+        "baseline_region_count",
+        "baselineRegionCount",
+    )
+    plan_region_count = get_value(telemetry, "plan_region_count", "planRegionCount")
+    if baseline_region_count in (None, "") or plan_region_count in (None, ""):
+        return True
+    return int_value(plan_region_count) < int_value(baseline_region_count)
+
+
+def _evaluate_duplicate_current_aggregates(
+    doc: dict[str, Any],
+    extraction_rows: list[dict[str, Any]],
+    violations: ViolationMap,
+) -> None:
+    current_by_key: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for extraction in extraction_rows:
+        if not _is_current_aggregate_extraction(extraction):
+            continue
+        schema_name = _normalized_schema_family(get_value(extraction, "schema_name", "schemaName"))
+        if not schema_name:
+            continue
+        current_by_key.setdefault((schema_name, "aggregate"), []).append(extraction)
+    document = dict_value(get_value(doc, "document"))
+    for schema_scope, rows in sorted(current_by_key.items()):
+        if len(rows) <= 1:
+            continue
+        schema_name, scope = schema_scope
+        _add_violation(
+            violations,
+            "duplicateCurrentAggregateExtractions",
+            {"id": f"{schema_name}:{scope}"},
+            "duplicate_current_aggregate_extraction",
+            document=document,
+        )
+
+
+def _is_current_aggregate_extraction(extraction: dict[str, Any]) -> bool:
+    scope = _normalized_text(get_value(extraction, "extraction_scope", "extractionScope"))
+    return scope == "aggregate" and bool_value(get_value(extraction, "is_current", "isCurrent"))
+
+
+def _aggregate_lineage_missing(extraction: dict[str, Any]) -> bool:
+    normalization = dict_value(
+        get_value(extraction, "normalization_json", "normalizationJson", "normalization")
+    )
+    metadata = dict_value(get_value(extraction, "metadata_json", "metadataJson", "metadata"))
+    run_id = get_value(normalization, "run_id", "runId") or get_value(metadata, "run_id", "runId")
+    source_run_ids = list_value(
+        get_value(normalization, "source_run_ids", "sourceRunIds")
+    ) or list_value(get_value(metadata, "source_run_ids", "sourceRunIds"))
+    region_extraction_ids = list_value(
+        get_value(normalization, "regionExtractionIds", "region_extraction_ids")
+    ) or list_value(get_value(metadata, "regionExtractionIds", "region_extraction_ids"))
+    return not (run_id and source_run_ids and region_extraction_ids)
 
 
 def _semantic_regions_by_id(documents: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:

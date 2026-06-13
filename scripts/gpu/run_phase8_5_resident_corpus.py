@@ -504,6 +504,7 @@ SELECT quality_mode, profile_name, source_engine::text AS source_engine, model_n
        prompt_version, status, review_required,
        manifest_json ->> 'document_type' AS document_type,
        manifest_json -> 'document_type_scores' AS document_type_scores,
+       manifest_json -> 'deterministic_baseline' AS deterministic_baseline,
        (
          SELECT count(*)
          FROM semantic_region_annotations r

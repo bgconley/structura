@@ -1412,6 +1412,139 @@ def test_hard_invariants_normalize_aggregate_schema_and_source_families() -> Non
     assert summary["invariants"]["aggregateSchemasFromIncompatibleFamilies"]["violationCount"] == 0
 
 
+def test_hard_invariants_flag_duplicate_current_aggregate_extractions() -> None:
+    document = _safe_document_report()
+    document["extractions"].extend(
+        [
+            {
+                "id": "aggregate-1",
+                "schema_name": "invoice",
+                "extraction_scope": "aggregate",
+                "semantic_annotation_id": "annotation-1",
+                "source_engine": "system",
+                "review_status": "needs_review",
+                "is_current": True,
+                "normalization_json": {
+                    "run_id": "run-1",
+                    "sourceRunIds": ["source-run-1"],
+                    "regionExtractionIds": ["region-extraction-1"],
+                },
+            },
+            {
+                "id": "aggregate-2",
+                "schema_name": "invoice",
+                "extraction_scope": "aggregate",
+                "semantic_annotation_id": "annotation-1",
+                "source_engine": "system",
+                "review_status": "needs_review",
+                "is_current": True,
+                "normalization_json": {
+                    "run_id": "run-1",
+                    "sourceRunIds": ["source-run-2"],
+                    "regionExtractionIds": ["region-extraction-2"],
+                },
+            },
+        ]
+    )
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["totalViolationCount"] == 1
+    assert summary["invariants"]["duplicateCurrentAggregateExtractions"]["violationCount"] == 1
+    assert summary["invariants"]["duplicateCurrentAggregateExtractions"]["examples"] == [
+        {
+            "reason": "duplicate_current_aggregate_extraction",
+            "documentId": "doc-safe",
+            "entityId": "invoice:aggregate",
+        }
+    ]
+
+
+def test_hard_invariants_flag_current_aggregate_missing_run_lineage() -> None:
+    document = _safe_document_report()
+    document["extractions"].append(
+        {
+            "id": "aggregate-missing-lineage",
+            "schema_name": "invoice",
+            "extraction_scope": "aggregate",
+            "semantic_annotation_id": "annotation-1",
+            "source_engine": "system",
+            "review_status": "needs_review",
+            "is_current": True,
+            "normalization_json": {"regionExtractionIds": ["region-extraction-1"]},
+        }
+    )
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert summary["invariants"]["aggregateExtractionsMissingRunLineage"]["violationCount"] == 1
+    assert summary["invariants"]["aggregateExtractionsMissingRunLineage"]["examples"] == [
+        {
+            "reason": "missing_aggregate_run_lineage",
+            "documentId": "doc-safe",
+            "entityId": "aggregate-missing-lineage",
+        }
+    ]
+
+
+def test_hard_invariants_flag_missing_deterministic_baseline_telemetry() -> None:
+    document = _safe_document_report()
+    document["semantic"] = [
+        {
+            "id": "semantic-current",
+            "source_engine": "qwen3_vl_8b",
+            "status": "succeeded",
+        }
+    ]
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert (
+        summary["invariants"]["semanticAnnotationsMissingDeterministicBaseline"]["violationCount"]
+        == 1
+    )
+    assert summary["invariants"]["semanticAnnotationsMissingDeterministicBaseline"]["examples"] == [
+        {
+            "reason": "missing_deterministic_baseline_telemetry",
+            "documentId": "doc-safe",
+            "entityId": "semantic-current",
+        }
+    ]
+
+
+def test_hard_invariants_flag_deterministic_baseline_coverage_regression() -> None:
+    document = _safe_document_report()
+    document["semantic"] = [
+        {
+            "id": "semantic-current",
+            "source_engine": "qwen3_vl_8b",
+            "status": "succeeded",
+            "deterministic_baseline": {
+                "baseline_region_count": 2,
+                "plan_region_count": 1,
+            },
+        }
+    ]
+
+    summary = evaluate_hard_correctness_invariants([document])
+
+    assert summary["status"] == "failed"
+    assert (
+        summary["invariants"]["semanticAnnotationsMissingDeterministicBaseline"]["violationCount"]
+        == 1
+    )
+    assert summary["invariants"]["semanticAnnotationsMissingDeterministicBaseline"]["examples"] == [
+        {
+            "reason": "deterministic_baseline_coverage_regressed",
+            "documentId": "doc-safe",
+            "entityId": "semantic-current",
+        }
+    ]
+
+
 def test_reliability_report_includes_hard_invariant_summary() -> None:
     report = build_phase85_reliability_report(
         run_id="phase85-20260604-smoke-001",
