@@ -18,6 +18,9 @@ from lib.model_runtime.reliability_control_summary_acceptance import (
     dedupe_summary_acceptance_check,
     evidence_summary_acceptance_check,
 )
+from lib.model_runtime.reliability_document_outcome_acceptance import (
+    document_outcomes_acceptance_check,
+)
 from lib.model_runtime.reliability_envelope_summary_acceptance import (
     envelope_summary_acceptance_check,
 )
@@ -103,6 +106,7 @@ def evaluate_phase85_report_acceptance(
         "extractionPressure": extraction_pressure_acceptance_check(reports),
         "safeOutcomeSummary": safe_outcome_summary_acceptance_check(reports),
         "qualitySummary": quality_summary_acceptance_check(reports),
+        "documentOutcomes": document_outcomes_acceptance_check(reports),
         "hardCorrectnessInvariants": _hard_correctness_check(reports),
         "operationalSLOs": _operational_slo_check(reports),
         "goldCorpusQuality": gold_corpus_acceptance_check(reports, require_gold=require_gold),

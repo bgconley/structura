@@ -68,6 +68,43 @@ def test_reliability_report_includes_run_manifest_and_lineage_summaries() -> Non
     }
 
 
+def test_reliability_report_includes_document_outcomes_and_overfitting_guards() -> None:
+    report = build_phase85_reliability_report(
+        run_id="phase85-20260604-smoke-001",
+        title_prefix="Phase 8.5 Smoke",
+        documents=[_document_report()],
+    )
+
+    assert report["documentOutcomes"] == [
+        {
+            "documentId": "doc-1",
+            "filename": None,
+            "documentFamily": "invoice",
+            "releaseOutcome": "needs_human_review",
+            "abstentionClass": "not_abstained",
+            "holdoutLabel": "pinned_corpus",
+            "overfittingGuards": {
+                "pinnedCorpus": True,
+                "privateHoldout": False,
+                "syntheticAdversarial": False,
+                "usedForPromptTuning": False,
+                "reviewedBeforeDefaultFlip": False,
+            },
+        }
+    ]
+    assert report["documentOutcomeSummary"] == {
+        "documentCount": 1,
+        "outcomeCounts": {"needs_human_review": 1},
+        "abstentionClassCounts": {"not_abstained": 1},
+        "holdoutLabelCounts": {"pinned_corpus": 1},
+        "pipelineFailedCount": 0,
+        "holdoutDocumentCount": 0,
+        "adversarialDocumentCount": 0,
+        "promptTunedHoldoutCount": 0,
+        "reviewedHoldoutDocumentCount": 0,
+    }
+
+
 def test_reliability_report_summarizes_envelopes_visual_routes_and_safe_outcomes() -> None:
     report = build_phase85_reliability_report(
         run_id="phase85-20260604-smoke-001",

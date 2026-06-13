@@ -267,6 +267,63 @@ def test_resident_manifest_carries_corpus_gold_metrics_into_ingest_metadata(
     assert documents[0]["goldThresholds"]["expectedCalibrationError"] == 0.05
 
 
+def test_resident_manifest_carries_holdout_metadata_into_report_metadata(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    runner = _load_resident_runner()
+    pdf = tmp_path / "holdout.pdf"
+    pdf.write_bytes(b"%PDF-1.7\n")
+    manifest = tmp_path / "phase8_5_resident_manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "documents": [
+                    {
+                        "path": str(pdf),
+                        "holdoutLabel": "private_holdout",
+                        "overfittingGuards": {
+                            "pinnedCorpus": False,
+                            "privateHoldout": True,
+                            "syntheticAdversarial": False,
+                            "usedForPromptTuning": False,
+                            "reviewedBeforeDefaultFlip": True,
+                        },
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    document_id = uuid4()
+
+    monkeypatch.setattr(runner, "_resolve_owner", lambda: (uuid4(), uuid4()))
+    monkeypatch.setattr(
+        runner,
+        "ingest_document_path",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            document_id=document_id,
+            sha256="a" * 64,
+        ),
+    )
+
+    documents = runner._ingest_documents(
+        runner._resolve_corpus_entries(SimpleNamespace(pdf=None, manifest=manifest)),
+        run_id="phase85-holdout",
+        title_prefix="Phase 8.5 Holdout",
+        requested_by="test",
+    )
+
+    assert documents[0]["holdoutLabel"] == "private_holdout"
+    assert documents[0]["overfittingGuards"]["privateHoldout"] is True
+    assert runner._gold_metadata_by_document_id(documents) == {
+        document_id: {
+            "holdoutLabel": "private_holdout",
+            "overfittingGuards": documents[0]["overfittingGuards"],
+        }
+    }
+
+
 def test_fetch_report_attaches_gold_metadata_to_reliability_report(monkeypatch) -> None:
     runner = _load_resident_runner()
     document_id = uuid4()
@@ -334,6 +391,34 @@ def _report(*, hard_status: str) -> dict[str, object]:
         "extractionPressure": {"selectedTaskCount": 1},
         "safeOutcomeSummary": {"unsafeFailureCount": 0},
         "qualitySummary": {"documents": 1},
+        "documentOutcomes": [
+            {
+                "documentId": "doc-private-1",
+                "filename": "private-holdout.pdf",
+                "documentFamily": "invoice",
+                "releaseOutcome": "needs_human_review",
+                "abstentionClass": "not_abstained",
+                "holdoutLabel": "private_holdout",
+                "overfittingGuards": {
+                    "pinnedCorpus": False,
+                    "privateHoldout": True,
+                    "syntheticAdversarial": False,
+                    "usedForPromptTuning": False,
+                    "reviewedBeforeDefaultFlip": True,
+                },
+            }
+        ],
+        "documentOutcomeSummary": {
+            "documentCount": 1,
+            "outcomeCounts": {"needs_human_review": 1},
+            "abstentionClassCounts": {"not_abstained": 1},
+            "holdoutLabelCounts": {"private_holdout": 1},
+            "pipelineFailedCount": 0,
+            "holdoutDocumentCount": 1,
+            "adversarialDocumentCount": 0,
+            "promptTunedHoldoutCount": 0,
+            "reviewedHoldoutDocumentCount": 1,
+        },
         "repeatabilityFingerprints": {
             "documentFamily": "family",
             "semanticRegions": "semantic",

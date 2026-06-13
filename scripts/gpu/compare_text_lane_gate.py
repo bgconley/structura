@@ -49,9 +49,41 @@ def _filename(document: dict[str, Any]) -> str:
     )
 
 
+def _document_id(document: dict[str, Any]) -> str:
+    info = document.get("document") or {}
+    return str(
+        info.get("id")
+        or info.get("document_id")
+        or info.get("documentId")
+        or document.get("document_id")
+        or document.get("documentId")
+        or ""
+    )
+
+
+def _release_outcomes(report: dict[str, Any]) -> tuple[dict[str, str], dict[str, str]]:
+    by_id: dict[str, str] = {}
+    by_filename: dict[str, str] = {}
+    for row in report.get("documentOutcomes") or []:
+        if not isinstance(row, dict):
+            continue
+        outcome = row.get("releaseOutcome") or row.get("release_outcome")
+        if not outcome:
+            continue
+        document_id = row.get("documentId") or row.get("document_id")
+        filename = row.get("filename")
+        if document_id:
+            by_id[str(document_id)] = str(outcome)
+        if filename:
+            by_filename[str(filename)] = str(outcome)
+    return by_id, by_filename
+
+
 def _doc_stats(report: dict[str, Any]) -> dict[str, dict[str, Any]]:
     stats: dict[str, dict[str, Any]] = {}
+    release_by_id, release_by_filename = _release_outcomes(report)
     for document in report.get("documents", []):
+        name = _filename(document)
         jobs = document.get("jobs") or []
         job_counter = Counter(str(job.get("status")) for job in jobs if isinstance(job, dict))
         extractions = document.get("extractions") or []
@@ -67,7 +99,10 @@ def _doc_stats(report: dict[str, Any]) -> dict[str, dict[str, Any]]:
             outcome = row.get("quality_outcome") or row.get("qualityOutcome")
             if outcome:
                 quality[str(outcome)] += 1
-        stats[_filename(document)] = {
+        release_outcome = release_by_id.get(_document_id(document)) or release_by_filename.get(name)
+        if release_outcome:
+            quality = Counter({release_outcome: 1})
+        stats[name] = {
             "line_items": len(document.get("lineItems") or []),
             "fields": len(document.get("fields") or []),
             "observations": len(document.get("observations") or []),

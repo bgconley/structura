@@ -125,6 +125,16 @@ def test_model_corpus_readme_requires_manifest_profile_lineage() -> None:
     ) in normalized
 
 
+def test_model_corpus_readme_documents_holdout_guard_shape() -> None:
+    content = MODEL_CORPUS_README.read_text(encoding="utf-8")
+    normalized = re.sub(r"\s+", " ", content)
+
+    assert "`holdoutLabel`" in normalized
+    assert "`overfittingGuards`" in normalized
+    assert "`usedForPromptTuning` must be `false` for private holdout documents" in normalized
+    assert "`documentOutcomeSummary` must report zero `pipelineFailedCount`" in normalized
+
+
 def test_model_corpus_readme_requires_passing_evidence_artifact_statuses() -> None:
     content = MODEL_CORPUS_README.read_text(encoding="utf-8")
     normalized = re.sub(r"\s+", " ", content)

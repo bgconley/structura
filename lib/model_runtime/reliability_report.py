@@ -3,6 +3,10 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
+from lib.model_runtime.reliability_document_outcomes import (
+    document_outcome_summary,
+    document_outcomes_from_documents,
+)
 from lib.model_runtime.reliability_fingerprints import repeatability_fingerprints
 from lib.model_runtime.reliability_gold_metrics import evaluate_gold_corpus_metrics_from_documents
 from lib.model_runtime.reliability_invariants import evaluate_hard_correctness_invariants
@@ -51,6 +55,9 @@ def build_phase85_reliability_report(
         "runManifest": run_manifest,
         "documents": safe_documents,
     }
+    document_outcomes = document_outcomes_from_documents(safe_documents)
+    report["documentOutcomes"] = document_outcomes
+    report["documentOutcomeSummary"] = document_outcome_summary(document_outcomes)
     report["plannerSummary"] = planner_summary(run_id, safe_documents)
     report["candidateAdmissionSummary"] = candidate_admission_summary(run_id, safe_documents)
     report["contractSummary"] = contract_summary(run_id, safe_documents)

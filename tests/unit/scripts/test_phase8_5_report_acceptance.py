@@ -61,6 +61,34 @@ def _report(run_id: str, *, candidate_fingerprint: str) -> dict[str, object]:
         "extractionPressure": {"selectedTaskCount": 1},
         "safeOutcomeSummary": {"unsafeFailureCount": 0},
         "qualitySummary": {"documents": 1},
+        "documentOutcomes": [
+            {
+                "documentId": "doc-private-1",
+                "filename": "private-holdout.pdf",
+                "documentFamily": "invoice",
+                "releaseOutcome": "needs_human_review",
+                "abstentionClass": "not_abstained",
+                "holdoutLabel": "private_holdout",
+                "overfittingGuards": {
+                    "pinnedCorpus": False,
+                    "privateHoldout": True,
+                    "syntheticAdversarial": False,
+                    "usedForPromptTuning": False,
+                    "reviewedBeforeDefaultFlip": True,
+                },
+            }
+        ],
+        "documentOutcomeSummary": {
+            "documentCount": 1,
+            "outcomeCounts": {"needs_human_review": 1},
+            "abstentionClassCounts": {"not_abstained": 1},
+            "holdoutLabelCounts": {"private_holdout": 1},
+            "pipelineFailedCount": 0,
+            "holdoutDocumentCount": 1,
+            "adversarialDocumentCount": 0,
+            "promptTunedHoldoutCount": 0,
+            "reviewedHoldoutDocumentCount": 1,
+        },
         "repeatabilityFingerprints": {
             "documentFamily": "stable-family",
             "semanticRegions": "stable-semantic",

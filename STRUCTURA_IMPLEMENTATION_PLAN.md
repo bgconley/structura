@@ -1095,6 +1095,7 @@ Tasks:
 - Add an internal region envelope as the authoritative intermediate between model-output schemas and candidate insertion, with `normalization_json` retained only as a compatibility projection.
 - Add Structura-owned evidence concretization, candidate admission gates, queryable admission telemetry, and planner/candidate/reconciliation dedupe so prompt artifacts, placeholders, evidence-less facts, incompatible candidates, and duplicate aggregate copies cannot be admitted.
 - Add run manifests, repeatability fingerprints, resident-corpus reliability reports, and truth/review/debug surface separation before Phase 9 consumes model-backed outputs.
+- Add per-document release outcomes, abstention classes, holdout labels, and overfitting guards to resident-corpus reliability reports so model-backed gates prove generalization instead of pinned-corpus memorization.
 - Implement live text embedding service on the RTX 3090 with 1536-dimensional vectors.
 - Implement true visual embedding service for page/image bytes with native 2048-dimensional vectors.
 - Add model profile registry, model health, redacted observability, pinned Compose profiles, and model-backed corpus gates.
@@ -1110,6 +1111,7 @@ Phase 8.5 gate:
 - Qwen3-VL, text embeddings, and visual embeddings pass deterministic tests plus GPU live model validation; Granite comparison runs are explicit rollback evidence, not default runtime requirements.
 - Model-backed golden corpus evidence exists for handwriting, structured extraction, text retrieval, visual retrieval, and hybrid retrieval.
 - The resident corpus passes the Phase 8.5 reliable-extraction hard invariants: no missing extraction contracts, no missing grounding, no incompatible family/schema tasks, no prompt/placeholder/literal-null candidates admitted, no admitted candidates without concrete evidence, no model-backed semantic-region rows auto-accepted, and no fabricated canonical required fields.
+- Model-backed acceptance reports include `documentOutcomes` and `documentOutcomeSummary`; they must include a private holdout or synthetic-adversarial slice, reject prompt-tuned holdouts, and report zero `pipeline_failed` outcomes unless the run intentionally injects runtime failures.
 - Phase 9 remains gated until reliability reports distinguish truth, review, and debug surfaces and every document can reach evidence-grounded candidates, bounded review/partial candidates, or a classified abstention/skip.
 
 ## Phase 9 - Analysis Workspace

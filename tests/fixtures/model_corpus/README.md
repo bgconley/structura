@@ -19,6 +19,20 @@ If the private manifest supplies runManifest model profile fields such as
 `visual_embedding_profile`, those runManifest model profile fields must match the
 corresponding evidence section `profile` values.
 
+Private resident-corpus manifests used for release gates may declare
+`holdoutLabel` and `overfittingGuards` at either the corpus level or per
+document. Per-document values override corpus defaults. Use stable labels such
+as `pinned_corpus`, `private_holdout`, or `synthetic_adversarial`; do not encode
+private filenames, counterparties, or document contents in labels.
+`overfittingGuards` must include boolean `pinnedCorpus`, `privateHoldout`,
+`syntheticAdversarial`, `usedForPromptTuning`, and
+`reviewedBeforeDefaultFlip` fields. `usedForPromptTuning` must be `false` for
+private holdout documents. When a default flip is being evaluated, private
+holdout and adversarial documents must have `reviewedBeforeDefaultFlip = true`.
+Release reports generated from these manifests include `documentOutcomes` and
+`documentOutcomeSummary`; `documentOutcomeSummary` must report zero
+`pipelineFailedCount` unless the run intentionally injects runtime failures.
+
 Each model-backed evidence section (`qwen`, `granite`, `textEmbedding`, and
 `visualEmbedding`) must include non-empty `profile`, `runId`, `measuredAt`, and
 `evidencePath` fields. `measuredAt` must be an ISO-8601 timestamp with timezone.

@@ -15,6 +15,7 @@ REQUIRED_REPORT_SUMMARIES = (
     "extractionPressure",
     "safeOutcomeSummary",
     "qualitySummary",
+    "documentOutcomeSummary",
     "repeatabilityFingerprints",
     "acceptanceGates",
 )
@@ -31,6 +32,7 @@ REPORT_SUMMARY_ACCEPTANCE_COVERAGE = {
     "extractionPressure": ("extractionPressure",),
     "safeOutcomeSummary": ("safeOutcomeSummary",),
     "qualitySummary": ("qualitySummary",),
+    "documentOutcomeSummary": ("documentOutcomes",),
     "repeatabilityFingerprints": ("repeatabilityFingerprints",),
     "acceptanceGates": (
         "hardCorrectnessInvariants",

@@ -244,6 +244,10 @@ def _ingest_documents(
         if entry.gold_metrics is not None and entry.gold_thresholds is not None:
             document["goldMetrics"] = dict(entry.gold_metrics)
             document["goldThresholds"] = dict(entry.gold_thresholds)
+        if entry.holdout_label is not None:
+            document["holdoutLabel"] = entry.holdout_label
+        if entry.overfitting_guards is not None:
+            document["overfittingGuards"] = dict(entry.overfitting_guards)
         documents.append(document)
         _emit("ingested", run_id=run_id, **document)
     return documents

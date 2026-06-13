@@ -215,3 +215,10 @@ classes are unrepresentable.
   Remaining: E5 representation/orchestration collapse, including retiring
   legacy `granite_*` model-output/backend labels that are now compatibility
   names rather than default runtime requirements.
+- 2026-06-13: The generalization gate now records `documentOutcomes` and
+  `documentOutcomeSummary` for every resident-corpus report. Model-backed
+  acceptance requires a private holdout or synthetic-adversarial slice, rejects
+  holdout documents marked as prompt-tuning inputs, and treats
+  `pipeline_failed` as valid only for intentional failure-injection runs or
+  real runtime defects. Safe review, insufficient-signal, and no-target
+  outcomes remain valid document-quality outcomes rather than job failures.

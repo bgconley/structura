@@ -136,6 +136,109 @@ def test_report_acceptance_fails_for_empty_required_summaries() -> None:
     ]
 
 
+def test_report_acceptance_requires_per_document_release_outcome_fields() -> None:
+    report = _resident_report()
+    del report["documentOutcomes"][0]["releaseOutcome"]
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["documentOutcomes"]["status"] == "failed"
+    assert summary["checks"]["documentOutcomes"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "invalid": ["documentOutcomes[0].releaseOutcome"],
+            "details": report["documentOutcomes"][0],
+        }
+    ]
+
+
+def test_report_acceptance_fails_model_backed_without_holdout_or_adversarial_slice() -> None:
+    report = _resident_report()
+    report["documentOutcomes"][0]["holdoutLabel"] = "pinned_corpus"
+    report["documentOutcomes"][0]["overfittingGuards"] = {
+        "pinnedCorpus": True,
+        "privateHoldout": False,
+        "syntheticAdversarial": False,
+        "usedForPromptTuning": False,
+        "reviewedBeforeDefaultFlip": False,
+    }
+    report["documentOutcomeSummary"] = {
+        "documentCount": 1,
+        "outcomeCounts": {"needs_human_review": 1},
+        "abstentionClassCounts": {"not_abstained": 1},
+        "holdoutLabelCounts": {"pinned_corpus": 1},
+        "pipelineFailedCount": 0,
+        "holdoutDocumentCount": 0,
+        "adversarialDocumentCount": 0,
+        "promptTunedHoldoutCount": 0,
+        "reviewedHoldoutDocumentCount": 0,
+    }
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["documentOutcomes"]["status"] == "failed"
+    assert summary["checks"]["documentOutcomes"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "invalid": ["modelBackedHoldoutOrAdversarialSlice"],
+            "details": report["documentOutcomeSummary"],
+        }
+    ]
+
+
+def test_report_acceptance_fails_prompt_tuned_private_holdout() -> None:
+    report = _resident_report()
+    report["documentOutcomes"][0]["overfittingGuards"]["usedForPromptTuning"] = True
+    report["documentOutcomeSummary"]["promptTunedHoldoutCount"] = 1
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["documentOutcomes"]["status"] == "failed"
+    assert summary["checks"]["documentOutcomes"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "invalid": ["overfittingGuards.usedForPromptTuning"],
+            "details": report["documentOutcomeSummary"],
+        }
+    ]
+
+
+def test_report_acceptance_fails_pipeline_failed_without_failure_injection() -> None:
+    report = _resident_report()
+    report["documentOutcomes"][0]["releaseOutcome"] = "pipeline_failed"
+    report["documentOutcomes"][0]["abstentionClass"] = "runtime_failure"
+    report["documentOutcomeSummary"] = {
+        "documentCount": 1,
+        "outcomeCounts": {"pipeline_failed": 1},
+        "abstentionClassCounts": {"runtime_failure": 1},
+        "holdoutLabelCounts": {"private_holdout": 1},
+        "pipelineFailedCount": 1,
+        "holdoutDocumentCount": 1,
+        "adversarialDocumentCount": 0,
+        "promptTunedHoldoutCount": 0,
+        "reviewedHoldoutDocumentCount": 1,
+    }
+
+    summary = evaluate_phase85_report_acceptance([report])
+
+    assert summary["status"] == "failed"
+    assert summary["checks"]["documentOutcomes"]["status"] == "failed"
+    assert summary["checks"]["documentOutcomes"]["failures"] == [
+        {
+            "reportIndex": 0,
+            "runId": "phase85-pass-1",
+            "invalid": ["pipelineFailedWithoutFailureInjection"],
+            "details": report["documentOutcomeSummary"],
+        }
+    ]
+
+
 def test_report_acceptance_fails_when_target_dead_letter_count_is_nonzero() -> None:
     report = _resident_report()
     report["acceptanceGates"]["operationalSLOs"]["metrics"]["targetQueueDeadLetterCount"] = 1
@@ -606,6 +709,34 @@ def _resident_report() -> dict[str, Any]:
         "extractionPressure": {"selectedTaskCount": 2},
         "safeOutcomeSummary": {"unsafeFailureCount": 0},
         "qualitySummary": {"documents": 1},
+        "documentOutcomes": [
+            {
+                "documentId": "doc-private-1",
+                "filename": "private-holdout.pdf",
+                "documentFamily": "invoice",
+                "releaseOutcome": "needs_human_review",
+                "abstentionClass": "not_abstained",
+                "holdoutLabel": "private_holdout",
+                "overfittingGuards": {
+                    "pinnedCorpus": False,
+                    "privateHoldout": True,
+                    "syntheticAdversarial": False,
+                    "usedForPromptTuning": False,
+                    "reviewedBeforeDefaultFlip": True,
+                },
+            }
+        ],
+        "documentOutcomeSummary": {
+            "documentCount": 1,
+            "outcomeCounts": {"needs_human_review": 1},
+            "abstentionClassCounts": {"not_abstained": 1},
+            "holdoutLabelCounts": {"private_holdout": 1},
+            "pipelineFailedCount": 0,
+            "holdoutDocumentCount": 1,
+            "adversarialDocumentCount": 0,
+            "promptTunedHoldoutCount": 0,
+            "reviewedHoldoutDocumentCount": 1,
+        },
         "repeatabilityFingerprints": {
             "documentFamily": "doc-family",
             "semanticRegions": "semantic",
