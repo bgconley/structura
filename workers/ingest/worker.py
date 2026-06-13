@@ -84,10 +84,12 @@ def _acknowledge_ingested_document(document_id: UUID) -> dict[str, object]:
                   a.sha256,
                   a.byte_size
                 FROM documents d
-                JOIN document_assets a ON a.id = d.canonical_asset_id
+                JOIN document_assets a ON a.document_id = d.id
                 WHERE d.id = %s
                   AND d.deleted_at IS NULL
                   AND a.asset_role = 'original'
+                ORDER BY a.created_at ASC
+                LIMIT 1
                 """,
                 (document_id,),
             )
