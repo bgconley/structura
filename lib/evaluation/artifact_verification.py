@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -10,8 +9,7 @@ from uuid import UUID
 
 from lib.document_parsing.source_adapter import DocumentSource, DocumentSourceError
 from lib.evaluation.capture_models import CaptureIntegrityError, PersistedGenerationCapture
-
-MAX_ORIGINAL_BYTES = 100 * 1024 * 1024
+from lib.evaluation.source_artifact_io import MAX_ORIGINAL_BYTES, original_metadata
 
 
 @dataclass(frozen=True)
@@ -52,7 +50,7 @@ def verify_capture_source(
             inventory.byte_size,
         ):
             raise ValueError("Original identity differs from stored source.")
-        digest, byte_size, detected_mime = _original_metadata(original_path)
+        digest, byte_size, detected_mime = original_metadata(original_path)
         if (digest, byte_size, detected_mime) != (
             registered.original_sha256,
             registered.byte_size,
@@ -82,30 +80,3 @@ def verify_capture_source(
         )
     except (OSError, ValueError, DocumentSourceError):
         raise CaptureIntegrityError("Original or source renders could not be verified.") from None
-
-
-def _original_metadata(path: Path) -> tuple[str, int, str]:
-    digest = hashlib.sha256()
-    total = 0
-    with path.open("rb") as stream:
-        header = stream.read(16)
-        digest.update(header)
-        total += len(header)
-        while chunk := stream.read(min(1024 * 1024, MAX_ORIGINAL_BYTES - total + 1)):
-            total += len(chunk)
-            if total > MAX_ORIGINAL_BYTES:
-                raise ValueError("Original exceeds supported byte budget.")
-            digest.update(chunk)
-    if header.startswith(b"%PDF-"):
-        mime = "application/pdf"
-    elif header.startswith(b"\x89PNG\r\n\x1a\n"):
-        mime = "image/png"
-    elif header.startswith(b"\xff\xd8\xff"):
-        mime = "image/jpeg"
-    elif header.startswith((b"II\x2a\x00", b"MM\x00\x2a")):
-        mime = "image/tiff"
-    elif header.startswith(b"RIFF") and header[8:12] == b"WEBP":
-        mime = "image/webp"
-    else:
-        raise ValueError("Original MIME signature is unsupported.")
-    return digest.hexdigest(), total, mime

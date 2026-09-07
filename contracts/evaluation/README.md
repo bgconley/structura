@@ -147,6 +147,36 @@ renders match. It still does not prove the captured transcription is supported b
 those pixels, that a human reviewed the labels, or that a live model ran. The
 verifier returns this separate result without retroactively changing capture claims.
 
+## Pre-inference reference render binding
+
+PNG compression backends can encode identical RGB pixels differently. The frozen
+renderer identity includes Pillow's PNG/zlib backend for both image and PDF page
+rasters; a backend change does not silently claim the same encoded source identity.
+
+`lib.evaluation.annotation_render_binding.rebind_annotation_renders` takes the
+original annotation, explicit local original path/asset ID, an exact mapping of
+page numbers to the labelled PNG paths, and render scale. It verifies the pinned
+original bytes/MIME/size and full page inventory, then verifies each labelled PNG's
+encoded hash against the original annotation. Every labelled image must be an
+opaque RGB PNG without orientation or color transforms, within the 100 MiB encoded
+and 40 million pixel bounds. Actual source renders must have exactly the same
+dimensions and RGB bytes. One altered pixel, a changed reference byte hash, or a
+missing page rejects the whole operation; there is no tolerance or resampling.
+
+Only after all pages match does the adapter return a copied annotation with current
+encoded render hashes and an immutable `AnnotationRenderBindingRecord`. The record
+pins original/rebound annotation hashes, original bytes and inventory, render scale,
+each old/new PNG hash, exact RGB8 hash and dimensions, and renderer/version. Text,
+geometry, labels, author/adjudicator declarations and their timestamps stay intact.
+This is an encoding transform, not new annotation authorship or human review.
+
+The caller must persist both annotations and the transform record before inference,
+and score against the rebound annotation's frozen hash. The adapter does not attest
+call timing or write files. Post-inference output cannot be used to alter reference
+labels. Committed historical fixtures remain unchanged. Captured generations and
+`verify_capture_source` still require exact current encoded-byte/render identity;
+this adapter neither rewrites captures nor relaxes those verification checks.
+
 ## File-scoring CLI
 
 `scripts/score_document_parse.py` accepts `--manifest`, a separately recorded

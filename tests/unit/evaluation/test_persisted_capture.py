@@ -8,6 +8,7 @@ import pytest
 
 from lib.document_parsing.source_adapter import renderer_identity
 from lib.document_processing.models import content_digest
+from lib.evaluation.annotation_render_binding import rebind_annotation_renders
 from lib.evaluation.artifact_verification import verify_capture_source
 from lib.evaluation.capture_models import CaptureDeclaration, CaptureIntegrityError
 from lib.evaluation.persisted_capture import validate_persisted_capture
@@ -150,14 +151,29 @@ def test_mode_comes_from_frozen_declaration_and_unknown_prefix_fails(stored, dec
             validate_persisted_capture(stored, declaration=declaration)
 
 
-def _with_installed_renderer(stored):
+def _with_installed_renderer(stored, annotation):
     row = copy.deepcopy(stored)
+    rebound = rebind_annotation_renders(
+        annotation,
+        original_path=FIXTURES / "original.tiff",
+        original_asset_id=row["original_asset_id"],
+        reference_page_paths={page: FIXTURES / f"page-{page}.png" for page in (1, 2)},
+    )
     renderer, version = renderer_identity(row["mime_type"])
     row["config_json"].update(renderer=renderer, renderer_version=version)
     row["config_sha256"] = content_digest(row["config_json"])
-    for checkpoint, page in zip(row["checkpoints"], row["structure_json"]["pages"], strict=True):
-        checkpoint["page_json"]["source"].update(renderer=renderer, renderer_version=version)
-        page["source"].update(renderer=renderer, renderer_version=version)
+    for checkpoint, page, binding in zip(
+        row["checkpoints"], row["structure_json"]["pages"], rebound.record.pages, strict=True
+    ):
+        # This builds a current-runtime fixture capture only after the pinned
+        # historical reference pixels have matched the independently read source.
+        source_update = dict(
+            renderer=renderer,
+            renderer_version=version,
+            image_sha256=binding.rebound_image_sha256,
+        )
+        checkpoint["page_json"]["source"].update(source_update)
+        page["source"].update(source_update)
         checkpoint["content_sha256"] = content_digest(
             dict(
                 page=checkpoint["page_json"],
@@ -169,8 +185,12 @@ def _with_installed_renderer(stored):
     return row
 
 
-def test_optional_verifier_reproduces_registered_original_and_all_pages(stored, declaration):
-    captured = validate_persisted_capture(_with_installed_renderer(stored), declaration=declaration)
+def test_optional_verifier_reproduces_registered_original_and_all_pages(
+    stored, declaration, inputs
+):
+    captured = validate_persisted_capture(
+        _with_installed_renderer(stored, inputs[1]), declaration=declaration
+    )
     proof = verify_capture_source(
         captured,
         original_asset_id=captured.source.original_asset_id,

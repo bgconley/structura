@@ -6,7 +6,7 @@ from importlib.metadata import version
 from uuid import uuid4
 
 import pytest
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, features
 
 from lib.document_parsing.source_adapter import DocumentSource, renderer_identity
 
@@ -105,13 +105,21 @@ def test_opaque_raster_pixels_and_inventory_are_preserved(tmp_path, mode):
         assert raster.tobytes() == expected
 
 
-def test_image_renderer_version_changes_without_invalidating_pdf_identity():
+def test_renderer_identity_freezes_image_policy_and_png_compression_backend():
+    encoder = f"Pillow-{version('Pillow')}/png-zlib-{features.version('zlib')}"
     assert renderer_identity("application/pdf") == (
         "pdfium",
-        f"native-source-raster-v1/pypdfium2-{version('pypdfium2')}",
+        f"native-source-raster-v1/pypdfium2-{version('pypdfium2')}/{encoder}",
     )
     for mime_type in ("image/png", "image/jpeg", "image/tiff", "image/webp"):
         assert renderer_identity(mime_type) == (
             "pillow-exif-oriented",
-            f"native-image-raster-white-v2/Pillow-{version('Pillow')}",
+            f"native-image-raster-white-v2/{encoder}",
         )
+
+
+def test_compression_backend_change_invalidates_both_renderer_identities(monkeypatch):
+    before = {mime: renderer_identity(mime) for mime in ("application/pdf", "image/png")}
+    monkeypatch.setattr(features, "version", lambda feature: "another-png-backend")
+    for mime, identity in before.items():
+        assert renderer_identity(mime) != identity

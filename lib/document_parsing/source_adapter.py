@@ -12,7 +12,7 @@ from typing import Any
 from uuid import UUID
 
 import pypdfium2 as pdfium  # type: ignore[import-untyped]
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, features
 
 from lib.document_parsing.structure import (
     SourceInventory,
@@ -31,10 +31,11 @@ IMAGE_RENDERER_VERSION = "native-image-raster-white-v2"
 
 
 def renderer_identity(mime_type: SourceMediaType) -> tuple[str, str]:
+    png_encoder = f"Pillow-{version('Pillow')}/png-zlib-{features.version('zlib')}"
     if mime_type == "application/pdf":
-        return "pdfium", f"{PDF_RENDERER_VERSION}/pypdfium2-{version('pypdfium2')}"
+        return "pdfium", f"{PDF_RENDERER_VERSION}/pypdfium2-{version('pypdfium2')}/{png_encoder}"
     if mime_type in {"image/png", "image/jpeg", "image/tiff", "image/webp"}:
-        return "pillow-exif-oriented", f"{IMAGE_RENDERER_VERSION}/Pillow-{version('Pillow')}"
+        return "pillow-exif-oriented", f"{IMAGE_RENDERER_VERSION}/{png_encoder}"
     raise DocumentSourceError("Original media type is not supported.")
 
 
