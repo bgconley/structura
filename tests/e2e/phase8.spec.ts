@@ -35,7 +35,8 @@ test("Phase 8 difficult-document visual retrieval and review cues are visible", 
   await expect(page.getByRole("note")).toContainText("handwriting detected");
   await expect(page.getByText("Visual retrieval eligible")).toBeVisible();
 
-  await page.getByRole("button", {name: "R Review Queue"}).click();
+  await page.getByRole("navigation", {name: "Primary"})
+    .getByRole("button", {name: "Review Queue", exact: true}).click();
   await expect(page.getByRole("heading", {name: "Review Queue"})).toBeVisible();
   await expect(page.getByText("document_quality")).toBeVisible();
   await expect(page.getByText("Difficult document requires review")).toBeVisible();

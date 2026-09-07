@@ -26,6 +26,8 @@ test("missing observations never claim healthy services or fabricated queue coun
     await route.fulfill({json: {items: [], total: 0}});
   });
   await page.reload();
-  await expect(page.getByRole("navigation", {name: "Primary"}).getByRole("button", {name: /Inbox/})).toHaveText("IInbox0");
+  const inboxNavigation = page.getByRole("navigation", {name: "Primary"}).getByRole("button", {name: /Inbox/});
+  await expect(inboxNavigation).toContainText("Inbox");
+  await expect(inboxNavigation.locator("small")).toHaveText("0");
   await expect(page.getByText("0 documents displayed", {exact: true})).toBeVisible();
 });

@@ -72,6 +72,8 @@ test("Phase 2 filing surfaces remain reachable on mobile width", async ({page}) 
   await expect(page.getByPlaceholder("New folder name")).toBeVisible();
 
   await page.getByRole("row", {name: /Existing Warranty/}).click();
+  await page.getByRole("navigation", {name: "Inbox panels"})
+    .getByRole("button", {name: "Selected document details", exact: true}).click();
   await expect(page.locator(".inspector")).toContainText("Manual filing");
   await expect(page.locator(".inspector").getByLabel("Title")).toBeVisible();
 });
