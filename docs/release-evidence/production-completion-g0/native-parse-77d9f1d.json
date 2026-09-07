@@ -1,0 +1,29 @@
+{
+  "passed": true,
+  "fixture_type": "synthetic_model_backed_smoke",
+  "source_sha256": "e936e5065e51869b12b3e365c58dcbbe9eb61f4df0130c78b97592ef7f6ea473",
+  "artifact_sha256": "7819d5155f1881adc6699dbaa1874c5154397a6cad3ebddacf50953a566a7864",
+  "page_count": 2,
+  "request_count": 2,
+  "page_states": [
+    "processed",
+    "processed"
+  ],
+  "expected_content_present": {
+    "1": true,
+    "2": true
+  },
+  "element_count": 9,
+  "table_count": 1,
+  "chunk_count": 9,
+  "source_engines": [
+    "qwen3_8_27b"
+  ],
+  "request_latency_ms": [
+    9572,
+    21230
+  ],
+  "docling_imported": false,
+  "production_activated": false,
+  "quality_gate": "not_evaluated"
+}

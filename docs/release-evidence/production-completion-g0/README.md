@@ -42,6 +42,8 @@ The [publication inventory](job-publication-inventory.md) identifies the first c
 
 [Integrity checkpoint 1](integrity-checkpoint-1.md) records the subsequent `c250427` candidate: 1,263 unit tests, 79 database integration tests and the pinned Linux web build passed. It also records real authenticated 27B text/image adapter proof and the named open gates.
 
+[The native parser checkpoint](native-parser-checkpoint.md) records `77d9f1d`: 1,308 unit tests, 99 database integration tests, 37 migrations and a two-page authenticated Qwen-native parsing smoke passed. This candidate has not activated the new parser or passed representative source-quality and capacity gates.
+
 The cached validation images observed on Oxcart are:
 
 | Image | Local image ID |
