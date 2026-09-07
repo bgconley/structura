@@ -1,0 +1,1720 @@
+{
+  "$defs": {
+    "BooleanClaim": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_key": {
+          "$ref": "#/$defs/CanonicalKey"
+        },
+        "raw_value": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "title": "Raw Value",
+          "type": "string"
+        },
+        "primary_source": {
+          "$ref": "#/$defs/TextLocator"
+        },
+        "supporting_sources": {
+          "items": {
+            "$ref": "#/$defs/SupportingQuote"
+          },
+          "maxItems": 8,
+          "title": "Supporting Sources",
+          "type": "array"
+        },
+        "physical_row": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "structural_row": "#/$defs/StructuralRow",
+                  "table_row": "#/$defs/TableRow"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/TableRow"
+                },
+                {
+                  "$ref": "#/$defs/StructuralRow"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Physical Row"
+        },
+        "uncalibrated_score": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Uncalibrated Score"
+        },
+        "value_type": {
+          "const": "boolean",
+          "title": "Value Type",
+          "type": "string"
+        },
+        "typed_value": {
+          "title": "Typed Value",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "canonical_key",
+        "raw_value",
+        "primary_source",
+        "supporting_sources",
+        "physical_row",
+        "uncalibrated_score",
+        "value_type",
+        "typed_value"
+      ],
+      "title": "BooleanClaim",
+      "type": "object"
+    },
+    "CanonicalKey": {
+      "enum": [
+        "invoice.amount_paid",
+        "invoice.balance_due",
+        "invoice.buyer.address",
+        "invoice.buyer.display_name",
+        "invoice.buyer.identifiers",
+        "invoice.buyer.normalized_name",
+        "invoice.buyer.party_type",
+        "invoice.discount_total",
+        "invoice.due_date",
+        "invoice.invoice_number",
+        "invoice.issue_date",
+        "invoice.line_item.amount",
+        "invoice.line_item.category_hint",
+        "invoice.line_item.code",
+        "invoice.line_item.description",
+        "invoice.line_item.gl_hint",
+        "invoice.line_item.gross_amount",
+        "invoice.line_item.quantity",
+        "invoice.line_item.service_date",
+        "invoice.line_item.tax_amount",
+        "invoice.line_item.unit",
+        "invoice.line_item.unit_price",
+        "invoice.purchase_order_number",
+        "invoice.remittance.address",
+        "invoice.remittance.instructions",
+        "invoice.remittance.payee",
+        "invoice.remittance.reference",
+        "invoice.seller.address",
+        "invoice.seller.display_name",
+        "invoice.seller.identifiers",
+        "invoice.seller.normalized_name",
+        "invoice.seller.party_type",
+        "invoice.service_period_end",
+        "invoice.service_period_start",
+        "invoice.shipping_total",
+        "invoice.subtotal",
+        "invoice.tax_total",
+        "invoice.terms",
+        "invoice.total_amount",
+        "medical_eob.claim_number",
+        "medical_eob.group_number",
+        "medical_eob.line_item.allowed_amount",
+        "medical_eob.line_item.amount",
+        "medical_eob.line_item.category_hint",
+        "medical_eob.line_item.code",
+        "medical_eob.line_item.coinsurance",
+        "medical_eob.line_item.copay",
+        "medical_eob.line_item.deductible",
+        "medical_eob.line_item.description",
+        "medical_eob.line_item.diagnosis_code",
+        "medical_eob.line_item.gross_amount",
+        "medical_eob.line_item.modifiers",
+        "medical_eob.line_item.place_of_service",
+        "medical_eob.line_item.plan_paid",
+        "medical_eob.line_item.quantity",
+        "medical_eob.line_item.remark_codes",
+        "medical_eob.line_item.revenue_code",
+        "medical_eob.line_item.service_date",
+        "medical_eob.line_item.service_end_date",
+        "medical_eob.member_id",
+        "medical_eob.patient.address",
+        "medical_eob.patient.display_name",
+        "medical_eob.patient.identifiers",
+        "medical_eob.patient.normalized_name",
+        "medical_eob.patient.party_type",
+        "medical_eob.payer.address",
+        "medical_eob.payer.display_name",
+        "medical_eob.payer.identifiers",
+        "medical_eob.payer.normalized_name",
+        "medical_eob.payer.party_type",
+        "medical_eob.processed_on",
+        "medical_eob.provider.address",
+        "medical_eob.provider.display_name",
+        "medical_eob.provider.identifiers",
+        "medical_eob.provider.normalized_name",
+        "medical_eob.provider.party_type",
+        "medical_eob.received_on",
+        "medical_eob.total_allowed",
+        "medical_eob.total_billed",
+        "medical_eob.total_coinsurance",
+        "medical_eob.total_copay",
+        "medical_eob.total_deductible",
+        "medical_eob.total_patient_responsibility",
+        "medical_eob.total_plan_paid",
+        "receipt.line_item.amount",
+        "receipt.line_item.category_hint",
+        "receipt.line_item.code",
+        "receipt.line_item.description",
+        "receipt.line_item.discount",
+        "receipt.line_item.quantity",
+        "receipt.line_item.tax_category_hint",
+        "receipt.line_item.unit",
+        "receipt.line_item.unit_price",
+        "receipt.merchant.address",
+        "receipt.merchant.display_name",
+        "receipt.merchant.identifiers",
+        "receipt.merchant.normalized_name",
+        "receipt.merchant.party_type",
+        "receipt.transaction.date_local",
+        "receipt.transaction.discount_total",
+        "receipt.transaction.payment_method",
+        "receipt.transaction.payment_reference",
+        "receipt.transaction.receipt_number",
+        "receipt.transaction.register_id",
+        "receipt.transaction.subtotal",
+        "receipt.transaction.tax",
+        "receipt.transaction.time_local",
+        "receipt.transaction.tip",
+        "receipt.transaction.total"
+      ],
+      "type": "string"
+    },
+    "DateClaim": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_key": {
+          "$ref": "#/$defs/CanonicalKey"
+        },
+        "raw_value": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "title": "Raw Value",
+          "type": "string"
+        },
+        "primary_source": {
+          "$ref": "#/$defs/TextLocator"
+        },
+        "supporting_sources": {
+          "items": {
+            "$ref": "#/$defs/SupportingQuote"
+          },
+          "maxItems": 8,
+          "title": "Supporting Sources",
+          "type": "array"
+        },
+        "physical_row": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "structural_row": "#/$defs/StructuralRow",
+                  "table_row": "#/$defs/TableRow"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/TableRow"
+                },
+                {
+                  "$ref": "#/$defs/StructuralRow"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Physical Row"
+        },
+        "uncalibrated_score": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Uncalibrated Score"
+        },
+        "value_type": {
+          "const": "date",
+          "title": "Value Type",
+          "type": "string"
+        },
+        "typed_value": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+          "title": "Typed Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "canonical_key",
+        "raw_value",
+        "primary_source",
+        "supporting_sources",
+        "physical_row",
+        "uncalibrated_score",
+        "value_type",
+        "typed_value"
+      ],
+      "title": "DateClaim",
+      "type": "object"
+    },
+    "ExcludedRow": {
+      "additionalProperties": false,
+      "properties": {
+        "physical_row": {
+          "discriminator": {
+            "mapping": {
+              "structural_row": "#/$defs/StructuralRow",
+              "table_row": "#/$defs/TableRow"
+            },
+            "propertyName": "kind"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/TableRow"
+            },
+            {
+              "$ref": "#/$defs/StructuralRow"
+            }
+          ],
+          "title": "Physical Row"
+        },
+        "reason": {
+          "enum": [
+            "header",
+            "summary",
+            "not_a_line_item",
+            "unreadable",
+            "omitted"
+          ],
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "physical_row",
+        "reason"
+      ],
+      "title": "ExcludedRow",
+      "type": "object"
+    },
+    "FamilyAlternative": {
+      "additionalProperties": false,
+      "properties": {
+        "family": {
+          "enum": [
+            "receipt",
+            "retail_order",
+            "service_record",
+            "invoice",
+            "medical_eob",
+            "medical_bill",
+            "insurance_document",
+            "insurance_denial",
+            "real_estate_title",
+            "mortgage_escrow_statement",
+            "financial_dispute_form",
+            "legal_contract",
+            "legal_notice",
+            "tax_document",
+            "bank_statement",
+            "financial_statement",
+            "identity_document",
+            "warranty",
+            "handwritten_note",
+            "typed_note",
+            "whitepaper",
+            "reference_document",
+            "generic"
+          ],
+          "title": "Family",
+          "type": "string"
+        },
+        "subtype": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Subtype"
+        },
+        "uncalibrated_score": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Uncalibrated Score"
+        },
+        "rationale": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/SourceQuote"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "family",
+        "subtype",
+        "uncalibrated_score",
+        "rationale",
+        "evidence"
+      ],
+      "title": "FamilyAlternative",
+      "type": "object"
+    },
+    "FamilyCoverage": {
+      "additionalProperties": false,
+      "properties": {
+        "family": {
+          "enum": [
+            "receipt",
+            "invoice",
+            "medical_eob"
+          ],
+          "title": "Family",
+          "type": "string"
+        },
+        "fields": {
+          "items": {
+            "$ref": "#/$defs/FieldCoverage"
+          },
+          "maxItems": 80,
+          "title": "Fields",
+          "type": "array"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/RowCoverage"
+          },
+          "maxItems": 500,
+          "title": "Rows",
+          "type": "array"
+        },
+        "excluded_rows": {
+          "items": {
+            "$ref": "#/$defs/ExcludedRow"
+          },
+          "maxItems": 500,
+          "title": "Excluded Rows",
+          "type": "array"
+        },
+        "row_inventory": {
+          "enum": [
+            "complete",
+            "no_rows_on_this_page",
+            "partial",
+            "unreadable"
+          ],
+          "title": "Row Inventory",
+          "type": "string"
+        }
+      },
+      "required": [
+        "family",
+        "fields",
+        "rows",
+        "excluded_rows",
+        "row_inventory"
+      ],
+      "title": "FamilyCoverage",
+      "type": "object"
+    },
+    "FieldCoverage": {
+      "additionalProperties": false,
+      "description": "Not on this page never establishes document-level absence or optionality.",
+      "properties": {
+        "canonical_key": {
+          "$ref": "#/$defs/CanonicalKey"
+        },
+        "state": {
+          "enum": [
+            "present",
+            "not_on_this_page",
+            "not_applicable",
+            "unreadable",
+            "ambiguous",
+            "omitted"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "claim_indices": {
+          "items": {
+            "exclusiveMaximum": 3000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "maxItems": 100,
+          "title": "Claim Indices",
+          "type": "array"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/SourceQuote"
+          },
+          "maxItems": 8,
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "canonical_key",
+        "state",
+        "claim_indices",
+        "evidence"
+      ],
+      "title": "FieldCoverage",
+      "type": "object"
+    },
+    "IdentifiersClaim": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_key": {
+          "$ref": "#/$defs/CanonicalKey"
+        },
+        "raw_value": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "title": "Raw Value",
+          "type": "string"
+        },
+        "primary_source": {
+          "$ref": "#/$defs/TextLocator"
+        },
+        "supporting_sources": {
+          "items": {
+            "$ref": "#/$defs/SupportingQuote"
+          },
+          "maxItems": 8,
+          "title": "Supporting Sources",
+          "type": "array"
+        },
+        "physical_row": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "structural_row": "#/$defs/StructuralRow",
+                  "table_row": "#/$defs/TableRow"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/TableRow"
+                },
+                {
+                  "$ref": "#/$defs/StructuralRow"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Physical Row"
+        },
+        "uncalibrated_score": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Uncalibrated Score"
+        },
+        "value_type": {
+          "const": "identifiers",
+          "title": "Value Type",
+          "type": "string"
+        },
+        "typed_value": {
+          "items": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "minItems": 1,
+          "title": "Typed Value",
+          "type": "array"
+        }
+      },
+      "required": [
+        "canonical_key",
+        "raw_value",
+        "primary_source",
+        "supporting_sources",
+        "physical_row",
+        "uncalibrated_score",
+        "value_type",
+        "typed_value"
+      ],
+      "title": "IdentifiersClaim",
+      "type": "object"
+    },
+    "MoneyClaim": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_key": {
+          "$ref": "#/$defs/CanonicalKey"
+        },
+        "raw_value": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "title": "Raw Value",
+          "type": "string"
+        },
+        "primary_source": {
+          "$ref": "#/$defs/TextLocator"
+        },
+        "supporting_sources": {
+          "items": {
+            "$ref": "#/$defs/SupportingQuote"
+          },
+          "maxItems": 8,
+          "title": "Supporting Sources",
+          "type": "array"
+        },
+        "physical_row": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "structural_row": "#/$defs/StructuralRow",
+                  "table_row": "#/$defs/TableRow"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/TableRow"
+                },
+                {
+                  "$ref": "#/$defs/StructuralRow"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Physical Row"
+        },
+        "uncalibrated_score": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Uncalibrated Score"
+        },
+        "value_type": {
+          "const": "money",
+          "title": "Value Type",
+          "type": "string"
+        },
+        "typed_value": {
+          "$ref": "#/$defs/ProposedMoney"
+        }
+      },
+      "required": [
+        "canonical_key",
+        "raw_value",
+        "primary_source",
+        "supporting_sources",
+        "physical_row",
+        "uncalibrated_score",
+        "value_type",
+        "typed_value"
+      ],
+      "title": "MoneyClaim",
+      "type": "object"
+    },
+    "NumberClaim": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_key": {
+          "$ref": "#/$defs/CanonicalKey"
+        },
+        "raw_value": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "title": "Raw Value",
+          "type": "string"
+        },
+        "primary_source": {
+          "$ref": "#/$defs/TextLocator"
+        },
+        "supporting_sources": {
+          "items": {
+            "$ref": "#/$defs/SupportingQuote"
+          },
+          "maxItems": 8,
+          "title": "Supporting Sources",
+          "type": "array"
+        },
+        "physical_row": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "structural_row": "#/$defs/StructuralRow",
+                  "table_row": "#/$defs/TableRow"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/TableRow"
+                },
+                {
+                  "$ref": "#/$defs/StructuralRow"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Physical Row"
+        },
+        "uncalibrated_score": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Uncalibrated Score"
+        },
+        "value_type": {
+          "enum": [
+            "number",
+            "quantity"
+          ],
+          "title": "Value Type",
+          "type": "string"
+        },
+        "typed_value": {
+          "pattern": "^[+-]?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+          "title": "Typed Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "canonical_key",
+        "raw_value",
+        "primary_source",
+        "supporting_sources",
+        "physical_row",
+        "uncalibrated_score",
+        "value_type",
+        "typed_value"
+      ],
+      "title": "NumberClaim",
+      "type": "object"
+    },
+    "PageClassification": {
+      "additionalProperties": false,
+      "properties": {
+        "outcome": {
+          "enum": [
+            "known",
+            "mixed",
+            "ambiguous",
+            "unknown"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "primary_family": {
+          "anyOf": [
+            {
+              "enum": [
+                "receipt",
+                "retail_order",
+                "service_record",
+                "invoice",
+                "medical_eob",
+                "medical_bill",
+                "insurance_document",
+                "insurance_denial",
+                "real_estate_title",
+                "mortgage_escrow_statement",
+                "financial_dispute_form",
+                "legal_contract",
+                "legal_notice",
+                "tax_document",
+                "bank_statement",
+                "financial_statement",
+                "identity_document",
+                "warranty",
+                "handwritten_note",
+                "typed_note",
+                "whitepaper",
+                "reference_document",
+                "generic"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Primary Family"
+        },
+        "alternatives": {
+          "items": {
+            "$ref": "#/$defs/FamilyAlternative"
+          },
+          "maxItems": 23,
+          "title": "Alternatives",
+          "type": "array"
+        },
+        "unknown_reason": {
+          "anyOf": [
+            {
+              "enum": [
+                "blank_page",
+                "insufficient_signal",
+                "unresolved_family"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Unknown Reason"
+        }
+      },
+      "required": [
+        "outcome",
+        "primary_family",
+        "alternatives",
+        "unknown_reason"
+      ],
+      "title": "PageClassification",
+      "type": "object"
+    },
+    "PageExtraction": {
+      "additionalProperties": false,
+      "description": "Model-reported page inventory; no quality score, accepted facts or verified recall.",
+      "properties": {
+        "disposition": {
+          "enum": [
+            "complete",
+            "partial",
+            "no_extraction_target",
+            "insufficient_signal",
+            "unsupported_family"
+          ],
+          "title": "Disposition",
+          "type": "string"
+        },
+        "reasons": {
+          "items": {
+            "enum": [
+              "unreadable_content",
+              "ambiguous_interpretation",
+              "content_omitted",
+              "output_budget",
+              "unsupported_family",
+              "unsupported_field",
+              "no_typed_target"
+            ],
+            "type": "string"
+          },
+          "maxItems": 7,
+          "title": "Reasons",
+          "type": "array"
+        },
+        "families": {
+          "items": {
+            "$ref": "#/$defs/FamilyCoverage"
+          },
+          "maxItems": 3,
+          "title": "Families",
+          "type": "array"
+        },
+        "unsupported_families": {
+          "items": {
+            "enum": [
+              "receipt",
+              "retail_order",
+              "service_record",
+              "invoice",
+              "medical_eob",
+              "medical_bill",
+              "insurance_document",
+              "insurance_denial",
+              "real_estate_title",
+              "mortgage_escrow_statement",
+              "financial_dispute_form",
+              "legal_contract",
+              "legal_notice",
+              "tax_document",
+              "bank_statement",
+              "financial_statement",
+              "identity_document",
+              "warranty",
+              "handwritten_note",
+              "typed_note",
+              "whitepaper",
+              "reference_document",
+              "generic"
+            ],
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Unsupported Families",
+          "type": "array"
+        },
+        "unsupported_fields": {
+          "items": {
+            "$ref": "#/$defs/UnsupportedField"
+          },
+          "maxItems": 100,
+          "title": "Unsupported Fields",
+          "type": "array"
+        },
+        "claims": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "boolean": "#/$defs/BooleanClaim",
+                "date": "#/$defs/DateClaim",
+                "enum": "#/$defs/TextClaim",
+                "identifier": "#/$defs/TextClaim",
+                "identifiers": "#/$defs/IdentifiersClaim",
+                "money": "#/$defs/MoneyClaim",
+                "number": "#/$defs/NumberClaim",
+                "party": "#/$defs/TextClaim",
+                "quantity": "#/$defs/NumberClaim",
+                "text": "#/$defs/TextClaim",
+                "time": "#/$defs/TimeClaim"
+              },
+              "propertyName": "value_type"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/MoneyClaim"
+              },
+              {
+                "$ref": "#/$defs/DateClaim"
+              },
+              {
+                "$ref": "#/$defs/TimeClaim"
+              },
+              {
+                "$ref": "#/$defs/NumberClaim"
+              },
+              {
+                "$ref": "#/$defs/TextClaim"
+              },
+              {
+                "$ref": "#/$defs/IdentifiersClaim"
+              },
+              {
+                "$ref": "#/$defs/BooleanClaim"
+              }
+            ]
+          },
+          "maxItems": 3000,
+          "title": "Claims",
+          "type": "array"
+        }
+      },
+      "required": [
+        "disposition",
+        "reasons",
+        "families",
+        "unsupported_families",
+        "unsupported_fields",
+        "claims"
+      ],
+      "title": "PageExtraction",
+      "type": "object"
+    },
+    "ProposedMoney": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "pattern": "^[+-]?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+          "title": "Amount",
+          "type": "string"
+        },
+        "currency": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Currency"
+        }
+      },
+      "required": [
+        "amount",
+        "currency"
+      ],
+      "title": "ProposedMoney",
+      "type": "object"
+    },
+    "RowCoverage": {
+      "additionalProperties": false,
+      "properties": {
+        "physical_row": {
+          "discriminator": {
+            "mapping": {
+              "structural_row": "#/$defs/StructuralRow",
+              "table_row": "#/$defs/TableRow"
+            },
+            "propertyName": "kind"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/TableRow"
+            },
+            {
+              "$ref": "#/$defs/StructuralRow"
+            }
+          ],
+          "title": "Physical Row"
+        },
+        "fields": {
+          "items": {
+            "$ref": "#/$defs/FieldCoverage"
+          },
+          "maxItems": 40,
+          "title": "Fields",
+          "type": "array"
+        }
+      },
+      "required": [
+        "physical_row",
+        "fields"
+      ],
+      "title": "RowCoverage",
+      "type": "object"
+    },
+    "SourceQuote": {
+      "additionalProperties": false,
+      "properties": {
+        "locator": {
+          "$ref": "#/$defs/TextLocator"
+        },
+        "quote": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "title": "Quote",
+          "type": "string"
+        }
+      },
+      "required": [
+        "locator",
+        "quote"
+      ],
+      "title": "SourceQuote",
+      "type": "object"
+    },
+    "StructuralRow": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "structural_row",
+          "title": "Kind",
+          "type": "string"
+        },
+        "container_index": {
+          "maximum": 399,
+          "minimum": 0,
+          "title": "Container Index",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "container_index"
+      ],
+      "title": "StructuralRow",
+      "type": "object"
+    },
+    "SupportingQuote": {
+      "additionalProperties": false,
+      "properties": {
+        "locator": {
+          "$ref": "#/$defs/TextLocator"
+        },
+        "quote": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "title": "Quote",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "label",
+            "currency",
+            "date_context",
+            "value_context",
+            "continuation"
+          ],
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "locator",
+        "quote",
+        "role"
+      ],
+      "title": "SupportingQuote",
+      "type": "object"
+    },
+    "TableRow": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "table_row",
+          "title": "Kind",
+          "type": "string"
+        },
+        "element_index": {
+          "maximum": 399,
+          "minimum": 0,
+          "title": "Element Index",
+          "type": "integer"
+        },
+        "row": {
+          "maximum": 4999,
+          "minimum": 0,
+          "title": "Row",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "element_index",
+        "row"
+      ],
+      "title": "TableRow",
+      "type": "object"
+    },
+    "TextClaim": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_key": {
+          "$ref": "#/$defs/CanonicalKey"
+        },
+        "raw_value": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "title": "Raw Value",
+          "type": "string"
+        },
+        "primary_source": {
+          "$ref": "#/$defs/TextLocator"
+        },
+        "supporting_sources": {
+          "items": {
+            "$ref": "#/$defs/SupportingQuote"
+          },
+          "maxItems": 8,
+          "title": "Supporting Sources",
+          "type": "array"
+        },
+        "physical_row": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "structural_row": "#/$defs/StructuralRow",
+                  "table_row": "#/$defs/TableRow"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/TableRow"
+                },
+                {
+                  "$ref": "#/$defs/StructuralRow"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Physical Row"
+        },
+        "uncalibrated_score": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Uncalibrated Score"
+        },
+        "value_type": {
+          "enum": [
+            "text",
+            "party",
+            "enum",
+            "identifier"
+          ],
+          "title": "Value Type",
+          "type": "string"
+        },
+        "typed_value": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "title": "Typed Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "canonical_key",
+        "raw_value",
+        "primary_source",
+        "supporting_sources",
+        "physical_row",
+        "uncalibrated_score",
+        "value_type",
+        "typed_value"
+      ],
+      "title": "TextClaim",
+      "type": "object"
+    },
+    "TextLocator": {
+      "additionalProperties": false,
+      "properties": {
+        "element_index": {
+          "maximum": 399,
+          "minimum": 0,
+          "title": "Element Index",
+          "type": "integer"
+        },
+        "cell_row": {
+          "anyOf": [
+            {
+              "maximum": 4999,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cell Row"
+        },
+        "cell_column": {
+          "anyOf": [
+            {
+              "maximum": 99,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cell Column"
+        },
+        "text_start": {
+          "minimum": 0,
+          "title": "Text Start",
+          "type": "integer"
+        },
+        "text_end": {
+          "exclusiveMinimum": 0,
+          "title": "Text End",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "element_index",
+        "cell_row",
+        "cell_column",
+        "text_start",
+        "text_end"
+      ],
+      "title": "TextLocator",
+      "type": "object"
+    },
+    "TimeClaim": {
+      "additionalProperties": false,
+      "properties": {
+        "canonical_key": {
+          "$ref": "#/$defs/CanonicalKey"
+        },
+        "raw_value": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "title": "Raw Value",
+          "type": "string"
+        },
+        "primary_source": {
+          "$ref": "#/$defs/TextLocator"
+        },
+        "supporting_sources": {
+          "items": {
+            "$ref": "#/$defs/SupportingQuote"
+          },
+          "maxItems": 8,
+          "title": "Supporting Sources",
+          "type": "array"
+        },
+        "physical_row": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "structural_row": "#/$defs/StructuralRow",
+                  "table_row": "#/$defs/TableRow"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/TableRow"
+                },
+                {
+                  "$ref": "#/$defs/StructuralRow"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Physical Row"
+        },
+        "uncalibrated_score": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Uncalibrated Score"
+        },
+        "value_type": {
+          "const": "time",
+          "title": "Value Type",
+          "type": "string"
+        },
+        "typed_value": {
+          "pattern": "^[0-9]{2}:[0-9]{2}(?::[0-9]{2})?$",
+          "title": "Typed Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "canonical_key",
+        "raw_value",
+        "primary_source",
+        "supporting_sources",
+        "physical_row",
+        "uncalibrated_score",
+        "value_type",
+        "typed_value"
+      ],
+      "title": "TimeClaim",
+      "type": "object"
+    },
+    "UnderstandingBox": {
+      "additionalProperties": false,
+      "properties": {
+        "left": {
+          "maximum": 1000,
+          "minimum": 0,
+          "title": "Left",
+          "type": "number"
+        },
+        "top": {
+          "maximum": 1000,
+          "minimum": 0,
+          "title": "Top",
+          "type": "number"
+        },
+        "right": {
+          "exclusiveMinimum": 0,
+          "maximum": 1000,
+          "title": "Right",
+          "type": "number"
+        },
+        "bottom": {
+          "exclusiveMinimum": 0,
+          "maximum": 1000,
+          "title": "Bottom",
+          "type": "number"
+        }
+      },
+      "required": [
+        "left",
+        "top",
+        "right",
+        "bottom"
+      ],
+      "title": "UnderstandingBox",
+      "type": "object"
+    },
+    "UnderstandingCell": {
+      "additionalProperties": false,
+      "properties": {
+        "row": {
+          "maximum": 5000,
+          "minimum": 0,
+          "title": "Row",
+          "type": "integer"
+        },
+        "column": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Column",
+          "type": "integer"
+        },
+        "row_span": {
+          "maximum": 5000,
+          "minimum": 1,
+          "title": "Row Span",
+          "type": "integer"
+        },
+        "column_span": {
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Column Span",
+          "type": "integer"
+        },
+        "text": {
+          "maxLength": 20000,
+          "title": "Text",
+          "type": "string"
+        },
+        "bbox": {
+          "$ref": "#/$defs/UnderstandingBox"
+        },
+        "is_header": {
+          "title": "Is Header",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "row",
+        "column",
+        "row_span",
+        "column_span",
+        "text",
+        "bbox",
+        "is_header"
+      ],
+      "title": "UnderstandingCell",
+      "type": "object"
+    },
+    "UnderstandingElement": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "paragraph",
+            "heading",
+            "header",
+            "footer",
+            "list_item",
+            "caption",
+            "table",
+            "figure",
+            "form_field",
+            "other"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 100000,
+          "title": "Text",
+          "type": "string"
+        },
+        "bbox": {
+          "$ref": "#/$defs/UnderstandingBox"
+        },
+        "parent_index": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Parent Index"
+        },
+        "table": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UnderstandingTable"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "text",
+        "bbox",
+        "parent_index",
+        "table"
+      ],
+      "title": "UnderstandingElement",
+      "type": "object"
+    },
+    "UnderstandingTable": {
+      "additionalProperties": false,
+      "properties": {
+        "row_count": {
+          "maximum": 5000,
+          "minimum": 1,
+          "title": "Row Count",
+          "type": "integer"
+        },
+        "column_count": {
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Column Count",
+          "type": "integer"
+        },
+        "cells": {
+          "items": {
+            "$ref": "#/$defs/UnderstandingCell"
+          },
+          "maxItems": 3000,
+          "title": "Cells",
+          "type": "array"
+        },
+        "continuation_key": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Continuation Key"
+        }
+      },
+      "required": [
+        "row_count",
+        "column_count",
+        "cells",
+        "continuation_key"
+      ],
+      "title": "UnderstandingTable",
+      "type": "object"
+    },
+    "UnsupportedField": {
+      "additionalProperties": false,
+      "properties": {
+        "family": {
+          "anyOf": [
+            {
+              "enum": [
+                "receipt",
+                "retail_order",
+                "service_record",
+                "invoice",
+                "medical_eob",
+                "medical_bill",
+                "insurance_document",
+                "insurance_denial",
+                "real_estate_title",
+                "mortgage_escrow_statement",
+                "financial_dispute_form",
+                "legal_contract",
+                "legal_notice",
+                "tax_document",
+                "bank_statement",
+                "financial_statement",
+                "identity_document",
+                "warranty",
+                "handwritten_note",
+                "typed_note",
+                "whitepaper",
+                "reference_document",
+                "generic"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Family"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/SourceQuote"
+        },
+        "reason": {
+          "enum": [
+            "no_registered_key",
+            "unsupported_type"
+          ],
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "family",
+        "label",
+        "source",
+        "reason"
+      ],
+      "title": "UnsupportedField",
+      "type": "object"
+    }
+  },
+  "$id": "https://structura.local/contracts/model_outputs/structura_page_understanding.v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "structura.page_understanding.v2",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "page_number": {
+      "maximum": 500,
+      "minimum": 1,
+      "title": "Page Number",
+      "type": "integer"
+    },
+    "state": {
+      "enum": [
+        "processed",
+        "partial",
+        "insufficient_signal"
+      ],
+      "title": "State",
+      "type": "string"
+    },
+    "diagnostics": {
+      "items": {
+        "enum": [
+          "content_omitted",
+          "unreadable_region"
+        ],
+        "type": "string"
+      },
+      "title": "Diagnostics",
+      "type": "array"
+    },
+    "elements": {
+      "items": {
+        "$ref": "#/$defs/UnderstandingElement"
+      },
+      "maxItems": 400,
+      "title": "Elements",
+      "type": "array"
+    },
+    "classification": {
+      "$ref": "#/$defs/PageClassification"
+    },
+    "extraction": {
+      "$ref": "#/$defs/PageExtraction"
+    }
+  },
+  "required": [
+    "schema_version",
+    "page_number",
+    "state",
+    "diagnostics",
+    "elements",
+    "classification",
+    "extraction"
+  ],
+  "title": "PageUnderstanding",
+  "type": "object"
+}
