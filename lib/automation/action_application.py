@@ -1,3 +1,10 @@
+"""Internal rule actions in the synchronous filing service transaction.
+
+Callers must enter filing_mutation before any domain lock and before invoking
+*_with_cursor. This module neither admits credentials nor commits; admitted jobs
+must retain their distinct authority/lifetime contract if integrated later.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -11,13 +18,14 @@ from lib.auth.authorization_policy import require_action
 from lib.automation.errors import AutomationError
 from lib.automation.repository import record_audit
 from lib.contracts import DocumentOrganizationWrite
-from lib.documents.access_policy import DocumentAccessContext, document_write_access_params
+from lib.documents.access_policy import DocumentAccessContext
+from lib.fact_authority.metadata_projection import refresh_metadata_and_enqueue
+from lib.organization.authority_repository import lock_writable_document
 from lib.organization.document_organization import (
     document_access_context,
     update_document_organization_with_cursor,
 )
 from lib.organization.policy import OrganizationError
-from lib.search.projection import refresh_projection_and_enqueue_embedding
 
 
 @dataclass(frozen=True)
@@ -129,22 +137,16 @@ def apply_rule_actions_with_cursor(
             },
         )
 
+    refresh_projection = metadata_changed or bool(
+        organization_result and organization_result.changed
+    )
+    if refresh_projection:
+        refresh_metadata_and_enqueue(cur, document_id=document_id, household_id=access.household_id)
     return RuleActionApplication(
         document_id=document_id,
         household_id=access.household_id,
         applied_actions=applied,
-        refresh_projection=metadata_changed
-        or bool(organization_result and organization_result.changed),
-    )
-
-
-def refresh_rule_action_projection(application: RuleActionApplication | None) -> None:
-    if not application or not application.refresh_projection:
-        return
-    refresh_projection_and_enqueue_embedding(
-        document_id=application.document_id,
-        household_id=application.household_id,
-        force_reembed=False,
+        refresh_projection=refresh_projection,
     )
 
 
@@ -154,6 +156,8 @@ def _locked_document_state(
     document_id: UUID,
     access: DocumentAccessContext,
 ) -> dict[str, Any] | None:
+    if not lock_writable_document(cur, document_id, access):
+        return None
     cur.execute(
         """
         SELECT
@@ -175,10 +179,8 @@ def _locked_document_state(
         FROM documents d
         WHERE d.id = %s
           AND d.deleted_at IS NULL
-          AND document_is_writable(d.id, %s, %s, %s)
-        FOR UPDATE
         """,
-        (document_id, *document_write_access_params(access)),
+        (document_id,),
     )
     row = cur.fetchone()
     return dict(row) if row else None

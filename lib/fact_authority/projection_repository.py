@@ -6,6 +6,7 @@ from uuid import UUID
 from psycopg.types.json import Jsonb
 
 from lib.fact_authority.line_projection import BASIS_VERSION, selected_facts_digest
+from lib.fact_authority.metadata_projection import metadata_fingerprint
 from lib.fact_authority.models import ProjectionRevision
 from lib.fact_authority.projection_values import (
     COUNTERPARTY_PATHS,
@@ -13,7 +14,6 @@ from lib.fact_authority.projection_values import (
     owned_scalar,
     scalar_selection,
     selected_total,
-    snapshot_digest,
 )
 from lib.jobs.ownership import fence_current_job
 from lib.search.jobs import enqueue_embed_document_job
@@ -94,14 +94,7 @@ def refresh_accepted_projection(cur: Any, document_id: UUID) -> ProjectionRevisi
         (document_id,),
     )
     fact_hash = selected_facts_digest(fields, cur.fetchall())
-    metadata_hash = snapshot_digest(
-        {
-            "schemaVersion": "indexed_metadata.v1",
-            "metadata": indexed_metadata,
-            "decisions": metadata,
-            "rollups": rollups,
-        }
-    )
+    metadata_hash = metadata_fingerprint(indexed_metadata, metadata, rollups)
     cur.execute(
         """UPDATE document_fact_projection_state SET state='current',
           accepted_fact_revision=accepted_fact_revision +

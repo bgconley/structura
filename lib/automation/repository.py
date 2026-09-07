@@ -349,6 +349,18 @@ def list_pending_suggestions(
     return cast(list[Row], cur.fetchall())
 
 
+def get_suggestion_document_id(cur: Any, *, run_id: UUID, household_id: UUID) -> UUID | None:
+    """Locate the lock target only; pending state and authority need fresh checks."""
+    cur.execute(
+        "SELECT frr.document_id FROM filing_rule_runs frr "
+        "JOIN filing_rules fr ON fr.id=frr.rule_id "
+        "WHERE frr.id=%s AND fr.household_id=%s AND frr.mode='suggest'",
+        (run_id, household_id),
+    )
+    row = cur.fetchone()
+    return row["document_id"] if row else None
+
+
 def get_pending_suggestion(
     cur: Any,
     *,

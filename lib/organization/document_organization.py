@@ -1,3 +1,11 @@
+"""Internal filing mutations in a caller-owned, authorized transaction.
+
+Before invoking *_with_cursor, synchronous callers must enter
+organization_mutation (or filing_mutation) before taking any domain lock. These
+helpers do not admit credentials or commit. Admitted jobs retain their separate
+authority/lifetime contract and are not implicitly authorized by these helpers.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -8,7 +16,7 @@ from lib.auth.authorization_policy import require_action
 from lib.contracts import DocumentOrganizationWrite
 from lib.documents.access_policy import DocumentAccessContext
 from lib.organization import policy, repository
-from lib.search.projection import refresh_projection_and_enqueue_embedding
+from lib.organization.authority_repository import lock_folder_authority
 
 
 @dataclass(frozen=True)
@@ -100,16 +108,6 @@ def update_document_organization_with_cursor(
     )
 
 
-def refresh_document_organization_projection(result: OrganizationMutationResult) -> None:
-    if not result.changed:
-        return
-    refresh_projection_and_enqueue_embedding(
-        document_id=result.document_id,
-        household_id=result.household_id,
-        force_reembed=False,
-    )
-
-
 def document_access_context(principal: AuthPrincipal) -> DocumentAccessContext:
     household_id = _require_household(principal)
     return DocumentAccessContext(
@@ -168,6 +166,7 @@ def _validate_manual_folders(
     principal: AuthPrincipal,
     household_id: UUID,
 ) -> None:
+    lock_folder_authority(cur, folder_ids, household_id=household_id, user_id=principal.user_id)
     for folder_id in folder_ids:
         row = repository.get_writable_folder(
             cur,

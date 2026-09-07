@@ -10,11 +10,10 @@ from lib.auth import AuthPrincipal
 from lib.auth.authorization_policy import require_action
 from lib.automation import repository
 from lib.automation.action_application import (
-    RuleActionApplication,
     apply_rule_actions_with_cursor,
-    refresh_rule_action_projection,
 )
 from lib.automation.errors import AutomationError
+from lib.automation.filing_authority import filing_mutation
 from lib.automation.rule_engine import (
     DocumentRuleContext,
     FilingRuleDefinition,
@@ -34,7 +33,7 @@ from lib.contracts import (
 )
 from lib.db.connection import db_connection
 from lib.documents.access_policy import DocumentAccessContext
-from lib.documents.access_repository import document_is_writable
+from lib.organization.authority_repository import lock_writable_document
 
 
 def list_filing_rules(principal: AuthPrincipal) -> list[FilingRule]:
@@ -54,7 +53,7 @@ def upsert_filing_rule(payload: FilingRuleWrite, principal: AuthPrincipal) -> Fi
         raise AutomationError(422, str(exc)) from exc
     try:
         with db_connection() as conn:
-            with conn.cursor() as cur:
+            with conn.cursor() as cur, filing_mutation(cur, principal):
                 row = repository.upsert_filing_rule(
                     cur,
                     rule_id=payload.id,
@@ -95,24 +94,29 @@ def dry_run_rule(
     require_action(principal, "documents:write")
     household_id = _require_household(principal)
     with db_connection() as conn:
-        with conn.cursor() as cur:
+        with conn.cursor() as cur, filing_mutation(cur, principal):
             rule = repository.get_filing_rule(cur, rule_id=rule_id, household_id=household_id)
             if not rule:
                 raise AutomationError(404, "Filing rule not found")
-            writable = repository.writable_folders(
-                cur,
-                household_id=household_id,
-                user_id=principal.user_id,
-            )
             rows = repository.document_context_rows(
                 cur,
                 access=_access_context(principal),
                 document_ids=payload.document_ids,
             )
             items: list[FilingRuleEvaluation] = []
-            for row in rows:
-                if not document_is_writable(cur, _uuid(row["id"]), _access_context(principal)):
+            for observed in sorted(rows, key=lambda row: _uuid(row["id"])):
+                document_id = _uuid(observed["id"])
+                if not lock_writable_document(cur, document_id, _access_context(principal)):
                     raise AutomationError(404, "Document not found")
+                fresh = repository.document_context_rows(
+                    cur, access=_access_context(principal), document_ids=[document_id], limit=1
+                )
+                if not fresh:
+                    raise AutomationError(404, "Document not found")
+                row = fresh[0]
+                writable = repository.writable_folders(
+                    cur, household_id=household_id, user_id=principal.user_id
+                )
                 evaluation = _evaluate_row(rule, row, writable)
                 run = repository.insert_rule_run(
                     cur,
@@ -140,27 +144,24 @@ def apply_rule(
 ) -> FilingRuleApplyResponse:
     require_action(principal, "documents:write")
     household_id = _require_household(principal)
-    post_commit_application: RuleActionApplication | None = None
     with db_connection() as conn:
-        with conn.cursor() as cur:
+        with conn.cursor() as cur, filing_mutation(cur, principal):
             rule = repository.get_filing_rule(cur, rule_id=rule_id, household_id=household_id)
             if not rule:
                 raise AutomationError(404, "Filing rule not found")
-            writable = repository.writable_folders(
-                cur,
-                household_id=household_id,
-                user_id=principal.user_id,
-            )
+            if not lock_writable_document(cur, payload.document_id, _access_context(principal)):
+                raise AutomationError(404, "Document not found")
             rows = repository.document_context_rows(
                 cur,
                 access=_access_context(principal),
                 document_ids=[payload.document_id],
                 limit=1,
             )
-            if not rows or not document_is_writable(
-                cur, payload.document_id, _access_context(principal)
-            ):
+            if not rows:
                 raise AutomationError(404, "Document not found")
+            writable = repository.writable_folders(
+                cur, household_id=household_id, user_id=principal.user_id
+            )
             evaluation = _evaluate_row(rule, rows[0], writable)
             if evaluation.matched and evaluation.review_required:
                 run = repository.insert_rule_run(
@@ -193,7 +194,6 @@ def apply_rule(
                     principal=principal,
                 )
                 applied = application.applied_actions
-                post_commit_application = application
                 run = repository.insert_rule_run(
                     cur,
                     rule_id=_uuid(rule["id"]),
@@ -224,7 +224,6 @@ def apply_rule(
                 )
                 status = "not_matched"
         conn.commit()
-    refresh_rule_action_projection(post_commit_application)
     response_payload = _evaluation_contract(
         rule,
         evaluation,
@@ -245,19 +244,18 @@ def list_filing_suggestions(principal: AuthPrincipal) -> list[FilingSuggestion]:
 def accept_suggestion(*, run_id: UUID, principal: AuthPrincipal) -> FilingRuleApplyResponse:
     require_action(principal, "documents:write")
     household_id = _require_household(principal)
-    post_commit_application: RuleActionApplication | None = None
     with db_connection() as conn:
-        with conn.cursor() as cur:
-            run = repository.get_pending_suggestion(
-                cur,
-                run_id=run_id,
-                household_id=household_id,
+        with conn.cursor() as cur, filing_mutation(cur, principal):
+            document_id = repository.get_suggestion_document_id(
+                cur, run_id=run_id, household_id=household_id
             )
-            if not run or not document_is_writable(
-                cur, _uuid(run["document_id"]), _access_context(principal)
+            if document_id is None or not lock_writable_document(
+                cur, document_id, _access_context(principal)
             ):
                 raise AutomationError(404, "Filing suggestion not found")
-            document_id = _uuid(run["document_id"])
+            run = repository.get_pending_suggestion(cur, run_id=run_id, household_id=household_id)
+            if not run or run["document_id"] != document_id:
+                raise AutomationError(404, "Filing suggestion not found")
             application = apply_rule_actions_with_cursor(
                 cur=cur,
                 document_id=document_id,
@@ -265,7 +263,6 @@ def accept_suggestion(*, run_id: UUID, principal: AuthPrincipal) -> FilingRuleAp
                 principal=principal,
             )
             applied = application.applied_actions
-            post_commit_application = application
             repository.mark_suggestion(
                 cur,
                 run_id=run_id,
@@ -273,7 +270,6 @@ def accept_suggestion(*, run_id: UUID, principal: AuthPrincipal) -> FilingRuleAp
                 applied_actions=applied,
             )
         conn.commit()
-    refresh_rule_action_projection(post_commit_application)
     return FilingRuleApplyResponse.model_validate(
         {
             "runId": run_id,
@@ -296,15 +292,16 @@ def reject_suggestion(*, run_id: UUID, principal: AuthPrincipal) -> dict[str, bo
     require_action(principal, "documents:write")
     household_id = _require_household(principal)
     with db_connection() as conn:
-        with conn.cursor() as cur:
-            run = repository.get_pending_suggestion(
-                cur,
-                run_id=run_id,
-                household_id=household_id,
+        with conn.cursor() as cur, filing_mutation(cur, principal):
+            document_id = repository.get_suggestion_document_id(
+                cur, run_id=run_id, household_id=household_id
             )
-            if not run or not document_is_writable(
-                cur, _uuid(run["document_id"]), _access_context(principal)
+            if document_id is None or not lock_writable_document(
+                cur, document_id, _access_context(principal)
             ):
+                raise AutomationError(404, "Filing suggestion not found")
+            run = repository.get_pending_suggestion(cur, run_id=run_id, household_id=household_id)
+            if not run or run["document_id"] != document_id:
                 raise AutomationError(404, "Filing suggestion not found")
             repository.mark_suggestion(cur, run_id=run_id, decision_status="rejected")
         conn.commit()
@@ -315,15 +312,16 @@ def defer_suggestion(*, run_id: UUID, principal: AuthPrincipal) -> dict[str, boo
     require_action(principal, "documents:write")
     household_id = _require_household(principal)
     with db_connection() as conn:
-        with conn.cursor() as cur:
-            run = repository.get_pending_suggestion(
-                cur,
-                run_id=run_id,
-                household_id=household_id,
+        with conn.cursor() as cur, filing_mutation(cur, principal):
+            document_id = repository.get_suggestion_document_id(
+                cur, run_id=run_id, household_id=household_id
             )
-            if not run or not document_is_writable(
-                cur, _uuid(run["document_id"]), _access_context(principal)
+            if document_id is None or not lock_writable_document(
+                cur, document_id, _access_context(principal)
             ):
+                raise AutomationError(404, "Filing suggestion not found")
+            run = repository.get_pending_suggestion(cur, run_id=run_id, household_id=household_id)
+            if not run or run["document_id"] != document_id:
                 raise AutomationError(404, "Filing suggestion not found")
             repository.mark_suggestion(cur, run_id=run_id, decision_status="deferred")
         conn.commit()

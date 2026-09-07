@@ -7,7 +7,7 @@ from threading import Event
 import pytest
 
 from lib.db.connection import db_connection
-from lib.fact_authority import projection_repository
+from lib.fact_authority import metadata_projection
 from lib.fact_authority.projection_values import snapshot_digest
 
 from .support import candidate, confirm, envelope, preconditions, reject, seed_chunk, snapshot
@@ -156,7 +156,7 @@ def test_indexed_metadata_hash_uses_exact_lexical_statement_snapshot(
             "INSERT INTO document_tags(document_id,tag_id) VALUES (%s,%s)", (document_id, tag_id)
         )
     observed, release = Queue(), Event()
-    original = projection_repository.snapshot_digest
+    original = metadata_projection.snapshot_digest
 
     def pause_fingerprint(value):
         observed.put(value)
@@ -164,7 +164,7 @@ def test_indexed_metadata_hash_uses_exact_lexical_statement_snapshot(
             raise AssertionError("Test did not release fingerprint persistence")
         return original(value)
 
-    monkeypatch.setattr(projection_repository, "snapshot_digest", pause_fingerprint)
+    monkeypatch.setattr(metadata_projection, "snapshot_digest", pause_fingerprint)
     with ThreadPoolExecutor(max_workers=1) as pool:
         reviewing = pool.submit(confirm, document_id, access, item)
         metadata = observed.get(timeout=5)

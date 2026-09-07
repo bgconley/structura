@@ -16,10 +16,11 @@ from lib.contracts import (
 )
 from lib.db.connection import db_connection
 from lib.documents.read_model import get_document_detail
+from lib.fact_authority.metadata_projection import refresh_metadata_and_enqueue
 from lib.organization import policy, repository
+from lib.organization.authority_repository import organization_mutation
 from lib.organization.document_organization import (
     document_access_context,
-    refresh_document_organization_projection,
     update_document_organization_with_cursor,
 )
 
@@ -46,7 +47,7 @@ def create_folder(payload: FolderWrite, principal: AuthPrincipal) -> Folder:
 
     try:
         with db_connection() as conn:
-            with conn.cursor() as cur:
+            with conn.cursor() as cur, organization_mutation(cur, principal, catalog=True):
                 parent_path: str | None = None
                 if payload.parent_id:
                     parent = repository.get_writable_folder(
@@ -103,7 +104,7 @@ def create_tag(payload: TagWrite, principal: AuthPrincipal) -> Tag:
     color_hex = policy.normalize_color_hex(payload.color_hex)
     try:
         with db_connection() as conn:
-            with conn.cursor() as cur:
+            with conn.cursor() as cur, organization_mutation(cur, principal, catalog=True):
                 if repository.tag_name_exists(cur, name, household_id=household_id):
                     raise policy.organization_error(409, "Tag name already exists")
                 row = repository.insert_tag(
@@ -128,15 +129,18 @@ def update_document_organization(
     principal: AuthPrincipal,
 ) -> DocumentDetail:
     with db_connection() as conn:
-        with conn.cursor() as cur:
+        with conn.cursor() as cur, organization_mutation(cur, principal):
             result = update_document_organization_with_cursor(
                 cur=cur,
                 document_id=document_id,
                 payload=payload,
                 principal=principal,
             )
+            if result.changed:
+                refresh_metadata_and_enqueue(
+                    cur, document_id=document_id, household_id=result.household_id
+                )
         conn.commit()
-    refresh_document_organization_projection(result)
 
     detail = get_document_detail(document_id, document_access_context(principal))
     if not detail:

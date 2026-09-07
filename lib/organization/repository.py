@@ -6,10 +6,8 @@ from uuid import UUID
 
 from psycopg.types.json import Jsonb
 
-from lib.documents.access_policy import (
-    DocumentAccessContext,
-    document_write_access_params,
-)
+from lib.documents.access_policy import DocumentAccessContext
+from lib.organization.authority_repository import lock_folder_authority, lock_writable_document
 
 
 def list_accessible_folders(
@@ -61,6 +59,7 @@ def get_writable_folder(
     household_id: UUID,
     user_id: UUID,
 ) -> dict[str, object] | None:
+    lock_folder_authority(cur, [folder_id], household_id=household_id, user_id=user_id)
     cur.execute(
         """
         SELECT
@@ -222,18 +221,7 @@ def lock_document_for_household(
     document_id: UUID,
     access: DocumentAccessContext,
 ) -> dict[str, object] | None:
-    cur.execute(
-        """
-        SELECT id, primary_folder_id
-        FROM documents d
-        WHERE d.id = %s
-          AND deleted_at IS NULL
-          AND document_is_writable(d.id, %s, %s, %s)
-        FOR UPDATE
-        """,
-        (document_id, *document_write_access_params(access)),
-    )
-    return cast(dict[str, object] | None, cur.fetchone())
+    return lock_writable_document(cur, document_id, access)
 
 
 def update_document_fields(
