@@ -1,8 +1,9 @@
 # Source-scored parse diagnostics v1
 
 This additive X-06 foundation scores provided source annotations and captured neutral
-parse output. It does not collect database records, invoke models, replace the legacy
-corpus gate, certify a blind holdout, or accept a release. Every report keeps these
+parse output. An optional authorized adapter captures exact sealed database generations.
+Neither path invokes models, replaces the legacy corpus gate, certifies a blind
+holdout, or accepts a release. Every report keeps these
 later stages explicitly `not_evaluated`. Quality thresholds remain `not_ratified`.
 
 The three JSON schemas mirror the Pydantic input contracts in `lib/evaluation/`:
@@ -46,8 +47,9 @@ raw model-call failures need a future operational capture contract.
 
 Hashes prove consistency against the supplied pin. They do not prove that a model
 was invoked, a renderer produced the declared bytes, an author reviewed the original,
-or the supplied exposure registry is complete. An authenticated DB/runtime capture
-adapter and reviewed source verification remain separate work. Model transcription
+or the supplied exposure registry is complete. The DB capture adapter verifies stored
+consistency and live read authority; it does not attest the runtime invocation.
+Reviewed source support remains separate work. Model transcription
 is never an independent reference, including when it repeats PDF-native text.
 
 Blind holdout declarations reject synthetic fixtures, development/template overlap,
@@ -98,7 +100,54 @@ untouched origins/templates. BMW/Anthem remain known regression material.
   every page was processed. Results remain per document/page; this initial scorer
   does not claim macro/stratified statistics, confidence intervals or generalization.
 
-## CLI
+## Exact-generation database capture
+
+`lib.evaluation.persisted_capture.capture_sealed_generation` takes explicit
+`document_id`, `processing_run_id`, `parse_generation_id`, `DocumentAccessContext`
+and `CaptureDeclaration(item_id, commit, max_output_tokens, temperature)`. It reads
+only that sealed generation. Superseded/cancelled sealed history remains available
+subject to current household membership, user status, document/folder ACLs and,
+when present, persisted token lifetime and read-capable scopes. Missing, unsealed,
+cross-document and unauthorized identities all return the same unavailable error;
+there is no lookup of the newest parse as a substitute.
+
+One SQL statement captures immutable structure, inventory, frozen configuration,
+original-asset metadata and every checkpoint under the same read snapshot. It does
+not acquire publication locks or wait on a worker claim. Current token scope
+decisions use the shared authorization policy. As with ordinary reads, revocation
+after an authorized snapshot cannot retrieve bytes already disclosed.
+
+After closing the transaction, validation verifies recorded hashes, source metadata,
+exact run/generation/page IDs, raw/checkpoint/normalized equality, complete sealed
+pages and searchable projection. Fixture/live mode derives exclusively from frozen
+`model_revision` prefixes: `fixture:` or `declared-live:` with a nonempty revision.
+Unknown legacy/unmarked revisions fail closed. These declarations describe provenance;
+they do not attest weight bytes or a real endpoint call.
+
+The returned `PersistedGenerationCapture.capture` is the scorer's `DocumentCapture`.
+The wrapper retains run status, sealed timestamp and storage hashes. Its
+`commit_provenance` and `generation_settings_provenance` remain `externally_declared`:
+migration 096 did not persist source commit, token limit or temperature. Do not
+report these caller-supplied values as independently database-verified. Capture
+errors avoid echoing private stored text. No original URI/path is returned.
+
+`lib.evaluation.artifact_verification.verify_capture_source` is optional and separate.
+It takes the wrapper, explicit `original_asset_id` and a local `original_path`.
+It never resolves stored/model URLs, makes network calls, invokes a model, or opens
+a DB transaction. Bounded reads enforce the 100 MiB original limit; byte hash, size,
+actual MIME signature, asset identity and the complete stored page inventory must
+match. `DocumentSource` opens its own hash-checked snapshot (at most 500 pages), then
+reproduces each page's exact render identity at the frozen scale and its normal
+pixel budget. A historical renderer mismatch fails explicitly instead of silently
+substituting newer render output. MIME signature checking is deliberately conservative;
+unsupported signatures such as BigTIFF are not silently accepted as ordinary TIFF.
+
+Successful artifact verification means original bytes and the deterministic page
+renders match. It still does not prove the captured transcription is supported by
+those pixels, that a human reviewed the labels, or that a live model ran. The
+verifier returns this separate result without retroactively changing capture claims.
+
+## File-scoring CLI
 
 `scripts/score_document_parse.py` accepts `--manifest`, a separately recorded
 `--expected-manifest-sha256`, one or more `--annotations` and `--captures` paths,
