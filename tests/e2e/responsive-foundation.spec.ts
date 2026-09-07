@@ -39,7 +39,7 @@ for (const width of [1440, 1280, 768, 390]) {
       await page.goto(path);
       await expect(page.getByRole("heading", {name: heading, exact: true})).toBeVisible();
       await noPageOverflow(page);
-      await fitsWidth(page.locator(".top-command > .command-button"), width, 32);
+      for (const control of await page.locator(".top-command > .command-button:visible").all()) await fitsWidth(control, width, 32);
       if (path === "/inbox") await expect(page.getByRole("button", {name: action, exact: true})).toBeEnabled();
       if (!path.includes("relationships") && !path.includes("timelines")) {
         await fitsWidth(page.getByRole("button", {name: action, exact: true}), width, 32);

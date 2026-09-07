@@ -2,11 +2,12 @@ import {documentSorts, type DocumentSort} from "../documentBrowse";
 import type {InboxBrowse} from "../useInboxBrowse";
 import {DocumentPagination} from "./DocumentPagination";
 import {DocumentTable} from "./DocumentTable";
+import {UploadIntake, type UploadIntakeProps} from "./UploadIntake";
 import "./DocumentBrowse.css";
 
-export function DocumentBrowsePanel({browse, selectedId, uploadFile}: {
+export function DocumentBrowsePanel({browse, selectedId, intake}: {
   browse: InboxBrowse; selectedId: string | null;
-  uploadFile: (file: File | undefined) => Promise<void>;
+  intake: UploadIntakeProps;
 }) {
   const {list, offset, limit} = browse;
   const beyond = list.total !== null && offset > 0 && offset >= list.total;
@@ -39,14 +40,7 @@ export function DocumentBrowsePanel({browse, selectedId, uploadFile}: {
       <h3>{browse.hasFilters ? "No matching documents" : "No inbox documents yet"}</h3>
       <p>{browse.hasFilters ? "Your Inbox filters are still applied. Change a filter or clear them to browse the collection."
         : "Upload a PDF or supported image to add your first document."}</p>
-      {!browse.hasFilters ? <label className="primary-upload">Upload first document
-        <input type="file" accept="application/pdf,image/png,image/jpeg,image/tiff,image/webp"
-          onChange={(event) => {
-            const file = event.currentTarget.files?.[0];
-            event.currentTarget.value = "";
-            void uploadFile(file);
-          }} />
-      </label> : null}
+      {!browse.hasFilters ? <UploadIntake {...intake} label="Upload first document" className="primary-upload" /> : null}
     </div> : <DocumentTable documents={list.documents} selectedId={selectedId} setSelectedId={browse.select} />}
     <p className="browse-freshness">New uploads or edits may change which documents appear on each page.</p>
   </section>;

@@ -1,5 +1,5 @@
 import {useEffect, useRef, useState} from "react";
-import {ApiError, csrfToken, fetchJson} from "./api";
+import {ApiError} from "./api";
 import {defaultRoute, parseAppRoute, routeLabel, routeUrl, type AppRoute} from "./appRoutes";
 import {AutomationWorkbench} from "./components/AutomationWorkbench";
 import {Inbox} from "./components/Inbox";
@@ -17,8 +17,10 @@ import {useDocumentList} from "./useDocumentList";
 import {useInboxBrowse} from "./useInboxBrowse";
 import {useDocumentWorkspace} from "./useDocumentWorkspace";
 import {LineItemDraftProvider} from "./lineItems/LineItemDraftProvider";
+import {useUploadQueue} from "./uploads/useUploadQueue";
+import {UploadQueue, uploadAttentionCount, uploadQueueLabel} from "./components/UploadQueue";
 import {useKeyedRequest} from "./useKeyedRequest";
-import type {AcceptedDocumentUpload, DocumentOrganizationWrite, EvidenceTarget, SessionInfo, ViewMode} from "./types";
+import type {DocumentOrganizationWrite, EvidenceTarget, SessionInfo, ViewMode} from "./types";
 
 export function AuthenticatedApp({session, onSignOut, sessionError}: {
   session: SessionInfo;
@@ -47,17 +49,13 @@ export function AuthenticatedApp({session, onSignOut, sessionError}: {
   const workspace = useDocumentWorkspace(selectedId, entry.key);
   const search = useCorpusSearch(route.view === "search" ? route : null, entry.key);
   const [globalQuery, setGlobalQuery] = useState("");
-  const [isUploading, setIsUploading] = useState(false);
-  const uploadPending = useRef(false);
-  const [acceptedUpload, setAcceptedUpload] = useState<AcceptedDocumentUpload | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const uploads = useUploadQueue(session, async () => { await list.reload(); });
+  const intake = {policy: uploads.state.policy, onFiles: uploads.controller.add.bind(uploads.controller)};
   const selectedSummary = list.documents.find((document) => document.id === selectedId);
   const detail = workspace.detail.data;
   const selected = workspace.detail.error ? null : detail ?? selectedSummary ?? null;
   const currentSelection = useRef(selectedId);
   currentSelection.current = selectedId;
-  const currentLocation = useRef({entry: entry.key, path: routeUrl(route)});
-  currentLocation.current = {entry: entry.key, path: routeUrl(route)};
 
   useEffect(() => {
     if (route.view === "inbox" && !route.documentId && !list.loading && list.documents[0]) {
@@ -78,28 +76,6 @@ export function AuthenticatedApp({session, onSignOut, sessionError}: {
   function openDocument(documentId: string, target?: EvidenceTarget) {
     const returnTo = route.view === "viewer" ? route.returnTo : routeUrl(route);
     navigate({view: "viewer", documentId, page: target?.pageNumber ?? 1, returnTo}, {evidence: target});
-  }
-
-  async function uploadFile(file: File | undefined) {
-    if (!file || uploadPending.current) return;
-    uploadPending.current = true;
-    const submittedLocation = currentLocation.current;
-    const body = new FormData();
-    body.set("file", file);
-    body.set("source", "web_upload");
-    body.set("suppliedTitle", file.name.replace(/\.[^.]+$/, ""));
-    setIsUploading(true);
-    setUploadError(null);
-    setAcceptedUpload(null);
-    try {
-      const accepted = await fetchJson<AcceptedDocumentUpload>("/api/v1/documents", {method: "POST", headers: {"X-CSRF-Token": csrfToken()}, body});
-      setAcceptedUpload(accepted);
-      if (currentLocation.current.entry === submittedLocation.entry && currentLocation.current.path === submittedLocation.path) {
-        navigate({view: "inbox", documentId: accepted.documentId});
-      }
-      await list.reload();
-    } catch (exc) { setUploadError(exc instanceof Error ? exc.message : "The upload could not be completed."); }
-    finally { uploadPending.current = false; setIsUploading(false); }
   }
 
   async function handleCreateFolder(name: string, folderKind: "manual" | "smart") {
@@ -146,16 +122,11 @@ export function AuthenticatedApp({session, onSignOut, sessionError}: {
       <main className="app-main">
         <TopCommand session={session} onSignOut={onSignOut} sessionError={sessionError}
           query={commandQuery} setQuery={setCommandQuery} onSubmitSearch={() => void submitSearch()}
-          isUploading={isUploading} uploadFile={uploadFile} />
+          intake={intake} uploadsLabel={uploadQueueLabel(uploads.state)} uploadsCount={uploads.state.entries.length}
+          uploadsNeedAttention={uploadAttentionCount(uploads.state) > 0} onOpenUploads={() => uploads.controller.setOpen(true)} />
+        <UploadQueue state={uploads.state} controller={uploads.controller}
+          onOpenDocument={(documentId) => navigate({view: "inbox", documentId})} />
         <div id="route-content" tabIndex={-1}>
-          {uploadError ? <div className="upload-failed" role="alert"><strong>Upload failed.</strong> {uploadError}
-            <span> Use Upload to select the file and try again.</span>
-            <button type="button" onClick={() => setUploadError(null)}>Dismiss upload error</button>
-          </div> : null}
-          {acceptedUpload ? <div className="upload-accepted" role="status">Upload accepted. Background processing can continue while you browse.
-            <button type="button" onClick={() => navigate({view: "inbox", documentId: acceptedUpload.documentId})}>Open uploaded document</button>
-            <button type="button" onClick={() => setAcceptedUpload(null)}>Dismiss upload confirmation</button>
-          </div> : null}
           {route.view === "unavailable" ? (
             <RouteNotice message={route.message} onBack={() => navigate(defaultRoute("inbox"))} />
           ) : route.view === "automation" ? <AutomationWorkbench />
@@ -187,7 +158,7 @@ export function AuthenticatedApp({session, onSignOut, sessionError}: {
             <Inbox browse={inbox} selectedId={selectedId} selected={selected} detail={detail}
               error={workspace.detail.error ? documentError(workspace.detail.error) : organization.error?.message ?? null}
               openViewer={() => { if (selectedId && detail) openDocument(selectedId); }}
-              uploadFile={uploadFile} folders={folders} tags={tags} activeFolderId={folderId ?? null}
+              intake={intake} folders={folders} tags={tags} activeFolderId={folderId ?? null}
               onSelectFolder={inbox.setFolder}
               onCreateFolder={handleCreateFolder} onCreateTag={handleCreateTag} onSaveOrganization={handleSaveOrganization} />
           )}

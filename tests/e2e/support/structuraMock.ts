@@ -37,6 +37,7 @@ import {
 import {documentBrowseResponse} from "./documentBrowseMock";
 import {canonicalLines} from "./lineItemAuthorityMock";
 import {reviewAuthorityFixture} from "./reviewAuthorityFixture";
+import {createUploadAttemptMock} from "./uploadAttemptMock";
 
 export {apiOrigin, csrfToken} from "./structuraFixtures";
 
@@ -67,14 +68,16 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
   const expectedCsrfToken = options.csrfTokenValue ?? csrfToken;
   const csrfCookieName = options.csrfCookieName ?? "structura_csrf";
   const sessionCookieName = options.sessionCookieName ?? "structura_session";
+  const uploads = createUploadAttemptMock({csrf: expectedCsrfToken, documentId: uploadedDocument.id,
+    onAccepted: () => { ensureUploadedDocument(documents); }});
 
   await page.route(`${apiOrigin}/api/v1/**`, async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     const corsHeaders = {
       "Access-Control-Allow-Credentials": "true",
-      "Access-Control-Allow-Headers": "accept,content-type,x-csrf-token",
-      "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+      "Access-Control-Allow-Headers": "accept,content-type,x-csrf-token,if-match,x-replace-transfer-id",
+      "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
       "Access-Control-Allow-Origin": webOrigin,
     };
 
@@ -82,6 +85,8 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
       await route.fulfill({status: 204, headers: corsHeaders});
       return;
     }
+
+    if (await uploads.handle(route, corsHeaders)) return;
 
     if (url.pathname === "/api/v1/auth/session") {
       await route.fulfill({

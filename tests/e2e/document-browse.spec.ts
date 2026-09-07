@@ -3,6 +3,7 @@ import {parseAppRoute, routeUrl, type InboxRoute} from "../../apps/web/src/appRo
 import {browseRequestPath, documentSorts, inboxStates} from "../../apps/web/src/documentBrowse";
 import {documentBrowseResponse, type BrowseFacts} from "./support/documentBrowseMock";
 import {csrfToken, mockStructuraApi} from "./support/structuraMock";
+import {installUploadAttemptMock} from "./support/uploadAttemptMock";
 import {existingDocument, seededDocuments, seededFolders, type DocumentDetail} from "./support/structuraFixtures";
 
 test.skip(process.env.STRUCTURA_E2E_LIVE === "1", "Controlled browse regressions use a mock corpus.");
@@ -153,16 +154,16 @@ test("a superseded filter response cannot replace newer rows or count explanatio
   expect(await rows(page).evaluateAll((items) => items.map((row) => row.id))).toEqual(ids);
 });
 
-test("upload selects the returned document identity even when the title already exists", async ({page}) => {
+test("upload opens the returned document identity even when the title already exists", async ({page}) => {
   const state = await corpus(page);
   const uploaded = {...structuredClone(state.documents[0]), id: "ffffffff-ffff-4fff-8fff-ffffffffffff", createdAt: "2026-09-07T00:00:00Z"};
-  await page.route(/\/api\/v1\/documents(?:\?.*)?$/, async (route) => {
-    if (route.request().method() !== "POST") return route.fallback();
-    state.documents.push(uploaded);
-    await route.fulfill({status: 202, json: {jobId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee", status: "queued", documentId: uploaded.id}});
-  });
+  await installUploadAttemptMock(page, {documentId: uploaded.id, onAccepted: () => state.documents.push(uploaded)});
   await page.goto(`/inbox?document=${state.documents[0].id}&offset=200&state=unfiled`);
-  await page.locator(".top-command input[type=file]").setInputFiles({name: "same-title.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.7")});
+  await expect(page.locator(".top-command input[type=file]")).toBeEnabled(); await page.locator(".top-command input[type=file]").setInputFiles({name: "same-title.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.7")});
+  const queue = page.getByRole("dialog", {name: "Upload files"});
+  await expect(queue).toContainText("Upload accepted");
+  await expect(page).toHaveURL(/offset=200&state=unfiled/);
+  await queue.getByRole("button", {name: "Open document", exact: true}).click();
   await expect(page).toHaveURL((url) => url.pathname === "/inbox" && url.search === `?document=${uploaded.id}`);
   await expect(page.locator(`#document-row-${uploaded.id}`)).toHaveAttribute("aria-selected", "true");
   await page.locator(".page-heading").getByRole("button", {name: "Open Viewer", exact: true}).click();
@@ -174,56 +175,50 @@ test("a late accepted upload offers its exact document without replacing a newer
   let release!: () => void;
   const pending = new Promise<void>((resolve) => {release = resolve;});
   const uploaded = {...structuredClone(state.documents[0]), id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd"};
-  await page.route(/\/api\/v1\/documents(?:\?.*)?$/, async (route) => {
-    if (route.request().method() !== "POST") return route.fallback();
-    await pending; state.documents.push(uploaded);
-    await route.fulfill({status: 202, json: {jobId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee", status: "queued", documentId: uploaded.id}});
-  });
+  const uploads = await installUploadAttemptMock(page, {documentId: uploaded.id, onAccepted: () => state.documents.push(uploaded)});
+  uploads.beforeContent = () => pending;
   await page.goto(`/inbox?document=${state.documents[0].id}`);
   await expect(rows(page)).toHaveCount(50);
-  await page.locator(".top-command input[type=file]").setInputFiles({name: "delayed.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.7")});
+  await expect(page.locator(".top-command input[type=file]")).toBeEnabled(); await page.locator(".top-command input[type=file]").setInputFiles({name: "delayed.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.7")});
+  const queue = page.getByRole("dialog", {name: "Upload files"});
+  await queue.getByRole("button", {name: "Close uploads", exact: true}).click();
   await page.getByRole("textbox", {name: "Search documents", exact: true}).fill("Record 010");
   release();
-  await expect(page.getByRole("button", {name: "Open uploaded document", exact: true})).toBeVisible();
   await expect(page).toHaveURL(/q=Record\+010/);
   await expect(rows(page)).toHaveCount(1);
-  await page.getByRole("button", {name: "Open uploaded document", exact: true}).click();
+  await page.locator(".upload-queue-trigger").click();
+  await expect(queue).toContainText("Upload accepted");
+  await queue.getByRole("button", {name: "Open document", exact: true}).click();
   await expect(page).toHaveURL((url) => url.pathname === "/inbox" && url.search === `?document=${uploaded.id}`);
   await expect(page.locator(".inspector")).toContainText(uploaded.title);
 });
 
-test("a failed late upload is visible outside Inbox and the same file can be retried", async ({page}) => {
+test("a failed late upload remains accessible outside Inbox and can be checked before retrying", async ({page}) => {
   const state = await corpus(page);
+  const uploads = await installUploadAttemptMock(page, {documentId: state.documents[0].id});
   let release!: () => void;
   const pending = new Promise<void>((resolve) => {release = resolve;});
-  let attempts = 0;
-  await page.route(/\/api\/v1\/documents(?:\?.*)?$/, async (route) => {
-    if (route.request().method() !== "POST") return route.fallback();
-    attempts += 1;
-    if (attempts === 1) {
-      await pending;
-      return route.fulfill({status: 503, json: {detail: "Storage temporarily unavailable"}});
-    }
-    await route.fulfill({status: 202, json: {jobId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
-      status: "queued", documentId: state.documents[0].id}});
-  });
+  uploads.beforeContent = () => pending; uploads.loseContentResponse = true;
   await page.goto(`/documents/${state.documents[0].id}`);
   await expect(page.getByRole("button", {name: "Back to Inbox", exact: true})).toBeVisible();
   const upload = page.locator(".top-command input[type=file]");
-  const file = {name: "retry.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.7")};
-  await upload.setInputFiles(file);
-  await expect.poll(() => attempts).toBe(1);
+  await expect(upload).toBeEnabled(); await upload.setInputFiles({name: "retry.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.7")});
+  await expect.poll(() => uploads.contents.length).toBe(1);
+  const queue = page.getByRole("dialog", {name: "Upload files"});
+  await queue.getByRole("button", {name: "Close uploads", exact: true}).click();
   await page.getByRole("navigation", {name: "Primary"}).getByRole("button", {name: "Search", exact: true}).click();
   await expect(page).toHaveURL(/\/search\?submitted=false$/);
   release();
-  await expect(page.getByRole("alert")).toContainText("Upload failed. Storage temporarily unavailable");
+  await expect(page.getByRole("button", {name: "Uploads (1 need attention)", exact: true})).toBeVisible();
+  await expect(page.locator(".upload-queue-trigger .upload-attention")).toHaveText("!");
+  await expect(upload).toBeEnabled(); await expect(upload).toHaveValue("");
+  await page.locator(".upload-queue-trigger").click();
+  await expect(queue.getByRole("alert")).toContainText("transfer response was lost");
+  await expect(queue.getByRole("button", {name: "Open document", exact: true})).toHaveCount(0);
+  await queue.getByRole("button", {name: "Check upload outcome", exact: true}).click();
+  await expect(queue).toContainText("Upload accepted"); expect(uploads.contents).toHaveLength(1);
   await expect(page).toHaveURL(/\/search\?submitted=false$/);
-  await expect(upload).toBeEnabled();
-  await expect(upload).toHaveValue("");
-  await expect(page.getByRole("button", {name: "Open uploaded document", exact: true})).toHaveCount(0);
-  await upload.setInputFiles(file);
-  await expect.poll(() => attempts).toBe(2);
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  await queue.getByRole("button", {name: "Open document", exact: true}).click();
   await expect(page).toHaveURL((url) => url.pathname === "/inbox" && url.search === `?document=${state.documents[0].id}`);
 });
 

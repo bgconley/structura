@@ -6,6 +6,7 @@ import {InboxMetrics} from "./InboxMetrics";
 import {OrganizationRail} from "./OrganizationRail";
 import {PipelineSummary} from "./PipelineSummary";
 import type {InboxBrowse} from "../useInboxBrowse";
+import type {UploadIntakeProps} from "./UploadIntake";
 
 export function Inbox({
   browse,
@@ -14,7 +15,7 @@ export function Inbox({
   detail,
   error,
   openViewer,
-  uploadFile,
+  intake,
   folders,
   tags,
   activeFolderId,
@@ -29,7 +30,7 @@ export function Inbox({
   detail: DocumentDetail | null;
   error: string | null;
   openViewer: () => void;
-  uploadFile: (file: File | undefined) => Promise<void>;
+  intake: UploadIntakeProps;
   folders: Folder[];
   tags: Tag[];
   activeFolderId: string | null;
@@ -78,7 +79,7 @@ export function Inbox({
         {error ? <div className="inline-error">{error}</div> : null}
         {detail && browse.list.data && !browse.list.documents.some((document) => document.id === detail.id) ?
           <p className="selected-document-context" role="status">Selected: <strong>{detail.title}</strong>. This document is outside the current page or filters. Its details remain available.</p> : null}
-        <DocumentBrowsePanel browse={browse} selectedId={selectedId} uploadFile={uploadFile} />
+        <DocumentBrowsePanel browse={browse} selectedId={selectedId} intake={intake} />
         <PipelineSummary counts={browse.list.counts} />
       </div>
       <DocumentInspector

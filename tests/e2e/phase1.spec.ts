@@ -1,5 +1,5 @@
 import {expect, test} from "@playwright/test";
-import {writeFile} from "node:fs/promises";
+import {readFile, writeFile} from "node:fs/promises";
 
 import {apiOrigin, csrfToken, mockStructuraApi} from "./support/structuraMock";
 
@@ -18,7 +18,12 @@ test("Phase 1 Inbox to Viewer workflow uses protected asset URLs", async ({page,
 
   const uploadPath = testInfo.outputPath("phase1-browser-fixture.pdf");
   await writeFile(uploadPath, "%PDF-1.7\n% Phase 1 browser fixture\n%%EOF\n");
-  await page.locator(".top-command input[type='file']").setInputFiles(uploadPath);
+  // Chromium interception omits disk-backed request bodies; give the mock the exact fixture bytes.
+  await expect(page.locator(".top-command input[type='file']")).toBeEnabled();
+  await page.locator(".top-command input[type='file']").setInputFiles({name: uploadPath.split("/").at(-1)!, mimeType: "application/pdf", buffer: await readFile(uploadPath)});
+  const queue = page.getByRole("dialog", {name: "Upload files"});
+  await expect(queue).toContainText("Upload accepted");
+  await queue.getByRole("button", {name: "Open document", exact: true}).click();
   await expect(page.getByRole("row", {name: /phase1-browser-fixture/})).toBeVisible();
 
   await page.getByRole("row", {name: /phase1-browser-fixture/}).click();
@@ -70,7 +75,12 @@ test("Browser mutations use the CSRF cookie name reported by the session", async
 
   const uploadPath = testInfo.outputPath("phase1-custom-csrf.pdf");
   await writeFile(uploadPath, "%PDF-1.7\n% Custom CSRF browser fixture\n%%EOF\n");
-  await page.locator(".top-command input[type='file']").setInputFiles(uploadPath);
+  // Chromium interception omits disk-backed request bodies; give the mock the exact fixture bytes.
+  await expect(page.locator(".top-command input[type='file']")).toBeEnabled();
+  await page.locator(".top-command input[type='file']").setInputFiles({name: uploadPath.split("/").at(-1)!, mimeType: "application/pdf", buffer: await readFile(uploadPath)});
+  const queue = page.getByRole("dialog", {name: "Upload files"});
+  await expect(queue).toContainText("Upload accepted");
+  await queue.getByRole("button", {name: "Open document", exact: true}).click();
 
   await expect(page.getByRole("row", {name: /phase1-browser-fixture/})).toBeVisible();
 });

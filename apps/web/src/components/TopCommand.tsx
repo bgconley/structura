@@ -1,6 +1,7 @@
 import {useEffect, useRef} from "react";
 import {StatusChip} from "./Status";
 import {SessionMenu} from "./SessionMenu";
+import {UploadIntake, type UploadIntakeProps} from "./UploadIntake";
 import type {SessionInfo} from "../types";
 
 export function TopCommand({
@@ -10,8 +11,11 @@ export function TopCommand({
   query,
   setQuery,
   onSubmitSearch,
-  isUploading,
-  uploadFile,
+  intake,
+  uploadsLabel,
+  uploadsCount,
+  uploadsNeedAttention,
+  onOpenUploads,
 }: {
   session: SessionInfo;
   onSignOut: () => Promise<void>;
@@ -19,8 +23,11 @@ export function TopCommand({
   query: string;
   setQuery: (value: string) => void;
   onSubmitSearch: () => void;
-  isUploading: boolean;
-  uploadFile: (file: File | undefined) => Promise<void>;
+  intake: UploadIntakeProps;
+  uploadsLabel: string;
+  uploadsCount: number;
+  uploadsNeedAttention: boolean;
+  onOpenUploads: () => void;
 }) {
   const searchInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -54,19 +61,10 @@ export function TopCommand({
         />
         <kbd>Ctrl / ⌘ K</kbd>
       </label>
-      <label className="command-button">
-        {isUploading ? "Uploading..." : "Upload"}
-        <input
-          type="file"
-          disabled={isUploading}
-          accept="application/pdf,image/png,image/jpeg,image/tiff,image/webp"
-          onChange={(event) => {
-            const file = event.currentTarget.files?.[0];
-            event.currentTarget.value = "";
-            void uploadFile(file);
-          }}
-        />
-      </label>
+      <UploadIntake {...intake} />
+      <button type="button" className="command-button bulk-import-trigger" onClick={onOpenUploads}>Bulk Import</button>
+      <button type="button" className="command-button upload-queue-trigger" aria-label={uploadsLabel} title={uploadsLabel} onClick={onOpenUploads}>Uploads ({uploadsCount})
+        {uploadsNeedAttention ? <strong className="upload-attention" aria-hidden="true">!</strong> : null}</button>
       <StatusChip tone="green" label="Local-first" />
       <StatusChip tone="neutral" label="Inference routing unreported" />
       <StatusChip tone="neutral" label="Search health unreported" />

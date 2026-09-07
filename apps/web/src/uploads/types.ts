@@ -1,0 +1,22 @@
+export type UploadSource = "web_upload" | "api_upload" | "mobile_scan" | "bulk_import";
+export type UploadState = "awaiting_content" | "receiving" | "awaiting_duplicate_decision" | "accepted" | "reused" | "rejected" | "cancelled" | "expired";
+export type UploadCreate = {operationId: string; clientBatchId: string; filename: string; declaredBytes: number;
+  declaredMimeType: string | null; source: UploadSource; title: string | null};
+export type UploadReceipt = {outcome: "accepted" | "reused"; documentId: string; assetId: string;
+  batchId: string | null; jobId: string | null; sha256: string; byteSize: number; recordedAt: string};
+export type UploadDuplicate = {documentId: string; title: string};
+export type UploadAttempt = {uploadId: string; operationId: string; clientBatchId: string; revision: string;
+  state: UploadState; filename: string; declaredBytes: number; actualBytes: number | null; sha256: string | null;
+  detectedMimeType: string | null; currentTransferId: string | null; createdAt: string; updatedAt: string;
+  receipt: UploadReceipt | null; error: {code: string; message: string} | null; duplicates: UploadDuplicate[]};
+export type UploadDecision = {revision: string; decision: "keep_separate"; documentId?: never}
+  | {revision: string; decision: "use_existing"; documentId: string};
+export type UploadPolicy = {protocol: "structura.upload_attempt.v1"; available: boolean; maxFileBytes: number;
+  actorActiveLimit: number; globalActiveLimit: number; actorReservedBytes: number; globalReservedBytes: number;
+  queueReferenceLimit: number; absoluteSeconds: number; idleSeconds: number; heldSeconds: number;
+  inactiveSeconds: number; controlBytes: number; mimeTypes: string[]; validation: string};
+export type UploadIdentity = {operationId: string; clientBatchId: string; uploadId?: string;
+  filename?: string; declaredBytes?: number};
+export type UploadActor = {userId: string; householdId: string};
+export type UploadReference = UploadActor & {localId: string; operationId: string; clientBatchId: string;
+  uploadId?: string; registrationSha256: string; source: UploadSource};
