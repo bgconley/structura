@@ -1,0 +1,46 @@
+{
+  "additionalProperties": false,
+  "description": "Reserved explicit binding for a later candidate worker; not a legacy job.",
+  "properties": {
+    "schema_version": {
+      "const": "structura.native_index_job.v1",
+      "default": "structura.native_index_job.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "document_id": {
+      "format": "uuid",
+      "title": "Document Id",
+      "type": "string"
+    },
+    "processing_run_id": {
+      "format": "uuid",
+      "title": "Processing Run Id",
+      "type": "string"
+    },
+    "parse_generation_id": {
+      "format": "uuid",
+      "title": "Parse Generation Id",
+      "type": "string"
+    },
+    "index_generation_id": {
+      "format": "uuid",
+      "title": "Index Generation Id",
+      "type": "string"
+    },
+    "configuration_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Configuration Sha256",
+      "type": "string"
+    }
+  },
+  "required": [
+    "document_id",
+    "processing_run_id",
+    "parse_generation_id",
+    "index_generation_id",
+    "configuration_sha256"
+  ],
+  "title": "CandidateIndexEvent",
+  "type": "object"
+}

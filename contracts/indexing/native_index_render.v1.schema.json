@@ -1,0 +1,130 @@
+{
+  "$defs": {
+    "SourceRender": {
+      "additionalProperties": false,
+      "properties": {
+        "page_number": {
+          "exclusiveMinimum": 0,
+          "title": "Page Number",
+          "type": "integer"
+        },
+        "image_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Image Sha256",
+          "type": "string"
+        },
+        "pixel_width": {
+          "exclusiveMinimum": 0,
+          "title": "Pixel Width",
+          "type": "integer"
+        },
+        "pixel_height": {
+          "exclusiveMinimum": 0,
+          "title": "Pixel Height",
+          "type": "integer"
+        },
+        "renderer": {
+          "minLength": 1,
+          "title": "Renderer",
+          "type": "string"
+        },
+        "renderer_version": {
+          "minLength": 1,
+          "title": "Renderer Version",
+          "type": "string"
+        },
+        "coordinate_space": {
+          "const": "rendered_source_pixels",
+          "default": "rendered_source_pixels",
+          "title": "Coordinate Space",
+          "type": "string"
+        },
+        "native_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Native Text"
+        },
+        "native_text_origin": {
+          "anyOf": [
+            {
+              "const": "pdf_native",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Native Text Origin"
+        }
+      },
+      "required": [
+        "page_number",
+        "image_sha256",
+        "pixel_width",
+        "pixel_height",
+        "renderer",
+        "renderer_version"
+      ],
+      "title": "SourceRender",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+    },
+    "page_id": {
+      "format": "uuid",
+      "title": "Page Id",
+      "type": "string"
+    },
+    "page_number": {
+      "exclusiveMinimum": 0,
+      "maximum": 500,
+      "title": "Page Number",
+      "type": "integer"
+    },
+    "source": {
+      "$ref": "#/$defs/SourceRender"
+    },
+    "uri": {
+      "maxLength": 1000,
+      "minLength": 1,
+      "title": "Uri",
+      "type": "string"
+    },
+    "mime_type": {
+      "const": "image/png",
+      "default": "image/png",
+      "title": "Mime Type",
+      "type": "string"
+    },
+    "byte_size": {
+      "exclusiveMinimum": 0,
+      "maximum": 10485760,
+      "title": "Byte Size",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "id",
+    "page_id",
+    "page_number",
+    "source",
+    "uri",
+    "byte_size"
+  ],
+  "title": "IndexRenderAsset",
+  "type": "object"
+}

@@ -1,0 +1,226 @@
+{
+  "$defs": {
+    "EmbeddingProtocol": {
+      "properties": {
+        "api_flavor": {
+          "enum": [
+            "tei",
+            "openai"
+          ],
+          "title": "Api Flavor",
+          "type": "string"
+        },
+        "dimensions_policy": {
+          "enum": [
+            "requested",
+            "native"
+          ],
+          "title": "Dimensions Policy",
+          "type": "string"
+        },
+        "input_format": {
+          "enum": [
+            "raw_text",
+            "qwen_text",
+            "qwen_vl_messages"
+          ],
+          "title": "Input Format",
+          "type": "string"
+        },
+        "identity_policy": {
+          "enum": [
+            "reported_model",
+            "deployment_pinned"
+          ],
+          "title": "Identity Policy",
+          "type": "string"
+        },
+        "artifact_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Artifact Revision"
+        },
+        "query_instruction": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query Instruction"
+        }
+      },
+      "required": [
+        "api_flavor",
+        "dimensions_policy",
+        "input_format",
+        "identity_policy"
+      ],
+      "title": "EmbeddingProtocol",
+      "type": "object"
+    },
+    "FrozenModelSpace": {
+      "additionalProperties": false,
+      "properties": {
+        "profile": {
+          "title": "Profile",
+          "type": "string"
+        },
+        "base_model": {
+          "title": "Base Model",
+          "type": "string"
+        },
+        "served_model": {
+          "title": "Served Model",
+          "type": "string"
+        },
+        "dimensions": {
+          "enum": [
+            1536,
+            2048
+          ],
+          "title": "Dimensions",
+          "type": "integer"
+        },
+        "modality": {
+          "enum": [
+            "text",
+            "visual"
+          ],
+          "title": "Modality",
+          "type": "string"
+        },
+        "metric": {
+          "const": "cosine",
+          "default": "cosine",
+          "title": "Metric",
+          "type": "string"
+        },
+        "protocol": {
+          "$ref": "#/$defs/EmbeddingProtocol"
+        },
+        "visual_system_instruction": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Visual System Instruction"
+        }
+      },
+      "required": [
+        "profile",
+        "base_model",
+        "served_model",
+        "dimensions",
+        "modality",
+        "protocol",
+        "visual_system_instruction"
+      ],
+      "title": "FrozenModelSpace",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "structura.native_index_configuration.v1",
+      "default": "structura.native_index_configuration.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "model_mode": {
+      "enum": [
+        "live",
+        "fixture"
+      ],
+      "title": "Model Mode",
+      "type": "string"
+    },
+    "modalities": {
+      "default": [
+        "text",
+        "visual"
+      ],
+      "items": {
+        "enum": [
+          "text",
+          "visual"
+        ],
+        "type": "string"
+      },
+      "title": "Modalities",
+      "type": "array"
+    },
+    "spaces": {
+      "items": {
+        "$ref": "#/$defs/FrozenModelSpace"
+      },
+      "title": "Spaces",
+      "type": "array"
+    },
+    "projection_version": {
+      "const": "native_parse_only_v1",
+      "default": "native_parse_only_v1",
+      "title": "Projection Version",
+      "type": "string"
+    },
+    "visual_policy": {
+      "const": "native_visual_eligibility_v1",
+      "default": "native_visual_eligibility_v1",
+      "title": "Visual Policy",
+      "type": "string"
+    },
+    "input_identity_scheme": {
+      "const": "model-input-v1",
+      "default": "model-input-v1",
+      "title": "Input Identity Scheme",
+      "type": "string"
+    },
+    "fact_basis": {
+      "const": "not_collected",
+      "default": "not_collected",
+      "title": "Fact Basis",
+      "type": "string"
+    },
+    "metadata_basis": {
+      "const": "not_collected",
+      "default": "not_collected",
+      "title": "Metadata Basis",
+      "type": "string"
+    },
+    "max_text_bytes": {
+      "default": 6000,
+      "exclusiveMinimum": 0,
+      "maximum": 6000,
+      "title": "Max Text Bytes",
+      "type": "integer"
+    },
+    "max_inputs": {
+      "default": 4096,
+      "exclusiveMinimum": 0,
+      "maximum": 4096,
+      "title": "Max Inputs",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "model_mode",
+    "spaces"
+  ],
+  "title": "IndexConfiguration",
+  "type": "object"
+}

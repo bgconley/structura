@@ -1,0 +1,77 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "input_id": {
+      "format": "uuid",
+      "title": "Input Id",
+      "type": "string"
+    },
+    "model_input_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Model Input Sha256",
+      "type": "string"
+    },
+    "values": {
+      "items": {
+        "type": "number"
+      },
+      "title": "Values",
+      "type": "array"
+    },
+    "profile": {
+      "title": "Profile",
+      "type": "string"
+    },
+    "reported_model": {
+      "title": "Reported Model",
+      "type": "string"
+    },
+    "reported_model_version": {
+      "default": "",
+      "maxLength": 200,
+      "title": "Reported Model Version",
+      "type": "string"
+    },
+    "declared_artifact_revision": {
+      "title": "Declared Artifact Revision",
+      "type": "string"
+    },
+    "identity_source": {
+      "const": "reported_model",
+      "default": "reported_model",
+      "title": "Identity Source",
+      "type": "string"
+    },
+    "model_mode": {
+      "enum": [
+        "live",
+        "fixture"
+      ],
+      "title": "Model Mode",
+      "type": "string"
+    },
+    "invocation_id": {
+      "format": "uuid",
+      "title": "Invocation Id",
+      "type": "string"
+    },
+    "latency_ms": {
+      "minimum": 0,
+      "title": "Latency Ms",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "input_id",
+    "model_input_sha256",
+    "values",
+    "profile",
+    "reported_model",
+    "declared_artifact_revision",
+    "model_mode",
+    "invocation_id",
+    "latency_ms"
+  ],
+  "title": "VectorObservation",
+  "type": "object"
+}

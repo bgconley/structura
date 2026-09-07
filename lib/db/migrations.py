@@ -46,6 +46,7 @@ BASELINE_SQL_FILES = (
     "095_completion_session_binding.sql",
     "096_completion_document_processing.sql",
     "097_completion_processing_request_authority.sql",
+    "098_completion_native_index_candidates.sql",
 )
 
 

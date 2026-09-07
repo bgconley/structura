@@ -4,13 +4,20 @@ from __future__ import annotations
 
 from typing import Any, cast
 
+from psycopg import sql
+
 from lib.document_processing.errors import ProcessingAuthorityLost
 from lib.document_processing.models import ProcessingBinding
 from lib.document_processing.request_authority_repository import lock_processing_request
 from lib.jobs.ownership import current_job_attempt, require_owned_job
 
 
-def lock_current_run(cur: Any, binding: ProcessingBinding) -> dict[str, Any]:
+def lock_current_run(
+    cur: Any,
+    binding: ProcessingBinding,
+    *,
+    include_artifacts: bool = True,
+) -> dict[str, Any]:
     lock_processing_request(cur, binding)
     cur.execute(
         "SELECT id FROM document_processing_runs "
@@ -20,9 +27,10 @@ def lock_current_run(cur: Any, binding: ProcessingBinding) -> dict[str, Any]:
     if cur.fetchone() is None:
         raise ProcessingAuthorityLost("Processing run is unavailable.")
     # Fresh statement after waiting for document/run locks.
+    artifacts = ", g.inventory_json, g.structure_json" if include_artifacts else ""
     cur.execute(
-        """SELECT r.*, g.state AS parse_state, g.inventory_json, g.inventory_sha256,
-                  g.structure_json, g.structure_sha256
+        sql.SQL("""SELECT r.*, g.state AS parse_state, g.inventory_sha256,
+            g.structure_sha256 {artifacts}
         FROM document_processing_runs r
         JOIN documents d ON d.id = r.document_id
         JOIN document_parse_generations g ON g.id = r.parse_generation_id
@@ -30,7 +38,7 @@ def lock_current_run(cur: Any, binding: ProcessingBinding) -> dict[str, Any]:
           AND g.creator_run_id = r.id AND g.document_id = r.document_id
           AND d.deleted_at IS NULL AND d.desired_processing_run_id = r.id
           AND d.processing_generation = r.generation AND r.revoked_at IS NULL
-          AND processing_request_is_authorized(r.id)""",
+          AND processing_request_is_authorized(r.id)""").format(artifacts=sql.SQL(artifacts)),
         (binding.processing_run_id, binding.document_id, binding.parse_generation_id),
     )
     row = cur.fetchone()

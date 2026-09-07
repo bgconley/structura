@@ -40,4 +40,18 @@ def _is_object_referenced(cur: Any, stored: StoredObject) -> bool:
         (stored.uri, stored.sha256),
     )
     row = cur.fetchone()
-    return bool(row and row["referenced"])
+    if row and row["referenced"]:
+        return True
+    # A rolling migration can still call cleanup before 098 exists. No candidate
+    # references can exist then; avoid resolving its table in that SQL statement.
+    cur.execute("SELECT to_regclass('structura.document_generation_render_assets') AS relation")
+    if not cur.fetchone()["relation"]:
+        return False
+    cur.execute(
+        """SELECT EXISTS (
+          SELECT 1 FROM document_generation_render_assets
+          WHERE asset_json->>'uri' = %s OR asset_json->'source'->>'image_sha256' = %s
+        ) AS referenced""",
+        (stored.uri, stored.sha256),
+    )
+    return bool(cur.fetchone()["referenced"])

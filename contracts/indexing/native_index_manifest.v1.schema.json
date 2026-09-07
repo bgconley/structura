@@ -1,0 +1,248 @@
+{
+  "$defs": {
+    "IndexInput": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "ordinal": {
+          "minimum": 0,
+          "title": "Ordinal",
+          "type": "integer"
+        },
+        "modality": {
+          "enum": [
+            "text",
+            "visual"
+          ],
+          "title": "Modality",
+          "type": "string"
+        },
+        "owner_id": {
+          "format": "uuid",
+          "title": "Owner Id",
+          "type": "string"
+        },
+        "page_number": {
+          "exclusiveMinimum": 0,
+          "maximum": 500,
+          "title": "Page Number",
+          "type": "integer"
+        },
+        "element_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Element Ids",
+          "type": "array"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "text_origins": {
+          "items": {
+            "enum": [
+              "pdf_native",
+              "model_transcription",
+              "legacy_docling"
+            ],
+            "type": "string"
+          },
+          "title": "Text Origins",
+          "type": "array"
+        },
+        "render_asset_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Render Asset Id"
+        },
+        "content_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Content Sha256",
+          "type": "string"
+        },
+        "model_input_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Model Input Sha256",
+          "type": "string"
+        },
+        "purpose": {
+          "const": "document",
+          "default": "document",
+          "title": "Purpose",
+          "type": "string"
+        },
+        "identity_scheme": {
+          "const": "model-input-v1",
+          "default": "model-input-v1",
+          "title": "Identity Scheme",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "ordinal",
+        "modality",
+        "owner_id",
+        "page_number",
+        "element_ids",
+        "text",
+        "text_origins",
+        "render_asset_id",
+        "content_sha256",
+        "model_input_sha256"
+      ],
+      "title": "IndexInput",
+      "type": "object"
+    },
+    "PageDisposition": {
+      "additionalProperties": false,
+      "properties": {
+        "page_number": {
+          "exclusiveMinimum": 0,
+          "maximum": 500,
+          "title": "Page Number",
+          "type": "integer"
+        },
+        "text": {
+          "enum": [
+            "eligible",
+            "ineligible",
+            "not_requested"
+          ],
+          "title": "Text",
+          "type": "string"
+        },
+        "visual": {
+          "enum": [
+            "eligible",
+            "ineligible",
+            "not_requested"
+          ],
+          "title": "Visual",
+          "type": "string"
+        },
+        "text_reason": {
+          "enum": [
+            "nonempty_chunks",
+            "no_text",
+            "not_requested"
+          ],
+          "title": "Text Reason",
+          "type": "string"
+        },
+        "visual_reasons": {
+          "items": {
+            "enum": [
+              "image_original",
+              "low_native_text",
+              "layout_complexity",
+              "partial_parse",
+              "digital_text_page",
+              "not_requested"
+            ],
+            "type": "string"
+          },
+          "title": "Visual Reasons",
+          "type": "array"
+        },
+        "parse_state": {
+          "enum": [
+            "processed",
+            "partial",
+            "insufficient_signal"
+          ],
+          "title": "Parse State",
+          "type": "string"
+        },
+        "whitespace_chunk_ids": {
+          "default": [],
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Whitespace Chunk Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "page_number",
+        "text",
+        "visual",
+        "text_reason",
+        "visual_reasons",
+        "parse_state"
+      ],
+      "title": "PageDisposition",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "structura.native_index_manifest.v1",
+      "default": "structura.native_index_manifest.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "index_generation_id": {
+      "format": "uuid",
+      "title": "Index Generation Id",
+      "type": "string"
+    },
+    "parse_generation_id": {
+      "format": "uuid",
+      "title": "Parse Generation Id",
+      "type": "string"
+    },
+    "structure_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Structure Sha256",
+      "type": "string"
+    },
+    "configuration_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Configuration Sha256",
+      "type": "string"
+    },
+    "inputs": {
+      "items": {
+        "$ref": "#/$defs/IndexInput"
+      },
+      "maxItems": 4096,
+      "title": "Inputs",
+      "type": "array"
+    },
+    "pages": {
+      "items": {
+        "$ref": "#/$defs/PageDisposition"
+      },
+      "maxItems": 500,
+      "minItems": 1,
+      "title": "Pages",
+      "type": "array"
+    }
+  },
+  "required": [
+    "index_generation_id",
+    "parse_generation_id",
+    "structure_sha256",
+    "configuration_sha256",
+    "inputs",
+    "pages"
+  ],
+  "title": "IndexManifest",
+  "type": "object"
+}
