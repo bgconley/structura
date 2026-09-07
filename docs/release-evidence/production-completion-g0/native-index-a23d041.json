@@ -1,0 +1,448 @@
+{
+  "schema_version": "structura.persisted_index_checkpoint.v1",
+  "commit": "a23d04102c04c7ee1efeca66b9c60df7370b07c9",
+  "scope": "one exposed source-authored two-page TIFF regression; hidden candidate generation only",
+  "parse_execution": {
+    "actual_adapter_calls": 2,
+    "batches": 2,
+    "deployment_declaration": "declared-live:191e0af232104ed8b65258cf3fb2b842e288008baca7633c11b82a1ac7203aab",
+    "new_pages": 2,
+    "page_count": 2,
+    "replay_adapter_calls": 0,
+    "resumed_pages": 0,
+    "structure_sha256": "da647b3433de6bcdc02cc24b6ab75458cce330bf14a38c04cf5b05d82d2a676a"
+  },
+  "parse_source_diagnostics": {
+    "coverage": {
+      "inventoried_pages": 2,
+      "reported_processed_fraction": 1.0,
+      "reported_processed_pages": 2,
+      "source_pages": 2,
+      "state_counts": {
+        "processed": 2
+      },
+      "text_not_evaluated_pages": 0,
+      "text_scored_pages": 2
+    },
+    "parse_tokens": {
+      "expected": 12,
+      "inserted": 0,
+      "matched": 12,
+      "observed": 12,
+      "omitted": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "status": "computed"
+    },
+    "searchable_tokens": {
+      "expected": 12,
+      "inserted": 0,
+      "matched": 12,
+      "observed": 12,
+      "omitted": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "status": "computed"
+    },
+    "pages": [
+      {
+        "page_number": 1,
+        "layout": {
+          "geometry": {
+            "expected_regions": 4,
+            "iou_sum": 1.1949085123309466,
+            "matched_regions": 3,
+            "mean_iou_with_missing_zero": 0.29872712808273666,
+            "source_pixel_support": "not_evaluated"
+          },
+          "reading_order": {
+            "accuracy": 0.6666666666666666,
+            "correct_pairs": 2,
+            "expected_pairs": 3,
+            "missing_pairs": 1,
+            "reversed_pairs": 0
+          },
+          "regions": {
+            "expected": 4,
+            "inserted": 1,
+            "matched": 3,
+            "observed": 4,
+            "omitted": 1,
+            "precision": 0.75,
+            "recall": 0.75
+          },
+          "tables": {
+            "cell_text_exact": 4,
+            "cell_text_expected": 4,
+            "cells": {
+              "expected": 4,
+              "inserted": 0,
+              "matched": 4,
+              "observed": 4,
+              "omitted": 0,
+              "precision": 1.0,
+              "recall": 1.0
+            },
+            "grid_exact": 1,
+            "grid_expected": 1,
+            "span_exact": 4,
+            "span_expected": 4,
+            "tables": {
+              "expected": 1,
+              "inserted": 0,
+              "matched": 1,
+              "observed": 1,
+              "omitted": 0,
+              "precision": 1.0,
+              "recall": 1.0
+            }
+          }
+        }
+      },
+      {
+        "page_number": 2,
+        "layout": {
+          "geometry": {
+            "expected_regions": 2,
+            "iou_sum": 0.14807364805464115,
+            "matched_regions": 2,
+            "mean_iou_with_missing_zero": 0.07403682402732058,
+            "source_pixel_support": "not_evaluated"
+          },
+          "reading_order": {
+            "accuracy": 1.0,
+            "correct_pairs": 1,
+            "expected_pairs": 1,
+            "missing_pairs": 0,
+            "reversed_pairs": 0
+          },
+          "regions": {
+            "expected": 2,
+            "inserted": 0,
+            "matched": 2,
+            "observed": 2,
+            "omitted": 0,
+            "precision": 1.0,
+            "recall": 1.0
+          },
+          "tables": {
+            "cell_text_exact": 0,
+            "cell_text_expected": 0,
+            "cells": {
+              "expected": 0,
+              "inserted": 0,
+              "matched": 0,
+              "observed": 0,
+              "omitted": 0,
+              "precision": null,
+              "recall": null
+            },
+            "grid_exact": 0,
+            "grid_expected": 0,
+            "span_exact": 0,
+            "span_expected": 0,
+            "tables": {
+              "expected": 0,
+              "inserted": 0,
+              "matched": 0,
+              "observed": 0,
+              "omitted": 0,
+              "precision": null,
+              "recall": null
+            }
+          }
+        }
+      }
+    ]
+  },
+  "index": {
+    "actual_document_http_calls": {
+      "text": 6,
+      "visual": 2
+    },
+    "completion_sha256": "cce746723815f48c2eb46a8e4fa2cd31084cd93ec1c8473fc61f41221fa6849e",
+    "configuration_sha256": "0c2fe63da06e5352ae52263da4dbcbf7c2a43645058cee6898f5dcfed2c80ce1",
+    "execution_attempts": [
+      {
+        "adapter_calls_completed": 1,
+        "adapter_calls_started": 1,
+        "completion_sha256": null,
+        "counts": [
+          {
+            "completed": 1,
+            "eligible": 6,
+            "modality": "text",
+            "new": 1,
+            "remaining": 5,
+            "resumed": 0
+          },
+          {
+            "completed": 0,
+            "eligible": 2,
+            "modality": "visual",
+            "new": 0,
+            "remaining": 2,
+            "resumed": 0
+          }
+        ],
+        "elapsed_ms": 179,
+        "live_invocation_attestation": "not_evaluated",
+        "manifest_sha256": "26ce6e538fa485bdc2730789dcee1f8f099775eec714945066b667b3c1fcc1cc",
+        "max_new_inputs": 1,
+        "model_mode": "live",
+        "state": "pending",
+        "timeout_seconds": 90
+      },
+      {
+        "adapter_calls_completed": 7,
+        "adapter_calls_started": 7,
+        "completion_sha256": "cce746723815f48c2eb46a8e4fa2cd31084cd93ec1c8473fc61f41221fa6849e",
+        "counts": [
+          {
+            "completed": 6,
+            "eligible": 6,
+            "modality": "text",
+            "new": 5,
+            "remaining": 0,
+            "resumed": 1
+          },
+          {
+            "completed": 2,
+            "eligible": 2,
+            "modality": "visual",
+            "new": 2,
+            "remaining": 0,
+            "resumed": 0
+          }
+        ],
+        "elapsed_ms": 1139,
+        "live_invocation_attestation": "not_evaluated",
+        "manifest_sha256": "26ce6e538fa485bdc2730789dcee1f8f099775eec714945066b667b3c1fcc1cc",
+        "max_new_inputs": 128,
+        "model_mode": "live",
+        "state": "sealed",
+        "timeout_seconds": 90
+      }
+    ],
+    "index_generation_id": "820b829a-19f5-451c-8278-56d9ad6db4b0",
+    "manifest_sha256": "26ce6e538fa485bdc2730789dcee1f8f099775eec714945066b667b3c1fcc1cc",
+    "quality_acceptance": "not_evaluated",
+    "sealed_replay": {
+      "adapter_calls_completed": 0,
+      "adapter_calls_started": 0,
+      "completion_sha256": "cce746723815f48c2eb46a8e4fa2cd31084cd93ec1c8473fc61f41221fa6849e",
+      "counts": [
+        {
+          "completed": 6,
+          "eligible": 6,
+          "modality": "text",
+          "new": 0,
+          "remaining": 0,
+          "resumed": 6
+        },
+        {
+          "completed": 2,
+          "eligible": 2,
+          "modality": "visual",
+          "new": 0,
+          "remaining": 0,
+          "resumed": 2
+        }
+      ],
+      "elapsed_ms": 196,
+      "live_invocation_attestation": "not_evaluated",
+      "manifest_sha256": "26ce6e538fa485bdc2730789dcee1f8f099775eec714945066b667b3c1fcc1cc",
+      "max_new_inputs": 128,
+      "model_mode": "live",
+      "state": "sealed",
+      "timeout_seconds": 90
+    },
+    "sealed_replay_http_calls": 0
+  },
+  "queries": {
+    "modalities": [
+      {
+        "actual_http_attempts": 1,
+        "actual_http_responses": 1,
+        "declared_artifact_revision": "5cf2132abc99cad020ac570b19d031efec650f2b",
+        "identity_source": "reported_model",
+        "modality": "text",
+        "profile": "qwen3-embedding-4b-1536-blackbird:v2",
+        "query_count": 2,
+        "reported_model": "Qwen/Qwen3-Embedding-4B",
+        "reported_model_version": "",
+        "request_latency_ms": 46
+      },
+      {
+        "actual_http_attempts": 2,
+        "actual_http_responses": 2,
+        "declared_artifact_revision": "9f2f7e710d6d81056aa5c0a4f04764fec6bb7bda",
+        "identity_source": "reported_model",
+        "modality": "visual",
+        "profile": "qwen3-vl-embedding-2b-2048-blackbird:v2",
+        "query_count": 2,
+        "reported_model": "Qwen/Qwen3-VL-Embedding-2B",
+        "reported_model_version": "",
+        "request_latency_ms": 51
+      }
+    ],
+    "measurements": [
+      {
+        "expected_page": 1,
+        "modality": "text",
+        "profile": "qwen3-embedding-4b-1536-blackbird:v2",
+        "purpose": "query",
+        "query": "Which page has the invoice line items and service amount 12.50?",
+        "query_input_sha256": "fbb0fea29849d6a26884424ab9c03dd44aa8fa778d3be8bd2d2f9ff389543b5c",
+        "ranked_inputs": [
+          {
+            "input_id": "d305dfa7-bf69-5bca-8f46-3136ccafec92",
+            "page_number": 1,
+            "similarity": 0.730523540982821
+          },
+          {
+            "input_id": "a329a26e-4cdf-5dec-bea3-572fb5ca787a",
+            "page_number": 1,
+            "similarity": 0.5313879837501312
+          },
+          {
+            "input_id": "630b83fa-1d15-5ab4-9ee9-ece6ec57349e",
+            "page_number": 2,
+            "similarity": 0.4486228680157044
+          },
+          {
+            "input_id": "702cd273-d423-5fad-9a26-cc266eadab95",
+            "page_number": 2,
+            "similarity": 0.37815536309230424
+          },
+          {
+            "input_id": "7a29691e-1fb8-5f85-afcd-8296b7ad814d",
+            "page_number": 1,
+            "similarity": 0.31867018680667153
+          },
+          {
+            "input_id": "dec674d4-eb4d-5dd3-bd37-f3e53fed894f",
+            "page_number": 1,
+            "similarity": 0.31867018680667153
+          }
+        ],
+        "top_page_matches": true
+      },
+      {
+        "expected_page": 2,
+        "modality": "text",
+        "profile": "qwen3-embedding-4b-1536-blackbird:v2",
+        "purpose": "query",
+        "query": "When is payment due on 2026-09-30?",
+        "query_input_sha256": "036f945fffa699f1a26e4ac6f439628e8e8ba955b591ee6999de7186c3fd758e",
+        "ranked_inputs": [
+          {
+            "input_id": "630b83fa-1d15-5ab4-9ee9-ece6ec57349e",
+            "page_number": 2,
+            "similarity": 0.7870529814788751
+          },
+          {
+            "input_id": "a329a26e-4cdf-5dec-bea3-572fb5ca787a",
+            "page_number": 1,
+            "similarity": 0.39440373210022905
+          },
+          {
+            "input_id": "d305dfa7-bf69-5bca-8f46-3136ccafec92",
+            "page_number": 1,
+            "similarity": 0.33955509973518483
+          },
+          {
+            "input_id": "702cd273-d423-5fad-9a26-cc266eadab95",
+            "page_number": 2,
+            "similarity": 0.32013792037773203
+          },
+          {
+            "input_id": "7a29691e-1fb8-5f85-afcd-8296b7ad814d",
+            "page_number": 1,
+            "similarity": 0.28701825133771997
+          },
+          {
+            "input_id": "dec674d4-eb4d-5dd3-bd37-f3e53fed894f",
+            "page_number": 1,
+            "similarity": 0.28701825133771997
+          }
+        ],
+        "top_page_matches": true
+      },
+      {
+        "expected_page": 1,
+        "modality": "visual",
+        "profile": "qwen3-vl-embedding-2b-2048-blackbird:v2",
+        "purpose": "query",
+        "query": "Which page has the invoice line items and service amount 12.50?",
+        "query_input_sha256": "54ede7c77812e82d75a444f4ca40a7004cd704d55763f9ad44c3991640f81d1c",
+        "ranked_inputs": [
+          {
+            "input_id": "4eab73a8-72be-5797-a40d-bdbf5ea8173e",
+            "page_number": 1,
+            "similarity": 0.5443590104639549
+          },
+          {
+            "input_id": "f2f9b4f8-ea9f-5301-9d1d-1d076b0cb9db",
+            "page_number": 2,
+            "similarity": 0.450774490912087
+          }
+        ],
+        "top_page_matches": true
+      },
+      {
+        "expected_page": 2,
+        "modality": "visual",
+        "profile": "qwen3-vl-embedding-2b-2048-blackbird:v2",
+        "purpose": "query",
+        "query": "When is payment due on 2026-09-30?",
+        "query_input_sha256": "d2ec4c2f20f6912f5130f66468f99c94f882fb74d7971a34d63ee385bb31abc8",
+        "ranked_inputs": [
+          {
+            "input_id": "f2f9b4f8-ea9f-5301-9d1d-1d076b0cb9db",
+            "page_number": 2,
+            "similarity": 0.3983417868678108
+          },
+          {
+            "input_id": "4eab73a8-72be-5797-a40d-bdbf5ea8173e",
+            "page_number": 1,
+            "similarity": 0.21965487865139438
+          }
+        ],
+        "top_page_matches": true
+      }
+    ]
+  },
+  "offline_recomputation": {
+    "vector_checkpoints": 8,
+    "query_bindings_and_rankings": 4,
+    "database_or_model_calls": 0,
+    "result": "passed"
+  },
+  "hardware_scope": {
+    "ingestion": "existing Oxcart Qwen3.8-27B BF16",
+    "embeddings": "Blackbird PRO4000 GPU-6ec4ee66-142e-34ad-e17d-a131d7153b51",
+    "resident_service_changes": false
+  },
+  "private_artifact_hashes": {
+    "capture-1.json": "8995a06e8007b5de2fa09fdf7751cd2aed1228d1910388a3dc3eeb3814abba5b",
+    "index-capture.json": "2fdaa12c14874b1602b49a335958db3b9fe0700d167373140c602cf043a49c2d",
+    "manifest-1.json": "6b40ac0fba15d8c17ee4b8f1c65f442f0c4c66ee84aacab5a2263c3f7eae79a8",
+    "pre-inference-reference.json": "9caa8a2d8a18ddd0fd0724d1f62982fde8daa67339145b598ac96b2b22280ac4",
+    "query-reference.json": "c02743612090be895f1feacf064bed93866d6d2e0b18d3c86ef31fa1faff7532",
+    "render-binding.json": "9469a4db2cb76b0f9dc8d6015e88249f2646081562f897efe1e1a5419bd4a748",
+    "report.json": "302fae33027aeb1ba357c9bd6ae863abcd30d2cfebbb587ea0110e2e6f57f37d",
+    "score-1.json": "abe68f6de39e30768d14a06639b2201bf41791a84b04d90aa182a1259ab43ae0",
+    "source-annotation-original.json": "3768156fb18ca593517cc02db8003582bcad67fe45f81f95abe9fec44d3e665d",
+    "source-annotation.json": "ec0b920ae8cb79a2e5daa524cbbf6be11673720d03569d3e1915d7efccf3c4ea"
+  },
+  "limitations": [
+    "No default native ingestion, current index selection or application search endpoint activated.",
+    "Two known synthetic queries do not establish corpus quality, hybrid superiority, recall, production latency or capacity.",
+    "Reported model versions are empty; pinned artifact revisions are deployment declarations, not returned weights attestations.",
+    "Geometry scores compare broad pre-authored reference regions against tight text boxes, and region-kind mismatch affects reading-order matches. Retained low IoU values alone do not establish poor visual localization; source-annotation policy needs calibration before a release judgment.",
+    "Full archive restoration and live browser/model workflow remain open."
+  ],
+  "release_acceptance": "not_evaluated",
+  "production_activated": false
+}

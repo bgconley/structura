@@ -64,6 +64,11 @@ bounded resumable candidate embedding execution and the complete 92-test Linux
 Inbox/browser gate at `bed4c5b`. It separates schema/executor verification from
 pending human-authority writer and native publication/quality acceptance.
 
+[The persisted GPU index checkpoint](persisted-index-checkpoint.md) records the real
+27B-to-Blackbird document/page/query flow at `a23d041`: eight saved vectors, zero
+model calls on sealed replay and four correct page-query rankings on the exposed
+two-page fixture. It preserves source-scoring and performance limitations.
+
 The cached validation images observed on Oxcart are:
 
 | Image | Local image ID |
