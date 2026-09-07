@@ -451,7 +451,7 @@ def _timeline_event_from_row(row: dict[str, Any]) -> TimelineEvent:
 def _evidence_list(raw: object) -> list[dict[str, Any]]:
     if isinstance(raw, list):
         return [item for item in raw if isinstance(item, dict)]
-    if isinstance(raw, dict):
+    if isinstance(raw, dict) and raw:
         return [raw]
     return []
 

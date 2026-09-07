@@ -315,12 +315,14 @@ def test_phase6_rule_apply_rolls_back_document_mutation_when_run_write_fails(
         raise RuntimeError("injected rule-run write failure")
 
     monkeypatch.setattr(automation_repository, "insert_rule_run", fail_insert_rule_run)
-    with pytest.raises(RuntimeError, match="injected rule-run write failure"):
-        client.post(
-            f"/api/v1/filing-rules/{rule.json()['id']}/apply",
-            headers={"X-CSRF-Token": csrf},
-            json={"documentId": document_id},
-        )
+    failed = client.post(
+        f"/api/v1/filing-rules/{rule.json()['id']}/apply",
+        headers={"X-CSRF-Token": csrf},
+        json={"documentId": document_id},
+    )
+    assert failed.status_code == 500
+    assert "injected rule-run write failure" not in failed.text
+    assert failed.headers["X-Request-ID"]
 
     with db_connection() as conn:
         with conn.cursor() as cur:

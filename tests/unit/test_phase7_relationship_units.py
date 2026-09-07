@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from uuid import uuid4
 
 from lib.contracts import RelationshipWrite, SearchRequest
@@ -68,6 +68,26 @@ def test_phase7_relationship_write_rejects_self_links() -> None:
         assert "cannot link a document to itself" in str(exc)
     else:  # pragma: no cover - the model must reject this path.
         raise AssertionError("self relationship unexpectedly validated")
+
+
+def test_relationship_read_maps_legacy_empty_evidence_without_inventing_a_reference() -> None:
+    from lib.relationships.service import _relationship_from_row
+
+    relationship = _relationship_from_row(
+        {
+            "id": uuid4(),
+            "document_id": uuid4(),
+            "related_document_id": uuid4(),
+            "related_title": "Related document",
+            "relationship_type": "related_to",
+            "status": "confirmed",
+            "direction": "from",
+            "source_engine": "system",
+            "evidence_json": {},  # Existing database default, including legacy rows.
+            "created_at": datetime.now(UTC),
+        }
+    )
+    assert relationship.evidence == []
 
 
 def test_phase7_deadline_status_policy_tracks_review_due_soon_and_overdue() -> None:
