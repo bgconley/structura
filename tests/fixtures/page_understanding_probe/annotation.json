@@ -1,0 +1,1492 @@
+{
+  "schema_version": "structura.source_annotation.v1",
+  "item_id": "combined-three-family-source-v1",
+  "original_sha256": "1d6a61f919aceaad22389066b09c6f2a8b37043103f0220abd0180a558648e3d",
+  "family_labels": [
+    "invoice",
+    "receipt",
+    "medical_eob"
+  ],
+  "modality": "image",
+  "origin_group": "authored-three-family-probe-v1",
+  "template_group": "simple-visible-ledger-v1",
+  "provenance": {
+    "origin": "synthetic_author",
+    "annotation_revision": "source-recipe-v1",
+    "author_reference": "structura-synthetic-source-author",
+    "adjudicator_reference": null,
+    "created_at": "2026-09-07T14:04:35Z",
+    "source_only": true
+  },
+  "pages": [
+    {
+      "page_number": 1,
+      "image_sha256": "95ff42599358f78849791a1d6bb7080f954be30f607516f59de4b000f881e3a0",
+      "pixel_width": 2400,
+      "pixel_height": 1800,
+      "regions": [
+        {
+          "id": "p1-r0",
+          "kind": "heading",
+          "readability": "readable",
+          "text": "SYNTHETIC INVOICE",
+          "bbox": {
+            "left": 60.0,
+            "top": 60.0,
+            "right": 343.0,
+            "bottom": 80.0
+          }
+        },
+        {
+          "id": "p1-r1",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Seller: Harbor Repair LLC",
+          "bbox": {
+            "left": 60.0,
+            "top": 111.0,
+            "right": 398.0,
+            "bottom": 138.0
+          }
+        },
+        {
+          "id": "p1-r2",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Seller address: 10 Harbor Lane, Testville, NH 00001",
+          "bbox": {
+            "left": 60.0,
+            "top": 163.0,
+            "right": 743.0,
+            "bottom": 188.0
+          }
+        },
+        {
+          "id": "p1-r3",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Buyer: Maple Test Household",
+          "bbox": {
+            "left": 60.0,
+            "top": 214.0,
+            "right": 457.0,
+            "bottom": 242.0
+          }
+        },
+        {
+          "id": "p1-r4",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Buyer address: 42 Maple Road, Testville, NH 00002",
+          "bbox": {
+            "left": 60.0,
+            "top": 267.0,
+            "right": 738.0,
+            "bottom": 294.0
+          }
+        },
+        {
+          "id": "p1-r5",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Invoice number: INV-000123",
+          "bbox": {
+            "left": 60.0,
+            "top": 319.0,
+            "right": 442.0,
+            "bottom": 340.0
+          }
+        },
+        {
+          "id": "p1-r6",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Purchase order: PO-000042",
+          "bbox": {
+            "left": 60.0,
+            "top": 370.0,
+            "right": 429.0,
+            "bottom": 392.0
+          }
+        },
+        {
+          "id": "p1-r7",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Issue date: 2026-09-01",
+          "bbox": {
+            "left": 60.0,
+            "top": 423.0,
+            "right": 363.0,
+            "bottom": 444.0
+          }
+        },
+        {
+          "id": "p1-r8",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Due date: 2026-09-30",
+          "bbox": {
+            "left": 60.0,
+            "top": 475.0,
+            "right": 348.0,
+            "bottom": 496.0
+          }
+        },
+        {
+          "id": "p1-r9",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Remittance instructions: Pay by check to Harbor Repair LLC",
+          "bbox": {
+            "left": 60.0,
+            "top": 526.0,
+            "right": 860.0,
+            "bottom": 554.0
+          }
+        },
+        {
+          "id": "p1-table",
+          "kind": "table",
+          "readability": "readable",
+          "text": "",
+          "bbox": {
+            "left": 60.0,
+            "top": 600.0,
+            "right": 2260.0,
+            "bottom": 840.0
+          }
+        },
+        {
+          "id": "p1-r11",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Subtotal USD: 19.75",
+          "bbox": {
+            "left": 60.0,
+            "top": 879.0,
+            "right": 329.0,
+            "bottom": 900.0
+          }
+        },
+        {
+          "id": "p1-r12",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Tax USD: 1.58",
+          "bbox": {
+            "left": 60.0,
+            "top": 932.0,
+            "right": 245.0,
+            "bottom": 952.0
+          }
+        },
+        {
+          "id": "p1-r13",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Total USD: 21.33",
+          "bbox": {
+            "left": 60.0,
+            "top": 983.0,
+            "right": 283.0,
+            "bottom": 1004.0
+          }
+        },
+        {
+          "id": "p1-r14",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Paid USD: 0.00",
+          "bbox": {
+            "left": 60.0,
+            "top": 1035.0,
+            "right": 256.0,
+            "bottom": 1056.0
+          }
+        },
+        {
+          "id": "p1-r15",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Balance due USD: 21.33",
+          "bbox": {
+            "left": 60.0,
+            "top": 1087.0,
+            "right": 382.0,
+            "bottom": 1108.0
+          }
+        },
+        {
+          "id": "p1-r16",
+          "kind": "footer",
+          "readability": "readable",
+          "text": "TEST DATA - fictional people and organizations. All monetary values are USD.",
+          "bbox": {
+            "left": 60.0,
+            "top": 1138.0,
+            "right": 1090.0,
+            "bottom": 1166.0
+          }
+        }
+      ],
+      "tables": [
+        {
+          "region_id": "p1-table",
+          "row_count": 3,
+          "column_count": 4,
+          "cells": [
+            {
+              "row": 0,
+              "column": 0,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "Description",
+              "readability": "readable"
+            },
+            {
+              "row": 0,
+              "column": 1,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "Quantity",
+              "readability": "readable"
+            },
+            {
+              "row": 0,
+              "column": 2,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "Unit price USD",
+              "readability": "readable"
+            },
+            {
+              "row": 0,
+              "column": 3,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "Amount USD",
+              "readability": "readable"
+            },
+            {
+              "row": 1,
+              "column": 0,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "Inspection",
+              "readability": "readable"
+            },
+            {
+              "row": 1,
+              "column": 1,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "2",
+              "readability": "readable"
+            },
+            {
+              "row": 1,
+              "column": 2,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "12.50",
+              "readability": "readable"
+            },
+            {
+              "row": 1,
+              "column": 3,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "25.00",
+              "readability": "readable"
+            },
+            {
+              "row": 2,
+              "column": 0,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "Adjustment",
+              "readability": "readable"
+            },
+            {
+              "row": 2,
+              "column": 1,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "1",
+              "readability": "readable"
+            },
+            {
+              "row": 2,
+              "column": 2,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "-5.25",
+              "readability": "readable"
+            },
+            {
+              "row": 2,
+              "column": 3,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "-5.25",
+              "readability": "readable"
+            }
+          ],
+          "continuation_group": null
+        }
+      ],
+      "reading_order_pairs": [
+        [
+          "p1-r0",
+          "p1-r1"
+        ],
+        [
+          "p1-r1",
+          "p1-r2"
+        ],
+        [
+          "p1-r2",
+          "p1-r3"
+        ],
+        [
+          "p1-r3",
+          "p1-r4"
+        ],
+        [
+          "p1-r4",
+          "p1-r5"
+        ],
+        [
+          "p1-r5",
+          "p1-r6"
+        ],
+        [
+          "p1-r6",
+          "p1-r7"
+        ],
+        [
+          "p1-r7",
+          "p1-r8"
+        ],
+        [
+          "p1-r8",
+          "p1-r9"
+        ],
+        [
+          "p1-r9",
+          "p1-table"
+        ],
+        [
+          "p1-table",
+          "p1-r11"
+        ],
+        [
+          "p1-r11",
+          "p1-r12"
+        ],
+        [
+          "p1-r12",
+          "p1-r13"
+        ],
+        [
+          "p1-r13",
+          "p1-r14"
+        ],
+        [
+          "p1-r14",
+          "p1-r15"
+        ],
+        [
+          "p1-r15",
+          "p1-r16"
+        ]
+      ],
+      "sensitive_text": [
+        {
+          "text": "INV-000123",
+          "kind": "identifier",
+          "occurrences": 1
+        },
+        {
+          "text": "PO-000042",
+          "kind": "identifier",
+          "occurrences": 1
+        },
+        {
+          "text": "2026-09-01",
+          "kind": "date",
+          "occurrences": 1
+        },
+        {
+          "text": "2026-09-30",
+          "kind": "date",
+          "occurrences": 1
+        },
+        {
+          "text": "19.75",
+          "kind": "amount",
+          "occurrences": 1
+        },
+        {
+          "text": "1.58",
+          "kind": "amount",
+          "occurrences": 1
+        },
+        {
+          "text": "21.33",
+          "kind": "amount",
+          "occurrences": 2
+        },
+        {
+          "text": "0.00",
+          "kind": "amount",
+          "occurrences": 1
+        },
+        {
+          "text": "12.50",
+          "kind": "amount",
+          "occurrences": 1
+        },
+        {
+          "text": "25.00",
+          "kind": "amount",
+          "occurrences": 1
+        },
+        {
+          "text": "-5.25",
+          "kind": "amount",
+          "occurrences": 2
+        }
+      ]
+    },
+    {
+      "page_number": 2,
+      "image_sha256": "0c80b6d4a0743b6ab2092d2655f96dfd2e98953b5d5e9039d9fc2b35eecd4406",
+      "pixel_width": 2400,
+      "pixel_height": 1800,
+      "regions": [
+        {
+          "id": "p2-r0",
+          "kind": "heading",
+          "readability": "readable",
+          "text": "SYNTHETIC SALES RECEIPT",
+          "bbox": {
+            "left": 60.0,
+            "top": 60.0,
+            "right": 443.0,
+            "bottom": 80.0
+          }
+        },
+        {
+          "id": "p2-r1",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Merchant: Juniper Market",
+          "bbox": {
+            "left": 60.0,
+            "top": 110.0,
+            "right": 410.0,
+            "bottom": 138.0
+          }
+        },
+        {
+          "id": "p2-r2",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Merchant address: 7 Juniper Street, Testville, NH 00003",
+          "bbox": {
+            "left": 60.0,
+            "top": 162.0,
+            "right": 805.0,
+            "bottom": 190.0
+          }
+        },
+        {
+          "id": "p2-r3",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Receipt number: 0000789",
+          "bbox": {
+            "left": 60.0,
+            "top": 215.0,
+            "right": 408.0,
+            "bottom": 242.0
+          }
+        },
+        {
+          "id": "p2-r4",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Transaction date: 2026-09-02",
+          "bbox": {
+            "left": 60.0,
+            "top": 267.0,
+            "right": 453.0,
+            "bottom": 288.0
+          }
+        },
+        {
+          "id": "p2-r5",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Local time: 14:05",
+          "bbox": {
+            "left": 60.0,
+            "top": 319.0,
+            "right": 288.0,
+            "bottom": 340.0
+          }
+        },
+        {
+          "id": "p2-r6",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Payment method: Visa",
+          "bbox": {
+            "left": 60.0,
+            "top": 370.0,
+            "right": 360.0,
+            "bottom": 398.0
+          }
+        },
+        {
+          "id": "p2-r7",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Payment reference: 0042",
+          "bbox": {
+            "left": 60.0,
+            "top": 422.0,
+            "right": 398.0,
+            "bottom": 450.0
+          }
+        },
+        {
+          "id": "p2-table",
+          "kind": "table",
+          "readability": "readable",
+          "text": "",
+          "bbox": {
+            "left": 60.0,
+            "top": 496.0,
+            "right": 2260.0,
+            "bottom": 736.0
+          }
+        },
+        {
+          "id": "p2-r9",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Subtotal USD: 10.50",
+          "bbox": {
+            "left": 60.0,
+            "top": 775.0,
+            "right": 329.0,
+            "bottom": 796.0
+          }
+        },
+        {
+          "id": "p2-r10",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Tax USD: 0.84",
+          "bbox": {
+            "left": 60.0,
+            "top": 828.0,
+            "right": 245.0,
+            "bottom": 848.0
+          }
+        },
+        {
+          "id": "p2-r11",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Total USD: 11.34",
+          "bbox": {
+            "left": 60.0,
+            "top": 879.0,
+            "right": 283.0,
+            "bottom": 900.0
+          }
+        },
+        {
+          "id": "p2-r12",
+          "kind": "footer",
+          "readability": "readable",
+          "text": "TEST DATA - fictional people and organizations. All monetary values are USD.",
+          "bbox": {
+            "left": 60.0,
+            "top": 930.0,
+            "right": 1090.0,
+            "bottom": 958.0
+          }
+        }
+      ],
+      "tables": [
+        {
+          "region_id": "p2-table",
+          "row_count": 3,
+          "column_count": 4,
+          "cells": [
+            {
+              "row": 0,
+              "column": 0,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "Item",
+              "readability": "readable"
+            },
+            {
+              "row": 0,
+              "column": 1,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "Quantity",
+              "readability": "readable"
+            },
+            {
+              "row": 0,
+              "column": 2,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "Unit price USD",
+              "readability": "readable"
+            },
+            {
+              "row": 0,
+              "column": 3,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "Amount USD",
+              "readability": "readable"
+            },
+            {
+              "row": 1,
+              "column": 0,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "Apple tea",
+              "readability": "readable"
+            },
+            {
+              "row": 1,
+              "column": 1,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "2",
+              "readability": "readable"
+            },
+            {
+              "row": 1,
+              "column": 2,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "3.25",
+              "readability": "readable"
+            },
+            {
+              "row": 1,
+              "column": 3,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "6.50",
+              "readability": "readable"
+            },
+            {
+              "row": 2,
+              "column": 0,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "Notebook",
+              "readability": "readable"
+            },
+            {
+              "row": 2,
+              "column": 1,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "1",
+              "readability": "readable"
+            },
+            {
+              "row": 2,
+              "column": 2,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "4.00",
+              "readability": "readable"
+            },
+            {
+              "row": 2,
+              "column": 3,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "4.00",
+              "readability": "readable"
+            }
+          ],
+          "continuation_group": null
+        }
+      ],
+      "reading_order_pairs": [
+        [
+          "p2-r0",
+          "p2-r1"
+        ],
+        [
+          "p2-r1",
+          "p2-r2"
+        ],
+        [
+          "p2-r2",
+          "p2-r3"
+        ],
+        [
+          "p2-r3",
+          "p2-r4"
+        ],
+        [
+          "p2-r4",
+          "p2-r5"
+        ],
+        [
+          "p2-r5",
+          "p2-r6"
+        ],
+        [
+          "p2-r6",
+          "p2-r7"
+        ],
+        [
+          "p2-r7",
+          "p2-table"
+        ],
+        [
+          "p2-table",
+          "p2-r9"
+        ],
+        [
+          "p2-r9",
+          "p2-r10"
+        ],
+        [
+          "p2-r10",
+          "p2-r11"
+        ],
+        [
+          "p2-r11",
+          "p2-r12"
+        ]
+      ],
+      "sensitive_text": [
+        {
+          "text": "0000789",
+          "kind": "identifier",
+          "occurrences": 1
+        },
+        {
+          "text": "2026-09-02",
+          "kind": "date",
+          "occurrences": 1
+        },
+        {
+          "text": "0042",
+          "kind": "identifier",
+          "occurrences": 1
+        },
+        {
+          "text": "10.50",
+          "kind": "amount",
+          "occurrences": 1
+        },
+        {
+          "text": "0.84",
+          "kind": "amount",
+          "occurrences": 1
+        },
+        {
+          "text": "11.34",
+          "kind": "amount",
+          "occurrences": 1
+        },
+        {
+          "text": "3.25",
+          "kind": "amount",
+          "occurrences": 1
+        },
+        {
+          "text": "6.50",
+          "kind": "amount",
+          "occurrences": 1
+        },
+        {
+          "text": "4.00",
+          "kind": "amount",
+          "occurrences": 2
+        }
+      ]
+    },
+    {
+      "page_number": 3,
+      "image_sha256": "40f90c3b3490e1197ae203c5a8fb5862298963263578c622a32d2e1290e29e3e",
+      "pixel_width": 2400,
+      "pixel_height": 1800,
+      "regions": [
+        {
+          "id": "p3-r0",
+          "kind": "heading",
+          "readability": "readable",
+          "text": "SYNTHETIC EXPLANATION OF BENEFITS",
+          "bbox": {
+            "left": 60.0,
+            "top": 60.0,
+            "right": 616.0,
+            "bottom": 80.0
+          }
+        },
+        {
+          "id": "p3-r1",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Payer: Cedar Test Health",
+          "bbox": {
+            "left": 60.0,
+            "top": 110.0,
+            "right": 391.0,
+            "bottom": 138.0
+          }
+        },
+        {
+          "id": "p3-r2",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Patient: Alex Example",
+          "bbox": {
+            "left": 60.0,
+            "top": 163.0,
+            "right": 347.0,
+            "bottom": 190.0
+          }
+        },
+        {
+          "id": "p3-r3",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Provider: Harbor Clinic",
+          "bbox": {
+            "left": 60.0,
+            "top": 215.0,
+            "right": 361.0,
+            "bottom": 236.0
+          }
+        },
+        {
+          "id": "p3-r4",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Claim number: CLM-000456",
+          "bbox": {
+            "left": 60.0,
+            "top": 267.0,
+            "right": 434.0,
+            "bottom": 288.0
+          }
+        },
+        {
+          "id": "p3-r5",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Member ID: 00005421",
+          "bbox": {
+            "left": 60.0,
+            "top": 319.0,
+            "right": 357.0,
+            "bottom": 340.0
+          }
+        },
+        {
+          "id": "p3-r6",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Group number: G-009",
+          "bbox": {
+            "left": 60.0,
+            "top": 371.0,
+            "right": 350.0,
+            "bottom": 398.0
+          }
+        },
+        {
+          "id": "p3-r7",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Received date: 2026-09-03",
+          "bbox": {
+            "left": 60.0,
+            "top": 423.0,
+            "right": 418.0,
+            "bottom": 444.0
+          }
+        },
+        {
+          "id": "p3-r8",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Processed date: 2026-09-04",
+          "bbox": {
+            "left": 60.0,
+            "top": 475.0,
+            "right": 434.0,
+            "bottom": 496.0
+          }
+        },
+        {
+          "id": "p3-table",
+          "kind": "table",
+          "readability": "readable",
+          "text": "",
+          "bbox": {
+            "left": 60.0,
+            "top": 548.0,
+            "right": 2290.0,
+            "bottom": 788.0
+          }
+        },
+        {
+          "id": "p3-r10",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Total billed USD: 230.00",
+          "bbox": {
+            "left": 60.0,
+            "top": 827.0,
+            "right": 380.0,
+            "bottom": 848.0
+          }
+        },
+        {
+          "id": "p3-r11",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Total allowed USD: 160.00",
+          "bbox": {
+            "left": 60.0,
+            "top": 879.0,
+            "right": 413.0,
+            "bottom": 900.0
+          }
+        },
+        {
+          "id": "p3-r12",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Total plan paid USD: 120.00",
+          "bbox": {
+            "left": 60.0,
+            "top": 931.0,
+            "right": 430.0,
+            "bottom": 958.0
+          }
+        },
+        {
+          "id": "p3-r13",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Total patient responsibility USD: 40.00",
+          "bbox": {
+            "left": 60.0,
+            "top": 983.0,
+            "right": 571.0,
+            "bottom": 1010.0
+          }
+        },
+        {
+          "id": "p3-r14",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Total deductible USD: 10.00",
+          "bbox": {
+            "left": 60.0,
+            "top": 1035.0,
+            "right": 435.0,
+            "bottom": 1056.0
+          }
+        },
+        {
+          "id": "p3-r15",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Total copay USD: 20.00",
+          "bbox": {
+            "left": 60.0,
+            "top": 1087.0,
+            "right": 372.0,
+            "bottom": 1114.0
+          }
+        },
+        {
+          "id": "p3-r16",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Total coinsurance USD: 10.00",
+          "bbox": {
+            "left": 60.0,
+            "top": 1139.0,
+            "right": 457.0,
+            "bottom": 1160.0
+          }
+        },
+        {
+          "id": "p3-r17",
+          "kind": "footer",
+          "readability": "readable",
+          "text": "TEST DATA - fictional people and organizations. All monetary values are USD.",
+          "bbox": {
+            "left": 60.0,
+            "top": 1190.0,
+            "right": 1090.0,
+            "bottom": 1218.0
+          }
+        }
+      ],
+      "tables": [
+        {
+          "region_id": "p3-table",
+          "row_count": 3,
+          "column_count": 10,
+          "cells": [
+            {
+              "row": 0,
+              "column": 0,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "Service",
+              "readability": "readable"
+            },
+            {
+              "row": 0,
+              "column": 1,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "Code",
+              "readability": "readable"
+            },
+            {
+              "row": 0,
+              "column": 2,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "Modifiers",
+              "readability": "readable"
+            },
+            {
+              "row": 0,
+              "column": 3,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "Billed USD",
+              "readability": "readable"
+            },
+            {
+              "row": 0,
+              "column": 4,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "Allowed USD",
+              "readability": "readable"
+            },
+            {
+              "row": 0,
+              "column": 5,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "Plan paid USD",
+              "readability": "readable"
+            },
+            {
+              "row": 0,
+              "column": 6,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "Patient USD",
+              "readability": "readable"
+            },
+            {
+              "row": 0,
+              "column": 7,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "Deductible USD",
+              "readability": "readable"
+            },
+            {
+              "row": 0,
+              "column": 8,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "Copay USD",
+              "readability": "readable"
+            },
+            {
+              "row": 0,
+              "column": 9,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "Coinsurance USD",
+              "readability": "readable"
+            },
+            {
+              "row": 1,
+              "column": 0,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "Office visit",
+              "readability": "readable"
+            },
+            {
+              "row": 1,
+              "column": 1,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "99213",
+              "readability": "readable"
+            },
+            {
+              "row": 1,
+              "column": 2,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "25",
+              "readability": "readable"
+            },
+            {
+              "row": 1,
+              "column": 3,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "150.00",
+              "readability": "readable"
+            },
+            {
+              "row": 1,
+              "column": 4,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "100.00",
+              "readability": "readable"
+            },
+            {
+              "row": 1,
+              "column": 5,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "70.00",
+              "readability": "readable"
+            },
+            {
+              "row": 1,
+              "column": 6,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "30.00",
+              "readability": "readable"
+            },
+            {
+              "row": 1,
+              "column": 7,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "10.00",
+              "readability": "readable"
+            },
+            {
+              "row": 1,
+              "column": 8,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "15.00",
+              "readability": "readable"
+            },
+            {
+              "row": 1,
+              "column": 9,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "5.00",
+              "readability": "readable"
+            },
+            {
+              "row": 2,
+              "column": 0,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "ECG",
+              "readability": "readable"
+            },
+            {
+              "row": 2,
+              "column": 1,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "93000",
+              "readability": "readable"
+            },
+            {
+              "row": 2,
+              "column": 2,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "59",
+              "readability": "readable"
+            },
+            {
+              "row": 2,
+              "column": 3,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "80.00",
+              "readability": "readable"
+            },
+            {
+              "row": 2,
+              "column": 4,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "60.00",
+              "readability": "readable"
+            },
+            {
+              "row": 2,
+              "column": 5,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "50.00",
+              "readability": "readable"
+            },
+            {
+              "row": 2,
+              "column": 6,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "10.00",
+              "readability": "readable"
+            },
+            {
+              "row": 2,
+              "column": 7,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "0.00",
+              "readability": "readable"
+            },
+            {
+              "row": 2,
+              "column": 8,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "5.00",
+              "readability": "readable"
+            },
+            {
+              "row": 2,
+              "column": 9,
+              "row_span": 1,
+              "column_span": 1,
+              "text": "5.00",
+              "readability": "readable"
+            }
+          ],
+          "continuation_group": null
+        }
+      ],
+      "reading_order_pairs": [
+        [
+          "p3-r0",
+          "p3-r1"
+        ],
+        [
+          "p3-r1",
+          "p3-r2"
+        ],
+        [
+          "p3-r2",
+          "p3-r3"
+        ],
+        [
+          "p3-r3",
+          "p3-r4"
+        ],
+        [
+          "p3-r4",
+          "p3-r5"
+        ],
+        [
+          "p3-r5",
+          "p3-r6"
+        ],
+        [
+          "p3-r6",
+          "p3-r7"
+        ],
+        [
+          "p3-r7",
+          "p3-r8"
+        ],
+        [
+          "p3-r8",
+          "p3-table"
+        ],
+        [
+          "p3-table",
+          "p3-r10"
+        ],
+        [
+          "p3-r10",
+          "p3-r11"
+        ],
+        [
+          "p3-r11",
+          "p3-r12"
+        ],
+        [
+          "p3-r12",
+          "p3-r13"
+        ],
+        [
+          "p3-r13",
+          "p3-r14"
+        ],
+        [
+          "p3-r14",
+          "p3-r15"
+        ],
+        [
+          "p3-r15",
+          "p3-r16"
+        ],
+        [
+          "p3-r16",
+          "p3-r17"
+        ]
+      ],
+      "sensitive_text": [
+        {
+          "text": "CLM-000456",
+          "kind": "identifier",
+          "occurrences": 1
+        },
+        {
+          "text": "00005421",
+          "kind": "identifier",
+          "occurrences": 1
+        },
+        {
+          "text": "G-009",
+          "kind": "identifier",
+          "occurrences": 1
+        },
+        {
+          "text": "2026-09-03",
+          "kind": "date",
+          "occurrences": 1
+        },
+        {
+          "text": "2026-09-04",
+          "kind": "date",
+          "occurrences": 1
+        },
+        {
+          "text": "230.00",
+          "kind": "amount",
+          "occurrences": 1
+        },
+        {
+          "text": "160.00",
+          "kind": "amount",
+          "occurrences": 1
+        },
+        {
+          "text": "120.00",
+          "kind": "amount",
+          "occurrences": 1
+        },
+        {
+          "text": "40.00",
+          "kind": "amount",
+          "occurrences": 1
+        },
+        {
+          "text": "10.00",
+          "kind": "amount",
+          "occurrences": 4
+        },
+        {
+          "text": "20.00",
+          "kind": "amount",
+          "occurrences": 1
+        },
+        {
+          "text": "99213",
+          "kind": "identifier",
+          "occurrences": 1
+        },
+        {
+          "text": "150.00",
+          "kind": "amount",
+          "occurrences": 1
+        },
+        {
+          "text": "100.00",
+          "kind": "amount",
+          "occurrences": 1
+        },
+        {
+          "text": "70.00",
+          "kind": "amount",
+          "occurrences": 1
+        },
+        {
+          "text": "30.00",
+          "kind": "amount",
+          "occurrences": 1
+        },
+        {
+          "text": "15.00",
+          "kind": "amount",
+          "occurrences": 1
+        },
+        {
+          "text": "5.00",
+          "kind": "amount",
+          "occurrences": 3
+        },
+        {
+          "text": "93000",
+          "kind": "identifier",
+          "occurrences": 1
+        },
+        {
+          "text": "80.00",
+          "kind": "amount",
+          "occurrences": 1
+        },
+        {
+          "text": "60.00",
+          "kind": "amount",
+          "occurrences": 1
+        },
+        {
+          "text": "50.00",
+          "kind": "amount",
+          "occurrences": 1
+        },
+        {
+          "text": "0.00",
+          "kind": "amount",
+          "occurrences": 1
+        }
+      ]
+    }
+  ]
+}

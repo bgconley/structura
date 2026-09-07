@@ -1,0 +1,436 @@
+{
+  "schema_version": "structura.synthetic_page_recipe.v1",
+  "width": 2400,
+  "height": 1800,
+  "currency": "USD",
+  "source_author": "structura-synthetic-source-author",
+  "created_at": "2026-09-07T14:04:35+00:00",
+  "pages": [
+    {
+      "family": "invoice",
+      "title": "SYNTHETIC INVOICE",
+      "headers": [
+        {
+          "label": "Seller",
+          "value": "Harbor Repair LLC",
+          "key": "invoice.seller.display_name",
+          "value_type": "party"
+        },
+        {
+          "label": "Seller address",
+          "value": "10 Harbor Lane, Testville, NH 00001",
+          "key": "invoice.seller.address",
+          "value_type": "text"
+        },
+        {
+          "label": "Buyer",
+          "value": "Maple Test Household",
+          "key": "invoice.buyer.display_name",
+          "value_type": "party"
+        },
+        {
+          "label": "Buyer address",
+          "value": "42 Maple Road, Testville, NH 00002",
+          "key": "invoice.buyer.address",
+          "value_type": "text"
+        },
+        {
+          "label": "Invoice number",
+          "value": "INV-000123",
+          "key": "invoice.invoice_number",
+          "value_type": "identifier"
+        },
+        {
+          "label": "Purchase order",
+          "value": "PO-000042",
+          "key": "invoice.purchase_order_number",
+          "value_type": "identifier"
+        },
+        {
+          "label": "Issue date",
+          "value": "2026-09-01",
+          "key": "invoice.issue_date",
+          "value_type": "date"
+        },
+        {
+          "label": "Due date",
+          "value": "2026-09-30",
+          "key": "invoice.due_date",
+          "value_type": "date"
+        },
+        {
+          "label": "Remittance instructions",
+          "value": "Pay by check to Harbor Repair LLC",
+          "key": "invoice.remittance.instructions",
+          "value_type": "text"
+        }
+      ],
+      "columns": [
+        {
+          "label": "Description",
+          "key": "invoice.line_item.description",
+          "value_type": "text",
+          "width": 1000
+        },
+        {
+          "label": "Quantity",
+          "key": "invoice.line_item.quantity",
+          "value_type": "quantity",
+          "width": 300
+        },
+        {
+          "label": "Unit price USD",
+          "key": "invoice.line_item.unit_price",
+          "value_type": "money",
+          "width": 450
+        },
+        {
+          "label": "Amount USD",
+          "key": "invoice.line_item.amount",
+          "value_type": "money",
+          "width": 450
+        }
+      ],
+      "rows": [
+        [
+          "Inspection",
+          "2",
+          "12.50",
+          "25.00"
+        ],
+        [
+          "Adjustment",
+          "1",
+          "-5.25",
+          "-5.25"
+        ]
+      ],
+      "totals": [
+        {
+          "label": "Subtotal USD",
+          "value": "19.75",
+          "key": "invoice.subtotal",
+          "value_type": "money"
+        },
+        {
+          "label": "Tax USD",
+          "value": "1.58",
+          "key": "invoice.tax_total",
+          "value_type": "money"
+        },
+        {
+          "label": "Total USD",
+          "value": "21.33",
+          "key": "invoice.total_amount",
+          "value_type": "money"
+        },
+        {
+          "label": "Paid USD",
+          "value": "0.00",
+          "key": "invoice.amount_paid",
+          "value_type": "money"
+        },
+        {
+          "label": "Balance due USD",
+          "value": "21.33",
+          "key": "invoice.balance_due",
+          "value_type": "money"
+        }
+      ]
+    },
+    {
+      "family": "receipt",
+      "title": "SYNTHETIC SALES RECEIPT",
+      "headers": [
+        {
+          "label": "Merchant",
+          "value": "Juniper Market",
+          "key": "receipt.merchant.display_name",
+          "value_type": "party"
+        },
+        {
+          "label": "Merchant address",
+          "value": "7 Juniper Street, Testville, NH 00003",
+          "key": "receipt.merchant.address",
+          "value_type": "text"
+        },
+        {
+          "label": "Receipt number",
+          "value": "0000789",
+          "key": "receipt.transaction.receipt_number",
+          "value_type": "identifier"
+        },
+        {
+          "label": "Transaction date",
+          "value": "2026-09-02",
+          "key": "receipt.transaction.date_local",
+          "value_type": "date"
+        },
+        {
+          "label": "Local time",
+          "value": "14:05",
+          "key": "receipt.transaction.time_local",
+          "value_type": "time"
+        },
+        {
+          "label": "Payment method",
+          "value": "Visa",
+          "key": "receipt.transaction.payment_method",
+          "value_type": "text"
+        },
+        {
+          "label": "Payment reference",
+          "value": "0042",
+          "key": "receipt.transaction.payment_reference",
+          "value_type": "identifier"
+        }
+      ],
+      "columns": [
+        {
+          "label": "Item",
+          "key": "receipt.line_item.description",
+          "value_type": "text",
+          "width": 1000
+        },
+        {
+          "label": "Quantity",
+          "key": "receipt.line_item.quantity",
+          "value_type": "quantity",
+          "width": 300
+        },
+        {
+          "label": "Unit price USD",
+          "key": "receipt.line_item.unit_price",
+          "value_type": "money",
+          "width": 450
+        },
+        {
+          "label": "Amount USD",
+          "key": "receipt.line_item.amount",
+          "value_type": "money",
+          "width": 450
+        }
+      ],
+      "rows": [
+        [
+          "Apple tea",
+          "2",
+          "3.25",
+          "6.50"
+        ],
+        [
+          "Notebook",
+          "1",
+          "4.00",
+          "4.00"
+        ]
+      ],
+      "totals": [
+        {
+          "label": "Subtotal USD",
+          "value": "10.50",
+          "key": "receipt.transaction.subtotal",
+          "value_type": "money"
+        },
+        {
+          "label": "Tax USD",
+          "value": "0.84",
+          "key": "receipt.transaction.tax",
+          "value_type": "money"
+        },
+        {
+          "label": "Total USD",
+          "value": "11.34",
+          "key": "receipt.transaction.total",
+          "value_type": "money"
+        }
+      ]
+    },
+    {
+      "family": "medical_eob",
+      "title": "SYNTHETIC EXPLANATION OF BENEFITS",
+      "headers": [
+        {
+          "label": "Payer",
+          "value": "Cedar Test Health",
+          "key": "medical_eob.payer.display_name",
+          "value_type": "party"
+        },
+        {
+          "label": "Patient",
+          "value": "Alex Example",
+          "key": "medical_eob.patient.display_name",
+          "value_type": "party"
+        },
+        {
+          "label": "Provider",
+          "value": "Harbor Clinic",
+          "key": "medical_eob.provider.display_name",
+          "value_type": "party"
+        },
+        {
+          "label": "Claim number",
+          "value": "CLM-000456",
+          "key": "medical_eob.claim_number",
+          "value_type": "identifier"
+        },
+        {
+          "label": "Member ID",
+          "value": "00005421",
+          "key": "medical_eob.member_id",
+          "value_type": "identifier"
+        },
+        {
+          "label": "Group number",
+          "value": "G-009",
+          "key": "medical_eob.group_number",
+          "value_type": "identifier"
+        },
+        {
+          "label": "Received date",
+          "value": "2026-09-03",
+          "key": "medical_eob.received_on",
+          "value_type": "date"
+        },
+        {
+          "label": "Processed date",
+          "value": "2026-09-04",
+          "key": "medical_eob.processed_on",
+          "value_type": "date"
+        }
+      ],
+      "columns": [
+        {
+          "label": "Service",
+          "key": "medical_eob.line_item.description",
+          "value_type": "text",
+          "width": 310
+        },
+        {
+          "label": "Code",
+          "key": "medical_eob.line_item.code",
+          "value_type": "identifier",
+          "width": 180
+        },
+        {
+          "label": "Modifiers",
+          "key": "medical_eob.line_item.modifiers",
+          "value_type": "identifiers",
+          "width": 190
+        },
+        {
+          "label": "Billed USD",
+          "key": "medical_eob.line_item.gross_amount",
+          "value_type": "money",
+          "width": 225
+        },
+        {
+          "label": "Allowed USD",
+          "key": "medical_eob.line_item.allowed_amount",
+          "value_type": "money",
+          "width": 225
+        },
+        {
+          "label": "Plan paid USD",
+          "key": "medical_eob.line_item.plan_paid",
+          "value_type": "money",
+          "width": 225
+        },
+        {
+          "label": "Patient USD",
+          "key": "medical_eob.line_item.amount",
+          "value_type": "money",
+          "width": 225
+        },
+        {
+          "label": "Deductible USD",
+          "key": "medical_eob.line_item.deductible",
+          "value_type": "money",
+          "width": 225
+        },
+        {
+          "label": "Copay USD",
+          "key": "medical_eob.line_item.copay",
+          "value_type": "money",
+          "width": 200
+        },
+        {
+          "label": "Coinsurance USD",
+          "key": "medical_eob.line_item.coinsurance",
+          "value_type": "money",
+          "width": 225
+        }
+      ],
+      "rows": [
+        [
+          "Office visit",
+          "99213",
+          "25",
+          "150.00",
+          "100.00",
+          "70.00",
+          "30.00",
+          "10.00",
+          "15.00",
+          "5.00"
+        ],
+        [
+          "ECG",
+          "93000",
+          "59",
+          "80.00",
+          "60.00",
+          "50.00",
+          "10.00",
+          "0.00",
+          "5.00",
+          "5.00"
+        ]
+      ],
+      "totals": [
+        {
+          "label": "Total billed USD",
+          "value": "230.00",
+          "key": "medical_eob.total_billed",
+          "value_type": "money"
+        },
+        {
+          "label": "Total allowed USD",
+          "value": "160.00",
+          "key": "medical_eob.total_allowed",
+          "value_type": "money"
+        },
+        {
+          "label": "Total plan paid USD",
+          "value": "120.00",
+          "key": "medical_eob.total_plan_paid",
+          "value_type": "money"
+        },
+        {
+          "label": "Total patient responsibility USD",
+          "value": "40.00",
+          "key": "medical_eob.total_patient_responsibility",
+          "value_type": "money"
+        },
+        {
+          "label": "Total deductible USD",
+          "value": "10.00",
+          "key": "medical_eob.total_deductible",
+          "value_type": "money"
+        },
+        {
+          "label": "Total copay USD",
+          "value": "20.00",
+          "key": "medical_eob.total_copay",
+          "value_type": "money"
+        },
+        {
+          "label": "Total coinsurance USD",
+          "value": "10.00",
+          "key": "medical_eob.total_coinsurance",
+          "value_type": "money"
+        }
+      ]
+    }
+  ]
+}

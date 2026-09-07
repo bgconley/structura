@@ -1,0 +1,555 @@
+{
+  "schema_version": "structura.synthetic_understanding_expectations.v1",
+  "original_sha256": "1d6a61f919aceaad22389066b09c6f2a8b37043103f0220abd0180a558648e3d",
+  "original_byte_size": 12960384,
+  "source_recipe_sha256": "3d54b1aabf9569f63bdebbd05c93ad1c55b1d9815806e789010e4e2860eac287",
+  "scope": "selected_visible_fields_and_all_printed_line_rows",
+  "split": "synthetic_regression",
+  "threshold_policy": "not_ratified",
+  "pages": [
+    {
+      "page_number": 1,
+      "family": "invoice",
+      "fields": [
+        {
+          "canonical_key": "invoice.seller.display_name",
+          "value_type": "party",
+          "typed_value": "Harbor Repair LLC"
+        },
+        {
+          "canonical_key": "invoice.seller.address",
+          "value_type": "text",
+          "typed_value": "10 Harbor Lane, Testville, NH 00001"
+        },
+        {
+          "canonical_key": "invoice.buyer.display_name",
+          "value_type": "party",
+          "typed_value": "Maple Test Household"
+        },
+        {
+          "canonical_key": "invoice.buyer.address",
+          "value_type": "text",
+          "typed_value": "42 Maple Road, Testville, NH 00002"
+        },
+        {
+          "canonical_key": "invoice.invoice_number",
+          "value_type": "identifier",
+          "typed_value": "INV-000123"
+        },
+        {
+          "canonical_key": "invoice.purchase_order_number",
+          "value_type": "identifier",
+          "typed_value": "PO-000042"
+        },
+        {
+          "canonical_key": "invoice.issue_date",
+          "value_type": "date",
+          "typed_value": "2026-09-01"
+        },
+        {
+          "canonical_key": "invoice.due_date",
+          "value_type": "date",
+          "typed_value": "2026-09-30"
+        },
+        {
+          "canonical_key": "invoice.remittance.instructions",
+          "value_type": "text",
+          "typed_value": "Pay by check to Harbor Repair LLC"
+        },
+        {
+          "canonical_key": "invoice.subtotal",
+          "value_type": "money",
+          "typed_value": {
+            "amount": "19.75",
+            "currency": "USD"
+          }
+        },
+        {
+          "canonical_key": "invoice.tax_total",
+          "value_type": "money",
+          "typed_value": {
+            "amount": "1.58",
+            "currency": "USD"
+          }
+        },
+        {
+          "canonical_key": "invoice.total_amount",
+          "value_type": "money",
+          "typed_value": {
+            "amount": "21.33",
+            "currency": "USD"
+          }
+        },
+        {
+          "canonical_key": "invoice.amount_paid",
+          "value_type": "money",
+          "typed_value": {
+            "amount": "0.00",
+            "currency": "USD"
+          }
+        },
+        {
+          "canonical_key": "invoice.balance_due",
+          "value_type": "money",
+          "typed_value": {
+            "amount": "21.33",
+            "currency": "USD"
+          }
+        }
+      ],
+      "rows": [
+        {
+          "source_row": 1,
+          "claims": [
+            {
+              "canonical_key": "invoice.line_item.description",
+              "value_type": "text",
+              "typed_value": "Inspection"
+            },
+            {
+              "canonical_key": "invoice.line_item.quantity",
+              "value_type": "quantity",
+              "typed_value": "2"
+            },
+            {
+              "canonical_key": "invoice.line_item.unit_price",
+              "value_type": "money",
+              "typed_value": {
+                "amount": "12.50",
+                "currency": "USD"
+              }
+            },
+            {
+              "canonical_key": "invoice.line_item.amount",
+              "value_type": "money",
+              "typed_value": {
+                "amount": "25.00",
+                "currency": "USD"
+              }
+            }
+          ]
+        },
+        {
+          "source_row": 2,
+          "claims": [
+            {
+              "canonical_key": "invoice.line_item.description",
+              "value_type": "text",
+              "typed_value": "Adjustment"
+            },
+            {
+              "canonical_key": "invoice.line_item.quantity",
+              "value_type": "quantity",
+              "typed_value": "1"
+            },
+            {
+              "canonical_key": "invoice.line_item.unit_price",
+              "value_type": "money",
+              "typed_value": {
+                "amount": "-5.25",
+                "currency": "USD"
+              }
+            },
+            {
+              "canonical_key": "invoice.line_item.amount",
+              "value_type": "money",
+              "typed_value": {
+                "amount": "-5.25",
+                "currency": "USD"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "page_number": 2,
+      "family": "receipt",
+      "fields": [
+        {
+          "canonical_key": "receipt.merchant.display_name",
+          "value_type": "party",
+          "typed_value": "Juniper Market"
+        },
+        {
+          "canonical_key": "receipt.merchant.address",
+          "value_type": "text",
+          "typed_value": "7 Juniper Street, Testville, NH 00003"
+        },
+        {
+          "canonical_key": "receipt.transaction.receipt_number",
+          "value_type": "identifier",
+          "typed_value": "0000789"
+        },
+        {
+          "canonical_key": "receipt.transaction.date_local",
+          "value_type": "date",
+          "typed_value": "2026-09-02"
+        },
+        {
+          "canonical_key": "receipt.transaction.time_local",
+          "value_type": "time",
+          "typed_value": "14:05"
+        },
+        {
+          "canonical_key": "receipt.transaction.payment_method",
+          "value_type": "text",
+          "typed_value": "Visa"
+        },
+        {
+          "canonical_key": "receipt.transaction.payment_reference",
+          "value_type": "identifier",
+          "typed_value": "0042"
+        },
+        {
+          "canonical_key": "receipt.transaction.subtotal",
+          "value_type": "money",
+          "typed_value": {
+            "amount": "10.50",
+            "currency": "USD"
+          }
+        },
+        {
+          "canonical_key": "receipt.transaction.tax",
+          "value_type": "money",
+          "typed_value": {
+            "amount": "0.84",
+            "currency": "USD"
+          }
+        },
+        {
+          "canonical_key": "receipt.transaction.total",
+          "value_type": "money",
+          "typed_value": {
+            "amount": "11.34",
+            "currency": "USD"
+          }
+        }
+      ],
+      "rows": [
+        {
+          "source_row": 1,
+          "claims": [
+            {
+              "canonical_key": "receipt.line_item.description",
+              "value_type": "text",
+              "typed_value": "Apple tea"
+            },
+            {
+              "canonical_key": "receipt.line_item.quantity",
+              "value_type": "quantity",
+              "typed_value": "2"
+            },
+            {
+              "canonical_key": "receipt.line_item.unit_price",
+              "value_type": "money",
+              "typed_value": {
+                "amount": "3.25",
+                "currency": "USD"
+              }
+            },
+            {
+              "canonical_key": "receipt.line_item.amount",
+              "value_type": "money",
+              "typed_value": {
+                "amount": "6.50",
+                "currency": "USD"
+              }
+            }
+          ]
+        },
+        {
+          "source_row": 2,
+          "claims": [
+            {
+              "canonical_key": "receipt.line_item.description",
+              "value_type": "text",
+              "typed_value": "Notebook"
+            },
+            {
+              "canonical_key": "receipt.line_item.quantity",
+              "value_type": "quantity",
+              "typed_value": "1"
+            },
+            {
+              "canonical_key": "receipt.line_item.unit_price",
+              "value_type": "money",
+              "typed_value": {
+                "amount": "4.00",
+                "currency": "USD"
+              }
+            },
+            {
+              "canonical_key": "receipt.line_item.amount",
+              "value_type": "money",
+              "typed_value": {
+                "amount": "4.00",
+                "currency": "USD"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "page_number": 3,
+      "family": "medical_eob",
+      "fields": [
+        {
+          "canonical_key": "medical_eob.payer.display_name",
+          "value_type": "party",
+          "typed_value": "Cedar Test Health"
+        },
+        {
+          "canonical_key": "medical_eob.patient.display_name",
+          "value_type": "party",
+          "typed_value": "Alex Example"
+        },
+        {
+          "canonical_key": "medical_eob.provider.display_name",
+          "value_type": "party",
+          "typed_value": "Harbor Clinic"
+        },
+        {
+          "canonical_key": "medical_eob.claim_number",
+          "value_type": "identifier",
+          "typed_value": "CLM-000456"
+        },
+        {
+          "canonical_key": "medical_eob.member_id",
+          "value_type": "identifier",
+          "typed_value": "00005421"
+        },
+        {
+          "canonical_key": "medical_eob.group_number",
+          "value_type": "identifier",
+          "typed_value": "G-009"
+        },
+        {
+          "canonical_key": "medical_eob.received_on",
+          "value_type": "date",
+          "typed_value": "2026-09-03"
+        },
+        {
+          "canonical_key": "medical_eob.processed_on",
+          "value_type": "date",
+          "typed_value": "2026-09-04"
+        },
+        {
+          "canonical_key": "medical_eob.total_billed",
+          "value_type": "money",
+          "typed_value": {
+            "amount": "230.00",
+            "currency": "USD"
+          }
+        },
+        {
+          "canonical_key": "medical_eob.total_allowed",
+          "value_type": "money",
+          "typed_value": {
+            "amount": "160.00",
+            "currency": "USD"
+          }
+        },
+        {
+          "canonical_key": "medical_eob.total_plan_paid",
+          "value_type": "money",
+          "typed_value": {
+            "amount": "120.00",
+            "currency": "USD"
+          }
+        },
+        {
+          "canonical_key": "medical_eob.total_patient_responsibility",
+          "value_type": "money",
+          "typed_value": {
+            "amount": "40.00",
+            "currency": "USD"
+          }
+        },
+        {
+          "canonical_key": "medical_eob.total_deductible",
+          "value_type": "money",
+          "typed_value": {
+            "amount": "10.00",
+            "currency": "USD"
+          }
+        },
+        {
+          "canonical_key": "medical_eob.total_copay",
+          "value_type": "money",
+          "typed_value": {
+            "amount": "20.00",
+            "currency": "USD"
+          }
+        },
+        {
+          "canonical_key": "medical_eob.total_coinsurance",
+          "value_type": "money",
+          "typed_value": {
+            "amount": "10.00",
+            "currency": "USD"
+          }
+        }
+      ],
+      "rows": [
+        {
+          "source_row": 1,
+          "claims": [
+            {
+              "canonical_key": "medical_eob.line_item.description",
+              "value_type": "text",
+              "typed_value": "Office visit"
+            },
+            {
+              "canonical_key": "medical_eob.line_item.code",
+              "value_type": "identifier",
+              "typed_value": "99213"
+            },
+            {
+              "canonical_key": "medical_eob.line_item.modifiers",
+              "value_type": "identifiers",
+              "typed_value": [
+                "25"
+              ]
+            },
+            {
+              "canonical_key": "medical_eob.line_item.gross_amount",
+              "value_type": "money",
+              "typed_value": {
+                "amount": "150.00",
+                "currency": "USD"
+              }
+            },
+            {
+              "canonical_key": "medical_eob.line_item.allowed_amount",
+              "value_type": "money",
+              "typed_value": {
+                "amount": "100.00",
+                "currency": "USD"
+              }
+            },
+            {
+              "canonical_key": "medical_eob.line_item.plan_paid",
+              "value_type": "money",
+              "typed_value": {
+                "amount": "70.00",
+                "currency": "USD"
+              }
+            },
+            {
+              "canonical_key": "medical_eob.line_item.amount",
+              "value_type": "money",
+              "typed_value": {
+                "amount": "30.00",
+                "currency": "USD"
+              }
+            },
+            {
+              "canonical_key": "medical_eob.line_item.deductible",
+              "value_type": "money",
+              "typed_value": {
+                "amount": "10.00",
+                "currency": "USD"
+              }
+            },
+            {
+              "canonical_key": "medical_eob.line_item.copay",
+              "value_type": "money",
+              "typed_value": {
+                "amount": "15.00",
+                "currency": "USD"
+              }
+            },
+            {
+              "canonical_key": "medical_eob.line_item.coinsurance",
+              "value_type": "money",
+              "typed_value": {
+                "amount": "5.00",
+                "currency": "USD"
+              }
+            }
+          ]
+        },
+        {
+          "source_row": 2,
+          "claims": [
+            {
+              "canonical_key": "medical_eob.line_item.description",
+              "value_type": "text",
+              "typed_value": "ECG"
+            },
+            {
+              "canonical_key": "medical_eob.line_item.code",
+              "value_type": "identifier",
+              "typed_value": "93000"
+            },
+            {
+              "canonical_key": "medical_eob.line_item.modifiers",
+              "value_type": "identifiers",
+              "typed_value": [
+                "59"
+              ]
+            },
+            {
+              "canonical_key": "medical_eob.line_item.gross_amount",
+              "value_type": "money",
+              "typed_value": {
+                "amount": "80.00",
+                "currency": "USD"
+              }
+            },
+            {
+              "canonical_key": "medical_eob.line_item.allowed_amount",
+              "value_type": "money",
+              "typed_value": {
+                "amount": "60.00",
+                "currency": "USD"
+              }
+            },
+            {
+              "canonical_key": "medical_eob.line_item.plan_paid",
+              "value_type": "money",
+              "typed_value": {
+                "amount": "50.00",
+                "currency": "USD"
+              }
+            },
+            {
+              "canonical_key": "medical_eob.line_item.amount",
+              "value_type": "money",
+              "typed_value": {
+                "amount": "10.00",
+                "currency": "USD"
+              }
+            },
+            {
+              "canonical_key": "medical_eob.line_item.deductible",
+              "value_type": "money",
+              "typed_value": {
+                "amount": "0.00",
+                "currency": "USD"
+              }
+            },
+            {
+              "canonical_key": "medical_eob.line_item.copay",
+              "value_type": "money",
+              "typed_value": {
+                "amount": "5.00",
+                "currency": "USD"
+              }
+            },
+            {
+              "canonical_key": "medical_eob.line_item.coinsurance",
+              "value_type": "money",
+              "typed_value": {
+                "amount": "5.00",
+                "currency": "USD"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
