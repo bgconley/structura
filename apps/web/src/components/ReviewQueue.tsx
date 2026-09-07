@@ -13,10 +13,10 @@ import type {
   EvidenceRef,
   EvidenceTarget,
   FieldCandidate,
-  LineItemCandidate,
   ObservationCandidate,
 } from "../types";
 import {ReviewDecisionPanel} from "./ReviewDecisionPanel";
+import {LineItemReviewPanel} from "./LineItemReviewPanel";
 import {ReviewFieldHistory} from "./ReviewFieldHistory";
 import "./ReviewQueue.css";
 
@@ -29,7 +29,7 @@ export function ReviewQueue({
   onSelectTask: (taskId: string | undefined) => void;
   onOpenDocument: (documentId: string, evidenceTarget?: EvidenceTarget) => void;
 }) {
-  const {tasks, activeTask, selectTask, candidates, observations, lineItems, authority, authorityError,
+  const {tasks, activeTask, selectTask, candidates, observations, authority, authorityError,
     status, setStatus, pending, detailReady, detailFailed, fieldDecisionReady, fieldConflict,
     selectionError, taskLoading, tasksLoaded, refresh, applyReviewAction}
     = useReviewQueueState(selectedTaskId, documentId, onSelectTask);
@@ -86,26 +86,6 @@ export function ReviewQueue({
         createdAt: new Date().toISOString(),
       },
       decision === "accept" ? "Observation accepted." : "Observation rejected.",
-    );
-  }
-
-  async function handleLineItemDecision(
-    candidate: LineItemCandidate,
-    decision: "accept" | "reject",
-  ) {
-    await applyReviewAction(
-      {
-        schemaName: "review_action",
-        schemaVersion: "v1",
-        documentId: candidate.documentId,
-        reviewTaskId: activeTask?.id,
-        actionType: decision === "accept" ? "accept_line_item" : "reject_line_item",
-        actorType: "human",
-        metadata: {lineItemCandidateId: candidate.id},
-        comment: `Line item ${decision}ed from review queue.`,
-        createdAt: new Date().toISOString(),
-      },
-      decision === "accept" ? "Line item accepted." : "Line item rejected.",
     );
   }
 
@@ -283,7 +263,7 @@ export function ReviewQueue({
                   Open document
                 </button>
               </div>
-              {activeTask.status !== "open" ? <p role="status">This task is {activeTask.status}. Its review history is preserved; decisions are disabled.</p> : null}
+              {activeTask.status !== "open" ? <p role="status">This task is {activeTask.status}. {activeTask.taskType === "line_item_review" ? "Its exact line decisions and history remain available below." : "Its review history is preserved; decisions are disabled."}</p> : null}
               {!detailReady ? <p role="status">{detailFailed ? "Review details could not be refreshed. Your entries are preserved; refresh to retry." : "Loading review details…"}</p> : null}
               {authorityError ? <p role="alert">{authorityError}</p> : null}
               {fieldConflict ? <p role="alert">This field has a newer decision. Refresh to review it before saving again. Your entries are preserved.</p> : null}
@@ -357,48 +337,12 @@ export function ReviewQueue({
                   </div>
                 </article>
               ))}
-              {lineItems.map((candidate) => (
-                <article key={candidate.id} className="candidate-card">
-                  <div>
-                    <strong>{candidate.description ?? `${candidate.lineItemType} ${candidate.ordinal}`}</strong>
-                    <span>
-                      {formatAmount(candidate.netAmount, candidate.currency)}
-                      {" · "}
-                      {candidate.sourceEngine} · {confidence(candidate.confidence ?? undefined)}
-                    </span>
-                  </div>
-                  <p>{candidate.status ?? "proposed"} · {evidenceLabel(candidate.evidence)}</p>
-                  <small>{selectEvidenceRef(candidate.evidence)?.sourceText ?? "Evidence locator available."}</small>
-                  <div className="candidate-actions">
-                    <button type="button" disabled={decisionDisabled} onClick={() => handleLineItemDecision(candidate, "accept")}>
-                      Accept line item
-                    </button>
-                    <button type="button" disabled={decisionDisabled} onClick={() => handleLineItemDecision(candidate, "reject")}>
-                      Reject line item
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => (
-                        onOpenDocument(
-                          candidate.documentId,
-                          evidenceTargetFromRef(
-                            candidate.documentId,
-                            selectEvidenceRef(candidate.evidence),
-                            `line_items.${candidate.lineItemType}.${candidate.ordinal}`,
-                          ),
-                        )
-                      )}
-                    >
-                      Jump to evidence
-                    </button>
-                  </div>
-                </article>
-              ))}
+              {activeTask.taskType === "line_item_review" ? <LineItemReviewPanel key={activeTask.id}
+                documentId={activeTask.documentId} contextId={activeTask.id}
+                candidateId={typeof activeTask.metadata?.lineItemCandidateId === "string" ? activeTask.metadata.lineItemCandidateId : undefined}
+                onJump={(target) => onOpenDocument(activeTask.documentId, target)} onSaved={refresh} /> : null}
               {activeTask.taskType === "observation_review" && !observations.length ? (
                 <p className="empty-state">No observation candidate found for this task.</p>
-              ) : null}
-              {activeTask.taskType === "line_item_review" && !lineItems.length ? (
-                <p className="empty-state">No line-item candidate found for this task.</p>
               ) : null}
               <ReviewDecisionPanel
                 key={`${activeTask.id}:${activeReferenceCandidate?.id ?? "loading"}`}
@@ -440,13 +384,6 @@ function groupCandidates(candidates: FieldCandidate[]): Array<[string, FieldCand
 
 function confidence(value?: number): string {
   return value === undefined || value === null ? "confidence pending" : `${Math.round(value * 100)}%`;
-}
-
-function formatAmount(amount?: number | null, currency?: string | null): string {
-  if (amount === undefined || amount === null) {
-    return "Amount pending";
-  }
-  return `${currency ?? "USD"} ${amount}`;
 }
 
 function formatValue(value: unknown, currency?: string, valueType?: string): string {

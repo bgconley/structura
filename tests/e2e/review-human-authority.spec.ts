@@ -1,3 +1,4 @@
+import {canonicalLines, lineCandidate} from "./support/lineItemAuthorityMock";
 import {expect, test, type Page} from "@playwright/test";
 import {fieldDecisionPreconditions, parseCanonicalFieldResponse, recordedFieldStatus} from "../../apps/web/src/reviewAuthority";
 import type {CanonicalFieldResponse, FieldDecision, FieldPathGuard} from "../../apps/web/src/types";
@@ -140,12 +141,25 @@ for (const kind of ["observation", "line_item"] as const) {
     await page.route("**/api/v1/review-tasks?*", (route) => route.fulfill({json: {items: [task]}}));
     await page.route("**/api/v1/review-tasks/*", (route) => route.fulfill({json: task}));
     await page.route("**/api/v1/documents/*/canonical-fields", (route) => route.fulfill({json: {items: []}}));
+    const proposal = {...lineCandidate(candidate.documentId), id: item.id};
     await page.route(`**/api/v1/documents/*/${kind === "observation" ? "observation" : "line-item"}-candidates?*`,
-      (route) => route.fulfill({json: {items: [item]}}));
+      (route) => route.fulfill({json: kind === "observation" ? {items: [item]}
+        : {authorityVersion: "line_item_authority.v1", documentId: candidate.documentId, items: [proposal]}}));
+    if (kind === "line_item") await page.route("**/api/v1/documents/*/canonical-line-items",
+      (route) => route.fulfill({json: canonicalLines(candidate.documentId)}));
     await page.goto(`/review?task=${task.id}`);
-    const request = page.waitForRequest((item) => item.method() === "POST" && item.url().endsWith("/review-actions"));
-    await page.getByRole("button", {name: kind === "observation" ? "Accept observation" : "Accept line item", exact: true}).click();
-    expect((await request).postDataJSON().actionType).toBe(`accept_${kind}`);
+    const request = page.waitForRequest((item) => item.method() === "POST"
+      && item.url().endsWith(kind === "observation" ? "/review-actions" : "/line-item-decisions"));
+    if (kind === "observation") {
+      await page.getByRole("button", {name: "Accept observation", exact: true}).click();
+      expect((await request).postDataJSON().actionType).toBe("accept_observation");
+    } else {
+      await page.getByRole("button", {name: "Add as a separate line", exact: true}).click();
+      await page.getByRole("button", {name: "Add this line", exact: true}).click();
+      expect((await request).postDataJSON()).toMatchObject({operation: "create", source: {candidateId: item.id,
+        expectedCandidateVersion: proposal.candidateVersion, expectedCandidateDecisionRevision: null},
+      target: {canonicalLineItemId: null, ordinal: 26, expectedLineDecisionRevision: null}});
+    }
   });
 }
 

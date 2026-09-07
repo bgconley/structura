@@ -1,22 +1,24 @@
 import {useId, useState} from "react";
 import {listCanonicalFields} from "../reviewApi";
 import {useKeyedRequest} from "../useKeyedRequest";
+import {getCanonicalLines} from "../lineItems/api";
 import type {RecordedLineItem} from "../recordedLineItems";
 import type {EvidenceTarget} from "../types";
 import {ViewerFieldRecords} from "./ViewerFieldRecords";
 import {ViewerLineItems} from "./ViewerLineItems";
 import "./ViewerRecordedFacts.css";
 
-export function ViewerRecordedFacts({documentId, family, lineItems, evidenceTarget, onJump}: {
+export function ViewerRecordedFacts({documentId, family, evidenceTarget, onJump}: {
   documentId: string; family: string; lineItems: RecordedLineItem[]; evidenceTarget: EvidenceTarget | null;
   onJump: (target: EvidenceTarget) => void;
 }) {
   const authority = useKeyedRequest(documentId, () => listCanonicalFields(documentId));
+  const lines = useKeyedRequest(documentId, (signal) => getCanonicalLines(documentId, signal));
   const [view, setView] = useState(evidenceTarget?.fieldPath?.startsWith("line_items.") ? "lines" : "fields");
   const id = useId();
   return <section className="viewer-recorded-facts" aria-label="Recorded facts and line items">
     <div className="recorded-tabs" role="tablist" aria-label="Recorded fact sections">
-      {[["fields", "Fields"], ["lines", `Line items (${lineItems.length})`]].map(([value, label]) => <button key={value}
+      {[["fields", "Fields"], ["lines", `Line items${lines.data ? ` (${lines.data.items.length})` : ""}`]].map(([value, label]) => <button key={value}
         type="button" role="tab" id={`${id}-${value}`} aria-controls={`${id}-panel`} aria-selected={view === value}
         tabIndex={view === value ? 0 : -1} onClick={() => setView(value)} onKeyDown={(event) => {
           if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
@@ -32,7 +34,8 @@ export function ViewerRecordedFacts({documentId, family, lineItems, evidenceTarg
         {authority.loading ? <p role="status">Loading field decisions…</p>
           : authority.error ? <p role="alert">{authority.error.message}</p>
           : authority.data ? <ViewerFieldRecords authority={authority.data} evidenceTarget={evidenceTarget} onJump={onJump} /> : null}
-      </> : <ViewerLineItems documentId={documentId} family={family} items={lineItems} evidenceTarget={evidenceTarget} onJump={onJump} />}
+      </> : <ViewerLineItems documentId={documentId} family={family} authority={lines.data} loading={lines.loading}
+        error={lines.error?.message ?? null} onReload={lines.reload} evidenceTarget={evidenceTarget} onJump={onJump} />}
     </div>
   </section>;
 }

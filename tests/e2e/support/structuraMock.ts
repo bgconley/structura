@@ -35,6 +35,7 @@ import {
   webOrigin,
 } from "./structuraFixtures";
 import {documentBrowseResponse} from "./documentBrowseMock";
+import {canonicalLines} from "./lineItemAuthorityMock";
 import {reviewAuthorityFixture} from "./reviewAuthorityFixture";
 
 export {apiOrigin, csrfToken} from "./structuraFixtures";
@@ -87,6 +88,9 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
         status: 200,
         headers: {"Content-Type": "application/json", ...corsHeaders},
         json: {
+          sessionId: "abababab-abab-4bab-8bab-000000000901",
+          userId: "abababab-abab-4bab-8bab-000000000900",
+          householdId: "abababab-abab-4bab-8bab-000000000902",
           displayName: "Phase Reviewer",
           email: "phase@example.com",
           isAuthenticated: true,
@@ -507,6 +511,12 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
             .filter((candidate) => !fieldPath || candidate.fieldPath === fieldPath),
         },
       });
+      return;
+    }
+
+    const canonicalLinesMatch = url.pathname.match(/^\/api\/v1\/documents\/([^/]+)\/canonical-line-items$/);
+    if (canonicalLinesMatch && request.method() === "GET") {
+      await route.fulfill({status: 200, headers: corsHeaders, json: canonicalLines(canonicalLinesMatch[1])});
       return;
     }
 

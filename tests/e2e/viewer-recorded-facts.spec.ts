@@ -42,7 +42,7 @@ for (const family of ["invoice", "medical_eob"]) {
     await page.goto(`/documents/${data.document.id}`);
     await page.getByRole("tab", {name: "Line items (25)"}).click();
     const rows = page.getByRole("region", {name: "Canonical line items", exact: true});
-    if (family === "medical_eob") await expect(rows).toContainText("do not include an allowed, plan-paid or patient-responsibility breakdown");
+    if (family === "medical_eob") await expect(rows).toContainText("Missing amounts are not inferred");
     const first = rows.locator("article").first();
     await expect(first).toContainText("EUR 99,999,999,999,999.9999");
     await expect(first).toContainText("EUR -12.3400");
@@ -54,8 +54,8 @@ for (const family of ["invoice", "medical_eob"]) {
     await pager.getByLabel("Page").selectOption({label: "3"});
     await expect(rows).toContainText("21–25 of 25 line items");
     await expect(rows.locator("article")).toHaveCount(5);
-    await expect(rows.locator("article").last()).toContainText("Rejected; excluded");
-    await rows.getByRole("button", {name: "Evidence for line item 24, page 3"}).click();
+    await expect(rows.locator("article").last()).toContainText("Removed from accepted lines");
+    await rows.getByRole("button", {name: "Evidence for line_items.service_line.24, page 3"}).click();
     await expect(page).toHaveURL(/page=3/);
     await expect(page.locator(".evidence-focus")).toContainText("Source for service 24");
     await expect(page.locator(".evidence-highlight")).toHaveCount(0);
@@ -71,7 +71,7 @@ test("invalid field authority blocks acceptance claims while independent line it
   await expect(page.getByRole("alert")).toContainText("Field decision history is unavailable");
   await expect(page.locator(".viewer-recorded-fields")).toHaveCount(0);
   await page.getByRole("tab", {name: "Line items (25)"}).click();
-  await expect(page.getByRole("region", {name: "Canonical line items"})).toContainText("Accepted under line-item policy");
+  await expect(page.getByRole("region", {name: "Canonical line items"})).toContainText("Selected by human decision");
 });
 
 test("unestablished fields and missing evidence stay explicit, and a failed refresh clears old claims", async ({page}) => {
@@ -111,9 +111,9 @@ test("line items bound to another document cannot be displayed", async ({page}) 
   const data = viewerFactsData(); data.lines[0].documentId = receiptDocument.id;
   await mockViewerFacts(page, data);
   await page.goto(`/documents/${data.document.id}`);
-  await page.getByRole("tab", {name: "Line items (25)"}).click();
-  await expect(page.getByRole("alert")).toContainText("Line items did not match this document");
-  await expect(page.locator(".viewer-line-items")).toHaveCount(0);
+  await page.getByRole("tab", {name: "Line items", exact: true}).click();
+  await expect(page.getByRole("alert")).toContainText("Line-item authority is unavailable or inconsistent");
+  await expect(page.locator(".viewer-line-items article")).toHaveCount(0);
 });
 
 test("missing original and hash metadata produce truthful Viewer trust states", async ({page}) => {

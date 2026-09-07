@@ -2,6 +2,8 @@ import type {Page} from "@playwright/test";
 import type {CanonicalField, FieldDecision} from "../../../apps/web/src/types";
 import type {RecordedLineItem} from "../../../apps/web/src/recordedLineItems";
 import {existingDocument, seededDocuments} from "./structuraFixtures";
+import {canonicalLine, canonicalLines, lineTime} from "./lineItemAuthorityMock";
+import type {CanonicalLine} from "../../../apps/web/src/lineItems/types";
 import {reviewAuthorityFixture} from "./reviewAuthorityFixture";
 
 const id = (value: number) => `aaaaaaaa-aaaa-4aaa-8aaa-${String(value).padStart(12, "0")}`;
@@ -43,5 +45,9 @@ export function viewerFactsData() {
 export async function mockViewerFacts(page: Page, data = viewerFactsData()) {
   await page.route(`**/api/v1/documents/${data.document.id}`, (route) => route.fulfill({json: data.document}));
   await page.route(`**/api/v1/documents/${data.document.id}/canonical-fields`, (route) => route.fulfill({json: data.authority}));
+  await page.route(`**/api/v1/documents/${data.document.id}/canonical-line-items`, (route) => route.fulfill({json:
+    canonicalLines(data.document.id, data.lines.map((item, index) => ({...canonicalLine(data.document.id, index + 1), ...item,
+      allowedAmount: null, planPaidAmount: null, selectedCandidateId: null, acceptedAt: lineTime, updatedAt: lineTime,
+      selected: item.reviewStatus !== "rejected"}) as CanonicalLine))}));
   return data;
 }

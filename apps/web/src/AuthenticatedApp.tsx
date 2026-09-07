@@ -16,6 +16,7 @@ import {useCorpusSearch} from "./useCorpusSearch";
 import {useDocumentList} from "./useDocumentList";
 import {useInboxBrowse} from "./useInboxBrowse";
 import {useDocumentWorkspace} from "./useDocumentWorkspace";
+import {LineItemDraftProvider} from "./lineItems/LineItemDraftProvider";
 import {useKeyedRequest} from "./useKeyedRequest";
 import type {AcceptedDocumentUpload, DocumentOrganizationWrite, EvidenceTarget, SessionInfo, ViewMode} from "./types";
 
@@ -137,6 +138,9 @@ export function AuthenticatedApp({session, onSignOut, sessionError}: {
   const returnRoute = route.view === "viewer" ? parseAppRoute(route.returnTo) : defaultRoute("inbox");
 
   return (
+    <LineItemDraftProvider key={`${session.sessionId}:${session.userId}:${session.householdId}`}
+      actor={`${session.sessionId}:${session.userId}:${session.householdId}`}
+      authorized={!!session.sessionId && !!session.userId && !!session.householdId}>
     <div className="app-shell">
       <Sidebar total={list.corpusTotal} active={route.view} onNavigate={navigateView} />
       <main className="app-main">
@@ -190,6 +194,7 @@ export function AuthenticatedApp({session, onSignOut, sessionError}: {
         </div>
       </main>
     </div>
+    </LineItemDraftProvider>
   );
 }
 

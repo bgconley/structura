@@ -1,10 +1,10 @@
 import {useEffect, useRef, useState} from "react";
 
-import {listCanonicalFields, listFieldCandidates, listLineItemCandidates,
+import {listCanonicalFields, listFieldCandidates,
   listObservationCandidates, listReviewTasks, getReviewTask, postReviewAction} from "./reviewApi";
 import {ApiError} from "./api";
 import {useKeyedRequest} from "./useKeyedRequest";
-import type {CanonicalFieldResponse, FieldCandidate, LineItemCandidate, ObservationCandidate,
+import type {CanonicalFieldResponse, FieldCandidate, ObservationCandidate,
   ReviewActionPayload, ReviewTask} from "./types";
 
 type ReviewDetail = {
@@ -13,10 +13,9 @@ type ReviewDetail = {
   authority: CanonicalFieldResponse | null;
   authorityError: string | null;
   observations: ObservationCandidate[];
-  lineItems: LineItemCandidate[];
 };
 
-const EMPTY_DETAIL = {candidates: [], authority: null, authorityError: null, observations: [], lineItems: []};
+const EMPTY_DETAIL = {candidates: [], authority: null, authorityError: null, observations: []};
 
 function taskIdentity(task: ReviewTask | null): string {
   return task ? [task.id, task.documentId, task.taskType, task.fieldPath,
@@ -99,7 +98,7 @@ export function useReviewQueueState(selectedTaskId: string | undefined, document
     }
     setDetailLoad({identity: requestedIdentity, failed: false});
     try {
-      const [candidates, authorityResult, observations, lineItems] = await Promise.all([
+      const [candidates, authorityResult, observations] = await Promise.all([
         task.taskType === "observation_review" || task.taskType === "line_item_review"
           ? Promise.resolve([]) : listFieldCandidates(task.documentId, task.fieldPath),
         listCanonicalFields(task.documentId).then((authority) => ({authority, authorityError: null}))
@@ -107,21 +106,16 @@ export function useReviewQueueState(selectedTaskId: string | undefined, document
         task.taskType === "observation_review"
           ? listObservationCandidates(task.documentId, metadataId(task, "observationId"))
           : Promise.resolve([]),
-        task.taskType === "line_item_review"
-          ? listLineItemCandidates(task.documentId, metadataId(task, "lineItemCandidateId"))
-          : Promise.resolve([]),
       ]);
       if (sequence !== detailSequence.current || current.current.identity !== requestedIdentity) return false;
-      if ([...candidates, ...observations, ...lineItems]
+      if ([...candidates, ...observations]
         .some((item) => item.documentId !== task.documentId)
         || candidates.some((item) => task.fieldPath && item.fieldPath !== task.fieldPath)
         || observations.some((item) => metadataId(task, "observationId")
-          && item.id !== metadataId(task, "observationId"))
-        || lineItems.some((item) => metadataId(task, "lineItemCandidateId")
-          && item.id !== metadataId(task, "lineItemCandidateId"))) {
+          && item.id !== metadataId(task, "observationId"))) {
         throw new Error("Review details did not match the selected document. Refresh before making a decision.");
       }
-      setDetail({identity: requestedIdentity, candidates, ...authorityResult, observations, lineItems});
+      setDetail({identity: requestedIdentity, candidates, ...authorityResult, observations});
       setDetailLoad(null);
       if (authorityResult.authority) setFieldConflict(null);
       return true;

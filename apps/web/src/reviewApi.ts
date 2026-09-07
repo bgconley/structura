@@ -5,7 +5,6 @@ import type {
   FieldDecision,
   ProjectionRevision,
   FieldCandidate,
-  LineItemCandidate,
   ObservationCandidate,
   ReviewActionPayload,
   ReviewTask,
@@ -52,20 +51,6 @@ export async function listObservationCandidates(
   }
   const payload = await fetchJson<{items: ObservationCandidate[]}>(
     `/api/v1/documents/${documentId}/observation-candidates${params.size ? `?${params}` : ""}`,
-  );
-  return payload.items;
-}
-
-export async function listLineItemCandidates(
-  documentId: string,
-  candidateId?: string,
-): Promise<LineItemCandidate[]> {
-  const params = new URLSearchParams();
-  if (candidateId) {
-    params.set("candidateId", candidateId);
-  }
-  const payload = await fetchJson<{items: LineItemCandidate[]}>(
-    `/api/v1/documents/${documentId}/line-item-candidates${params.size ? `?${params}` : ""}`,
   );
   return payload.items;
 }
