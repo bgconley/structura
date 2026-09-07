@@ -172,7 +172,7 @@ def test_missing_render_refuses_preparation_and_vector_publication(candidate_sou
 
         with pytest.raises(IndexCandidateError, match="unavailable"):
             service.checkpoint(binding, observation(manifest.inputs[0], config))
-        with pytest.raises(IndexCheckpointConflict, match="missing"):
+        with pytest.raises(IndexCandidateError, match="unavailable"):
             service.seal(binding)
 
 
