@@ -67,6 +67,8 @@ pydantic-core==2.46.3
     # via pydantic
 pydantic-settings==2.14.0
     # via -r apps/api/requirements.txt
+pypdfium2==5.11.0
+    # via -r apps/api/requirements.txt
 python-dotenv==1.2.2
     # via
     #   pydantic-settings

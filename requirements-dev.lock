@@ -190,6 +190,8 @@ pyjwt==2.12.1
     # via
     #   mcp
     #   semgrep
+pypdfium2==5.11.0
+    # via structura (pyproject.toml)
 pyright==1.1.409
     # via structura (pyproject.toml)
 pytest==9.0.3

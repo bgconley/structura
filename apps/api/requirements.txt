@@ -4,6 +4,7 @@ email-validator>=2.0
 httpx>=0.28
 jsonschema>=4.0
 Pillow>=10.0
+pypdfium2>=5.11,<6
 psycopg[binary]>=3.2
 pydantic>=2.0
 pydantic-settings>=2.0
