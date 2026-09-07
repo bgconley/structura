@@ -58,7 +58,7 @@ def main() -> int:
         profile=visual_profile, http_client_base_url=args.visual_url, api_key=key
     )
     image = args.image_path.read_bytes()
-    image_input = EmbeddingInput(image_bytes=image, mime_type="image/png")
+    image_input = EmbeddingInput(text="", image_bytes=image, mime_type="image/png")
     mixed_input = EmbeddingInput(
         text="Synthetic repair invoice with line items and a total amount",
         image_bytes=image,
