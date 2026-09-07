@@ -31,7 +31,7 @@ def token_document(doc, scopes):
 def candidate(doc, description="Reviewed service", *, extraction_id=None, evidence=None):
     with db_connection() as conn, conn.cursor() as cur:
         cur.execute(
-            "UPDATE document_pages SET text_content=concat_ws(chr(10),text_content,%s) "
+            "UPDATE document_pages SET text_content=concat_ws(chr(10),text_content,%s::text) "
             "WHERE document_id=%s AND page_number=1",
             (description, doc.document_id),
         )
