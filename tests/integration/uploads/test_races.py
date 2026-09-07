@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
+from uuid import uuid4
 
 import pytest
 
@@ -108,12 +109,13 @@ def test_post_job_exception_rolls_back_document_receipt_and_actual_created_blob(
         raise RuntimeError("controlled post-job rollback")
 
     monkeypatch.setattr(repository, "create_ingestion_jobs", fail_after_jobs)
-    attempt = upload.create()
+    data = f"%PDF-1.7\nisolated rollback source {uuid4()}".encode()
+    attempt = upload.create(data)
     with pytest.raises(RuntimeError, match="controlled post-job rollback"):
-        upload.send(attempt)
+        upload.send(attempt, data)
     assert not rows("SELECT id FROM documents WHERE owner_user_id=%s", (upload.credential.user_id,))
     assert not list(upload.service.storage.root_for("canonical").glob("sha256/*/*/*/original.blob"))
     assert not list(upload.service.staging.root.glob("*.data"))
     assert read_attempt(attempt.upload_id, upload.credential).receipt is None
     monkeypatch.setattr(repository, "create_ingestion_jobs", original)
-    assert upload.send(read_attempt(attempt.upload_id, upload.credential)).state == "accepted"
+    assert upload.send(read_attempt(attempt.upload_id, upload.credential), data).state == "accepted"

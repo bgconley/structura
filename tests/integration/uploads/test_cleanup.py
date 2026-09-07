@@ -6,6 +6,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Event
+from uuid import uuid4
 
 import pytest
 
@@ -23,8 +24,10 @@ from tests.unit.uploads.test_storage import _stalled_writer
 
 
 def staged(upload):
-    data = b"%PDF-1.7\noriginal uploaded source"
-    attempt = upload.create()
+    # Each temporary storage root needs a unique content identity: the shared
+    # database correctly protects matching hashes retained by other test actors.
+    data = f"%PDF-1.7\nisolated crash source {uuid4()}".encode()
+    attempt = upload.create(data)
     lease = reserve_transfer(
         attempt.upload_id, attempt.revision, upload.credential, upload.service.policy
     )

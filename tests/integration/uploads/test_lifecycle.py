@@ -59,7 +59,7 @@ def test_changed_metadata_or_accepted_replay_bytes_conflict(upload):
             upload.credential,
             upload.service.policy,
         )
-    changed = b"%PDF-1.7\ndifferent uploaded source"
+    changed = b"%PDF-1.7\nmodified uploaded source"
     assert len(changed) == metadata.declared_bytes
     with pytest.raises(UploadConflict):
         upload.send(accepted, changed)
