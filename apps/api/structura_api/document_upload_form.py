@@ -38,6 +38,7 @@ class _UploadParser(MultiPartParser):
         self.file_limit = file_limit
         self.file_bytes = 0
         self.header_bytes = 0
+        self.current_header_bytes = 0
         self.complete = False
 
     def on_part_data(self, data: bytes, start: int, end: int) -> None:
@@ -51,7 +52,8 @@ class _UploadParser(MultiPartParser):
 
     def _count_header(self, size: int) -> None:
         self.header_bytes += size
-        if self.header_bytes > CONTROL_FIELD_BYTES:
+        self.current_header_bytes += size
+        if self.header_bytes > CONTROL_FIELD_BYTES or self.current_header_bytes > 4 * 1024:
             raise HTTPException(413, "The upload exceeds the supported size.")
 
     def on_header_field(self, data: bytes, start: int, end: int) -> None:
@@ -61,6 +63,10 @@ class _UploadParser(MultiPartParser):
     def on_header_value(self, data: bytes, start: int, end: int) -> None:
         self._count_header(end - start)
         super().on_header_value(data, start, end)
+
+    def on_header_end(self) -> None:
+        super().on_header_end()
+        self.current_header_bytes = 0
 
     def on_end(self) -> None:
         self.complete = True

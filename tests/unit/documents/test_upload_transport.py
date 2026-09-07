@@ -156,6 +156,15 @@ def test_exact_file_limit_accepts_existing_fields_and_closes_spool(transport, le
         ),
         (multipart() + b"x" * (64 * 1024), 413),
     ],
+    ids=[
+        "file-limit",
+        "unfinished",
+        "missing-source",
+        "duplicate-source",
+        "field-limit",
+        "header-limit",
+        "envelope-limit",
+    ],
 )
 def test_actual_stream_and_multipart_structure_fail_closed(transport, body, status):
     app, spools, accepted = transport

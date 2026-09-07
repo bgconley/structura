@@ -24,7 +24,8 @@ must release their file handles and leave no accepted receipt.
 The legacy API repair authenticates and checks write/CSRF authority before any
 multipart receive call. Its adapter enforces the configured file limit independently
 of a 64 KiB total envelope allowance, one file and three named control fields,
-16 KiB per field and aggregate part headers, matching actual/declared length when
+16 KiB per field and aggregate part headers, 4 KiB per part header,
+matching actual/declared length when
 provided, a 30-second idle timeout and a ten-minute transfer deadline. Missing
 Content-Length remains supported. Ambiguous duplicate fields, unfinished multipart
 boundaries and malformed headers are rejected; completed and unfinished temporary
