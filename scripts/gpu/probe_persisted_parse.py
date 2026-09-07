@@ -6,14 +6,13 @@ import argparse
 import hashlib
 import json
 import os
-import re
 import secrets
 import subprocess  # nosec B404
 import sys
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from urllib.parse import urlparse
 from uuid import UUID, uuid4
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -53,6 +52,10 @@ from lib.model_runtime.contracts import (  # noqa: E402
 from lib.model_runtime.ingestion_clients import ingestion_vision_client  # noqa: E402
 from lib.storage import ObjectStorage  # noqa: E402
 from lib.storage.service import StoredObject  # noqa: E402
+from scripts.gpu.probe_database import (  # noqa: E402
+    assert_isolated_connection,
+    verify_isolated_database,
+)
 
 
 def write_private(path: Path, value: object) -> None:
@@ -95,6 +98,9 @@ class ObservedClient:
 
 
 def register_source(output_dir: Path, original: bytes) -> ProbeSource:
+    # Verify the real connection before bootstrap/session/document mutations.
+    database_url = get_settings().database_url
+    expected_database = verify_isolated_database(database_url)
     auth, password = AuthService(), secrets.token_urlsafe(32)
     user = auth.bootstrap_admin(
         email=f"parse-smoke-{uuid4()}@example.com",
@@ -111,7 +117,8 @@ def register_source(output_dir: Path, original: bytes) -> ProbeSource:
         export_root=output_dir / "exports",
     )
     stored = storage.store_bytes(original, kind="canonical", role="original")
-    with db_connection() as conn, conn.cursor() as cur:
+    with db_connection(database_url, connect_timeout=5) as conn, conn.cursor() as cur:
+        assert_isolated_connection(conn, expected_database)
         cur.execute(
             "INSERT INTO documents "
             "(title,ingestion_source,household_id,owner_user_id,original_sha256) "
@@ -136,6 +143,8 @@ def ingest_and_replay(
     source: ProbeSource,
     client: ObservedClient,
     deployment: DeclaredParserDeployment,
+    *,
+    before_ack: Callable[[ProcessingRun], None] | None = None,
 ) -> tuple[ProcessingRun, dict[str, object]]:
     service, jobs, queue = DocumentProcessingService(), JobService(), f"parse-smoke-{uuid4()}"
     run = service.start_parse(
@@ -179,6 +188,10 @@ def ingest_and_replay(
             raise RuntimeError(
                 "Candidate inference count or sealed replay differs from its contract."
             )
+        if before_ack is not None:
+            # A candidate consumer runs under this exact producer claim and its
+            # independently renewed lease. Any failure prevents the job ACK.
+            before_ack(run)
         jobs.complete_job(
             job_id=claimed.state.job_id,
             claim_token=claimed.claim_token,
@@ -324,10 +337,9 @@ def main() -> int:
     parser.add_argument("--deployment-revision", required=True)
     args = parser.parse_args()
     settings = get_settings()
-    if settings.model_mode not in {"live", "required"} or not re.fullmatch(
-        r"/structura_it_[a-f0-9]{16}", urlparse(settings.database_url).path
-    ):
+    if settings.model_mode not in {"live", "required"}:
         parser.error("This smoke requires live models and an explicitly isolated test database.")
+    verify_isolated_database(settings.database_url)
     args.output_dir.mkdir(mode=0o700, parents=False, exist_ok=False)
     # Fixed read-only command in the controlled validation checkout; no shell/input expansion.
     commit = subprocess.check_output(  # nosec B603

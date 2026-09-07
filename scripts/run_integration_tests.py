@@ -6,11 +6,12 @@ import shutil
 import sys
 import tempfile
 from pathlib import Path
-from urllib.parse import quote, urlparse, urlunparse
+from urllib.parse import parse_qsl, quote, urlencode, urlparse, urlunparse
 from uuid import uuid4
 
 import psycopg
 from psycopg import sql
+from psycopg.conninfo import conninfo_to_dict
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -48,6 +49,7 @@ def main() -> int:
     try:
         _create_database(admin_url, test_database)
         created_database = True
+        _verify_test_database(test_url, test_database)
         os.environ.update(env)
         _run_migrations()
         pytest_args = sys.argv[1:] or ["-q", "tests/integration"]
@@ -63,7 +65,24 @@ def _database_url_with_name(url: str, database_name: str) -> str:
     parsed = urlparse(url)
     if parsed.scheme not in {"postgresql", "postgres"} or not parsed.netloc:
         raise SystemExit("Database URL must be a postgresql:// URL.")
-    return urlunparse(parsed._replace(path=f"/{quote(database_name)}"))
+    # libpq gives a query-string dbname precedence over the URI path. Remove all
+    # overrides before selecting the generated name; retain unrelated options.
+    query = urlencode([(key, value) for key, value in parse_qsl(parsed.query) if key != "dbname"])
+    result = urlunparse(parsed._replace(path=f"/{quote(database_name)}", query=query))
+    try:
+        resolved = conninfo_to_dict(result).get("dbname")
+    except psycopg.Error:
+        raise SystemExit("Integration database configuration is invalid.") from None
+    if resolved != database_name:
+        raise SystemExit("Integration database name differs from its generated target.")
+    return result
+
+
+def _verify_test_database(test_url: str, database_name: str) -> None:
+    _validate_database_name(database_name)
+    with psycopg.connect(test_url, connect_timeout=5) as conn:
+        if conn.info.dbname != database_name:
+            raise SystemExit("Connected integration database differs from its generated target.")
 
 
 def _create_database(admin_url: str, database_name: str) -> None:
