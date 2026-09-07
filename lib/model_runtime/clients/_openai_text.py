@@ -31,6 +31,7 @@ class OpenAITextGenerateClient:
         *,
         profile: ModelProfile,
         http_client_base_url: str,
+        api_key: str | None = None,
         transport: httpx.BaseTransport | None = None,
     ) -> None:
         self.profile = profile
@@ -38,6 +39,7 @@ class OpenAITextGenerateClient:
             base_url=http_client_base_url,
             timeout_seconds=60,
             transport=transport,
+            api_key=api_key,
         )
 
     def generate(self, request: TextGenerateRequest) -> TextGenerateResponse:
@@ -85,7 +87,7 @@ def _openai_text_payload(
     profile: ModelProfile,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
-        "model": profile.base_model,
+        "model": profile.served_model_name or profile.base_model,
         "messages": [{"role": "user", "content": request.prompt}],
         "max_tokens": request.max_output_tokens,
         "temperature": request.temperature,
@@ -97,6 +99,8 @@ def _openai_text_payload(
     }
     if request.seed is not None:
         payload["seed"] = request.seed
+    if profile.enable_thinking is not None:
+        payload["chat_template_kwargs"] = {"enable_thinking": profile.enable_thinking}
     payload["response_format"] = {
         "type": "json_schema",
         "json_schema": {

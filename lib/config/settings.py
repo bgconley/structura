@@ -4,7 +4,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -69,6 +69,12 @@ class Settings(BaseSettings):
         alias="STRUCTURA_DOCUMENT_EXTRACTION_ORCHESTRATION",
     )
     model_qwen_semantic_url: str = "http://127.0.0.1:8104"
+    # External shared service; registering this target does not activate a parser cutover.
+    model_ingestion_url: str = "http://10.25.0.50:18012"
+    model_ingestion_profile: str = "qwen3.8-27b-bf16-oxcart-ingestion:v1"
+    model_ingestion_api_key: SecretStr | None = None
+    model_ingestion_api_key_file: Path | None = None
+    model_ingestion_timeout_seconds: int = Field(default=180, ge=1, le=600)
     model_granite_url: str = "http://127.0.0.1:8101"
     model_text_embed_url: str = "http://127.0.0.1:8102"
     model_visual_embed_url: str = "http://127.0.0.1:8103"

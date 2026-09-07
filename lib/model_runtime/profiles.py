@@ -6,6 +6,7 @@ QWEN_VL_PROFILE = "qwen3-vl-8b-instruct-nvfp4-local:v1"
 QWEN_HISTORICAL_SEMANTIC_2B_PROFILE = "qwen3-vl-2b-semantic:v1"
 QWEN_HISTORICAL_SEMANTIC_4B_PROFILE = "qwen3-vl-4b-semantic:v1"
 QWEN_SEMANTIC_PROFILE = "qwen3-vl-8b-fp8-semantic:v1"
+QWEN_INGESTION_PROFILE = "qwen3.8-27b-bf16-oxcart-ingestion:v1"
 QWEN_VISION_PROFILE = QWEN_SEMANTIC_PROFILE
 GRANITE_VISION_PROFILE = "granite-4.0-3b-vision-bf16:v1"
 TEXT_EMBED_PROFILE = "qwen3-embedding-4b-1536:v1"
@@ -29,9 +30,36 @@ class ModelProfile:
     visual_token_spatial_compression: int | None = None
     visual_token_min_per_image: int | None = None
     visual_token_max_per_image: int | None = None
+    served_model_name: str | None = None
+    supported_tasks: tuple[str, ...] = ()
+    enable_thinking: bool | None = None
+
+    def supports(self, task: str) -> bool:
+        return task == self.task or task in self.supported_tasks
 
 
 _PROFILES: dict[str, ModelProfile] = {
+    QWEN_INGESTION_PROFILE: ModelProfile(
+        name=QWEN_INGESTION_PROFILE,
+        engine="qwen",
+        task="document_ingestion",
+        base_model="Qwen/Qwen3.8-27B",
+        served_model_name="qwen38-27b-bf16-oxcart",
+        backend="vllm-openai",
+        source_engine="qwen3_8_27b",
+        default_gpu_role="oxcart-shared-ingestion",
+        supported_tasks=(
+            "document_parse",
+            "semantic_annotation",
+            "structured_visual_extraction",
+            "structured_text_extraction",
+        ),
+        # Structura request limits; these do not reconfigure the resident server.
+        max_image_bytes=10 * 1024 * 1024,
+        max_images_per_request=4,
+        max_model_len=32768,
+        enable_thinking=False,
+    ),
     QWEN_VL_PROFILE: ModelProfile(
         name=QWEN_VL_PROFILE,
         engine="qwen",

@@ -14,6 +14,7 @@ MODEL_SOURCE_ENGINES = frozenset(
         "qwen3_vl_2b",
         "qwen3_vl_4b",
         "qwen3_vl_8b",
+        "qwen3_8_27b",
     }
 )
 MODEL_SOURCE_ENGINE_PREFIXES = ("granite_vision_", "qwen3_vl_")
@@ -24,6 +25,7 @@ QWEN_SOURCE_ENGINES = frozenset(
         "qwen3_vl_2b",
         "qwen3_vl_4b",
         "qwen3_vl_8b",
+        "qwen3_8_27b",
     }
 )
 QWEN_SOURCE_ENGINE_PREFIXES = ("qwen3_vl_",)

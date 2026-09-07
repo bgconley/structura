@@ -290,20 +290,20 @@ def _max_image_inputs_for_profile(profile_name: str) -> int:
 
 
 def _response_json_schema_for_profile(profile_name: str) -> dict[str, object] | None:
-    if profile_name == QWEN_SEMANTIC_PROFILE:
+    if get_model_profile(profile_name).supports("semantic_annotation"):
         return semantic_annotation_model_output_schema()
     return None
 
 
 def _max_output_tokens_for_profile(profile_name: str) -> int:
-    if profile_name == QWEN_SEMANTIC_PROFILE:
+    if get_model_profile(profile_name).supports("semantic_annotation"):
         return SMART_SEMANTIC_MAX_OUTPUT_TOKENS
     return 4096
 
 
 def _timeout_seconds_for_profile(profile_name: str) -> int:
     settings = get_settings()
-    if profile_name == QWEN_SEMANTIC_PROFILE:
+    if get_model_profile(profile_name).supports("semantic_annotation"):
         return settings.model_qwen_semantic_timeout_seconds
     return settings.model_http_timeout_seconds
 

@@ -12,6 +12,7 @@ class QwenVLClient(OpenAIVisionGenerateClient):
         *,
         profile: ModelProfile,
         http_client_base_url: str,
+        api_key: str | None = None,
         transport: httpx.BaseTransport | None = None,
     ) -> None:
         if profile.engine != "qwen":
@@ -20,4 +21,5 @@ class QwenVLClient(OpenAIVisionGenerateClient):
             profile=profile,
             http_client_base_url=http_client_base_url,
             transport=transport,
+            api_key=api_key,
         )

@@ -25,6 +25,7 @@ class OpenAIVisionGenerateClient:
         *,
         profile: ModelProfile,
         http_client_base_url: str,
+        api_key: str | None = None,
         transport: httpx.BaseTransport | None = None,
     ) -> None:
         self.profile = profile
@@ -32,6 +33,7 @@ class OpenAIVisionGenerateClient:
             base_url=http_client_base_url,
             timeout_seconds=60,
             transport=transport,
+            api_key=api_key,
         )
 
     def generate(self, request: VisionGenerateRequest) -> VisionGenerateResponse:
@@ -116,7 +118,7 @@ def _openai_payload(
             }
         )
     payload: dict[str, Any] = {
-        "model": profile.base_model,
+        "model": profile.served_model_name or profile.base_model,
         "messages": [{"role": "user", "content": content}],
         "max_tokens": request.max_output_tokens,
         "temperature": request.temperature,
@@ -128,6 +130,8 @@ def _openai_payload(
     }
     if request.seed is not None:
         payload["seed"] = request.seed
+    if profile.enable_thinking is not None:
+        payload["chat_template_kwargs"] = {"enable_thinking": profile.enable_thinking}
     schema_name = _response_format_schema_name(request.response_schema_name)
     payload["response_format"] = {
         "type": "json_schema",

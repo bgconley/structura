@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from typing import Any
 from urllib.parse import urlparse
@@ -46,15 +47,21 @@ class ModelHttpClient:
         timeout_seconds: float = 60.0,
         max_response_bytes: int = 1024 * 1024,
         transport: httpx.BaseTransport | None = None,
+        api_key: str | None = None,
     ) -> None:
         self.base_url = _validated_base_url(base_url)
         self.timeout_seconds = timeout_seconds
         self.max_response_bytes = max_response_bytes
+        if api_key is not None and (
+            not api_key or any(ord(c) < 33 or ord(c) > 126 for c in api_key)
+        ):
+            raise ModelConfigurationError("Model authentication token is invalid.")
         self._client = httpx.Client(
             base_url=self.base_url,
             timeout=timeout_seconds,
             follow_redirects=False,
             transport=transport,
+            headers={"Authorization": f"Bearer {api_key}"} if api_key else {},
         )
 
     def post_json(
@@ -81,53 +88,55 @@ class ModelHttpClient:
     ) -> dict[str, Any] | list[Any]:
         request_path = _validated_relative_path(path)
         try:
-            response = self._client.post(
+            with self._client.stream(
+                "POST",
                 request_path,
                 json=payload,
                 timeout=timeout_seconds or self.timeout_seconds,
-            )
-        except httpx.TimeoutException as exc:
+            ) as response:
+                details = _safe_request_details(request_path, payload)
+                details["http_status"] = response.status_code
+                if 300 <= response.status_code < 400:
+                    raise ModelProtocolError("Model service returned a redirect.", details=details)
+                if response.status_code >= 500 or response.status_code == 429:
+                    raise ModelServiceError(
+                        f"Model service returned HTTP {response.status_code}.", details=details
+                    )
+                if response.status_code >= 400:
+                    raise ModelProtocolError(
+                        f"Model service returned HTTP {response.status_code}.", details=details
+                    )
+                # Read decoded bytes incrementally, also bounding compressed responses.
+                content = bytearray()
+                for chunk in response.iter_bytes(
+                    chunk_size=min(65536, self.max_response_bytes + 1)
+                ):
+                    if len(content) + len(chunk) > self.max_response_bytes:
+                        raise ModelProtocolError(
+                            "Model service response is too large.", details=details
+                        )
+                    content.extend(chunk)
+        except httpx.TimeoutException:
             raise ModelTimeoutError(
-                "Model service timed out.",
-                details=_safe_request_details(request_path, payload),
-            ) from exc
-        except httpx.HTTPError as exc:
+                "Model service timed out.", details=_safe_request_details(request_path, payload)
+            ) from None
+        except httpx.HTTPError:
             raise ModelServiceError(
                 "Model service request failed.",
                 details=_safe_request_details(request_path, payload),
-            ) from exc
-
-        if 300 <= response.status_code < 400:
-            raise ModelProtocolError(
-                "Model service returned a redirect.",
-                details=_safe_response_details(request_path, payload, response),
-            )
-        if response.status_code >= 500:
-            raise ModelServiceError(
-                f"Model service returned HTTP {response.status_code}.",
-                details=_safe_response_details(request_path, payload, response),
-            )
-        if response.status_code >= 400:
-            raise ModelProtocolError(
-                f"Model service returned HTTP {response.status_code}.",
-                details=_safe_response_details(request_path, payload, response),
-            )
-        if len(response.content) > self.max_response_bytes:
-            raise ModelProtocolError(
-                "Model service response is too large.",
-                details=_safe_response_details(request_path, payload, response),
-            )
+            ) from None
         try:
-            parsed = response.json()
-        except ValueError as exc:
+            parsed = json.loads(content)
+        except (ValueError, UnicodeDecodeError):
             raise ModelProtocolError(
                 "Model service returned invalid JSON.",
-                details=_safe_response_details(request_path, payload, response),
-            ) from exc
+                details=_safe_request_details(request_path, payload),
+            ) from None
+
         if not isinstance(parsed, dict | list):
             raise ModelProtocolError(
                 "Model service JSON response must be an object or array.",
-                details=_safe_response_details(request_path, payload, response),
+                details=_safe_request_details(request_path, payload),
             )
         return parsed
 
@@ -140,6 +149,8 @@ def _validated_base_url(base_url: str) -> str:
         raise ModelConfigurationError("Model service base URL must use http or https.")
     if not parsed.netloc:
         raise ModelConfigurationError("Model service base URL must include a host.")
+    if parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise ModelConfigurationError("Model service credentials must not be in its URL.")
     return base_url.rstrip("/")
 
 
@@ -157,18 +168,3 @@ def _safe_request_details(path: str, payload: dict[str, Any]) -> dict[str, Any]:
         "path": path,
         "request": redact_model_payload(payload),
     }
-
-
-def _safe_response_details(
-    path: str,
-    payload: dict[str, Any],
-    response: httpx.Response,
-) -> dict[str, Any]:
-    details = _safe_request_details(path, payload)
-    details["http_status"] = response.status_code
-    try:
-        parsed = response.json()
-    except ValueError:
-        return details
-    details["response"] = redact_model_payload(parsed)
-    return details
