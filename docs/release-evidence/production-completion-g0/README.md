@@ -54,6 +54,8 @@ spikes and remaining activation, quality and capacity gates explicitly.
 
 [The browser and static-analysis checkpoint](browser-security-checkpoint.md) records 70 Linux browser passes (eight live-stack skips), web lint/build, the enforced SAST gate and scoped database verification at `76fe3e6`. Screenshot review and complete product/security acceptance are tracked separately.
 
+[The web dependency checkpoint](dependency-checkpoint.md) records the six-package security patch, zero known npm audit findings, and 70 passing Linux browser tests with normal screenshot comparisons at `c5208df`. The subsequent review-guard candidate passed 81 browser tests and full SAST; its new database cases require their separately recorded validation.
+
 The cached validation images observed on Oxcart are:
 
 | Image | Local image ID |
