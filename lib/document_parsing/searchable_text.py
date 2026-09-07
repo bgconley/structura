@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from uuid import UUID, uuid5
 
-from lib.document_parsing.structure import StructureChunk, StructurePage
+from lib.document_parsing.structure import StructureChunk, StructurePage, TextOrigin
+
+CHUNKER_VERSION = "native-element-chunker-3000-v1"
 
 
 def page_chunks(
@@ -16,7 +18,7 @@ def page_chunks(
     chunks = []
     for element in page.elements:
         parts = [element.text]
-        origins = [element.text_origin]
+        origins: list[TextOrigin] = [element.text_origin]
         table = tables.get(element.id)
         if table:
             for row in range(table.row_count):

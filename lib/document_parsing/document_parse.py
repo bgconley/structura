@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 from collections.abc import Callable, Sequence
 from uuid import UUID, uuid5
 
@@ -29,6 +30,7 @@ def parse_document(
     assert_authority: Callable[[], None],
     checkpoint: Callable[[ParsedSourcePage], None],
     timeout_seconds: int = 180,
+    render_scale: float = 2,
 ) -> DocumentStructure:
     """The owning run service supplies authority and immutable checkpoint storage.
 
@@ -38,6 +40,8 @@ def parse_document(
     """
     if not 1 <= max_new_pages <= 500:
         raise ValueError("Page budget must be between 1 and 500.")
+    if not math.isfinite(render_scale) or not 0 < render_scale <= 4:
+        raise ValueError("Source rendering scale is invalid.")
     inventory = source.inventory
     prior = {result.page.page_number: result for result in completed}
     if len(prior) != len(completed) or not set(prior) <= set(range(1, len(inventory.pages) + 1)):
@@ -52,7 +56,7 @@ def parse_document(
         if previous is not None:
             # Resume requires exact generation + original rendered bytes, not
             # just matching page numbers or similar model output.
-            rendered = source.render(number)
+            rendered = source.render(number, scale=render_scale)
             if (
                 previous.page.id != uuid5(generation_id, f"page:{number}")
                 or previous.page.source != rendered.identity
@@ -71,7 +75,7 @@ def parse_document(
         elif requested < max_new_pages:
             result = parse_source_page(
                 client,
-                source.render(number),
+                source.render(number, scale=render_scale),
                 generation_id=generation_id,
                 page_count=len(inventory.pages),
                 timeout_seconds=timeout_seconds,

@@ -14,6 +14,8 @@ from lib.document_parsing.structure import (
     StructureTable,
 )
 
+NORMALIZER_VERSION = "native-page-normalizer-v1"
+
 
 def normalize_page(
     output: PageParseOutput, source: SourceRender, generation_id: UUID
