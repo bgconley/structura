@@ -145,5 +145,7 @@ def test_history_cannot_be_deleted_independently_of_document(processing):
                 (run.binding.parse_generation_id,),
             )
         conn.rollback()
+    # Rollback also discards the connection's transaction-local search path.
+    with db_connection() as conn, conn.cursor() as cur:
         cur.execute("DELETE FROM documents WHERE id = %s", (processing.document_id,))
         conn.commit()
