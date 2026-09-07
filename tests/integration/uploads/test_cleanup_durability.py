@@ -21,6 +21,8 @@ def test_failed_canonical_unlink_sync_retains_reservation_until_durable_missing_
     )
     stored = prepared.commit()
     expire(lease.transfer_id)
+    before = rows("SELECT * FROM upload_transfers WHERE id=%s", (lease.transfer_id,))[0]
+    assert before["io_stopped_at"] is not None  # This verified staged file is already closed.
     real_sync = reference_cleanup.sync_directory
 
     def fail_leaf(parent):
@@ -35,7 +37,8 @@ def test_failed_canonical_unlink_sync_retains_reservation_until_durable_missing_
     assert upload.service.staging.path(lease.transfer_id).exists()
     assert upload.service.staging.publication_path(lease.transfer_id).exists()
     reservation = rows("SELECT * FROM upload_transfers WHERE id=%s", (lease.transfer_id,))[0]
-    assert reservation["cleanup_confirmed_at"] is None and reservation["io_stopped_at"] is None
+    assert reservation["cleanup_confirmed_at"] is None
+    assert reservation["io_stopped_at"] == before["io_stopped_at"]
     observed = []
 
     def observe(parent):
