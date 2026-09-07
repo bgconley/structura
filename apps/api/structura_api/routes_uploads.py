@@ -68,16 +68,16 @@ async def register_upload(
     )
 
 
-@router.get("/uploads/{upload_id}", response_model=UploadAttempt)
+@router.get("/uploads/{uploadId}", response_model=UploadAttempt)
 def get_upload(
-    upload_id: UUID, principal: Annotated[AuthPrincipal, Depends(require_document_read)]
+    uploadId: UUID, principal: Annotated[AuthPrincipal, Depends(require_document_read)]
 ) -> UploadAttempt:
-    return read_attempt(upload_id, RequestCredential.from_principal(principal))
+    return read_attempt(uploadId, RequestCredential.from_principal(principal))
 
 
-@router.put("/uploads/{upload_id}/content", response_model=UploadAttempt)
+@router.put("/uploads/{uploadId}/content", response_model=UploadAttempt)
 async def put_upload_content(
-    upload_id: UUID,
+    uploadId: UUID,
     request: Request,
     principal: Annotated[AuthPrincipal, Depends(require_document_write)],
 ) -> UploadAttempt:
@@ -88,7 +88,7 @@ async def put_upload_content(
     # Construction establishes/fsyncs staging directories; keep it off the loop.
     service = await run_sync(UploadService)
     return await service.receive(
-        upload_id,
+        uploadId,
         revision,
         RequestCredential.from_principal(principal),
         request.stream(),
@@ -97,9 +97,9 @@ async def put_upload_content(
     )
 
 
-@router.post("/uploads/{upload_id}/decision", response_model=UploadAttempt)
+@router.post("/uploads/{uploadId}/decision", response_model=UploadAttempt)
 async def decide_upload(
-    upload_id: UUID,
+    uploadId: UUID,
     request: Request,
     principal: Annotated[AuthPrincipal, Depends(require_document_write)],
 ) -> UploadAttempt:
@@ -110,15 +110,15 @@ async def decide_upload(
         raise HTTPException(422, "Invalid upload decision.") from exc
     service = await run_sync(partial(UploadService, policy=policy))
     return await run_sync(
-        partial(service.decide, upload_id, command, RequestCredential.from_principal(principal))
+        partial(service.decide, uploadId, command, RequestCredential.from_principal(principal))
     )
 
 
-@router.delete("/uploads/{upload_id}", response_model=UploadAttempt)
+@router.delete("/uploads/{uploadId}", response_model=UploadAttempt)
 def delete_upload(
-    upload_id: UUID, principal: Annotated[AuthPrincipal, Depends(require_document_write)]
+    uploadId: UUID, principal: Annotated[AuthPrincipal, Depends(require_document_write)]
 ) -> UploadAttempt:
-    return cancel_attempt(upload_id, RequestCredential.from_principal(principal))
+    return cancel_attempt(uploadId, RequestCredential.from_principal(principal))
 
 
 def _content_length(request: Request) -> int | None:
