@@ -56,6 +56,8 @@ spikes and remaining activation, quality and capacity gates explicitly.
 
 [The web dependency checkpoint](dependency-checkpoint.md) records the six-package security patch, zero known npm audit findings, and 70 passing Linux browser tests with normal screenshot comparisons at `c5208df`. The subsequent review-guard candidate passed 81 browser tests and full SAST; its new database cases require their separately recorded validation.
 
+[The Inbox and review checkpoint](browse-review-checkpoint.md) records 1,517 unit and 220 fresh-database passes at `04938db`, including all browse predicates, exact upload IDs and competing human-decision revisions. It distinguishes the integrated backend from the ongoing Inbox controls and durable human-authority/index work.
+
 The cached validation images observed on Oxcart are:
 
 | Image | Local image ID |
