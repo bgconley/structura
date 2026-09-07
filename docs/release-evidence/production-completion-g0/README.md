@@ -76,6 +76,11 @@ page reads, and both byte-publication race repairs. The gate passed 1,698 unit,
 evidence proof passed at `2439134`. A visual query JIT latency spike and limited
 warm follow-up are recorded without claiming production capacity.
 
+[The upload and native claim checkpoint](upload-claims-checkpoint.md) records
+migrations 103–105 and the `874eb4f` backend gate: 1,836 unit and 463 database tests,
+plus static checks. Separate browser and Node 20 socket candidates are identified
+explicitly; batch-client, cleanup deployment and native activation remain open.
+
 The cached validation images observed on Oxcart are:
 
 | Image | Local image ID |

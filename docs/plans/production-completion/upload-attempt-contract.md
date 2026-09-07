@@ -145,7 +145,10 @@ Directory fsync ordering precedes persisted verified content and original accept
 the real process-kill regression is not a measured power-loss recovery rehearsal.
 
 `lib/uploads/README.md` records lock order, limits, failure and retention behavior.
-The bounded `clean_expired_uploads` maintenance entry point is implemented; its
-operational schedule and fresh Linux/DB/API evidence remain required before treating
-background expiry/crash recovery as deployed. Root owns registration/error integration
-and canonical validation; the browser queue remains a separate slice.
+The bounded `clean_expired_uploads` entry point is supplemented by the supervised
+`worker-upload-cleanup` service. Its existing-namespace guard, fair bounded sweeps,
+health, shutdown and separate-process recovery tests are implemented. Root integrated
+the router/errors, batch browser queue and scoped Compose service. The
+[upload/claim checkpoint](../../release-evidence/production-completion-g0/upload-claims-checkpoint.md)
+records 474 passing PostgreSQL tests and isolated startup health. Real browser/API
+upload acceptance and production runtime qualification remain separate gates.
