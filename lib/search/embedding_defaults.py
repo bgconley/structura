@@ -17,7 +17,9 @@ from lib.search.embedding_gateway import (
     default_text_embedding_profile,
     default_visual_embedding_profile,
 )
+from lib.search.embedding_profile_policy import resolved_embedding_profile
 from lib.search.embeddings.text_model import TextModelEmbeddingGateway
+from lib.search.embeddings.validation import search_embedding_profile
 from lib.search.embeddings.visual_model import (
     VisualModelEmbeddingGateway,
     VisualQueryEmbeddingGateway,
@@ -47,6 +49,7 @@ def default_text_embedding_gateway(
         )
         return DeterministicEmbeddingGateway(resolved_profile)
     model_profile = get_model_profile(settings.text_embed_profile)
+    resolved_embedding_profile(search_embedding_profile(model_profile), profile)
     return TextModelEmbeddingGateway(
         client=TextEmbeddingClient(
             profile=model_profile,
@@ -67,6 +70,8 @@ def default_text_query_embedding_gateway(
         return TextModelEmbeddingGateway(
             client=gateway.client, profile_name=gateway.model_profile.name, purpose="query"
         )
+    if isinstance(gateway, DeterministicEmbeddingGateway):
+        return DeterministicEmbeddingGateway(gateway.profile, purpose="query")
     return gateway
 
 
@@ -81,6 +86,7 @@ def default_visual_asset_embedding_gateway(
         )
         return DeterministicVisualEmbeddingGateway(resolved_profile)
     model_profile = get_model_profile(settings.visual_embed_profile)
+    resolved_embedding_profile(search_embedding_profile(model_profile), profile)
     return VisualModelEmbeddingGateway(
         client=VisualEmbeddingClient(
             profile=model_profile,
@@ -102,8 +108,9 @@ def default_visual_query_embedding_gateway(
         resolved_profile = profile or default_visual_embedding_profile(
             settings.embedding_visual_dimensions
         )
-        return DeterministicVisualEmbeddingGateway(resolved_profile)
+        return DeterministicVisualEmbeddingGateway(resolved_profile, purpose="query")
     model_profile = get_model_profile(settings.visual_embed_profile)
+    resolved_embedding_profile(search_embedding_profile(model_profile), profile)
     return VisualQueryEmbeddingGateway(
         client=VisualQueryEmbeddingClient(
             profile=model_profile,

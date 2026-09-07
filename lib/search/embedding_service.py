@@ -14,6 +14,7 @@ from lib.search.embedding_defaults import (
     default_visual_asset_embedding_gateway,
 )
 from lib.search.embedding_gateway import EmbeddingProfile, VisualEmbeddingInput
+from lib.search.embedding_profile_policy import resolved_embedding_profile
 from lib.search.embedding_repository import (
     EmbeddingSource,
     count_visual_eligible_pages_without_assets,
@@ -53,12 +54,14 @@ class EmbeddingService:
             settings=settings,
             profile=profile,
         )
-        self.profile = self.gateway.profile
+        self.profile = resolved_embedding_profile(self.gateway.profile, profile)
         self.visual_gateway = visual_gateway or default_visual_asset_embedding_gateway(
             settings=settings,
             profile=visual_profile,
         )
-        self.visual_profile = self.visual_gateway.profile
+        self.visual_profile = resolved_embedding_profile(
+            self.visual_gateway.profile, visual_profile
+        )
         self.visual_enabled = settings.embedding_visual_enabled
         self.storage = storage or ObjectStorage(settings=settings)
 
@@ -126,6 +129,7 @@ class EmbeddingService:
         inserted_count = 0
         skipped_count = 0
         for source, embedding in zip(sources, embedded, strict=True):
+            resolved_embedding_profile(embedding.profile, self.profile)
             if persist_text_embedding(
                 cur,
                 source=_with_embedding_provenance(source, self.profile),
@@ -156,6 +160,7 @@ class EmbeddingService:
         inserted_count = 0
         skipped_count = 0
         for source, embedding in zip(sources, embedded, strict=True):
+            resolved_embedding_profile(embedding.profile, self.visual_profile)
             if persist_embedding(
                 cur,
                 source=_with_embedding_provenance(source, self.visual_profile),

@@ -12,11 +12,8 @@ from lib.search.embedding_defaults import (
     default_text_query_embedding_gateway,
     default_visual_query_embedding_gateway,
 )
-from lib.search.embedding_gateway import (
-    EmbeddingProfile,
-    default_text_embedding_profile,
-    default_visual_embedding_profile,
-)
+from lib.search.embedding_gateway import EmbeddingProfile
+from lib.search.embedding_profile_policy import resolved_embedding_profile
 from lib.search.hybrid import RankedCandidate, reciprocal_rank_fusion
 from lib.search.query import ParsedSearchQuery, parse_search_request
 from lib.search.snippets import plain_search_snippet
@@ -59,17 +56,12 @@ class SearchService:
         visual_embedding_gateway: TextEmbeddingGatewayProtocol | None = None,
     ) -> None:
         settings = get_settings()
-        self.embedding_profile = embedding_profile or default_text_embedding_profile(
-            settings.embedding_text_dimensions
-        )
         self.embedding_gateway = embedding_gateway or default_text_query_embedding_gateway(
             settings=settings,
             profile=embedding_profile,
         )
-        self.embedding_profile = self.embedding_gateway.profile
-        self.visual_embedding_profile = (
-            visual_embedding_profile
-            or default_visual_embedding_profile(settings.embedding_visual_dimensions)
+        self.embedding_profile = resolved_embedding_profile(
+            self.embedding_gateway.profile, embedding_profile
         )
         self.visual_embedding_gateway = (
             visual_embedding_gateway
@@ -78,7 +70,9 @@ class SearchService:
                 profile=visual_embedding_profile,
             )
         )
-        self.visual_embedding_profile = self.visual_embedding_gateway.profile
+        self.visual_embedding_profile = resolved_embedding_profile(
+            self.visual_embedding_gateway.profile, visual_embedding_profile
+        )
 
     def search(self, request: SearchRequest, *, access: DocumentAccessContext) -> SearchResponse:
         parsed = parse_search_request(request)
@@ -123,6 +117,7 @@ class SearchService:
         access: DocumentAccessContext,
     ) -> list[repository.SearchCandidateRow]:
         query_embedding = self.embedding_gateway.embed_texts([parsed.query])[0]
+        resolved_embedding_profile(query_embedding.profile, self.embedding_profile)
         return repository.semantic_search(
             access=access,
             query_vector=query_embedding.values,
@@ -141,6 +136,7 @@ class SearchService:
         access: DocumentAccessContext,
     ) -> list[repository.SearchCandidateRow]:
         query_embedding = self.visual_embedding_gateway.embed_texts([parsed.query])[0]
+        resolved_embedding_profile(query_embedding.profile, self.visual_embedding_profile)
         return visual_search(
             access=access,
             query_vector=query_embedding.values,

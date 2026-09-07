@@ -6,6 +6,8 @@ import re
 from dataclasses import dataclass
 from typing import Literal
 
+from lib.search.embedding_identity import EmbeddingInputIdentity, fixture_input_identity
+
 EMBEDDING_SYNONYMS = {
     "owe": ("due", "responsibility", "balance", "amount"),
     "owed": ("due", "responsibility", "balance", "amount"),
@@ -32,6 +34,7 @@ class EmbeddedText:
     text: str
     values: list[float]
     profile: EmbeddingProfile
+    input_identity: EmbeddingInputIdentity | None = None
 
 
 @dataclass(frozen=True)
@@ -49,10 +52,13 @@ class EmbeddingGatewayError(Exception):
 class DeterministicEmbeddingGateway:
     """Local fixture embedding adapter that requires no external model service."""
 
-    def __init__(self, profile: EmbeddingProfile) -> None:
+    def __init__(
+        self, profile: EmbeddingProfile, *, purpose: Literal["document", "query"] = "document"
+    ) -> None:
         if profile.dimensions <= 0:
             raise EmbeddingGatewayError("Embedding dimensions must be positive.")
         self.profile = profile
+        self.purpose: Literal["document", "query"] = purpose
 
     def embed_texts(self, texts: list[str]) -> list[EmbeddedText]:
         return [
@@ -60,6 +66,7 @@ class DeterministicEmbeddingGateway:
                 text=text,
                 values=_token_hash_embedding(text, self.profile),
                 profile=self.profile,
+                input_identity=fixture_input_identity(text, self.profile, purpose=self.purpose),
             )
             for text in texts
         ]
@@ -74,6 +81,13 @@ class DeterministicVisualEmbeddingGateway(DeterministicEmbeddingGateway):
                 text=asset.descriptor_text,
                 values=_visual_hash_embedding(asset, self.profile),
                 profile=self.profile,
+                input_identity=fixture_input_identity(
+                    asset.descriptor_text,
+                    self.profile,
+                    image_bytes=asset.image_bytes,
+                    mime_type=asset.mime_type,
+                    purpose=self.purpose,
+                ),
             )
             for asset in assets
         ]

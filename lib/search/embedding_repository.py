@@ -164,8 +164,13 @@ def persist_embedding(
 ) -> bool:
     if len(embedding.values) != embedding.profile.dimensions:
         raise ValueError("Embedding vector dimension does not match profile.")
+    if embedding.text != source.text:
+        raise ValueError("Embedding text does not match its persistence source.")
+    if embedding.input_identity is None or embedding.input_identity.purpose != "document":
+        raise ValueError("Embedding persistence requires complete document input identity.")
+    input_identity = embedding.input_identity.metadata()
     existing = _active_embedding(cur, source=source, profile=embedding.profile)
-    if existing and existing.get("content_sha256") == source.content_sha256 and not force_reembed:
+    if existing and existing.get("input_identity") == input_identity and not force_reembed:
         return False
     cur.execute(
         """
@@ -230,6 +235,7 @@ def persist_embedding(
                 {
                     **source.metadata,
                     "contentSha256": source.content_sha256,
+                    "inputIdentity": input_identity,
                     "adapter": source.metadata.get(
                         "embeddingAdapter",
                         "deterministic_text_fixture",
@@ -269,7 +275,7 @@ def _active_embedding(
 ) -> dict[str, object] | None:
     cur.execute(
         """
-        SELECT metadata_json ->> 'contentSha256' AS content_sha256
+        SELECT metadata_json -> 'inputIdentity' AS input_identity
         FROM embeddings
         WHERE owner_type = %s::embedding_owner_type_enum
           AND owner_id = %s

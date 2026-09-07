@@ -6,6 +6,7 @@ from typing import Protocol
 from lib.model_runtime.contracts import EmbeddingInput, EmbeddingRequest, EmbeddingResponse
 from lib.model_runtime.profiles import VISUAL_EMBED_PROFILE, get_model_profile
 from lib.search.embedding_gateway import EmbeddedText, EmbeddingGatewayError, VisualEmbeddingInput
+from lib.search.embedding_identity import EmbeddingInputIdentity
 from lib.search.embeddings.validation import (
     search_embedding_profile,
     validated_response_vectors,
@@ -53,8 +54,13 @@ class VisualModelEmbeddingGateway:
             profile=self.model_profile,
         )
         return [
-            EmbeddedText(text=asset.descriptor_text, values=list(vector), profile=self.profile)
-            for asset, vector in zip(assets, vectors, strict=True)
+            EmbeddedText(
+                text=asset.descriptor_text,
+                values=list(vector),
+                profile=self.profile,
+                input_identity=EmbeddingInputIdentity(digest, "model-input-v1", request.purpose),
+            )
+            for asset, vector, digest in zip(assets, vectors, response.input_sha256, strict=True)
         ]
 
 
@@ -84,6 +90,11 @@ class VisualQueryEmbeddingGateway:
             profile=self.model_profile,
         )
         return [
-            EmbeddedText(text=text, values=list(vector), profile=self.profile)
-            for text, vector in zip(texts, vectors, strict=True)
+            EmbeddedText(
+                text=text,
+                values=list(vector),
+                profile=self.profile,
+                input_identity=EmbeddingInputIdentity(digest, "model-input-v1", request.purpose),
+            )
+            for text, vector, digest in zip(texts, vectors, response.input_sha256, strict=True)
         ]
