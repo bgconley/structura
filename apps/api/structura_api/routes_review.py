@@ -7,18 +7,19 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from apps.api.structura_api.dependencies import require_document_read, require_document_review
 from lib.auth import AuthPrincipal
+from lib.auth.request_authority import RequestCredential
 from lib.contracts import CanonicalFieldWrite, ReviewActionRequest, ReviewTask
 from lib.documents.access_policy import DocumentAccessContext
 from lib.fact_authority.preconditions import AuthorityRevisionConflict
 from lib.review import ReviewService
 from lib.review.correction_revision import CorrectionConflictError
 from lib.review.correction_values import CorrectionValueError
+from lib.review.line_items.read_repository import candidate_lines
 from lib.review.repository import (
     ReviewRepositoryError,
     get_canonical_field_response,
     get_review_task,
     list_field_candidates,
-    list_line_item_candidates,
     list_observation_candidates,
     list_review_tasks,
 )
@@ -101,11 +102,10 @@ def get_line_item_candidates(
     candidateId: UUID | None = None,
     status_filter: Annotated[str | None, Query(alias="status")] = None,
 ) -> dict[str, object]:
-    access = _access_context(principal)
     try:
-        items = list_line_item_candidates(
+        return candidate_lines(
             document_id=documentId,
-            access=access,
+            credential=RequestCredential.from_principal(principal),
             candidate_id=candidateId,
             status=status_filter,
         )
@@ -113,7 +113,6 @@ def get_line_item_candidates(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
         ) from exc
-    return {"items": [item.model_dump(by_alias=True) for item in items]}
 
 
 @router.get("/documents/{documentId}/canonical-fields")

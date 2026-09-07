@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 from uuid import UUID
 
 from lib.db.connection import db_connection
@@ -12,12 +12,10 @@ from lib.review.audit_repository import (
     update_document_review_status,
 )
 from lib.review.errors import ReviewRepositoryError
+from lib.review.line_items.errors import LineDecisionConflict
 
-# Review accept decisions intentionally do not promote to canonical facts:
-# observation and line-item candidates have no first-class canonical fact
-# type yet, so 'accepted' records the human decision without inventing
-# canonical promotion semantics. 'promoted' stays reserved for canonical
-# writes.
+# Observation acceptance remains candidate review; canonical lines use the explicit
+# versioned endpoint and retained source/slot authority.
 _DECISION_STATUS = {"accept": "accepted", "reject": "rejected"}
 
 
@@ -75,44 +73,8 @@ def decide_line_item(
     decision: str,
     reason: str | None,
 ) -> UUID:
-    status = _decision_status(decision)
-    with db_connection() as conn:
-        with conn.cursor() as cur:
-            assert_writable(cur, document_id, access)
-            cur.execute(
-                """
-                UPDATE line_item_candidates
-                SET status = %s,
-                    updated_at = now()
-                WHERE id = %s
-                  AND document_id = %s
-                RETURNING line_item_type, ordinal, description, net_amount, status
-                """,
-                (status, candidate_id, document_id),
-            )
-            row = cur.fetchone()
-            if not row:
-                raise ReviewRepositoryError("Line-item candidate not found.")
-            field_path = _line_item_field_path(row)
-            event_id = record_review_event(
-                cur,
-                document_id=document_id,
-                review_task_id=None,
-                field_path=field_path,
-                action=f"{decision}_line_item",
-                old_value={"lineItemCandidateId": str(candidate_id)},
-                new_value={
-                    "status": status,
-                    "description": row.get("description"),
-                    "netAmount": _float_or_none(row.get("net_amount")),
-                },
-                actor_label=str(actor_user_id),
-                reason=reason,
-            )
-            close_field_review_tasks(cur, document_id, field_path)
-            update_document_review_status(cur, document_id)
-        conn.commit()
-    return event_id
+    # This signature stays import-compatible but cannot bypass source/slot revisions.
+    raise LineDecisionConflict()
 
 
 def _decision_status(decision: str) -> str:
@@ -126,15 +88,3 @@ def _observation_field_path(row: dict[str, Any]) -> str:
     family = str(row.get("observation_family") or "document_observation")
     field_name = str(row.get("field_name") or "observation")
     return f"observations.{family}.{field_name}"
-
-
-def _line_item_field_path(row: dict[str, Any]) -> str:
-    line_item_type = str(row.get("line_item_type") or "generic")
-    ordinal = int(row.get("ordinal") or 1)
-    return f"line_items.{line_item_type}.{ordinal}"
-
-
-def _float_or_none(value: object) -> float | None:
-    if value is None:
-        return None
-    return cast(float, float(value))  # type: ignore[arg-type]

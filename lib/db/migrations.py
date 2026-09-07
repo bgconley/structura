@@ -51,6 +51,7 @@ BASELINE_SQL_FILES = (
     "100_completion_generation_retention_cascades.sql",
     "101_completion_accepted_field_projection.sql",
     "102_completion_retained_page_evidence.sql",
+    "103_completion_line_item_authority.sql",
 )
 
 

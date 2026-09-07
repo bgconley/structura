@@ -16,6 +16,7 @@ from lib.auth.authorization_policy import AuthorizationError
 from lib.evidence.errors import EvidenceUnavailable
 from lib.jobs.public_errors import public_job_error, safe_job_failure
 from lib.jobs.public_results import public_job_result
+from lib.review.line_items.errors import LineDecisionConflict, LineEvidenceError
 
 PRIVATE = "/srv/structura/private-patient.pdf token=private-token patient-private-excerpt"
 
@@ -114,6 +115,14 @@ def _app() -> FastAPI:
     def retained_evidence() -> None:
         raise EvidenceUnavailable(PRIVATE)
 
+    @app.get("/line-conflict")
+    def line_conflict() -> None:
+        raise LineDecisionConflict(PRIVATE)
+
+    @app.get("/line-evidence")
+    def line_evidence() -> None:
+        raise LineEvidenceError(PRIVATE)
+
     @app.get("/broken-stream")
     async def broken_stream() -> StreamingResponse:
         async def body():
@@ -135,7 +144,14 @@ def _app() -> FastAPI:
 
 @pytest.mark.parametrize(
     ("path", "status"),
-    [("/unexpected", 500), ("/known-error", 400), ("/denied", 403), ("/retained-evidence", 404)],
+    [
+        ("/unexpected", 500),
+        ("/known-error", 400),
+        ("/denied", 403),
+        ("/retained-evidence", 404),
+        ("/line-conflict", 409),
+        ("/line-evidence", 422),
+    ],
 )
 def test_api_failures_and_correlation_do_not_echo_private_strings(path, status, caplog) -> None:
     caplog.set_level(logging.INFO, logger="structura")

@@ -55,7 +55,7 @@ def test_rich_canonical_row_keeps_decimal_strings_nulls_and_evidence():
     assert payload["sourceKind"] == "human" and payload["reviewStatus"] == "user_corrected"
     assert payload["evidence"][0]["pageNumber"] == 3
     assert payload["validation"] == {"warnings": ["Check source"]}
-    assert "allowedAmount" not in payload and "planPaidAmount" not in payload
+    assert payload["allowedAmount"] is None and payload["planPaidAmount"] is None
     jsonschema.validate(
         payload, CanonicalLineItemRead.model_json_schema(mode="serialization", by_alias=True)
     )
@@ -69,6 +69,16 @@ def test_rich_canonical_row_keeps_decimal_strings_nulls_and_evidence():
         mode="serialization", by_alias=True
     )
     jsonschema.validate(payload, schemas["CanonicalLineItemRead"])
+
+
+def test_recorded_eob_allowed_and_plan_paid_keep_exact_decimals():
+    payload = canonical_line_item_payload(
+        line_item_row(
+            allowed_amount=Decimal("99999999999999.9999"), plan_paid_amount=Decimal("0.0000")
+        )
+    )
+    assert payload["allowedAmount"] == "99999999999999.9999"
+    assert payload["planPaidAmount"] == "0.0000"
 
 
 @pytest.mark.parametrize(

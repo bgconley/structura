@@ -51,6 +51,6 @@ def test_document_api_returns_every_persisted_line_item_without_precision_loss(b
     assert rows[-1]["codeSystem"] == "CPT" and rows[-1]["serviceDate"] == "2026-01-26"
     assert rows[-1]["evidence"][0]["pageNumber"] == 3
     assert rows[-1]["validation"] == {"warnings": ["Retained validation"]}
-    assert "allowedAmount" not in rows[-1]
+    assert rows[-1]["allowedAmount"] is None and rows[-1]["planPaidAmount"] is None
     other = login(create_identity("other-line-item-reader"))
     assert other.get(f"/api/v1/documents/{document_id}").status_code == 404

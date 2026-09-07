@@ -49,7 +49,8 @@ def get_canonical_field_response(
         ]
         cur.execute(
             "SELECT document_id,state,accepted_fact_revision,projection_revision,"
-            "accepted_facts_sha256,indexed_metadata_sha256 FROM document_fact_projection_state "
+            "accepted_facts_sha256,indexed_metadata_sha256,accepted_fact_basis_schema_version "
+            "FROM document_fact_projection_state "
             "WHERE document_id=%s",
             (document_id,),
         )

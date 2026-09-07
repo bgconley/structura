@@ -29,6 +29,8 @@ class CanonicalLineItemRead(ContractModel):
     discount_amount: ExactDecimal | None = Field(alias="discountAmount")
     tax_amount: ExactDecimal | None = Field(alias="taxAmount")
     net_amount: ExactDecimal | None = Field(alias="netAmount")
+    allowed_amount: ExactDecimal | None = Field(default=None, alias="allowedAmount")
+    plan_paid_amount: ExactDecimal | None = Field(default=None, alias="planPaidAmount")
     currency: str | None
     category_hint: str | None = Field(alias="categoryHint")
     source_kind: str = Field(alias="sourceKind")

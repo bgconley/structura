@@ -49,6 +49,11 @@ def persist_semantic_manifest_with_cursor(
     cur: Cursor[dict[str, Any]],
     manifest: DocumentSemanticManifest,
 ) -> PersistedSemanticManifest:
+    # Supersession and human publication share document -> annotation -> extraction
+    # order. Acquiring this only in the later family writer creates an inversion.
+    cur.execute("SELECT id FROM documents WHERE id=%s FOR UPDATE", (manifest.document_id,))
+    if cur.fetchone() is None:
+        raise SemanticAnnotationRepositoryError("Document not found.")
     _validate_document_refs(cur, manifest)
     cur.execute(
         """

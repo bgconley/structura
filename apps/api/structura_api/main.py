@@ -16,6 +16,7 @@ from apps.api.structura_api.routes_contacts import router as contacts_router
 from apps.api.structura_api.routes_documents import router as documents_router
 from apps.api.structura_api.routes_generation_evidence import router as generation_evidence_router
 from apps.api.structura_api.routes_jobs import router as jobs_router
+from apps.api.structura_api.routes_line_item_decisions import router as line_item_decisions_router
 from apps.api.structura_api.routes_organization import router as organization_router
 from apps.api.structura_api.routes_parse_debug import router as parse_debug_router
 from apps.api.structura_api.routes_placeholders import router as placeholders_router
@@ -79,6 +80,7 @@ def create_app() -> FastAPI:
     app.include_router(automation_router)
     app.include_router(parse_debug_router)
     app.include_router(review_router)
+    app.include_router(line_item_decisions_router)
     app.include_router(relationships_router)
     app.include_router(search_router)
     app.include_router(jobs_router)

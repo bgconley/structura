@@ -552,7 +552,7 @@ paths:
     get:
       tags:
       - Review
-      summary: List reviewable line-item candidates for a document
+      summary: Read exact line proposals with source eligibility and reviewed target suggestions
       parameters:
       - in: path
         name: documentId
@@ -575,15 +575,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: false
-                required:
-                - items
-                properties:
-                  items:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/LineItemCandidate'
+                $ref: '#/components/schemas/LineCandidateResponse'
         '401':
           description: Not authenticated
   /api/v1/documents/{documentId}/canonical-fields:
@@ -1889,6 +1881,120 @@ paths:
           description: Generation, page or bytes unavailable, or access no longer permitted.
         '422':
           description: Invalid request value.
+  /api/v1/documents/{documentId}/canonical-line-items:
+    get:
+      tags:
+      - Review
+      summary: Read recorded canonical lines and their selection authority
+      parameters:
+      - in: path
+        name: documentId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Versioned line authority response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CanonicalLineResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Permission denied
+        '404':
+          description: Document not found
+        '409':
+          description: Reload exact source and target authority
+        '422':
+          description: Invalid request or incomplete evidence
+  /api/v1/documents/{documentId}/line-item-decisions:
+    post:
+      tags:
+      - Review
+      summary: Explicitly add, replace, or reject an exact line proposal or selected slot
+      parameters:
+      - in: path
+        name: documentId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LineDecisionRequest'
+      responses:
+        '200':
+          description: Versioned line authority response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LineDecisionResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Permission denied
+        '404':
+          description: Document not found
+        '409':
+          description: Reload exact source and target authority
+        '422':
+          description: Invalid request or incomplete evidence
+  /api/v1/documents/{documentId}/line-item-history:
+    get:
+      tags:
+      - Review
+      summary: Read immutable line decision history; exactly one source or canonical selector is required
+      parameters:
+      - in: path
+        name: documentId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: canonicalLineItemId
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: sourceCandidateId
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: cursor
+        schema:
+          type: string
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+      responses:
+        '200':
+          description: Versioned line authority response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LineHistoryResponse'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Permission denied
+        '404':
+          description: Document not found
+        '409':
+          description: Reload exact source and target authority
+        '422':
+          description: Invalid request or incomplete evidence
 components:
   securitySchemes:
     sessionCookie:
@@ -1902,662 +2008,6 @@ components:
       name: X-API-Token
       description: Scoped automation token for CLI, watched-folder, and admin flows.
   schemas:
-    GenerationEvidencePageSummary:
-      additionalProperties: false
-      properties:
-        pageId:
-          format: uuid
-          title: Pageid
-          type: string
-        pageNumber:
-          exclusiveMinimum: 0
-          maximum: 500
-          title: Pagenumber
-          type: integer
-        sourcePage:
-          $ref: '#/components/schemas/GenerationEvidenceSourcePage'
-        parseState:
-          enum:
-          - processed
-          - partial
-          - insufficient_signal
-          title: Parsestate
-          type: string
-        renderRegistration:
-          enum:
-          - registered
-          - not_retained
-          title: Renderregistration
-          type: string
-        render:
-          anyOf:
-          - $ref: '#/components/schemas/GenerationEvidenceRender'
-          - type: 'null'
-          default: null
-      required:
-      - pageId
-      - pageNumber
-      - sourcePage
-      - parseState
-      - renderRegistration
-      title: GenerationEvidencePageSummary
-      type: object
-    GenerationEvidenceRender:
-      additionalProperties: false
-      properties:
-        id:
-          format: uuid
-          title: Id
-          type: string
-        imageUrl:
-          title: Imageurl
-          type: string
-        sha256:
-          pattern: ^[a-f0-9]{64}$
-          title: Sha256
-          type: string
-        byteSize:
-          exclusiveMinimum: 0
-          maximum: 134217728
-          title: Bytesize
-          type: integer
-        pixelWidth:
-          exclusiveMinimum: 0
-          title: Pixelwidth
-          type: integer
-        pixelHeight:
-          exclusiveMinimum: 0
-          title: Pixelheight
-          type: integer
-        coordinateSpace:
-          const: rendered_source_pixels
-          default: rendered_source_pixels
-          title: Coordinatespace
-          type: string
-      required:
-      - id
-      - imageUrl
-      - sha256
-      - byteSize
-      - pixelWidth
-      - pixelHeight
-      title: GenerationEvidenceRender
-      type: object
-    GenerationEvidenceParseConfiguration:
-      additionalProperties: false
-      properties:
-        profile:
-          maxLength: 200
-          minLength: 1
-          title: Profile
-          type: string
-        served_model:
-          maxLength: 200
-          minLength: 1
-          title: Served Model
-          type: string
-        source_engine:
-          maxLength: 100
-          minLength: 1
-          title: Source Engine
-          type: string
-        model_revision:
-          maxLength: 200
-          minLength: 1
-          title: Model Revision
-          type: string
-        prompt_version:
-          maxLength: 100
-          minLength: 1
-          title: Prompt Version
-          type: string
-        output_schema_version:
-          maxLength: 100
-          minLength: 1
-          title: Output Schema Version
-          type: string
-        normalizer_version:
-          maxLength: 100
-          minLength: 1
-          title: Normalizer Version
-          type: string
-        chunker_version:
-          maxLength: 100
-          minLength: 1
-          title: Chunker Version
-          type: string
-        renderer:
-          maxLength: 100
-          minLength: 1
-          title: Renderer
-          type: string
-        renderer_version:
-          maxLength: 100
-          minLength: 1
-          title: Renderer Version
-          type: string
-        render_scale:
-          exclusiveMinimum: 0
-          maximum: 4
-          title: Render Scale
-          type: number
-      required:
-      - profile
-      - served_model
-      - source_engine
-      - model_revision
-      - prompt_version
-      - output_schema_version
-      - normalizer_version
-      - chunker_version
-      - renderer
-      - renderer_version
-      - render_scale
-      title: ParseConfiguration
-      type: object
-    GenerationEvidenceSourcePage:
-      additionalProperties: false
-      properties:
-        page_number:
-          exclusiveMinimum: 0
-          title: Page Number
-          type: integer
-        width:
-          exclusiveMinimum: 0
-          title: Width
-          type: number
-        height:
-          exclusiveMinimum: 0
-          title: Height
-          type: number
-        unit:
-          enum:
-          - pdf_canvas
-          - pixels
-          title: Unit
-          type: string
-        rotation_degrees:
-          default: 0
-          enum:
-          - 0
-          - 90
-          - 180
-          - 270
-          title: Rotation Degrees
-          type: integer
-      required:
-      - page_number
-      - width
-      - height
-      - unit
-      title: SourcePage
-      type: object
-    GenerationEvidenceManifest:
-      additionalProperties: false
-      properties:
-        documentId:
-          format: uuid
-          title: Documentid
-          type: string
-        processingRunId:
-          format: uuid
-          title: Processingrunid
-          type: string
-        parseGenerationId:
-          format: uuid
-          title: Parsegenerationid
-          type: string
-        viewScope:
-          const: retained_parse_generation
-          default: retained_parse_generation
-          title: Viewscope
-          type: string
-        processingRunState:
-          enum:
-          - sealed
-          - superseded
-          - cancelled
-          title: Processingrunstate
-          type: string
-        parserConfiguration:
-          $ref: '#/components/schemas/GenerationEvidenceParseConfiguration'
-        transcriptionAuthority:
-          const: derived_source_transcription
-          default: derived_source_transcription
-          title: Transcriptionauthority
-          type: string
-        originalAssetId:
-          format: uuid
-          title: Originalassetid
-          type: string
-        originalSha256:
-          pattern: ^[a-f0-9]{64}$
-          title: Originalsha256
-          type: string
-        structureSha256:
-          pattern: ^[a-f0-9]{64}$
-          title: Structuresha256
-          type: string
-        inventorySha256:
-          pattern: ^[a-f0-9]{64}$
-          title: Inventorysha256
-          type: string
-        renderSetState:
-          anyOf:
-          - enum:
-            - building
-            - sealed
-            type: string
-          - type: 'null'
-          title: Rendersetstate
-        renderSetSha256:
-          anyOf:
-          - pattern: ^[a-f0-9]{64}$
-            type: string
-          - type: 'null'
-          title: Rendersetsha256
-        total:
-          maximum: 500
-          minimum: 1
-          title: Total
-          type: integer
-        offset:
-          minimum: 0
-          title: Offset
-          type: integer
-        limit:
-          maximum: 100
-          minimum: 1
-          title: Limit
-          type: integer
-        pages:
-          items:
-            $ref: '#/components/schemas/GenerationEvidencePageSummary'
-          title: Pages
-          type: array
-        observedAt:
-          format: date-time
-          title: Observedat
-          type: string
-      required:
-      - documentId
-      - processingRunId
-      - parseGenerationId
-      - processingRunState
-      - parserConfiguration
-      - originalAssetId
-      - originalSha256
-      - structureSha256
-      - inventorySha256
-      - renderSetState
-      - renderSetSha256
-      - total
-      - offset
-      - limit
-      - pages
-      - observedAt
-      title: GenerationEvidenceManifest
-      type: object
-    GenerationEvidenceSourceBox:
-      additionalProperties: false
-      properties:
-        left:
-          minimum: 0
-          title: Left
-          type: number
-        top:
-          minimum: 0
-          title: Top
-          type: number
-        right:
-          exclusiveMinimum: 0
-          title: Right
-          type: number
-        bottom:
-          exclusiveMinimum: 0
-          title: Bottom
-          type: number
-      required:
-      - left
-      - top
-      - right
-      - bottom
-      title: SourceBox
-      type: object
-    GenerationEvidenceSourceRender:
-      additionalProperties: false
-      properties:
-        page_number:
-          exclusiveMinimum: 0
-          title: Page Number
-          type: integer
-        image_sha256:
-          pattern: ^[a-f0-9]{64}$
-          title: Image Sha256
-          type: string
-        pixel_width:
-          exclusiveMinimum: 0
-          title: Pixel Width
-          type: integer
-        pixel_height:
-          exclusiveMinimum: 0
-          title: Pixel Height
-          type: integer
-        renderer:
-          minLength: 1
-          title: Renderer
-          type: string
-        renderer_version:
-          minLength: 1
-          title: Renderer Version
-          type: string
-        coordinate_space:
-          const: rendered_source_pixels
-          default: rendered_source_pixels
-          title: Coordinate Space
-          type: string
-        native_text:
-          anyOf:
-          - type: string
-          - type: 'null'
-          default: null
-          title: Native Text
-        native_text_origin:
-          anyOf:
-          - const: pdf_native
-            type: string
-          - type: 'null'
-          default: null
-          title: Native Text Origin
-      required:
-      - page_number
-      - image_sha256
-      - pixel_width
-      - pixel_height
-      - renderer
-      - renderer_version
-      title: SourceRender
-      type: object
-    GenerationEvidenceStructureCell:
-      additionalProperties: false
-      properties:
-        id:
-          format: uuid
-          title: Id
-          type: string
-        row:
-          minimum: 0
-          title: Row
-          type: integer
-        column:
-          minimum: 0
-          title: Column
-          type: integer
-        row_span:
-          default: 1
-          exclusiveMinimum: 0
-          title: Row Span
-          type: integer
-        column_span:
-          default: 1
-          exclusiveMinimum: 0
-          title: Column Span
-          type: integer
-        text:
-          title: Text
-          type: string
-        text_origin:
-          enum:
-          - pdf_native
-          - model_transcription
-          - legacy_docling
-          title: Text Origin
-          type: string
-        bbox:
-          $ref: '#/components/schemas/GenerationEvidenceSourceBox'
-        is_header:
-          default: false
-          title: Is Header
-          type: boolean
-      required:
-      - id
-      - row
-      - column
-      - text
-      - text_origin
-      - bbox
-      title: StructureCell
-      type: object
-    GenerationEvidenceStructureChunk:
-      additionalProperties: false
-      properties:
-        id:
-          format: uuid
-          title: Id
-          type: string
-        page_number:
-          exclusiveMinimum: 0
-          title: Page Number
-          type: integer
-        element_ids:
-          items:
-            format: uuid
-            type: string
-          minItems: 1
-          title: Element Ids
-          type: array
-        text:
-          minLength: 1
-          title: Text
-          type: string
-        text_origins:
-          items:
-            enum:
-            - pdf_native
-            - model_transcription
-            - legacy_docling
-            type: string
-          minItems: 1
-          title: Text Origins
-          type: array
-      required:
-      - id
-      - page_number
-      - element_ids
-      - text
-      - text_origins
-      title: StructureChunk
-      type: object
-    GenerationEvidenceStructureElement:
-      additionalProperties: false
-      properties:
-        id:
-          format: uuid
-          title: Id
-          type: string
-        ordinal:
-          exclusiveMinimum: 0
-          title: Ordinal
-          type: integer
-        parent_id:
-          anyOf:
-          - format: uuid
-            type: string
-          - type: 'null'
-          default: null
-          title: Parent Id
-        kind:
-          enum:
-          - paragraph
-          - heading
-          - header
-          - footer
-          - list_item
-          - caption
-          - table
-          - figure
-          - form_field
-          - other
-          title: Kind
-          type: string
-        text:
-          title: Text
-          type: string
-        text_origin:
-          enum:
-          - pdf_native
-          - model_transcription
-          - legacy_docling
-          title: Text Origin
-          type: string
-        bbox:
-          $ref: '#/components/schemas/GenerationEvidenceSourceBox'
-      required:
-      - id
-      - ordinal
-      - kind
-      - text
-      - text_origin
-      - bbox
-      title: StructureElement
-      type: object
-    GenerationEvidenceStructurePage:
-      additionalProperties: false
-      properties:
-        id:
-          format: uuid
-          title: Id
-          type: string
-        page_number:
-          exclusiveMinimum: 0
-          title: Page Number
-          type: integer
-        source:
-          anyOf:
-          - $ref: '#/components/schemas/GenerationEvidenceSourceRender'
-          - type: 'null'
-        state:
-          enum:
-          - processed
-          - partial
-          - deferred
-          - insufficient_signal
-          - unsupported
-          - failed
-          title: State
-          type: string
-        diagnostics:
-          default: []
-          items:
-            enum:
-            - content_omitted
-            - unreadable_region
-            - resource_limit
-            - invalid_output
-            - render_failed
-            type: string
-          title: Diagnostics
-          type: array
-        elements:
-          default: []
-          items:
-            $ref: '#/components/schemas/GenerationEvidenceStructureElement'
-          title: Elements
-          type: array
-        tables:
-          default: []
-          items:
-            $ref: '#/components/schemas/GenerationEvidenceStructureTable'
-          title: Tables
-          type: array
-      required:
-      - id
-      - page_number
-      - source
-      - state
-      title: StructurePage
-      type: object
-    GenerationEvidenceStructureTable:
-      additionalProperties: false
-      properties:
-        id:
-          format: uuid
-          title: Id
-          type: string
-        element_id:
-          format: uuid
-          title: Element Id
-          type: string
-        row_count:
-          exclusiveMinimum: 0
-          title: Row Count
-          type: integer
-        column_count:
-          exclusiveMinimum: 0
-          title: Column Count
-          type: integer
-        cells:
-          items:
-            $ref: '#/components/schemas/GenerationEvidenceStructureCell'
-          title: Cells
-          type: array
-        continuation_key:
-          anyOf:
-          - type: string
-          - type: 'null'
-          default: null
-          title: Continuation Key
-      required:
-      - id
-      - element_id
-      - row_count
-      - column_count
-      - cells
-      title: StructureTable
-      type: object
-    GenerationEvidencePage:
-      additionalProperties: false
-      properties:
-        documentId:
-          format: uuid
-          title: Documentid
-          type: string
-        processingRunId:
-          format: uuid
-          title: Processingrunid
-          type: string
-        parseGenerationId:
-          format: uuid
-          title: Parsegenerationid
-          type: string
-        viewScope:
-          const: retained_parse_generation
-          default: retained_parse_generation
-          title: Viewscope
-          type: string
-        sourcePage:
-          $ref: '#/components/schemas/GenerationEvidenceSourcePage'
-        page:
-          $ref: '#/components/schemas/GenerationEvidenceStructurePage'
-        chunks:
-          items:
-            $ref: '#/components/schemas/GenerationEvidenceStructureChunk'
-          title: Chunks
-          type: array
-        render:
-          anyOf:
-          - $ref: '#/components/schemas/GenerationEvidenceRender'
-          - type: 'null'
-      required:
-      - documentId
-      - processingRunId
-      - parseGenerationId
-      - sourcePage
-      - page
-      - chunks
-      - render
-      title: GenerationEvidencePage
-      type: object
     AcceptedJob:
       type: object
       additionalProperties: false
@@ -3140,6 +2590,20 @@ components:
             type: string
           - type: 'null'
           title: Netamount
+        allowedAmount:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          default: null
+          title: Allowedamount
+        planPaidAmount:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          default: null
+          title: Planpaidamount
         currency:
           anyOf:
           - type: string
@@ -3931,29 +3395,44 @@ components:
       additionalProperties: false
       properties:
         schemaVersion:
+          const: accepted_fact_projection.v1
+          title: Schemaversion
           type: string
-          enum:
-          - accepted_fact_projection.v1
         documentId:
           format: uuid
+          title: Documentid
           type: string
         state:
           enum:
           - unestablished
           - current
+          title: State
           type: string
         acceptedFactRevision:
           minimum: 0
+          title: Acceptedfactrevision
           type: integer
         projectionRevision:
           minimum: 0
+          title: Projectionrevision
           type: integer
         acceptedFactsSha256:
-          type: string
-          nullable: true
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Acceptedfactssha256
         indexedMetadataSha256:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Indexedmetadatasha256
+        acceptedFactBasisSchemaVersion:
+          default: accepted_fields.v1
+          enum:
+          - accepted_fields.v1
+          - accepted_fields_and_lines.v1
+          title: Acceptedfactbasisschemaversion
           type: string
-          nullable: true
       required:
       - schemaVersion
       - documentId
@@ -3962,6 +3441,7 @@ components:
       - projectionRevision
       - acceptedFactsSha256
       - indexedMetadataSha256
+      title: FieldProjectionRevision
       type: object
     CanonicalFieldResponse:
       additionalProperties: false
@@ -5269,3 +4749,2167 @@ components:
         householdId:
           type: string
           format: uuid
+
+    GenerationEvidencePageSummary:
+      additionalProperties: false
+      properties:
+        pageId:
+          format: uuid
+          title: Pageid
+          type: string
+        pageNumber:
+          exclusiveMinimum: 0
+          maximum: 500
+          title: Pagenumber
+          type: integer
+        sourcePage:
+          $ref: '#/components/schemas/GenerationEvidenceSourcePage'
+        parseState:
+          enum:
+          - processed
+          - partial
+          - insufficient_signal
+          title: Parsestate
+          type: string
+        renderRegistration:
+          enum:
+          - registered
+          - not_retained
+          title: Renderregistration
+          type: string
+        render:
+          anyOf:
+          - $ref: '#/components/schemas/GenerationEvidenceRender'
+          - type: 'null'
+          default: null
+      required:
+      - pageId
+      - pageNumber
+      - sourcePage
+      - parseState
+      - renderRegistration
+      title: GenerationEvidencePageSummary
+      type: object
+    GenerationEvidenceRender:
+      additionalProperties: false
+      properties:
+        id:
+          format: uuid
+          title: Id
+          type: string
+        imageUrl:
+          title: Imageurl
+          type: string
+        sha256:
+          pattern: ^[a-f0-9]{64}$
+          title: Sha256
+          type: string
+        byteSize:
+          exclusiveMinimum: 0
+          maximum: 134217728
+          title: Bytesize
+          type: integer
+        pixelWidth:
+          exclusiveMinimum: 0
+          title: Pixelwidth
+          type: integer
+        pixelHeight:
+          exclusiveMinimum: 0
+          title: Pixelheight
+          type: integer
+        coordinateSpace:
+          const: rendered_source_pixels
+          default: rendered_source_pixels
+          title: Coordinatespace
+          type: string
+      required:
+      - id
+      - imageUrl
+      - sha256
+      - byteSize
+      - pixelWidth
+      - pixelHeight
+      title: GenerationEvidenceRender
+      type: object
+    GenerationEvidenceParseConfiguration:
+      additionalProperties: false
+      properties:
+        profile:
+          maxLength: 200
+          minLength: 1
+          title: Profile
+          type: string
+        served_model:
+          maxLength: 200
+          minLength: 1
+          title: Served Model
+          type: string
+        source_engine:
+          maxLength: 100
+          minLength: 1
+          title: Source Engine
+          type: string
+        model_revision:
+          maxLength: 200
+          minLength: 1
+          title: Model Revision
+          type: string
+        prompt_version:
+          maxLength: 100
+          minLength: 1
+          title: Prompt Version
+          type: string
+        output_schema_version:
+          maxLength: 100
+          minLength: 1
+          title: Output Schema Version
+          type: string
+        normalizer_version:
+          maxLength: 100
+          minLength: 1
+          title: Normalizer Version
+          type: string
+        chunker_version:
+          maxLength: 100
+          minLength: 1
+          title: Chunker Version
+          type: string
+        renderer:
+          maxLength: 100
+          minLength: 1
+          title: Renderer
+          type: string
+        renderer_version:
+          maxLength: 100
+          minLength: 1
+          title: Renderer Version
+          type: string
+        render_scale:
+          exclusiveMinimum: 0
+          maximum: 4
+          title: Render Scale
+          type: number
+      required:
+      - profile
+      - served_model
+      - source_engine
+      - model_revision
+      - prompt_version
+      - output_schema_version
+      - normalizer_version
+      - chunker_version
+      - renderer
+      - renderer_version
+      - render_scale
+      title: ParseConfiguration
+      type: object
+    GenerationEvidenceSourcePage:
+      additionalProperties: false
+      properties:
+        page_number:
+          exclusiveMinimum: 0
+          title: Page Number
+          type: integer
+        width:
+          exclusiveMinimum: 0
+          title: Width
+          type: number
+        height:
+          exclusiveMinimum: 0
+          title: Height
+          type: number
+        unit:
+          enum:
+          - pdf_canvas
+          - pixels
+          title: Unit
+          type: string
+        rotation_degrees:
+          default: 0
+          enum:
+          - 0
+          - 90
+          - 180
+          - 270
+          title: Rotation Degrees
+          type: integer
+      required:
+      - page_number
+      - width
+      - height
+      - unit
+      title: SourcePage
+      type: object
+    GenerationEvidenceManifest:
+      additionalProperties: false
+      properties:
+        documentId:
+          format: uuid
+          title: Documentid
+          type: string
+        processingRunId:
+          format: uuid
+          title: Processingrunid
+          type: string
+        parseGenerationId:
+          format: uuid
+          title: Parsegenerationid
+          type: string
+        viewScope:
+          const: retained_parse_generation
+          default: retained_parse_generation
+          title: Viewscope
+          type: string
+        processingRunState:
+          enum:
+          - sealed
+          - superseded
+          - cancelled
+          title: Processingrunstate
+          type: string
+        parserConfiguration:
+          $ref: '#/components/schemas/GenerationEvidenceParseConfiguration'
+        transcriptionAuthority:
+          const: derived_source_transcription
+          default: derived_source_transcription
+          title: Transcriptionauthority
+          type: string
+        originalAssetId:
+          format: uuid
+          title: Originalassetid
+          type: string
+        originalSha256:
+          pattern: ^[a-f0-9]{64}$
+          title: Originalsha256
+          type: string
+        structureSha256:
+          pattern: ^[a-f0-9]{64}$
+          title: Structuresha256
+          type: string
+        inventorySha256:
+          pattern: ^[a-f0-9]{64}$
+          title: Inventorysha256
+          type: string
+        renderSetState:
+          anyOf:
+          - enum:
+            - building
+            - sealed
+            type: string
+          - type: 'null'
+          title: Rendersetstate
+        renderSetSha256:
+          anyOf:
+          - pattern: ^[a-f0-9]{64}$
+            type: string
+          - type: 'null'
+          title: Rendersetsha256
+        total:
+          maximum: 500
+          minimum: 1
+          title: Total
+          type: integer
+        offset:
+          minimum: 0
+          title: Offset
+          type: integer
+        limit:
+          maximum: 100
+          minimum: 1
+          title: Limit
+          type: integer
+        pages:
+          items:
+            $ref: '#/components/schemas/GenerationEvidencePageSummary'
+          title: Pages
+          type: array
+        observedAt:
+          format: date-time
+          title: Observedat
+          type: string
+      required:
+      - documentId
+      - processingRunId
+      - parseGenerationId
+      - processingRunState
+      - parserConfiguration
+      - originalAssetId
+      - originalSha256
+      - structureSha256
+      - inventorySha256
+      - renderSetState
+      - renderSetSha256
+      - total
+      - offset
+      - limit
+      - pages
+      - observedAt
+      title: GenerationEvidenceManifest
+      type: object
+    GenerationEvidenceSourceBox:
+      additionalProperties: false
+      properties:
+        left:
+          minimum: 0
+          title: Left
+          type: number
+        top:
+          minimum: 0
+          title: Top
+          type: number
+        right:
+          exclusiveMinimum: 0
+          title: Right
+          type: number
+        bottom:
+          exclusiveMinimum: 0
+          title: Bottom
+          type: number
+      required:
+      - left
+      - top
+      - right
+      - bottom
+      title: SourceBox
+      type: object
+    GenerationEvidenceSourceRender:
+      additionalProperties: false
+      properties:
+        page_number:
+          exclusiveMinimum: 0
+          title: Page Number
+          type: integer
+        image_sha256:
+          pattern: ^[a-f0-9]{64}$
+          title: Image Sha256
+          type: string
+        pixel_width:
+          exclusiveMinimum: 0
+          title: Pixel Width
+          type: integer
+        pixel_height:
+          exclusiveMinimum: 0
+          title: Pixel Height
+          type: integer
+        renderer:
+          minLength: 1
+          title: Renderer
+          type: string
+        renderer_version:
+          minLength: 1
+          title: Renderer Version
+          type: string
+        coordinate_space:
+          const: rendered_source_pixels
+          default: rendered_source_pixels
+          title: Coordinate Space
+          type: string
+        native_text:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          title: Native Text
+        native_text_origin:
+          anyOf:
+          - const: pdf_native
+            type: string
+          - type: 'null'
+          default: null
+          title: Native Text Origin
+      required:
+      - page_number
+      - image_sha256
+      - pixel_width
+      - pixel_height
+      - renderer
+      - renderer_version
+      title: SourceRender
+      type: object
+    GenerationEvidenceStructureCell:
+      additionalProperties: false
+      properties:
+        id:
+          format: uuid
+          title: Id
+          type: string
+        row:
+          minimum: 0
+          title: Row
+          type: integer
+        column:
+          minimum: 0
+          title: Column
+          type: integer
+        row_span:
+          default: 1
+          exclusiveMinimum: 0
+          title: Row Span
+          type: integer
+        column_span:
+          default: 1
+          exclusiveMinimum: 0
+          title: Column Span
+          type: integer
+        text:
+          title: Text
+          type: string
+        text_origin:
+          enum:
+          - pdf_native
+          - model_transcription
+          - legacy_docling
+          title: Text Origin
+          type: string
+        bbox:
+          $ref: '#/components/schemas/GenerationEvidenceSourceBox'
+        is_header:
+          default: false
+          title: Is Header
+          type: boolean
+      required:
+      - id
+      - row
+      - column
+      - text
+      - text_origin
+      - bbox
+      title: StructureCell
+      type: object
+    GenerationEvidenceStructureChunk:
+      additionalProperties: false
+      properties:
+        id:
+          format: uuid
+          title: Id
+          type: string
+        page_number:
+          exclusiveMinimum: 0
+          title: Page Number
+          type: integer
+        element_ids:
+          items:
+            format: uuid
+            type: string
+          minItems: 1
+          title: Element Ids
+          type: array
+        text:
+          minLength: 1
+          title: Text
+          type: string
+        text_origins:
+          items:
+            enum:
+            - pdf_native
+            - model_transcription
+            - legacy_docling
+            type: string
+          minItems: 1
+          title: Text Origins
+          type: array
+      required:
+      - id
+      - page_number
+      - element_ids
+      - text
+      - text_origins
+      title: StructureChunk
+      type: object
+    GenerationEvidenceStructureElement:
+      additionalProperties: false
+      properties:
+        id:
+          format: uuid
+          title: Id
+          type: string
+        ordinal:
+          exclusiveMinimum: 0
+          title: Ordinal
+          type: integer
+        parent_id:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          default: null
+          title: Parent Id
+        kind:
+          enum:
+          - paragraph
+          - heading
+          - header
+          - footer
+          - list_item
+          - caption
+          - table
+          - figure
+          - form_field
+          - other
+          title: Kind
+          type: string
+        text:
+          title: Text
+          type: string
+        text_origin:
+          enum:
+          - pdf_native
+          - model_transcription
+          - legacy_docling
+          title: Text Origin
+          type: string
+        bbox:
+          $ref: '#/components/schemas/GenerationEvidenceSourceBox'
+      required:
+      - id
+      - ordinal
+      - kind
+      - text
+      - text_origin
+      - bbox
+      title: StructureElement
+      type: object
+    GenerationEvidenceStructurePage:
+      additionalProperties: false
+      properties:
+        id:
+          format: uuid
+          title: Id
+          type: string
+        page_number:
+          exclusiveMinimum: 0
+          title: Page Number
+          type: integer
+        source:
+          anyOf:
+          - $ref: '#/components/schemas/GenerationEvidenceSourceRender'
+          - type: 'null'
+        state:
+          enum:
+          - processed
+          - partial
+          - deferred
+          - insufficient_signal
+          - unsupported
+          - failed
+          title: State
+          type: string
+        diagnostics:
+          default: []
+          items:
+            enum:
+            - content_omitted
+            - unreadable_region
+            - resource_limit
+            - invalid_output
+            - render_failed
+            type: string
+          title: Diagnostics
+          type: array
+        elements:
+          default: []
+          items:
+            $ref: '#/components/schemas/GenerationEvidenceStructureElement'
+          title: Elements
+          type: array
+        tables:
+          default: []
+          items:
+            $ref: '#/components/schemas/GenerationEvidenceStructureTable'
+          title: Tables
+          type: array
+      required:
+      - id
+      - page_number
+      - source
+      - state
+      title: StructurePage
+      type: object
+    GenerationEvidenceStructureTable:
+      additionalProperties: false
+      properties:
+        id:
+          format: uuid
+          title: Id
+          type: string
+        element_id:
+          format: uuid
+          title: Element Id
+          type: string
+        row_count:
+          exclusiveMinimum: 0
+          title: Row Count
+          type: integer
+        column_count:
+          exclusiveMinimum: 0
+          title: Column Count
+          type: integer
+        cells:
+          items:
+            $ref: '#/components/schemas/GenerationEvidenceStructureCell'
+          title: Cells
+          type: array
+        continuation_key:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          title: Continuation Key
+      required:
+      - id
+      - element_id
+      - row_count
+      - column_count
+      - cells
+      title: StructureTable
+      type: object
+    GenerationEvidencePage:
+      additionalProperties: false
+      properties:
+        documentId:
+          format: uuid
+          title: Documentid
+          type: string
+        processingRunId:
+          format: uuid
+          title: Processingrunid
+          type: string
+        parseGenerationId:
+          format: uuid
+          title: Parsegenerationid
+          type: string
+        viewScope:
+          const: retained_parse_generation
+          default: retained_parse_generation
+          title: Viewscope
+          type: string
+        sourcePage:
+          $ref: '#/components/schemas/GenerationEvidenceSourcePage'
+        page:
+          $ref: '#/components/schemas/GenerationEvidenceStructurePage'
+        chunks:
+          items:
+            $ref: '#/components/schemas/GenerationEvidenceStructureChunk'
+          title: Chunks
+          type: array
+        render:
+          anyOf:
+          - $ref: '#/components/schemas/GenerationEvidenceRender'
+          - type: 'null'
+      required:
+      - documentId
+      - processingRunId
+      - parseGenerationId
+      - sourcePage
+      - page
+      - chunks
+      - render
+      title: GenerationEvidencePage
+      type: object
+    LineCandidateDecision:
+      additionalProperties: false
+      properties:
+        id:
+          format: uuid
+          title: Id
+          type: string
+        documentId:
+          format: uuid
+          title: Documentid
+          type: string
+        sourceCandidateId:
+          format: uuid
+          title: Sourcecandidateid
+          type: string
+        revision:
+          format: uuid
+          title: Revision
+          type: string
+        disposition:
+          enum:
+          - accepted
+          - rejected
+          - protected_legacy
+          title: Disposition
+          type: string
+        origin:
+          enum:
+          - live_review
+          - legacy_current_line
+          title: Origin
+          type: string
+        sourceSnapshotSha256:
+          pattern: ^[a-f0-9]{64}$
+          title: Sourcesnapshotsha256
+          type: string
+        actorUserId:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Actoruserid
+        reviewEventId:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Revieweventid
+        decidedAt:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Decidedat
+        recordedAt:
+          format: date-time
+          title: Recordedat
+          type: string
+      required:
+      - id
+      - documentId
+      - sourceCandidateId
+      - revision
+      - disposition
+      - origin
+      - sourceSnapshotSha256
+      - actorUserId
+      - reviewEventId
+      - decidedAt
+      - recordedAt
+      title: LineCandidateDecision
+      type: object
+    LineCanonicalRead:
+      additionalProperties: false
+      properties:
+        id:
+          format: uuid
+          title: Id
+          type: string
+        documentId:
+          format: uuid
+          title: Documentid
+          type: string
+        lineItemType:
+          enum:
+          - generic
+          - receipt_item
+          - invoice_item
+          - service_line
+          - payment
+          - tax
+          - adjustment
+          - fee
+          title: Lineitemtype
+          type: string
+        ordinal:
+          minimum: 1
+          title: Ordinal
+          type: integer
+        selectedCandidateId:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Selectedcandidateid
+        code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Code
+        codeSystem:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Codesystem
+        serviceDate:
+          anyOf:
+          - format: date
+            type: string
+          - type: 'null'
+          title: Servicedate
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        quantity:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Quantity
+        unit:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Unit
+        unitPrice:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Unitprice
+        grossAmount:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Grossamount
+        discountAmount:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Discountamount
+        taxAmount:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Taxamount
+        netAmount:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Netamount
+        allowedAmount:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          default: null
+          title: Allowedamount
+        planPaidAmount:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          default: null
+          title: Planpaidamount
+        currency:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Currency
+        categoryHint:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Categoryhint
+        sourceKind:
+          title: Sourcekind
+          type: string
+        reviewStatus:
+          title: Reviewstatus
+          type: string
+        evidence:
+          items:
+            $ref: '#/components/schemas/LineEvidenceRef'
+          title: Evidence
+          type: array
+        validation:
+          additionalProperties: true
+          title: Validation
+          type: object
+        acceptedAt:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Acceptedat
+        updatedAt:
+          format: date-time
+          title: Updatedat
+          type: string
+        selected:
+          title: Selected
+          type: boolean
+      required:
+      - id
+      - documentId
+      - lineItemType
+      - ordinal
+      - selectedCandidateId
+      - code
+      - codeSystem
+      - serviceDate
+      - description
+      - quantity
+      - unit
+      - unitPrice
+      - grossAmount
+      - discountAmount
+      - taxAmount
+      - netAmount
+      - currency
+      - categoryHint
+      - sourceKind
+      - reviewStatus
+      - evidence
+      - validation
+      - acceptedAt
+      - updatedAt
+      - selected
+      title: LineCanonicalRead
+      type: object
+    LineEvidenceRef:
+      additionalProperties: false
+      properties:
+        pageNumber:
+          minimum: 1
+          title: Pagenumber
+          type: integer
+        sourceEngine:
+          enum:
+          - docling
+          - qwen3_vl_2b
+          - qwen3_vl_4b
+          - qwen3_vl_8b
+          - qwen3_8_27b
+          - pdf_native
+          - granite_vision_3b
+          - validator
+          - human
+          - system
+          title: Sourceengine
+          type: string
+        bbox:
+          anyOf:
+          - maxItems: 4
+            minItems: 4
+            prefixItems:
+            - type: number
+            - type: number
+            - type: number
+            - type: number
+            type: array
+          - type: 'null'
+          default: null
+          title: Bbox
+        elementId:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          default: null
+          title: Elementid
+        tableId:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          default: null
+          title: Tableid
+        rowIndex:
+          anyOf:
+          - minimum: 0
+            type: integer
+          - type: 'null'
+          default: null
+          title: Rowindex
+        columnIndex:
+          anyOf:
+          - minimum: 0
+            type: integer
+          - type: 'null'
+          default: null
+          title: Columnindex
+        sourceText:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          title: Sourcetext
+        textSpan:
+          anyOf:
+          - $ref: '#/components/schemas/TextSpan'
+          - type: 'null'
+          default: null
+        confidence:
+          anyOf:
+          - type: number
+          - type: 'null'
+          default: null
+          title: Confidence
+      required:
+      - pageNumber
+      - sourceEngine
+      title: LineEvidenceRef
+      type: object
+    LineSlotDecision:
+      additionalProperties: false
+      properties:
+        id:
+          format: uuid
+          title: Id
+          type: string
+        documentId:
+          format: uuid
+          title: Documentid
+          type: string
+        lineItemType:
+          enum:
+          - generic
+          - receipt_item
+          - invoice_item
+          - service_line
+          - payment
+          - tax
+          - adjustment
+          - fee
+          title: Lineitemtype
+          type: string
+        ordinal:
+          maximum: 2147483647
+          minimum: 1
+          title: Ordinal
+          type: integer
+        canonicalLineItemId:
+          format: uuid
+          title: Canonicallineitemid
+          type: string
+        revision:
+          format: uuid
+          title: Revision
+          type: string
+        disposition:
+          enum:
+          - confirmed
+          - corrected
+          - rejected
+          - protected_legacy
+          title: Disposition
+          type: string
+        origin:
+          enum:
+          - live_review
+          - legacy_current_line
+          title: Origin
+          type: string
+        actorUserId:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Actoruserid
+        reviewEventId:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Revieweventid
+        decisionEventId:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Decisioneventid
+        decidedAt:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Decidedat
+        recordedAt:
+          format: date-time
+          title: Recordedat
+          type: string
+      required:
+      - id
+      - documentId
+      - lineItemType
+      - ordinal
+      - canonicalLineItemId
+      - revision
+      - disposition
+      - origin
+      - actorUserId
+      - reviewEventId
+      - decisionEventId
+      - decidedAt
+      - recordedAt
+      title: LineSlotDecision
+      type: object
+    TextSpan:
+      additionalProperties: false
+      properties:
+        start:
+          minimum: 0
+          title: Start
+          type: integer
+        end:
+          minimum: 0
+          title: End
+          type: integer
+        basis:
+          anyOf:
+          - enum:
+            - page_text
+            - chunk_text
+            - element_text
+            - raw_model_output
+            type: string
+          - type: 'null'
+          default: null
+          title: Basis
+      required:
+      - start
+      - end
+      title: TextSpan
+      type: object
+    LineDecisionResponse:
+      additionalProperties: false
+      properties:
+        operation:
+          enum:
+          - create
+          - replace
+          - reject_selected
+          - reject_candidate
+          title: Operation
+          type: string
+        eventId:
+          format: uuid
+          title: Eventid
+          type: string
+        canonicalItem:
+          anyOf:
+          - $ref: '#/components/schemas/LineCanonicalRead'
+          - type: 'null'
+        candidateDecision:
+          anyOf:
+          - $ref: '#/components/schemas/LineCandidateDecision'
+          - type: 'null'
+        lineDecision:
+          anyOf:
+          - $ref: '#/components/schemas/LineSlotDecision'
+          - type: 'null'
+        projection:
+          $ref: '#/components/schemas/FieldProjectionRevision'
+      required:
+      - operation
+      - eventId
+      - canonicalItem
+      - candidateDecision
+      - lineDecision
+      - projection
+      title: LineDecisionResponse
+      type: object
+    LineSlot:
+      additionalProperties: false
+      properties:
+        lineItemType:
+          enum:
+          - generic
+          - receipt_item
+          - invoice_item
+          - service_line
+          - payment
+          - tax
+          - adjustment
+          - fee
+          title: Lineitemtype
+          type: string
+        ordinal:
+          maximum: 2147483647
+          minimum: 1
+          title: Ordinal
+          type: integer
+      required:
+      - lineItemType
+      - ordinal
+      title: LineSlot
+      type: object
+    LineSourceAssignment:
+      additionalProperties: false
+      properties:
+        sourceCandidateId:
+          format: uuid
+          title: Sourcecandidateid
+          type: string
+        state:
+          enum:
+          - assigned
+          - legacy_conflict
+          title: State
+          type: string
+        canonicalLineItemId:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Canonicallineitemid
+        target:
+          anyOf:
+          - $ref: '#/components/schemas/LineSlot'
+          - type: 'null'
+        currentlySelected:
+          title: Currentlyselected
+          type: boolean
+      required:
+      - sourceCandidateId
+      - state
+      - canonicalLineItemId
+      - target
+      - currentlySelected
+      title: LineSourceAssignment
+      type: object
+    CanonicalLineResponse:
+      additionalProperties: false
+      properties:
+        authorityVersion:
+          const: line_item_authority.v1
+          title: Authorityversion
+          type: string
+        documentId:
+          format: uuid
+          title: Documentid
+          type: string
+        items:
+          items:
+            $ref: '#/components/schemas/LineCanonicalRead'
+          title: Items
+          type: array
+        decisions:
+          items:
+            $ref: '#/components/schemas/LineSlotDecision'
+          title: Decisions
+          type: array
+        sourceAssignments:
+          items:
+            $ref: '#/components/schemas/LineSourceAssignment'
+          title: Sourceassignments
+          type: array
+        projection:
+          $ref: '#/components/schemas/FieldProjectionRevision'
+      required:
+      - authorityVersion
+      - documentId
+      - items
+      - decisions
+      - sourceAssignments
+      - projection
+      title: CanonicalLineResponse
+      type: object
+    LineCandidateRead:
+      additionalProperties: false
+      properties:
+        id:
+          format: uuid
+          title: Id
+          type: string
+        documentId:
+          format: uuid
+          title: Documentid
+          type: string
+        extractionId:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Extractionid
+        lineItemType:
+          enum:
+          - generic
+          - receipt_item
+          - invoice_item
+          - service_line
+          - payment
+          - tax
+          - adjustment
+          - fee
+          title: Lineitemtype
+          type: string
+        ordinal:
+          maximum: 2147483647
+          minimum: 1
+          title: Ordinal
+          type: integer
+        candidateGroup:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Candidategroup
+        candidateVersion:
+          format: uuid
+          title: Candidateversion
+          type: string
+        sourceSnapshotSha256:
+          pattern: ^[a-f0-9]{64}$
+          title: Sourcesnapshotsha256
+          type: string
+        candidateDecisionRevision:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Candidatedecisionrevision
+        sourceEngine:
+          title: Sourceengine
+          type: string
+        extraction:
+          anyOf:
+          - $ref: '#/components/schemas/LineExtractionIdentity'
+          - type: 'null'
+        validation:
+          $ref: '#/components/schemas/LineValidationSummary'
+        code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Code
+        codeSystem:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Codesystem
+        serviceDate:
+          anyOf:
+          - format: date
+            type: string
+          - type: 'null'
+          title: Servicedate
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        quantity:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Quantity
+        unit:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Unit
+        unitPrice:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Unitprice
+        grossAmount:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Grossamount
+        discountAmount:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Discountamount
+        taxAmount:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Taxamount
+        netAmount:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Netamount
+        allowedAmount:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Allowedamount
+        planPaidAmount:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Planpaidamount
+        currency:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Currency
+        categoryHint:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Categoryhint
+        evidence:
+          items:
+            $ref: '#/components/schemas/LineEvidenceRef'
+          title: Evidence
+          type: array
+        status:
+          title: Status
+          type: string
+        publicationEligibility:
+          $ref: '#/components/schemas/LinePublicationEligibility'
+        sourceAssignment:
+          anyOf:
+          - $ref: '#/components/schemas/LineSourceAssignment'
+          - type: 'null'
+        suggestedVacantTarget:
+          anyOf:
+          - $ref: '#/components/schemas/VacantLineTarget'
+          - type: 'null'
+      required:
+      - id
+      - documentId
+      - extractionId
+      - lineItemType
+      - ordinal
+      - candidateGroup
+      - candidateVersion
+      - sourceSnapshotSha256
+      - candidateDecisionRevision
+      - sourceEngine
+      - extraction
+      - validation
+      - code
+      - codeSystem
+      - serviceDate
+      - description
+      - quantity
+      - unit
+      - unitPrice
+      - grossAmount
+      - discountAmount
+      - taxAmount
+      - netAmount
+      - allowedAmount
+      - planPaidAmount
+      - currency
+      - categoryHint
+      - evidence
+      - status
+      - publicationEligibility
+      - sourceAssignment
+      - suggestedVacantTarget
+      title: LineCandidateRead
+      type: object
+    LineExtractionIdentity:
+      additionalProperties: false
+      properties:
+        id:
+          format: uuid
+          title: Id
+          type: string
+        documentId:
+          format: uuid
+          title: Documentid
+          type: string
+        schemaName:
+          title: Schemaname
+          type: string
+        schemaVersion:
+          title: Schemaversion
+          type: string
+        sourceEngine:
+          title: Sourceengine
+          type: string
+        modelName:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Modelname
+        modelVersion:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Modelversion
+        promptVersion:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Promptversion
+        extractionScope:
+          title: Extractionscope
+          type: string
+        semanticAnnotationId:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Semanticannotationid
+        sourceSemanticRegionId:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Sourcesemanticregionid
+      required:
+      - id
+      - documentId
+      - schemaName
+      - schemaVersion
+      - sourceEngine
+      - modelName
+      - modelVersion
+      - promptVersion
+      - extractionScope
+      - semanticAnnotationId
+      - sourceSemanticRegionId
+      title: LineExtractionIdentity
+      type: object
+    LinePublicationEligibility:
+      additionalProperties: false
+      properties:
+        eligible:
+          title: Eligible
+          type: boolean
+        reason:
+          enum:
+          - eligible
+          - source_missing
+          - source_superseded
+          - source_failed
+          - source_binding_invalid
+          - evidence_incomplete
+          - legacy_assignment_conflict
+          - unsupported_candidate_state
+          title: Reason
+          type: string
+      required:
+      - eligible
+      - reason
+      title: LinePublicationEligibility
+      type: object
+    LineValidationCheck:
+      additionalProperties: false
+      properties:
+        code:
+          pattern: ^[A-Za-z0-9_.:-]{1,100}$
+          title: Code
+          type: string
+        status:
+          enum:
+          - passed
+          - failed
+          - warning
+          - not_applicable
+          title: Status
+          type: string
+      required:
+      - code
+      - status
+      title: LineValidationCheck
+      type: object
+    LineValidationSummary:
+      additionalProperties: false
+      properties:
+        recorded:
+          title: Recorded
+          type: boolean
+        needsReview:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Needsreview
+        checks:
+          items:
+            $ref: '#/components/schemas/LineValidationCheck'
+          title: Checks
+          type: array
+        unrepresentedCheckCount:
+          minimum: 0
+          title: Unrepresentedcheckcount
+          type: integer
+      required:
+      - recorded
+      - needsReview
+      - checks
+      - unrepresentedCheckCount
+      title: LineValidationSummary
+      type: object
+    VacantLineTarget:
+      additionalProperties: false
+      properties:
+        lineItemType:
+          enum:
+          - generic
+          - receipt_item
+          - invoice_item
+          - service_line
+          - payment
+          - tax
+          - adjustment
+          - fee
+          title: Lineitemtype
+          type: string
+        ordinal:
+          maximum: 2147483647
+          minimum: 1
+          title: Ordinal
+          type: integer
+        canonicalLineItemId:
+          title: Canonicallineitemid
+          type: 'null'
+        expectedCanonicalUpdatedAt:
+          title: Expectedcanonicalupdatedat
+          type: 'null'
+        expectedLineDecisionRevision:
+          title: Expectedlinedecisionrevision
+          type: 'null'
+      required:
+      - lineItemType
+      - ordinal
+      - canonicalLineItemId
+      - expectedCanonicalUpdatedAt
+      - expectedLineDecisionRevision
+      title: VacantLineTarget
+      type: object
+    LineCandidateResponse:
+      additionalProperties: false
+      properties:
+        authorityVersion:
+          const: line_item_authority.v1
+          title: Authorityversion
+          type: string
+        documentId:
+          format: uuid
+          title: Documentid
+          type: string
+        items:
+          items:
+            $ref: '#/components/schemas/LineCandidateRead'
+          title: Items
+          type: array
+      required:
+      - authorityVersion
+      - documentId
+      - items
+      title: LineCandidateResponse
+      type: object
+    LineHistoricalCandidate:
+      additionalProperties: false
+      properties:
+        id:
+          format: uuid
+          title: Id
+          type: string
+        documentId:
+          format: uuid
+          title: Documentid
+          type: string
+        extractionId:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Extractionid
+        sourceEngine:
+          title: Sourceengine
+          type: string
+        lineItemType:
+          enum:
+          - generic
+          - receipt_item
+          - invoice_item
+          - service_line
+          - payment
+          - tax
+          - adjustment
+          - fee
+          title: Lineitemtype
+          type: string
+        candidateGroup:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Candidategroup
+        ordinal:
+          maximum: 2147483647
+          minimum: 1
+          title: Ordinal
+          type: integer
+        code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Code
+        codeSystem:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Codesystem
+        serviceDate:
+          anyOf:
+          - format: date
+            type: string
+          - type: 'null'
+          title: Servicedate
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        quantity:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Quantity
+        unit:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Unit
+        unitPrice:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Unitprice
+        grossAmount:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Grossamount
+        discountAmount:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Discountamount
+        taxAmount:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Taxamount
+        netAmount:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Netamount
+        allowedAmount:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Allowedamount
+        planPaidAmount:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Planpaidamount
+        currency:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Currency
+        categoryHint:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Categoryhint
+      required:
+      - id
+      - documentId
+      - extractionId
+      - sourceEngine
+      - lineItemType
+      - candidateGroup
+      - ordinal
+      - code
+      - codeSystem
+      - serviceDate
+      - description
+      - quantity
+      - unit
+      - unitPrice
+      - grossAmount
+      - discountAmount
+      - taxAmount
+      - netAmount
+      - allowedAmount
+      - planPaidAmount
+      - currency
+      - categoryHint
+      title: LineHistoricalCandidate
+      type: object
+    LineHistoryEntry:
+      additionalProperties: false
+      properties:
+        id:
+          format: uuid
+          title: Id
+          type: string
+        documentId:
+          format: uuid
+          title: Documentid
+          type: string
+        sourceCandidateId:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Sourcecandidateid
+        canonicalLineItemId:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Canonicallineitemid
+        operation:
+          title: Operation
+          type: string
+        coverage:
+          enum:
+          - complete
+          - legacy_partial
+          title: Coverage
+          type: string
+        before:
+          anyOf:
+          - $ref: '#/components/schemas/LineHistoryValue'
+          - type: 'null'
+        after:
+          anyOf:
+          - $ref: '#/components/schemas/LineHistoryValue'
+          - type: 'null'
+        source:
+          anyOf:
+          - $ref: '#/components/schemas/LineSourceSnapshotRead'
+          - type: 'null'
+        legacySummary:
+          anyOf:
+          - $ref: '#/components/schemas/LineLegacySummary'
+          - type: 'null'
+        actorLabel:
+          title: Actorlabel
+          type: string
+        occurredAt:
+          format: date-time
+          title: Occurredat
+          type: string
+        comment:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Comment
+      required:
+      - id
+      - documentId
+      - sourceCandidateId
+      - canonicalLineItemId
+      - operation
+      - coverage
+      - before
+      - after
+      - source
+      - legacySummary
+      - actorLabel
+      - occurredAt
+      - comment
+      title: LineHistoryEntry
+      type: object
+    LineHistoryValue:
+      additionalProperties: false
+      properties:
+        canonical:
+          $ref: '#/components/schemas/LineCanonicalRead'
+        source:
+          anyOf:
+          - $ref: '#/components/schemas/LineSourceSnapshotRead'
+          - type: 'null'
+        sourceCoverage:
+          enum:
+          - recorded
+          - legacy_unestablished
+          title: Sourcecoverage
+          type: string
+      required:
+      - canonical
+      - source
+      - sourceCoverage
+      title: LineHistoryValue
+      type: object
+    LineLegacySummary:
+      additionalProperties: false
+      properties:
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Status
+        netAmount:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Netamount
+        precision:
+          const: legacy_unestablished
+          default: legacy_unestablished
+          title: Precision
+          type: string
+      required:
+      - description
+      - status
+      - netAmount
+      title: LineLegacySummary
+      type: object
+    LineOriginalBinding:
+      additionalProperties: false
+      properties:
+        id:
+          format: uuid
+          title: Id
+          type: string
+        sha256:
+          pattern: ^[a-f0-9]{64}$
+          title: Sha256
+          type: string
+      required:
+      - id
+      - sha256
+      title: LineOriginalBinding
+      type: object
+    LineSourceSnapshotRead:
+      additionalProperties: false
+      properties:
+        schemaVersion:
+          const: line_item_source.v1
+          title: Schemaversion
+          type: string
+        candidate:
+          $ref: '#/components/schemas/LineHistoricalCandidate'
+        extraction:
+          anyOf:
+          - $ref: '#/components/schemas/LineExtractionIdentity'
+          - type: 'null'
+        original:
+          anyOf:
+          - $ref: '#/components/schemas/LineOriginalBinding'
+          - type: 'null'
+        evidence:
+          items:
+            $ref: '#/components/schemas/LineEvidenceRef'
+          title: Evidence
+          type: array
+        validationSha256:
+          pattern: ^[a-f0-9]{64}$
+          title: Validationsha256
+          type: string
+        storedEvidenceSha256:
+          pattern: ^[a-f0-9]{64}$
+          title: Storedevidencesha256
+          type: string
+      required:
+      - schemaVersion
+      - candidate
+      - extraction
+      - original
+      - evidence
+      - validationSha256
+      - storedEvidenceSha256
+      title: LineSourceSnapshotRead
+      type: object
+    LineHistoryResponse:
+      additionalProperties: false
+      properties:
+        documentId:
+          format: uuid
+          title: Documentid
+          type: string
+        items:
+          items:
+            $ref: '#/components/schemas/LineHistoryEntry'
+          title: Items
+          type: array
+        nextCursor:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Nextcursor
+      required:
+      - documentId
+      - items
+      - nextCursor
+      title: LineHistoryResponse
+      type: object
+    CreateLineDecision:
+      additionalProperties: false
+      properties:
+        operation:
+          const: create
+          title: Operation
+          type: string
+        source:
+          $ref: '#/components/schemas/LineSourceExpectation'
+        target:
+          $ref: '#/components/schemas/VacantLineTarget'
+        comment:
+          anyOf:
+          - maxLength: 2000
+            type: string
+          - type: 'null'
+          default: null
+          title: Comment
+      required:
+      - operation
+      - source
+      - target
+      title: CreateLineDecision
+      type: object
+    ExistingLineTarget:
+      additionalProperties: false
+      properties:
+        lineItemType:
+          enum:
+          - generic
+          - receipt_item
+          - invoice_item
+          - service_line
+          - payment
+          - tax
+          - adjustment
+          - fee
+          title: Lineitemtype
+          type: string
+        ordinal:
+          maximum: 2147483647
+          minimum: 1
+          title: Ordinal
+          type: integer
+        canonicalLineItemId:
+          format: uuid
+          title: Canonicallineitemid
+          type: string
+        expectedCanonicalUpdatedAt:
+          format: date-time
+          title: Expectedcanonicalupdatedat
+          type: string
+        expectedLineDecisionRevision:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Expectedlinedecisionrevision
+      required:
+      - lineItemType
+      - ordinal
+      - canonicalLineItemId
+      - expectedCanonicalUpdatedAt
+      - expectedLineDecisionRevision
+      title: ExistingLineTarget
+      type: object
+    LineSourceExpectation:
+      additionalProperties: false
+      properties:
+        candidateId:
+          format: uuid
+          title: Candidateid
+          type: string
+        expectedCandidateVersion:
+          format: uuid
+          title: Expectedcandidateversion
+          type: string
+        expectedSourceSnapshotSha256:
+          pattern: ^[a-f0-9]{64}$
+          title: Expectedsourcesnapshotsha256
+          type: string
+        expectedCandidateDecisionRevision:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Expectedcandidatedecisionrevision
+      required:
+      - candidateId
+      - expectedCandidateVersion
+      - expectedSourceSnapshotSha256
+      - expectedCandidateDecisionRevision
+      title: LineSourceExpectation
+      type: object
+    RejectCandidateLineDecision:
+      additionalProperties: false
+      properties:
+        operation:
+          const: reject_candidate
+          title: Operation
+          type: string
+        source:
+          $ref: '#/components/schemas/LineSourceExpectation'
+        comment:
+          anyOf:
+          - maxLength: 2000
+            type: string
+          - type: 'null'
+          default: null
+          title: Comment
+      required:
+      - operation
+      - source
+      title: RejectCandidateLineDecision
+      type: object
+    RejectSelectedLineDecision:
+      additionalProperties: false
+      properties:
+        operation:
+          const: reject_selected
+          title: Operation
+          type: string
+        target:
+          $ref: '#/components/schemas/ExistingLineTarget'
+        comment:
+          anyOf:
+          - maxLength: 2000
+            type: string
+          - type: 'null'
+          default: null
+          title: Comment
+      required:
+      - operation
+      - target
+      title: RejectSelectedLineDecision
+      type: object
+    ReplaceLineDecision:
+      additionalProperties: false
+      properties:
+        operation:
+          const: replace
+          title: Operation
+          type: string
+        source:
+          $ref: '#/components/schemas/LineSourceExpectation'
+        target:
+          $ref: '#/components/schemas/ExistingLineTarget'
+        comment:
+          anyOf:
+          - maxLength: 2000
+            type: string
+          - type: 'null'
+          default: null
+          title: Comment
+      required:
+      - operation
+      - source
+      - target
+      title: ReplaceLineDecision
+      type: object
+    LineDecisionRequest:
+      discriminator:
+        mapping:
+          create: '#/components/schemas/CreateLineDecision'
+          reject_candidate: '#/components/schemas/RejectCandidateLineDecision'
+          reject_selected: '#/components/schemas/RejectSelectedLineDecision'
+          replace: '#/components/schemas/ReplaceLineDecision'
+        propertyName: operation
+      oneOf:
+      - $ref: '#/components/schemas/CreateLineDecision'
+      - $ref: '#/components/schemas/ReplaceLineDecision'
+      - $ref: '#/components/schemas/RejectSelectedLineDecision'
+      - $ref: '#/components/schemas/RejectCandidateLineDecision'

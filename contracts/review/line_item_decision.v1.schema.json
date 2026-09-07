@@ -1,0 +1,305 @@
+{
+  "$defs": {
+    "CreateLineDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "create",
+          "title": "Operation",
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/LineSourceExpectation"
+        },
+        "target": {
+          "$ref": "#/$defs/VacantLineTarget"
+        },
+        "comment": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Comment"
+        }
+      },
+      "required": [
+        "operation",
+        "source",
+        "target"
+      ],
+      "title": "CreateLineDecision",
+      "type": "object"
+    },
+    "ExistingLineTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "lineItemType": {
+          "enum": [
+            "generic",
+            "receipt_item",
+            "invoice_item",
+            "service_line",
+            "payment",
+            "tax",
+            "adjustment",
+            "fee"
+          ],
+          "title": "Lineitemtype",
+          "type": "string"
+        },
+        "ordinal": {
+          "maximum": 2147483647,
+          "minimum": 1,
+          "title": "Ordinal",
+          "type": "integer"
+        },
+        "canonicalLineItemId": {
+          "format": "uuid",
+          "title": "Canonicallineitemid",
+          "type": "string"
+        },
+        "expectedCanonicalUpdatedAt": {
+          "format": "date-time",
+          "title": "Expectedcanonicalupdatedat",
+          "type": "string"
+        },
+        "expectedLineDecisionRevision": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Expectedlinedecisionrevision"
+        }
+      },
+      "required": [
+        "lineItemType",
+        "ordinal",
+        "canonicalLineItemId",
+        "expectedCanonicalUpdatedAt",
+        "expectedLineDecisionRevision"
+      ],
+      "title": "ExistingLineTarget",
+      "type": "object"
+    },
+    "LineSourceExpectation": {
+      "additionalProperties": false,
+      "properties": {
+        "candidateId": {
+          "format": "uuid",
+          "title": "Candidateid",
+          "type": "string"
+        },
+        "expectedCandidateVersion": {
+          "format": "uuid",
+          "title": "Expectedcandidateversion",
+          "type": "string"
+        },
+        "expectedSourceSnapshotSha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Expectedsourcesnapshotsha256",
+          "type": "string"
+        },
+        "expectedCandidateDecisionRevision": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Expectedcandidatedecisionrevision"
+        }
+      },
+      "required": [
+        "candidateId",
+        "expectedCandidateVersion",
+        "expectedSourceSnapshotSha256",
+        "expectedCandidateDecisionRevision"
+      ],
+      "title": "LineSourceExpectation",
+      "type": "object"
+    },
+    "RejectCandidateLineDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "reject_candidate",
+          "title": "Operation",
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/LineSourceExpectation"
+        },
+        "comment": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Comment"
+        }
+      },
+      "required": [
+        "operation",
+        "source"
+      ],
+      "title": "RejectCandidateLineDecision",
+      "type": "object"
+    },
+    "RejectSelectedLineDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "reject_selected",
+          "title": "Operation",
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/ExistingLineTarget"
+        },
+        "comment": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Comment"
+        }
+      },
+      "required": [
+        "operation",
+        "target"
+      ],
+      "title": "RejectSelectedLineDecision",
+      "type": "object"
+    },
+    "ReplaceLineDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "replace",
+          "title": "Operation",
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/LineSourceExpectation"
+        },
+        "target": {
+          "$ref": "#/$defs/ExistingLineTarget"
+        },
+        "comment": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Comment"
+        }
+      },
+      "required": [
+        "operation",
+        "source",
+        "target"
+      ],
+      "title": "ReplaceLineDecision",
+      "type": "object"
+    },
+    "VacantLineTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "lineItemType": {
+          "enum": [
+            "generic",
+            "receipt_item",
+            "invoice_item",
+            "service_line",
+            "payment",
+            "tax",
+            "adjustment",
+            "fee"
+          ],
+          "title": "Lineitemtype",
+          "type": "string"
+        },
+        "ordinal": {
+          "maximum": 2147483647,
+          "minimum": 1,
+          "title": "Ordinal",
+          "type": "integer"
+        },
+        "canonicalLineItemId": {
+          "title": "Canonicallineitemid",
+          "type": "null"
+        },
+        "expectedCanonicalUpdatedAt": {
+          "title": "Expectedcanonicalupdatedat",
+          "type": "null"
+        },
+        "expectedLineDecisionRevision": {
+          "title": "Expectedlinedecisionrevision",
+          "type": "null"
+        }
+      },
+      "required": [
+        "lineItemType",
+        "ordinal",
+        "canonicalLineItemId",
+        "expectedCanonicalUpdatedAt",
+        "expectedLineDecisionRevision"
+      ],
+      "title": "VacantLineTarget",
+      "type": "object"
+    }
+  },
+  "discriminator": {
+    "mapping": {
+      "create": "#/$defs/CreateLineDecision",
+      "reject_candidate": "#/$defs/RejectCandidateLineDecision",
+      "reject_selected": "#/$defs/RejectSelectedLineDecision",
+      "replace": "#/$defs/ReplaceLineDecision"
+    },
+    "propertyName": "operation"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/CreateLineDecision"
+    },
+    {
+      "$ref": "#/$defs/ReplaceLineDecision"
+    },
+    {
+      "$ref": "#/$defs/RejectSelectedLineDecision"
+    },
+    {
+      "$ref": "#/$defs/RejectCandidateLineDecision"
+    }
+  ]
+}

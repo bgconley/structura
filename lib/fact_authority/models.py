@@ -203,6 +203,9 @@ class ProjectionRevision(AuthorityModel):
     projection_revision: int = Field(strict=True, ge=0)
     accepted_facts_sha256: Sha256 | None
     indexed_metadata_sha256: Sha256 | None
+    accepted_fact_basis_schema_version: Literal[
+        "accepted_fields.v1", "accepted_fields_and_lines.v1"
+    ] = "accepted_fields.v1"
 
     @model_validator(mode="after")
     def truthful_revision(self) -> ProjectionRevision:

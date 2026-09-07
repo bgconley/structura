@@ -202,6 +202,9 @@ class FieldProjectionRevision(ContractModel):
     projection_revision: int = Field(alias="projectionRevision", ge=0)
     accepted_facts_sha256: str | None = Field(alias="acceptedFactsSha256")
     indexed_metadata_sha256: str | None = Field(alias="indexedMetadataSha256")
+    accepted_fact_basis_schema_version: Literal[
+        "accepted_fields.v1", "accepted_fields_and_lines.v1"
+    ] = Field(default="accepted_fields.v1", alias="acceptedFactBasisSchemaVersion")
 
 
 class CanonicalField(ContractModel):

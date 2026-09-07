@@ -5,11 +5,11 @@ from uuid import UUID
 
 from psycopg.types.json import Jsonb
 
+from lib.fact_authority.line_projection import BASIS_VERSION, selected_facts_digest
 from lib.fact_authority.models import ProjectionRevision
 from lib.fact_authority.projection_values import (
     COUNTERPARTY_PATHS,
     DATE_PATHS,
-    accepted_facts_digest,
     owned_scalar,
     scalar_selection,
     selected_total,
@@ -87,7 +87,13 @@ def refresh_accepted_projection(cur: Any, document_id: UUID) -> ProjectionRevisi
     _reconcile_owned_total(cur, document_id, selected_total(fields))
     cur.execute("SELECT refresh_document_chunk_projection_snapshot(%s) AS metadata", (document_id,))
     indexed_metadata = cur.fetchone()["metadata"]
-    fact_hash = accepted_facts_digest(fields)
+    cur.execute(
+        "SELECT c.*,d.revision AS decision_revision FROM selected_canonical_line_items c "
+        "LEFT JOIN canonical_line_item_decisions d ON d.canonical_line_item_id=c.id "
+        "WHERE c.document_id=%s ORDER BY c.line_item_type,c.ordinal",
+        (document_id,),
+    )
+    fact_hash = selected_facts_digest(fields, cur.fetchall())
     metadata_hash = snapshot_digest(
         {
             "schemaVersion": "indexed_metadata.v1",
@@ -101,11 +107,11 @@ def refresh_accepted_projection(cur: Any, document_id: UUID) -> ProjectionRevisi
           accepted_fact_revision=accepted_fact_revision +
             CASE WHEN accepted_facts_sha256 IS DISTINCT FROM %s THEN 1 ELSE 0 END,
           projection_revision=projection_revision+1,accepted_facts_sha256=%s,
-          indexed_metadata_sha256=%s,rollup_json=%s,
+          indexed_metadata_sha256=%s,rollup_json=%s,accepted_fact_basis_schema_version=%s,
           recorded_at=GREATEST(clock_timestamp(),recorded_at+interval '1 microsecond')
         WHERE document_id=%s RETURNING document_id,state,accepted_fact_revision,
-          projection_revision,accepted_facts_sha256,indexed_metadata_sha256""",
-        (fact_hash, fact_hash, metadata_hash, Jsonb(rollups), document_id),
+          projection_revision,accepted_facts_sha256,indexed_metadata_sha256,accepted_fact_basis_schema_version""",
+        (fact_hash, fact_hash, metadata_hash, Jsonb(rollups), BASIS_VERSION, document_id),
     )
     return ProjectionRevision(**cur.fetchone())
 

@@ -25,6 +25,8 @@ def canonical_line_item_payload(row: dict[str, Any]) -> dict[str, Any]:
             "discount_amount",
             "tax_amount",
             "net_amount",
+            "allowed_amount",
+            "plan_paid_amount",
             "category_hint",
             "source_kind",
             "review_status",

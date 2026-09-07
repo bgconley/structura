@@ -16,6 +16,12 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from lib.auth.authorization_policy import AuthorizationError
 from lib.evidence.errors import EvidenceUnavailable
 from lib.observability import log_event
+from lib.review.line_items.errors import LineDecisionConflict, LineEvidenceError
+
+_LINE_CONFLICT = (
+    "This line item changed or requires an explicit target. Reload it before saving your decision."
+)
+_LINE_EVIDENCE = "This line item requires complete source evidence before publication."
 
 _SAFE_DETAILS = frozenset(
     {
@@ -50,6 +56,9 @@ _SAFE_DETAILS = frozenset(
         "This field changed since it was loaded. Reload it before saving your decision.",
         "A confirmation must keep the existing field's value type.",
         "A correction must keep the existing field's value type.",
+        _LINE_CONFLICT,
+        _LINE_EVIDENCE,
+        "Invalid line history request.",
     }
 )
 _STATUS_DETAILS = {
@@ -58,6 +67,7 @@ _STATUS_DETAILS = {
     403: "Permission denied",
     404: "Not found",
     405: "Method not allowed",
+    408: "The upload did not complete in time.",
     409: "The request conflicts with the current state. Refresh and try again.",
     413: "The upload exceeds the supported size.",
     415: "This file type is not supported.",
@@ -156,6 +166,14 @@ class RequestBoundaryMiddleware:
 
 
 def install_error_handling(app: FastAPI) -> None:
+    @app.exception_handler(LineDecisionConflict)
+    async def line_conflict(_request: Request, _exc: LineDecisionConflict) -> JSONResponse:
+        return JSONResponse(status_code=409, content={"detail": _LINE_CONFLICT})
+
+    @app.exception_handler(LineEvidenceError)
+    async def line_evidence(_request: Request, _exc: LineEvidenceError) -> JSONResponse:
+        return JSONResponse(status_code=422, content={"detail": _LINE_EVIDENCE})
+
     @app.exception_handler(EvidenceUnavailable)
     async def evidence_unavailable(_request: Request, _exc: EvidenceUnavailable) -> JSONResponse:
         return JSONResponse(
