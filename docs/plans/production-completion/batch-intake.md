@@ -25,14 +25,14 @@ Inputs: [root plan Phase 1A–1D](../../../STRUCTURA_IMPLEMENTATION_PLAN.md), [p
 
 ## Slice A — durable per-file upload attempts
 
-Recommended boundary: introduce a small upload-attempt resource before adding automatic transfer retries or duplicate reuse. Keep `POST /documents` backward compatible for current API/CLI/watcher callers; the new browser flow uses the stronger resource. Refactor its shared acceptance implementation rather than maintaining two document/original/job creation paths.
+Recommended boundary: introduce a small upload-attempt resource before adding automatic transfer retries or duplicate reuse. Keep `POST /documents` backward compatible for current API/CLI/watcher callers; the new browser flow uses the stronger resource. Refactor its shared acceptance implementation rather than maintaining two document/original/job creation paths. The [concrete admission supplement](upload-attempt-contract.md) reserves migration 104 and refines transport, credential lifetime and transfer-storage accounting.
 
 Proposed contract for review:
 
 | Endpoint | Behavior |
 | --- | --- |
 | `POST /api/v1/uploads` | Create/recover an attempt using a client-generated operation UUID and immutable filename, declared size/type and source. Scope uniqueness to authenticated household and actor. Same key/metadata returns the same attempt; changed metadata conflicts. No document is created yet. |
-| `PUT /api/v1/uploads/{uploadId}/content` | Transfer one multipart file. Validate actual bytes, stage/hash outside a DB transaction, then either atomically accept it or hold it for a duplicate choice. Replaying accepted content returns the original receipt without another document/job. |
+| `PUT /api/v1/uploads/{uploadId}/content` | Transfer raw file bytes after metadata registration and pre-body admission. Validate actual bytes, stage/hash outside a DB transaction, then either atomically accept it or hold it for a duplicate choice. Replaying identical accepted content returns the original receipt without another document/job. |
 | `GET /api/v1/uploads/{uploadId}` | Reconcile a lost response, refresh or interrupted transfer. Return the attempt only to its authorized actor; accepted/reused document links are also checked against current document ACL. Missing/inaccessible attempts are indistinguishable. |
 | `POST /api/v1/uploads/{uploadId}/decision` | With the exact attempt revision, choose `keep_separate` or `use_existing` plus an authorized matching document ID. Keep separate creates one new document; use existing references the existing document without changing its facts, filing or jobs. |
 | `DELETE /api/v1/uploads/{uploadId}` | Cancel an unaccepted attempt. Return the resulting state; if acceptance won the transaction race, return the accepted receipt. Cancellation never deletes or cancels an accepted document's processing. |
