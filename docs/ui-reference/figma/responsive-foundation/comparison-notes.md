@@ -1,0 +1,29 @@
+# Responsive workbench foundation — proposed visual evidence
+
+This is a bounded UI-01/UI-03/UI-13 layout and accessibility slice. It does not close whole-product Figma parity, UI-04 browsing, UI-06 evidence, or UI-07's side-by-side review workspace. Historical expected snapshots have not been changed.
+
+## Reference and design decisions
+
+The saved [17:2 shell reference](../session-shell/figma-screenshot.png), [35:17 redlines](../session-shell/handoff-dev-redlines.png), [35:7 interaction reference](../session-shell/handoff-interaction-specs.png), and [v1.3 design language](../../../../pro-merged-master-v1.2/docs/21_v1.3_Normalization_and_Design_Language.md) govern this slice. The working visual thesis is a compact document workbench: paper and ink surfaces, restrained blue selection, readable source identity and review state, and quiet operational context. Primary content is the document list or current task; filing and diagnostics retain their existing ownership. Interaction feedback uses immediate selection/focus states, a compact mobile navigation disclosure, and explicit document/details transitions; no decorative animation is introduced.
+
+Desktop navigation remains 176 px and the command bar 56 px. The Inbox inspector now follows the 280 px redline. Command search can shrink, and lower-priority unknown-health chips leave the command bar at narrower widths; authoritative health reporting remains separate work. Only implemented destinations remain in primary navigation. Bulk Import and Create review set are omitted until their owning features exist. Existing user identity, CSRF, expiry and unknown-health semantics remain intact.
+
+The document table reserves 260 px for title/thumbnail and 140 px for review state. Titles wrap instead of disappearing into equal-width columns. Review state follows identity so both remain available before horizontal scrolling. The other existing fields remain reachable inside a named, keyboard-focusable table scroller; the page itself does not overflow horizontally. The decorative checkbox was removed because this screen currently selects one document, not a bulk set. Arrow keys move row focus; Enter/Space select. Mobile rows become labeled cards, preserving all existing row fields and semantic table/row/cell roles.
+
+At narrower widths the Inbox offers Documents and Selected document details views. Returning from the inspector's Viewer action reveals the details panel and restores that action's focus through the existing history focus identity. Mobile puts the list before filing controls. The compact Menu disclosure exposes every enabled route, closes on navigation, and restores focus on Escape; it is not modal and does not trap focus. A skip link and working Ctrl/Cmd-K shortcut lead to the workspace and global search. Upload's native file input is keyboard reachable.
+
+Review and Automation headings/panels use the existing compact tokens. Review correction help remains grouped with its typed editor, without changing input validation or persistence. Search, Viewer, automation forms and relationship/timeline grids shrink or stack before they can force page overflow. Ordinary actions have a shared minimum 32 px target; mobile workspace actions use at least 40 px.
+
+## Proposed captures and evidence boundary
+
+The `proposed-macos-*.png` files in this directory are **macOS Chromium preflight captures**, using deterministic mocked API data, device scale factor 1 and the browser bundled with local Playwright 1.59.1. They are review proposals, not canonical Linux snapshots or live-model evidence. Desktop captures use a 1440×960 or 1280×960 viewport and `fullPage: false`; 390×844 mobile captures use `fullPage: true` to show content and controls below the fold. The long-title test additionally records a full-page artifact in its test output directory.
+
+Manual inspection compared the reference with Inbox at 1440/1280/390, populated Review at 1440/390, Search at 1440, Automation at 1440 and the mobile document/details states. It caught and corrected title clipping, undersized folder creation and unstyled Review actions. The populated Review capture deliberately retains candidates and forms; it is not an empty-after-accept baseline.
+
+[responsive-foundation.spec.ts](../../../../tests/e2e/responsive-foundation.spec.ts) measures document-element width at 1440, 1280, 768 and 390 across seven enabled workspaces, action bounds/minimum heights, title/status clipping, exact desktop geometry, mobile fresh navigation, keyboard Menu/Escape/search/file picker, details/Viewer return and focus. Page exceptions fail the surface sweep. The Playwright project explicitly preserves the base 1440×960 viewport after the Desktop Chrome device spread.
+
+Local preflight: 50 focused mocked browser tests pass across responsive, session, route, correction and Phase 8 functional regressions; TypeScript and Vite production build pass. Linux image execution, proposed-image review and any accepted expected-snapshot replacement remain the integrator's gate. Cross-browser Firefox/WebKit and actual mobile-device UAT remain open.
+
+## Explicit remaining work
+
+This slice does not make existing Inbox filter chips filter server results, add complete counts/pagination, execute smart folders, add bulk selection/import/review sets, or finish folder/tag CRUD. Those controls and content need UI-04/UI-05/UI-08 completion; their presence in mocked captures is not evidence of closure. Review task titles still use current field-path identifiers; accepted line-item/evidence/history presentation, versioned source reads and the full three-part review workspace remain UI-06/UI-07. Current previews/fixtures are not representative model-quality proof. Date-only formatting's timezone defect is tracked as a separate correctness change. Operator observations, analysis, exports and account management remain their planned packages.

@@ -1,3 +1,4 @@
+import {useEffect, useRef} from "react";
 import {StatusChip} from "./Status";
 import {SessionMenu} from "./SessionMenu";
 import type {SessionInfo} from "../types";
@@ -21,11 +22,26 @@ export function TopCommand({
   isUploading: boolean;
   uploadFile: (file: File | undefined) => Promise<void>;
 }) {
+  const searchInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    function focusSearch(event: KeyboardEvent) {
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchInput.current?.focus();
+        searchInput.current?.select();
+      }
+    }
+    window.addEventListener("keydown", focusSearch);
+    return () => window.removeEventListener("keydown", focusSearch);
+  }, []);
   return (
     <header className="top-command">
       <label className="global-search">
-        <span>S</span>
+        <span aria-hidden="true">S</span>
         <input
+          ref={searchInput}
+          aria-label="Search documents"
+          aria-keyshortcuts="Control+k Meta+k"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={(event) => {
@@ -42,11 +58,11 @@ export function TopCommand({
         {isUploading ? "Uploading..." : "Upload"}
         <input
           type="file"
+          disabled={isUploading}
           accept="application/pdf,image/png,image/jpeg,image/tiff,image/webp"
           onChange={(event) => void uploadFile(event.currentTarget.files?.[0])}
         />
       </label>
-      <button className="command-button" type="button" disabled title="Bulk import is not available yet">Bulk Import</button>
       <StatusChip tone="green" label="Local-first" />
       <StatusChip tone="green" label="No cloud inference" />
       <StatusChip tone="neutral" label="Search health unreported" />

@@ -2,6 +2,7 @@ import {assetUrl} from "../api";
 import {familyLabel, formatAmount, formatDate} from "../format";
 import type {DocumentSummary} from "../types";
 import {ReviewChip} from "./Status";
+import "./DocumentTable.css";
 
 export function DocumentTable({
   documents,
@@ -20,6 +21,7 @@ export function DocumentTable({
         <h2>Priority Document Activity</h2>
         <p>{documents.length} documents displayed</p>
       </div>
+      {documents.length ? <p className="table-scroll-hint">Scroll across the table for all document details.</p> : null}
       {documents.length === 0 ? (
         <div className="empty-state">
           <h3>No inbox documents yet</h3>
@@ -34,11 +36,12 @@ export function DocumentTable({
           </label>
         </div>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th aria-label="select" />
-              <th>Document</th>
+        <div className="document-table-scroll" role="region" aria-label="Document activity, scroll for more columns" tabIndex={0}>
+        <table className="document-table" aria-label="Document activity" role="table">
+          <thead role="rowgroup">
+            <tr role="row">
+              <th className="document-title-column">Document</th>
+              <th className="document-review-column">Review Status</th>
               <th>Family</th>
               <th>Counterparty</th>
               <th>Date</th>
@@ -46,14 +49,14 @@ export function DocumentTable({
               <th>Folder</th>
               <th>Tags</th>
               <th>Related</th>
-              <th>Review Status</th>
               <th>Document State</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody role="rowgroup">
             {documents.map((document) => (
               <tr
                 key={document.id}
+                role="row"
                 id={`document-row-${document.id}`}
                 tabIndex={0}
                 aria-selected={document.id === selectedId}
@@ -61,17 +64,21 @@ export function DocumentTable({
                   if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault(); setSelectedId(document.id);
                   }
+                  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                    event.preventDefault();
+                    const next = event.key === "ArrowDown" ? event.currentTarget.nextElementSibling : event.currentTarget.previousElementSibling;
+                    if (next instanceof HTMLTableRowElement) next.focus();
+                  }
                 }}
                 className={document.id === selectedId ? "selected" : undefined}
                 onClick={() => setSelectedId(document.id)}
               >
-                <td><span className="row-check" /></td>
-                <td>
+                <td role="cell" className="document-title-cell">
                   <div className="doc-cell">
                     {document.thumbnailUrl ? (
                       <img src={assetUrl(document.thumbnailUrl)} alt="" />
                     ) : (
-                      <span className="thumb-skeleton" />
+                      <span className="thumb-skeleton" aria-hidden="true" />
                     )}
                     <div>
                       <strong>{document.title}</strong>
@@ -79,25 +86,26 @@ export function DocumentTable({
                     </div>
                   </div>
                 </td>
-                <td>{familyLabel(document.family)}</td>
-                <td>{document.counterpartyDisplay ?? "Pending"}</td>
-                <td>{formatDate(document.documentDate)}</td>
-                <td>{formatAmount(document.amountTotal)}</td>
-                <td>{document.folderPaths?.[0]?.replace("/", "") || "Unfiled"}</td>
-                <td>
+                <td role="cell" data-label="Review Status"><ReviewChip status={document.reviewStatus} /></td>
+                <td role="cell" data-label="Family">{familyLabel(document.family)}</td>
+                <td role="cell" data-label="Counterparty">{document.counterpartyDisplay ?? "Pending"}</td>
+                <td role="cell" data-label="Date">{formatDate(document.documentDate)}</td>
+                <td role="cell" data-label="Key Amount">{formatAmount(document.amountTotal)}</td>
+                <td role="cell" data-label="Folder">{document.folderPaths?.[0]?.replace("/", "") || "Unfiled"}</td>
+                <td role="cell" data-label="Tags">
                   {document.tags?.length ? (
                     <span className="table-tags">{document.tags.slice(0, 2).join(", ")}</span>
                   ) : (
                     <span className="muted-cell">None</span>
                   )}
                 </td>
-                <td>{document.relatedCount ?? 0}</td>
-                <td><ReviewChip status={document.reviewStatus} /></td>
-                <td><span className="muted-cell">{document.lifecycleState.replaceAll("_", " ") || "Unknown"}</span></td>
+                <td role="cell" data-label="Related">{document.relatedCount ?? 0}</td>
+                <td role="cell" data-label="Document State"><span className="muted-cell">{document.lifecycleState.replaceAll("_", " ") || "Unknown"}</span></td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </section>
   );

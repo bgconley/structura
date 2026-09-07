@@ -1,68 +1,46 @@
-const navItems = [
-  ["I", "Inbox"],
-  ["S", "Search"],
-  ["A", "Automation"],
-  ["F", "Folders"],
-  ["S", "Smart Folders"],
-  ["R", "Review Queue"],
-  ["R", "Relationships"],
-  ["T", "Timelines"],
-  ["A", "Analysis"],
-  ["E", "Exports"],
-  ["S", "Settings"],
+import {useRef, useState} from "react";
+
+type WorkspaceView = "inbox" | "search" | "automation" | "review" | "relationships" | "timelines";
+const navItems: {icon: string; label: string; view: WorkspaceView}[] = [
+  {icon: "I", label: "Inbox", view: "inbox"},
+  {icon: "S", label: "Search", view: "search"},
+  {icon: "A", label: "Automation", view: "automation"},
+  {icon: "R", label: "Review Queue", view: "review"},
+  {icon: "R", label: "Relationships", view: "relationships"},
+  {icon: "T", label: "Timelines", view: "timelines"},
 ];
 
-export function Sidebar({
-  total,
-  active,
-  onNavigate,
-}: {
+export function Sidebar({total, active, onNavigate}: {
   total: number;
   active: string;
-  onNavigate: (view: "inbox" | "review" | "search" | "automation" | "relationships" | "timelines") => void;
+  onNavigate: (view: WorkspaceView) => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const toggle = useRef<HTMLButtonElement>(null);
   return (
-    <aside className="sidebar">
+    <aside className="sidebar" onKeyDown={(event) => {
+      if (event.key === "Escape" && expanded) {
+        event.preventDefault(); setExpanded(false); toggle.current?.focus();
+      }
+    }}>
+      <a className="skip-link" href="#route-content" onClick={(event) => {
+        event.preventDefault(); document.getElementById("route-content")?.focus();
+      }}>Skip to workspace</a>
       <div className="brand-row">
-        <span className="logo-mark" />
+        <span className="logo-mark" aria-hidden="true" />
         <strong>Structura</strong>
+        <button ref={toggle} className="navigation-toggle" type="button"
+          aria-expanded={expanded} aria-controls="primary-navigation" onClick={() => setExpanded(!expanded)}>
+          {expanded ? "Close menu" : "Menu"}
+        </button>
       </div>
-      <nav aria-label="Primary">
-        {navItems.map(([icon, label]) => (
-          <button
-            key={label}
-            id={`nav-${label.toLowerCase().replaceAll(" ", "-")}`}
-            className={
-              (label === "Inbox" && active === "inbox")
-              || (label === "Search" && active === "search")
-              || (label === "Automation" && active === "automation")
-              || (label === "Review Queue" && active === "review")
-              || (label === "Relationships" && active === "relationships")
-              || (label === "Timelines" && active === "timelines")
-                ? "active"
-                : undefined
-            }
-            type="button"
-            disabled={!["Inbox", "Search", "Automation", "Review Queue", "Relationships", "Timelines"].includes(label)}
-            onClick={() => {
-              if (label === "Review Queue") {
-                onNavigate("review");
-              } else if (label === "Automation") {
-                onNavigate("automation");
-              } else if (label === "Relationships") {
-                onNavigate("relationships");
-              } else if (label === "Timelines") {
-                onNavigate("timelines");
-              } else if (label === "Search") {
-                onNavigate("search");
-              } else {
-                onNavigate("inbox");
-              }
-            }}
-          >
-            <span>{icon}</span>
-            <em>{label}</em>
-            {label === "Inbox" ? <small>{total}</small> : null}
+      <nav id="primary-navigation" aria-label="Primary" className={expanded ? "expanded" : undefined}>
+        {navItems.map(({icon, label, view}) => (
+          <button key={view} id={`nav-${label.toLowerCase().replaceAll(" ", "-")}`}
+            className={active === view ? "active" : undefined} aria-current={active === view ? "page" : undefined}
+            type="button" onClick={() => {setExpanded(false); onNavigate(view);}}>
+            <span aria-hidden="true">{icon}</span><em>{label}</em>
+            {view === "inbox" ? <small>{total}</small> : null}
           </button>
         ))}
       </nav>

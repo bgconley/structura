@@ -1,0 +1,47 @@
+.document-table-scroll {
+  max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain;
+}
+.table-scroll-hint { margin: 0; padding: 6px 12px; color: var(--muted); font-size: 11px; }
+.document-table {
+  width: 100%; min-width: 1250px; border-collapse: collapse; table-layout: fixed;
+  font-size: 12px; line-height: 1.45; font-variant-numeric: tabular-nums;
+}
+.document-table th {
+  padding: 8px 10px; color: var(--muted); font-size: 11px;
+  font-weight: 500; text-align: left;
+}
+.document-table .document-title-column { width: 260px; }
+.document-table .document-review-column { width: 140px; }
+.document-table td {
+  height: 50px; padding: 8px 10px; border-top: 1px solid var(--line-soft);
+  color: var(--text-strong); overflow-wrap: anywhere; vertical-align: middle;
+}
+.document-table tbody tr { background: var(--panel); cursor: pointer; }
+.document-table tbody tr:hover { background: var(--raised); }
+.document-table tbody tr.selected { background: var(--blue-soft); box-shadow: inset 4px 0 0 var(--blue); }
+.document-table tbody tr:focus-visible { outline-offset: -2px; }
+.doc-cell { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; align-items: center; }
+.doc-cell strong, .doc-cell small { display: block; }
+.doc-cell strong { font-size: 12px; overflow-wrap: anywhere; }
+.doc-cell small { margin-top: 3px; color: var(--muted); font-size: 10px; }
+.document-table .review-chip { font-size: 11px; }
+
+@media (max-width: 760px) {
+  .table-scroll-hint { display: none; }
+  .document-table-scroll { overflow: visible; }
+  .document-table { min-width: 0; display: block; }
+  .document-table thead {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%);
+  }
+  .document-table tbody { display: grid; }
+  .document-table tbody tr {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
+    padding: 16px; border-top: 1px solid var(--line-soft);
+  }
+  .document-table td { display: block; height: auto; border: 0; padding: 0; min-width: 0; }
+  .document-title-cell { grid-column: 1 / -1; }
+  .document-table td[data-label]::before {
+    content: attr(data-label); display: block; font-size: 10px; color: var(--muted); margin-bottom: 3px;
+  }
+  .document-table .doc-cell strong { font-size: 13px; }
+}

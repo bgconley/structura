@@ -1,0 +1,70 @@
+/* Existing workspaces share breakpoints; component-specific density stays with its owner. */
+.inbox-panel-switch { display: none; }
+.quick-create { grid-template-columns: minmax(0, 1fr) auto; }
+.quick-create select { grid-column: 1 / -1; }
+.quick-create input, .quick-create select { min-width: 0; }
+.quick-create button { min-height: 32px; }
+.inspector-chips { flex-wrap: wrap; }
+.inspector h2, .viewer-card-title h2, .facts-panel, .relationship-workbench { overflow-wrap: anywhere; }
+.viewer-card, .page-rail, .facts-panel, .automation-card, .candidate-panel, .relationship-card { min-width: 0; }
+.viewer-heading, .viewer-card-title, .panel-title { flex-wrap: wrap; gap: 8px; }
+.panel-title { padding-top: 8px; padding-bottom: 8px; }
+.relationship-heading { flex-wrap: wrap; }
+.rule-builder, .watch-builder { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.automation-card input, .automation-card select { min-width: 0; width: 100%; }
+.detail-card dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.fact-row { grid-template-columns: 92px minmax(0, 1fr) 24px; }
+
+@media (max-width: 1180px) {
+  .home-grid { align-content: start; }
+  .inbox-panel-switch { display: flex; gap: 8px; padding: 12px 16px 0; }
+  .inbox-panel-switch button {
+    border: 1px solid var(--line); border-radius: 6px; background: var(--panel);
+    color: var(--text); min-height: 36px; padding: 8px 12px; font-size: 12px;
+  }
+  .inbox-panel-switch button[aria-pressed="true"] { background: var(--blue-soft); color: var(--blue); border-color: #bfdbfe; }
+  .home-grid[data-narrow-panel="documents"] > .inspector,
+  .home-grid[data-narrow-panel="details"] > .workspace { display: none; }
+  .home-grid[data-narrow-panel="details"] > .inspector { margin-top: 16px; }
+  .home-grid, .viewer-grid, .automation-grid, .relationship-workbench-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .inspector, .facts-panel { border: 1px solid var(--line); border-radius: 8px; margin: 0 16px 24px; }
+  .page-rail { min-height: auto; display: flex; gap: 12px; overflow-x: auto; padding: 12px; }
+  .page-rail button { flex: 0 0 auto; min-width: 44px; }
+  .viewer-card, .facts-panel { min-height: auto; }
+}
+
+@media (max-width: 760px) {
+  .workspace { display: flex; flex-direction: column; }
+  .workspace > .page-heading { order: 0; }
+  .workspace > .metrics-row { order: 1; }
+  .workspace > .filter-row { order: 2; }
+  .workspace > .document-panel { order: 3; }
+  .workspace > .organization-rail { order: 4; margin-top: 16px; }
+  .workspace > .pipeline-panel { order: 5; }
+  #route-content button { min-height: 40px; }
+  .workspace, .viewer-grid, .search-workbench, .automation-workbench, .relationship-workbench { padding: 16px 12px; }
+  .page-heading, .viewer-heading { margin: 4px 0 16px; }
+  .page-heading { flex-wrap: wrap; }
+  .page-heading > div { flex: 1 1 220px; }
+  .metrics-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stage-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .organization-rail, .inline-form, .rule-builder, .watch-builder { grid-template-columns: minmax(0, 1fr); }
+  .timeline-list button { grid-template-columns: minmax(0, 1fr); }
+  .timeline-controls, .timeline-controls label, .timeline-controls select { min-width: 0; max-width: 100%; }
+  .inspector, .facts-panel { margin: 0 12px 16px; }
+  .viewer-grid > .facts-panel { margin: 0; }
+  .viewer-card { padding: 12px; }
+  .rendered-page { width: 100%; height: auto; aspect-ratio: 0.77; margin-top: 16px; }
+  .evidence-focus, .quality-banner { width: 100%; }
+  .viewer-actions { margin: 14px 0 0; gap: 8px; flex-wrap: wrap; }
+  .viewer-actions a { flex: 1 1 auto; }
+  .choice-row { grid-template-columns: minmax(0, 1fr); }
+  .parse-debug-grid { grid-template-columns: minmax(0, 1fr); }
+  .automation-card { padding: 14px; }
+  .automation-list button, .rule-row, .suggestion-row, .watch-row, .merge-row { flex-wrap: wrap; overflow-wrap: anywhere; }
+  .detail-card dl { grid-template-columns: minmax(0, 1fr); }
+  .detail-card dd { margin-bottom: 10px; }
+  .row-actions, .suggestion-actions { justify-content: flex-start; }
+}

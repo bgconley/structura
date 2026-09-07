@@ -23,7 +23,7 @@ export function CorrectionValueInput({candidate, disabled, error}: {
           ? "Use a decimal amount such as 1234.56, without currency or grouping separators."
           : valueType === "boolean" ? "Choose true or false."
             : "Enter the corrected value shown by the source evidence.";
-  return <>
+  return <div className="correction-value-input">
     <label>
       Corrected value
       {valueType === "json" ? <textarea {...shared} rows={4} placeholder={'{"paid": false}'} />
@@ -36,5 +36,5 @@ export function CorrectionValueInput({candidate, disabled, error}: {
             placeholder={valueType === "datetime" ? "2026-09-07T14:30:00-04:00" : undefined} />}
     </label>
     <small id="correction-input-help">{hint}</small>
-  </>;
+  </div>;
 }

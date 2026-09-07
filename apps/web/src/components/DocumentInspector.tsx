@@ -69,7 +69,7 @@ export function DocumentInspector({
       </section>
       <section className="actions-block">
         <h3>Document actions</h3>
-        <button type="button" className="primary" onClick={openViewer}>Open viewer</button>
+        <button id="inbox-details-open-viewer" type="button" className="primary" onClick={openViewer} disabled={!detail}>Open viewer</button>
         {original ? (
           <a href={assetUrl(original.assetUrl)} download>
             Download original

@@ -174,7 +174,6 @@ export function SearchResults({
             >
               Save search
             </button>
-            <button type="button" className="primary">Create review set</button>
           </div>
         </aside>
       </div>

@@ -1,3 +1,4 @@
+import {useState} from "react";
 import type {DocumentDetail, DocumentOrganizationWrite, DocumentSummary, Folder, Tag} from "../types";
 import {DocumentInspector} from "./DocumentInspector";
 import {DocumentTable} from "./DocumentTable";
@@ -44,8 +45,20 @@ export function Inbox({
   onCreateTag: (name: string) => Promise<void>;
   onSaveOrganization: (documentId: string, payload: DocumentOrganizationWrite) => Promise<void>;
 }) {
+  // Navigation already records the originating action for Back focus restoration.
+  // Reveal that action's panel when returning from the dedicated source step.
+  const [narrowPanel, setNarrowPanel] = useState<"documents" | "details">(() =>
+    window.history.state?.structura?.focusId === "inbox-details-open-viewer" ? "details" : "documents");
   return (
-    <section className="home-grid">
+    <section className="home-grid" data-narrow-panel={narrowPanel}>
+      <nav className="inbox-panel-switch" aria-label="Inbox panels">
+        <button type="button" aria-pressed={narrowPanel === "documents"} onClick={() => {
+          setNarrowPanel("documents");
+          requestAnimationFrame(() => document.getElementById(`document-row-${selectedId}`)?.focus());
+        }}>Documents</button>
+        <button type="button" aria-pressed={narrowPanel === "details"} disabled={!detail}
+          onClick={() => setNarrowPanel("details")}>Selected document details</button>
+      </nav>
       <div className="workspace">
         <div className="page-heading">
           <div>
