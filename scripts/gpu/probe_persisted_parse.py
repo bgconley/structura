@@ -32,6 +32,7 @@ from lib.document_processing.parser_configuration import (  # noqa: E402
 )
 from lib.document_processing.service import DocumentProcessingService  # noqa: E402
 from lib.documents.access_policy import DocumentAccessContext  # noqa: E402
+from lib.evaluation.annotation_render_binding import rebind_annotation_renders  # noqa: E402
 from lib.evaluation.annotations import DocumentAnnotation  # noqa: E402
 from lib.evaluation.artifact_verification import verify_capture_source  # noqa: E402
 from lib.evaluation.capture_models import CaptureDeclaration  # noqa: E402
@@ -277,6 +278,46 @@ def score_persisted_run(
     }
 
 
+def freeze_reference(
+    source: ProbeSource,
+    *,
+    fixture: Path,
+    output_dir: Path,
+    commit: str,
+    annotation: DocumentAnnotation,
+) -> tuple[DocumentAnnotation, datetime]:
+    rebound = rebind_annotation_renders(
+        annotation,
+        original_path=source.stored.path,
+        original_asset_id=source.asset_id,
+        reference_page_paths={
+            page.page_number: fixture / f"page-{page.page_number}.png" for page in annotation.pages
+        },
+    )
+    recorded_at = datetime.now(UTC)
+    write_private(
+        output_dir / "source-annotation-original.json", annotation.model_dump(mode="json")
+    )
+    write_private(output_dir / "source-annotation.json", rebound.annotation.model_dump(mode="json"))
+    write_private(output_dir / "render-binding.json", asdict(rebound.record))
+    # Both immutable annotations and the exact-pixel transform are recorded before
+    # inference. The later case bundle freezes output hashes after capture.
+    write_private(
+        output_dir / "pre-inference-reference.json",
+        {
+            "annotation_sha256": artifact_digest(rebound.annotation),
+            "original_annotation_sha256": artifact_digest(annotation),
+            "original_sha256": annotation.original_sha256,
+            "matching_policy": "structura.parse_matching.v1",
+            "threshold_policy": "not_ratified",
+            "recorded_at": recorded_at.isoformat(),
+            "split": "synthetic_regression",
+            "source_commit": commit,
+        },
+    )
+    return rebound.annotation, recorded_at
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, required=True)
@@ -300,26 +341,19 @@ def main() -> int:
     original = (fixture / "original.tiff").read_bytes()
     if hashlib.sha256(original).hexdigest() != annotation.original_sha256:
         raise ValueError("Synthetic original does not match its pre-authored annotation.")
-    recorded_at = datetime.now(UTC)
-    # Pin references before inference; output bundle hashes freeze after capture.
-    write_private(
-        args.output_dir / "pre-inference-reference.json",
-        {
-            "annotation_sha256": artifact_digest(annotation),
-            "original_sha256": annotation.original_sha256,
-            "matching_policy": "structura.parse_matching.v1",
-            "threshold_policy": "not_ratified",
-            "recorded_at": recorded_at.isoformat(),
-            "split": "synthetic_regression",
-            "source_commit": commit,
-        },
+    source = register_source(args.output_dir, original)
+    annotation, recorded_at = freeze_reference(
+        source,
+        fixture=fixture,
+        output_dir=args.output_dir,
+        commit=commit,
+        annotation=annotation,
     )
     deployment = DeclaredParserDeployment(
         mode="live",
         served_model="qwen38-27b-bf16-oxcart",
         revision=args.deployment_revision,
     )
-    source = register_source(args.output_dir, original)
     client = ObservedClient(ingestion_vision_client(settings))
     runs = []
     for number in (1, 2):
