@@ -1,6 +1,6 @@
 # Structura Canonical Planning Index
 
-Last updated: 2026-04-28
+Last updated: 2026-09-07
 
 This workspace contains the original artifact pack at `pro-merged-master-v1.2/` plus the implementation planning documents below. Treat these root-level plans as the working implementation layer derived from the artifact pack and the user's clarified UI direction.
 
@@ -18,8 +18,23 @@ This workspace contains the original artifact pack at `pro-merged-master-v1.2/` 
 
 3. `STRUCTURA_PHASE_8_5_IMPLEMENTATION_PLAN.md`
    - Mandatory model-runtime and embedding-service foundation between Phase 8 and Phase 9.
-   - Captures the researched decision to make Qwen3-VL-8B and Granite 4.0 3B Vision equal priorities.
+   - Uses the selected Oxcart Qwen3.8-27B BF16 ingestion service under ADRs 0008/0009 for complete Qwen-native parsing and extraction, preserving original evidence, validation and review. Docling, Granite and 8B are historical/comparison paths.
    - Defines live model-service profiles, fixture quarantine rules, GPU placement, model-backed corpus gates, and Phase 9 prerequisites.
+
+4. [STRUCTURA_PRODUCTION_COMPLETION_PLAN.md](STRUCTURA_PRODUCTION_COMPLETION_PLAN.md)
+   - Current completion overlay for the root phase map, based on the September 2026 whole-project readiness review.
+   - Links product, extraction/retrieval and security/operations packages, the execution strategy, and a closure register covering every review finding and all 26 stories.
+   - Separates required v1 release gates from the subsequent completion of explicitly deferred extensions.
+   - Records accepted Oxcart 27B/Qwen-native parser decisions, proposed Blackbird ingestion/query embedding placement, and integration/quality/capacity gates.
+
+5. [ADR 0008 — Qwen3.8-27B ingestion](docs/adr/0008-qwen38-27b-ingestion.md)
+   - Accepted model selection; no further 8B-versus-27B selection gate.
+   - Defines truthful profile migration, shared-service integration and source-preserving simplification.
+
+6. [ADR 0009 — Qwen-native document parsing](docs/adr/0009-qwen-native-document-parsing.md)
+   - Accepts the full Qwen-native parser with a thin deterministic source layer and explicitly amends mandatory Docling/selection-only requirements.
+   - Requires full searchable structure, original evidence, truthful model provenance, historical compatibility, versioned cutover/rollback and Docling-free release gates.
+   - Docling is temporary migration/comparison support; original bytes and accepted-fact review rules retain their authority.
 
 ## Source Artifact Pack
 
@@ -137,6 +152,8 @@ Remote git URL: https://github.com/bgconley/structura.git
 ```
 
 After every local commit and push to GitHub, immediately SSH to the GPU node and pull the updated repository into `/tank/repos/structura`. If the checkout does not exist yet, create `/tank/repos` as needed and clone the repository into `/tank/repos/structura`.
+
+Current topology note: Oxcart's `/tank/repos/structura` resolves to `/tank/work/repos/structura`, which Blackbird mounts over NFS. Update that shared checkout once, from Oxcart, with an inspected fast-forward pull; do not run simultaneous git mutations from both hosts. The completion plan reuses Oxcart's existing 27B service and archive/control plane; Blackbird's PRO 4000 is proposed for retrieval embeddings. Follow [ADR 0007](docs/adr/0007-blackbird-production-validation-topology.md), [ADR 0008](docs/adr/0008-qwen38-27b-ingestion.md) and the [execution strategy](docs/plans/production-completion/execution.md) before using GPU bringup scripts on the new topology.
 
 Application virtual environments must be created under `/tank/venvs`, not inside the repository and not under `/tank/repos`.
 

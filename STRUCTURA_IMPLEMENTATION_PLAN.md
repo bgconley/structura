@@ -1,14 +1,22 @@
 # Structura End-To-End Implementation Plan
 
-Last updated: 2026-04-24
+Last updated: 2026-09-07 (completion overlay added; original phase sequencing retained)
 
 This is the working canonical implementation plan for Structura. It is derived from `pro-merged-master-v1.2/`, with the user's clarification that Markdown files are the default working source for duplicate artifact pairs so long as there is no material Markdown/DOCX drift.
+
+## Production Completion Overlay — 2026-09-07
+
+Use [STRUCTURA_PRODUCTION_COMPLETION_PLAN.md](STRUCTURA_PRODUCTION_COMPLETION_PLAN.md) for the current gap-remediation packages, execution strategy, story traceability and release evidence gates. It incorporates the [production readiness review](docs/reviews/2026-09-07-production-readiness-review.md) and preserves this document's phase order, including the Phase 8.5 gate before Phase 9. Phase 9–12 feature and release work remains incomplete; historical phase checks do not establish current production readiness.
+
+The completion plan starts from reviewed feature head `d2820a8`; reconcile the actual local, origin and deployment candidate before implementation or milestone validation. [ADR 0008](docs/adr/0008-qwen38-27b-ingestion.md) records the user's accepted choice of the existing **Qwen3.8-27B BF16 service on Oxcart** for ingestion. It replaces ADR 0006's 8B model choice while preserving source/evidence/validation/review rules and defining a measured simplification path. [ADR 0007](docs/adr/0007-blackbird-production-validation-topology.md) now assigns Blackbird's PRO 4000 to proposed retrieval embeddings. Model selection is settled; adapter integration and release quality/capacity gates remain open. Historical model-placement references below describe earlier implementations, not permission to restart the resident service or deploy the former ensemble.
+
+[ADR 0009](docs/adr/0009-qwen-native-document-parsing.md) makes Qwen-native full-document parsing the target architecture. A thin PDF/image source layer provides page inventory, rendering, coordinate transforms and available native text; Qwen produces a complete searchable, versioned, provider-neutral structural parse. Docling-specific phase requirements below describe the previous implementation where explicitly amended by ADR 0009. Preserve original evidence, full text/tables/reading order, historical locators and review policy. Require Docling-free ingestion, indexing, Viewer navigation and parser recovery before retiring the legacy worker. Blackbird's embedding role covers document/chunk/page ingestion and reindexing as well as query embeddings at search time.
 
 ## Non-Negotiable Product Rules
 
 - Structura is a local-first document workbench, not a generic PDF chatbot.
 - Original uploaded bytes are immutable and remain the document source of truth.
-- Docling canonical artifacts, page records, element records, chunks, previews, and model artifacts are structural derivatives.
+- Versioned canonical parse artifacts, page records, element records, chunks, previews and model artifacts are structural derivatives with truthful native/model origins. Historical Docling artifacts remain readable; new Qwen output must not be relabeled as Docling/native text.
 - `canonical_fields` and `canonical_line_items` are the default accepted-fact read model for UI, filtering, filing, search enrichment, and export.
 - Candidate tables remain review inputs and provenance records.
 - Trusted extracted values require evidence with page number plus a concrete locator: bounding box, element id, table row, text span, or source excerpt.
@@ -797,8 +805,8 @@ Tasks:
 
 - Implement model gateway abstraction.
 - Support Docling-only extraction path where sufficient.
-- Use Granite for receipts, invoices, EOBs, KVPs, tables, line items.
-- Use Qwen for handwriting, ambiguous layouts, OCR rescue, semantic arbitration.
+- Keep typed receipt/invoice/EOB/KVP/table contracts provider-independent. Phase 8.5 completion uses the selected Oxcart Qwen3.8-27B service; the original Granite value path is superseded.
+- Use the selected Qwen service for classification, grounded selection and difficult-page interpretation, retaining source evidence and review policy.
 - Persist raw model output assets.
 - Persist `document_extractions`.
 - Normalize output into `field_candidates` and `line_item_candidates`.
@@ -814,8 +822,7 @@ Tasks:
 
 - Implement authority matrix:
   - Docling: structure and grounding.
-  - Granite: tables, KVPs, line items.
-  - Qwen: classification, OCR rescue, handwriting, arbitration.
+  - Qwen3.8-27B: classification, grounded selection, structured/vision candidates under ADR 0008.
   - Validators: deterministic promotion/rejection.
   - Human: final override.
 - Promote candidates only when evidence, schema validation, deterministic validation, confidence, and policy allow.
@@ -1087,17 +1094,17 @@ Required phase artifact to review:
 Tasks:
 
 - Quarantine deterministic embedding/extraction gateways as fixture-only test adapters.
-- Use Qwen3-VL-8B-Instruct-FP8 on `model-qwen-semantic` as the default Smart Parse semantic planner and inventory path.
+- Integrate the existing Oxcart Qwen3.8-27B BF16 service as the sole generative ingestion backend, with a new truthful profile and explicit task/schema/budget handling. The current `model-qwen-semantic` 8B configuration is migration input, not the selected deployment target.
 - Do not run hidden second-pass or escalation Qwen paths; uncertainty routes to `needs_human_review`, `insufficient_signal`, `no_extraction_target`, or a classified skip instead of automatic escalation.
-- Default the live vision fallback to the resident Qwen3-VL-8B-Instruct-FP8 service for exceptional difficult pages and text-lane abstentions.
-- Keep Granite available only through explicit rollback/comparison profiles after the E4 A/B gate; Granite is absent from the default live runtime.
+- Implement full Qwen-native parsing and extraction under ADR 0009 using the same resident 27B. Replace mandatory Docling with thin page inventory/rendering/native-text handling and versioned provider-neutral pages/elements/tables/chunks. Preserve full searchable wording, original-coordinate evidence, truthful native/model origins and historical artifacts.
+- Keep genuine Granite history and optional explicit comparison profiles; no Granite A/B win is a current release prerequisite. Granite is absent from the default live runtime.
 - Add a closed-world extraction planner with queryable plan persistence, explicit contract registry, family/schema compatibility, grounding checks, bounded fanout, and skip/abstention reporting before extractive fallback work is enqueued.
-- Add an internal region envelope as the authoritative intermediate between model-output schemas and candidate insertion, with `normalization_json` retained only as a compatibility projection.
+- Complete E5 authoritative claims and per-document orchestration under ADR 0006 as amended by ADR 0009; region envelopes and `normalization_json` become compatibility projections rather than parallel value authorities. Fence current parse/projection publication by run generation, preserve human corrections and version historical evidence through rerun/reindex/rollback.
 - Add Structura-owned evidence concretization, candidate admission gates, queryable admission telemetry, and planner/candidate/reconciliation dedupe so prompt artifacts, placeholders, evidence-less facts, incompatible candidates, and duplicate aggregate copies cannot be admitted.
 - Add run manifests, repeatability fingerprints, resident-corpus reliability reports, and truth/review/debug surface separation before Phase 9 consumes model-backed outputs.
 - Add per-document release outcomes, abstention classes, holdout labels, and overfitting guards to resident-corpus reliability reports so model-backed gates prove generalization instead of pinned-corpus memorization.
-- Implement live text embedding service on the RTX 3090 with 1536-dimensional vectors.
-- Implement true visual embedding service for page/image bytes with native 2048-dimensional vectors.
+- Implement real 1536-dimensional text embedding service on the measured deployment profile; Blackbird's PRO 4000 is the current proposed text/visual retrieval location, replacing the historical RTX 3090 assumption.
+- Implement true visual embedding service for page/image bytes with native 2048-dimensional vectors. Blackbird's text/visual services encode ingestion/reindex document chunks and pages plus compatible search queries.
 - Add model profile registry, model health, redacted observability, pinned Compose profiles, and model-backed corpus gates.
 
 Done:
@@ -1119,7 +1126,8 @@ Done:
 
 Phase 8.5 gate:
 
-- Qwen3-VL, text embeddings, and visual embeddings pass deterministic tests plus GPU live model validation; Granite comparison runs are explicit rollback evidence, not default runtime requirements.
+- The selected Qwen3.8-27B ingestion profile and real text/visual embedding profiles pass authenticated adapter, deterministic, corpus and concurrent-workload gates. Measure the impact on existing Oxcart clients. Granite comparison runs are optional evidence, not default runtime requirements.
+- The full Qwen-native pipeline passes annotated text/structure/field/evidence gates with Docling disabled, including ingestion, indexing, search, Viewer navigation and parser recovery. Native/model origins remain truthful; generated transcript matches cannot independently verify themselves. Retire legacy converter requirements only after scoped cutover/rollback proof, preserving original and historical evidence.
 - Model-backed golden corpus evidence exists for handwriting, structured extraction, text retrieval, visual retrieval, and hybrid retrieval.
 - The resident corpus passes the Phase 8.5 reliable-extraction hard invariants: no missing extraction contracts, no missing grounding, no incompatible family/schema tasks, no missing deterministic-baseline telemetry, no prompt/placeholder/literal-null candidates admitted, no admitted candidates without concrete evidence, no model-backed semantic-region rows auto-accepted, no fabricated canonical required fields, no aggregate rows without run lineage, and no duplicate current aggregate rows after retry.
 - Model-backed acceptance reports include `documentOutcomes` and `documentOutcomeSummary`; they must include a private holdout or synthetic-adversarial slice, reject prompt-tuned holdouts, and report zero `pipeline_failed` outcomes unless the run intentionally injects runtime failures.

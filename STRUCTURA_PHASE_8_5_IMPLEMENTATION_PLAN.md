@@ -1,35 +1,32 @@
 # Structura Phase 8.5 Model And Embedding Services Implementation Plan
 
+Current completion tracking: [STRUCTURA_PRODUCTION_COMPLETION_PLAN.md](STRUCTURA_PRODUCTION_COMPLETION_PLAN.md), its [extraction/retrieval packages](docs/plans/production-completion/extraction-retrieval.md), and accepted [ADR 0008](docs/adr/0008-qwen38-27b-ingestion.md)/[ADR 0009](docs/adr/0009-qwen-native-document-parsing.md). The user selected the existing Oxcart **Qwen3.8-27B BF16** service and Qwen-native parsing. Model/parser direction is complete; implementation, migration, source fidelity and release gates remain open. These documents preserve the Phase 8.5 stop point. Historical Docling/8B/Granite task instructions and launch commands below are migration context, not the current execution checklist or proof of 27B readiness.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace Phase 8 fixture/fake model behavior with real local model services for the intended Docling -> Qwen3-VL-8B-Instruct-FP8 semantic planning -> extractive-first text lanes -> exceptional Qwen vision fallback pipeline, before Phase 9 analysis begins. Granite is retained only for explicit rollback/comparison gates after E4.
+**Goal:** Implement Qwen-native full-document parsing and extraction on the existing Oxcart Qwen3.8-27B BF16 service under [ADR 0009](docs/adr/0009-qwen-native-document-parsing.md). Preserve original evidence, complete searchable structure, truthful provenance, validation and review. Docling is temporary migration/comparison support. Complete real text/visual embeddings on the proposed Blackbird PRO 4000 for both ingestion/reindexing and search queries before Phase 9.
 
 **Architecture:** Phase 8.5 inserts a model-runtime foundation between Phase 8 and Phase 9. API, workers, and services keep deterministic fixture adapters for tests, but production/live GPU mode must use explicit HTTP model adapters with truthful provenance, bounded inputs, dimension validation, and model-backed golden evidence.
 
-**Tech Stack:** FastAPI/Python workers, PostgreSQL/pgvector, Docker Compose profiles, vLLM/OpenAI-compatible model APIs, TEI-compatible embedding APIs, Qwen3-VL-8B-Instruct-FP8 semantic annotation and exceptional vision fallback, optional Granite 4.0 3B Vision rollback/comparison profiles, Qwen3-Embedding, Qwen3-VL-Embedding, RTX PRO 4000 Blackwell SM120 GPUs, RTX 3090.
+**Tech Stack:** FastAPI/Python workers, PostgreSQL/pgvector, Docker Compose profiles, authenticated existing Oxcart Qwen3.8-27B BF16 serving, explicit task/schema adapters, Qwen3-Embedding and Qwen3-VL-Embedding on a measured retrieval profile. Blackbird's 24 GB PRO 4000 is proposed for embeddings; its Gemma service is excluded.
 
 ## Phase 8.5 Realignment
 
-Canonical default pipeline:
+Selected target pipeline, pending implementation and migration:
 
 ```text
-Docling physical parse
--> Qwen3-VL-8B-Instruct-FP8 smart semantic annotation
--> extractive-first text lanes
--> exceptional Qwen vision fallback for difficult pages and text-lane abstentions
+Immutable original + lightweight page inventory/rendering/native-text layer
+-> Qwen3.8-27B BF16 full structural parse and bounded extraction on Oxcart
+-> versioned searchable text, pages/elements/tables/chunks and typed candidates
 -> validators / provenance / review policy
 -> canonical facts + evidence/search layer
 ```
 
-Granite 4.0 3B Vision remains available only through explicit rollback or
-comparison profiles after the E4 gate. It is no longer part of the default live
-runtime path.
+27B also owns classification and semantic planning through distinct task contracts. ADR 0009 replaces mandatory Docling and selection-only extraction; native parsing is the implementation target. The original remains the source, while Qwen's parse is the current derived structural representation. Preserve native/model origins through all consumers: copying Qwen transcription does not make it independently verified. Docling, Granite and 8B retain historical/comparison lineage without a release veto. No model output bypasses validation or review.
 
 Active operator-visible modes:
 
-- `smart`: default Qwen3-VL-8B-Instruct-FP8 semantic pass using the same
-  semantic manifest contract and Docling-grounded harness as the original 2B/4B
-  path.
+- `smart`: planned 27B semantic task with explicit current model/prompt/schema lineage; migrate the existing manifest harness without relabeling historical records.
 - `review_only`: uncertain output routes to review without hidden automatic
   escalation.
 
@@ -56,46 +53,47 @@ Phase 8 shipped the product seams for difficult-document detection, visual retri
 
 - Visual embeddings are not allowed to be descriptor-text or byte-hash fixtures in live mode. They must be generated from image content by a real visual embedding model.
 - Qwen provenance is not allowed unless Qwen was actually invoked.
-- Granite 4.0 3B Vision is a first-class requirement for structured documents, because bills, invoices, EOBs, statements, forms, tables, and charts need layout-preserving extraction for later querying and analysis.
+- Layout-preserving searchable parsing and extraction are required for ordinary prose, bills, invoices, EOBs, statements, forms, tables and charts. ADR 0009 supersedes the previous mandatory Docling/selection-only pipeline. Historical converter output remains readable; the new pipeline must work with Docling disabled.
 - Phase 9 analysis must not be built on fake model outputs, unverified structure extraction, or undocumented model service assumptions.
 
 Phase 8.5 is therefore a mandatory stop point before Phase 9.
 
 ## Final Model Priority Decision
 
-Treat Qwen3-VL-8B-Instruct-FP8 semantic annotation and Qwen vision fallback as
-the default implementation priorities. Default Smart Parse uses the FP8 8B
-semantic service directly, and there is no separate active High Quality or rescue
-Qwen service. Granite is no longer a default live-runtime dependency after the
-E4 A/B gate; use `granite-live` only for rollback or comparison.
+Use the existing Qwen3.8-27B BF16 Oxcart service for all generative ingestion roles. Prioritize truthful profile/adapter/schema migration and bounded same-27B simplification before further work specific to the older model arrangement. There is no separate automatic High Quality/rescue service. Granite is an optional historical/comparison path. A new 8B-versus-27B benchmark is not a model-selection prerequisite.
 
-Qwen3-VL-8B-Instruct-FP8 owns:
+Qwen3.8-27B BF16 owns:
 
-- smart semantic annotation over Docling-grounded pages and regions;
-- bounded routing metadata for extractive fallback work;
-- ambiguity flags and review hints that do not become canonical facts.
+- full searchable transcription, structure, reading order and tables grounded to original pages;
+- semantic annotation and bounded routing metadata over versioned source/parse IDs;
+- ambiguity flags and review hints that do not become canonical facts;
+- classification, table/KVP selection and bounded extraction candidates under explicit task contracts and source verification.
 
 Uncertainty stays on review/skip/abstention paths until a future explicit plan
 re-evaluates a separate escalation runtime.
 
-Qwen vision fallback owns:
+Bounded Qwen visual tasks cover:
 
-- exceptional low-text or difficult-page visual extraction;
-- text-lane abstentions that still need bounded visual review;
-- review-required values with quote verification when text exists.
+- ordinary and difficult-page structural parsing from original page images;
+- extraction with original-coordinate evidence and explicit missing/ambiguous content;
+- review-required model values; matching a model's own transcript is not independent verification.
 
 Text embeddings own:
 
+- document/chunk encoding during ingestion and reindexing, plus compatible query encoding at search time;
 - default text-heavy retrieval;
 - chunk and document retrieval;
 - filter-aware semantic search from Phase 5.
 
 Visual embeddings own:
 
+- selected original-page encoding during ingestion/reindexing, plus compatible visual-search query encoding;
 - selective image/page retrieval for low-text, handwriting, degraded, image-heavy, or layout-distinctive pages;
 - visual search candidate recall, not canonical fact authority.
 
-## Research Evidence Summary
+## Historical research evidence summary
+
+The following research informed the former topology. It does not override ADR 0008 or require a new 27B fit/quantization experiment on Blackbird. Keep actual embedding model/dimension compatibility; remeasure their proposed Blackbird deployment.
 
 Research was collected under `.firecrawl/model-serving-research/`. Important source conclusions:
 
@@ -131,36 +129,27 @@ Primary source URLs:
 - Keep model services isolated from API/web images. Do not add Qwen, Granite, Torch CUDA, vLLM, TEI, or NVIDIA stack dependencies to the API image unless an explicit ADR approves it.
 - Deterministic gateways are test fixtures only. In live GPU validation, they must be disabled or clearly reported as fixture mode.
 - A model output may claim `source_engine = qwen` or `source_engine = granite` only when the corresponding live model adapter successfully invoked that service.
-- Do not auto-run Qwen3-VL 8B during default ingest, default private corpus validation, or ordinary `needs_review`.
+- Default ingestion uses the selected 27B profile. Do not auto-run a second semantic pass or silently fall back to 8B/Granite on ordinary `needs_review`.
 - Do not treat low confidence, high-risk document family, or human-review policy as `pipeline_failed`.
 - Do not conflate human review required with extraction failure.
 - Do not let Qwen annotations become canonical facts or Granite candidates bypass validators/review policy.
 - Do not create repeated rescue loops or unbounded semantic/Granite fanout.
 - Do not log raw document text, image bytes, prompts, responses, object paths, presigned URLs, or model input file paths.
 - Model services must not fetch arbitrary external URLs. Pass sanitized local files mounted under a narrow allowed directory or base64 payloads through internal-only APIs.
-- Model service ports stay bound to `127.0.0.1` or Docker-internal networking unless a later operations ADR explicitly exposes them.
+- Use the existing authenticated Oxcart endpoint and restricted cross-host retrieval endpoints under ADRs 0007/0008; no public model exposure or broad raw-storage mount is implied.
 - Every model call must have timeout, max input size, retry/dead-letter semantics, model profile metadata, and redacted error behavior.
 
 ## Tightened Execution Order
 
-1. Lock contracts and tests around explicit Qwen3-VL 8B intent.
-2. Persist semantic intent fields in semantic and Granite extraction job payloads.
-3. Keep uncertainty on the review/skip path; do not introduce a default rescue
-   policy or hidden second Qwen pass.
-4. Enforce Smart Parse and Granite job dedupe/caps in
-   `lib/semantic_annotations/jobs.py` and the planner.
-5. Fix `scripts/gpu/run_phase8_5_private_corpus.py` so standard mode is Docling
-   -> smart semantic -> Granite -> validation -> visual embedding.
-6. Keep standard/private/resident corpus runs on the Smart Parse path unless a
-   future explicit plan reintroduces separate escalation.
-7. Keep Viewer/API controls limited to Smart Parse diagnostics in the active
-   runtime.
-8. Run standard private corpus, Qwen3-VL-8B FP8 semantic JSON, Granite targeted extraction,
-   visual embedding, and CI gates as separate evidence streams.
-9. Before full corpus reruns after semantic changes, run the semantic-only canary
-   (`scripts/gpu/run_phase8_5_semantic_canary.py`) to inspect Docling audit
-   anchors, Qwen document-family votes, image fan-in/fallback telemetry, and
-   target-schema fit decisions without enqueuing Granite.
+1. Register the new 27B engine/task profiles, endpoint authentication, schemas, bounded final-answer parsing and truthful lineage under X-01/ADR 0008.
+2. Remove 8B-specific identity assumptions from adapter/schema/budget selection and align runtime config, provenance, UI and reports without rewriting historical identities.
+3. Integrate shared job/run ownership before domain publication; preserve uncertainty as review/partial/abstention rather than automatic escalation.
+4. Prove authenticated 27B semantic, classification, selection and image extraction calls, adapting the existing semantic canary to the selected profile before full-corpus work.
+5. Implement thin source handling and the provider-neutral full parse contract under ADR 0009/X-01/X-03. Migrate `docling_json` and hardcoded Docling origins before new output reaches claims, review or indexing. Preserve ordinary full text, all pages, tables, continuation, exact native source when useful and honest model transcription.
+6. Complete authoritative claims, per-document orchestration and atomic current-parse/projection activation. Preserve historical evidence and later human corrections across rerun/reindex/rollback. Retire legacy converter dependencies only after Docling-free functionality and parser recovery gates.
+7. Adapt provider-neutral scoring and private/resident corpus runners for actual 27B outputs. Old-model comparisons are optional; annotated source truth and release gates remain required.
+8. Validate real text/visual embeddings on the measured Blackbird profile alongside shared Oxcart ingestion/client load. Do not recreate the resident 27B model or borrow Blackbird's occupied PRO 6000.
+9. Record current-model full-parse and extraction quality against annotated originals, UI/evidence, security/race/outage and concurrent-workload acceptance with Docling disabled before Phase 9. Docling agreement is not a gate.
 
 ## Required Artifact Set
 
@@ -194,29 +183,27 @@ Fresh context for the whole phase:
 
 ## Hardware And Runtime Topology
 
-Canonical GPU placement:
+Accepted model direction and proposed retrieval placement:
 
 ```text
-P620 Blackwell node, GPU 0:
-  model-qwen-semantic
-  Qwen3-VL-8B-Instruct-FP8 smart semantic annotation.
+Oxcart, existing shared generation service:
+  Qwen3.8-27B BF16
+  served model qwen38-27b-bf16-oxcart, host port 18012
+  full structural parsing / classification / semantic / extraction task contracts
 
-P620 Blackwell node, GPU 1:
-  model-vl-embed
-  Qwen3-VL-Embedding-2B at native 2048 dimensions.
+Blackbird, PRO 4000 GPU 1 (proposed retrieval deployment):
+  text embedding model, compatible 1536-dimensional vectors
+  visual embedding model, compatible native 2048-dimensional vectors
+  encode ingestion/reindex document chunks and pages plus search queries
+  measure co-residency, query latency and indexing backlog
 
-Explicit rollback/comparison profile only:
-  model-granite
-  Granite 4.0 3B Vision.
-
-RTX 3090 node:
-  model-embed
-  Qwen3-Embedding-4B via TEI-compatible serving at 1536 dimensions.
+Blackbird, PRO 6000 GPU 0:
+  existing unrelated Gemma service; excluded
 ```
 
-Do not assume two 24 GB Blackwell cards can be treated as one 48 GB pool. Use one major service per card unless tensor parallelism is separately benchmarked and documented.
+Reuse the authenticated Oxcart endpoint without changing its resident service configuration. Measure Structura admission and impact on existing clients separately from Blackbird embedding capacity. See ADRs 0007/0008 and the completion execution strategy for ownership, NFS and rollback boundaries.
 
-Default live profiles:
+Pre-migration live settings retained as migration input (not the selected 27B configuration):
 
 ```text
 STRUCTURA_MODEL_MODE=live
@@ -238,6 +225,8 @@ STRUCTURA_MODEL_MODE=fixture
 Fixture mode is allowed in unit tests, deterministic CI, and local no-GPU development. Fixture mode is not acceptable for Phase 8.5 live gate completion.
 
 ## Model Profile Registry
+
+Migration note: the registry, runtime examples and Tasks 1–13 below retain original Docling/8B/Granite/3090 design detail. Their mandatory converter/provider choices, selection-only contract, provider-specific schema/origin fields and deployment commands are superseded by ADRs 0008/0009 and X-01–X-08. Preserve unchanged evidence/security semantics while implementing converter-neutral parse contracts, new 27B task profiles and truthful historical compatibility. Do not execute old bringup commands against the existing Oxcart service or treat an old profile constant as the 27B identity.
 
 Create an explicit registry in code. The registry must make model identity, dimensions, modality, runtime backend, profile version, and expected service contract inspectable.
 
@@ -1294,27 +1283,28 @@ Validation rules:
 
 ## Phase 8.5 Gate
 
-Phase 8.5 is complete only when all of the following are true:
+Phase 8.5 is complete only when all of the following are true, together with the completion plan's current G3 criteria:
 
 - Fixture gateways are explicitly named as fixtures and cannot claim Qwen/Granite provenance.
-- Default ingest uses Docling -> Qwen3-VL-8B-Instruct-FP8 semantic planning -> extractive-first text lanes -> exceptional Qwen vision fallback.
+- Default ingest uses the selected Oxcart Qwen3.8-27B BF16 profile with original page images and available native text under ADR 0009. Full searchable structure, source/evidence verification and review work end to end with Docling disabled. Parse, extraction and planning contracts preserve separate origins; model transcription cannot certify itself.
+- Provider-neutral parse/version migrations, generation-aware indexes and scoped rollback preserve genuine historical artifacts, evidence navigation and later human corrections. Parser recovery works without Docling; full archive restore follows the later OPS-02 release gate.
 - No hidden second-pass Qwen escalation runs from validation/review policy.
 - Document-quality ambiguity routes to review states, not job failure.
 - Runtime/system failures are the only `pipeline_failed` cases.
 - Uncertainty remains on review, skip, or abstention paths; separate Qwen
   rescue/escalation is not part of the active runtime.
 - Private corpus standard mode does not secretly run High Quality.
-- Qwen3-VL-8B FP8, historical/canary Qwen profiles, and optional Granite comparison adapters persist truthful provenance only when invoked.
+- Current 27B calls and historical/canary/comparison profiles persist truthful actual-adapter identity; existing 8B rows are not relabeled and 27B cannot bypass model-backed review through an old allowlist.
 - Granite 4.0 3B Vision live adapter is optional rollback/comparison infrastructure and is not required by the default live runtime.
 - Text embeddings use a real embedding service in live mode and persist 1536-dimensional vectors.
 - Visual embeddings use a real visual embedding service in live mode and persist 2048-dimensional vectors generated from image inputs.
 - Deterministic CI remains green without GPU services.
-- GPU live validation proves model services respond on the canonical GPU node.
+- Authenticated real-adapter validation proves 27B text/image/structured behavior and the selected text/visual retrieval endpoints. Concurrent ingestion/search and other Oxcart-client impact are measured against bounded admission budgets.
 - Model-backed golden corpus evidence exists for handwriting, structured tables/KVPs, text retrieval, visual retrieval, and hybrid retrieval.
 - Model service health is visible without leaking private content.
 - Phase 9 plan is updated to depend on Phase 8.5.
 
-Current measured evidence at commit `e8bb26b` proves the two-document
+Historical measured evidence at commit `e8bb26b` proves the two-document
 model-backed UAT pipeline on the GPU node, but it is not a full release-gold
 proof. Reports
 `/srv/structura/objects/exports/phase85-runs/uat-e8bb26b/20260613T053814Z-uat-e8bb26b-pass-1-report.json`
@@ -1344,7 +1334,7 @@ docker compose config -q
 docker compose --profile extraction --profile search --profile relationships --profile automation --profile visual --profile models-placeholder config -q
 ```
 
-Required GPU live checks:
+Historical GPU live command example — superseded by the Oxcart 27B integration and Blackbird embedding strategy. Adapt managed scripts and profile/authentication/report contracts first; do not run this example to recreate shared inference. Current required live checks are X-01/X-06/X-07/X-08 and the completion execution strategy.
 
 ```bash
 docker compose --profile models-live --profile visual-embed-live up -d model-qwen-semantic model-vl-embed
@@ -1379,7 +1369,7 @@ After Phase 8.5 is implemented and verified, stop and report:
 
 - model profiles implemented;
 - services and GPU placement used;
-- Qwen, Granite, text embedding, and visual embedding evidence;
+- selected 27B ingestion, text embedding and visual embedding evidence; optional historical/comparison results labeled separately;
 - fixture-vs-live behavior;
 - model-backed corpus results;
 - GPU validation commands and results;

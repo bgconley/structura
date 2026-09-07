@@ -7,6 +7,10 @@ Date: 2026-06-10
 Accepted - supersedes the generative-extraction value path planned in
 ADR 0004/Phase 8.5; preserves and builds on ADR 0005.
 
+2026-09-07 amendment: [ADR 0008](0008-qwen38-27b-ingestion.md) supersedes X3's specific 8B model choice with the existing Oxcart Qwen3.8-27B BF16 service. Source, claim, validation and review rules remain applicable. ADR 0008 defines a bounded same-model simplification experiment; any further departure from selection-only text extraction must be recorded and pass source-fidelity gates before activation. The original decisions below retain their historical wording.
+
+Later 2026-09-07 amendment: [ADR 0009](0009-qwen-native-document-parsing.md) accepts Qwen-native full-document parsing with a thin deterministic source layer. It supersedes mandatory Docling parsing and selection-only extraction, including the experimental-only posture in the preceding amendment. Original preservation, truthful native/model provenance, evidence, claims, validation and human-review rules remain required. Docling-specific and selection-only decisions below describe the previous architecture where they conflict with ADR 0009.
+
 ## Context
 
 The Phase 8.5 pipeline extracts canonical values by rendering page images and

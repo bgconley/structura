@@ -26,6 +26,14 @@ annotation/model-runtime foundation in progress:
 - Phase 8 difficult-document quality detection, review-required uncertainty, selective fixture visual byte embeddings, Qwen-eligible handwriting fallback with honest Docling provenance until live mode is enabled, visual/hybrid retrieval policy, and difficult-document Viewer/Search/Review cues
 - Phase 8.5 semantic annotation manifests, Qwen3-VL-8B Smart Parse semantic planning on `model-qwen-semantic`, extractive-first text lanes, Qwen vision fallback for exceptional difficult pages, semantic worker/runtime profile, bounded internal model HTTP clients, fixture-vs-live mode separation, model service health snapshots, and model-corpus gate scaffolding
 
+## Production Completion
+
+The [September 2026 readiness review](docs/reviews/2026-09-07-production-readiness-review.md) assesses the current project as an engineering beta, with substantial tested foundations and unresolved product, integrity, model-quality and operational gates. Use the [production completion plan](STRUCTURA_PRODUCTION_COMPLETION_PLAN.md), [execution strategy](docs/plans/production-completion/execution.md) and [closure register](docs/plans/production-completion/closure-register.md) to finish the application against the spec and all 26 stories. The root implementation plan remains the phase map.
+
+The selected ingestion model is **Qwen3.8-27B BF16, already running on Oxcart**, under [ADR 0008](docs/adr/0008-qwen38-27b-ingestion.md). This is an accepted plan decision; the existing 8B application profiles still require adapter/schema/provenance migration and authenticated validation. Blackbird's available PRO 4000 is proposed for dedicated text/visual retrieval embeddings. The [topology ADR](docs/adr/0007-blackbird-production-validation-topology.md) requires measured concurrent ingestion/search capacity and protection of existing Oxcart clients. Existing GPU scripts need target/ownership guards before use; do not recreate the resident 27B service as routine Structura setup.
+
+The accepted target is **Qwen-native full-document parsing and extraction** under [ADR 0009](docs/adr/0009-qwen-native-document-parsing.md), with lightweight source-page handling and a complete versioned searchable parse. Docling remains temporary migration/comparison support. Blackbird's embedding role covers document/chunk/page ingestion and reindexing as well as query encoding. Implementation must preserve original evidence, historical artifacts and human corrections, and pass end-to-end gates with Docling disabled. The implemented feature list above describes the current code, which still needs this migration.
+
 ## Local Commands
 
 ```bash
@@ -63,6 +71,8 @@ Model placeholders are behind a separate profile. They are health placeholders o
 ```bash
 docker compose --profile models-placeholder up model-granite-placeholder model-embed-placeholder model-vl-embed-placeholder
 ```
+
+The following describes the pre-migration implementation, not the selected 27B deployment. Use the completion execution strategy to integrate the existing Oxcart endpoint; the managed smoke command below must be adapted before it can validate the new topology.
 
 Live Phase 8.5 model services are behind explicit profiles. Compose defaults use
 `voipmonitor/vllm:cu130` for Qwen Smart Parse/Qwen vision fallback and visual
