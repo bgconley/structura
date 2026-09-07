@@ -12,10 +12,10 @@ from fastapi.testclient import TestClient
 
 from apps.api.structura_api.main import create_app
 from lib.auth import AuthService, hash_secret
+from lib.automation import service as automation_service
 from lib.config import get_settings
 from lib.contacts import repository as contact_repository
 from lib.db.connection import db_connection
-from lib.documents import access_repository
 from lib.jobs import JobService
 from lib.relationships import relationship_repository
 from lib.relationships import service as relationship_service
@@ -488,7 +488,8 @@ def test_filing_suggestion_rechecks_access_after_blocked_refile(archive, monkeyp
         VALUES (%s,%s,'suggest','pending') RETURNING id""",
         (rule, archive.document),
     )[0]["id"]
-    backends = observe_lock_backend(monkeypatch, access_repository, "lock_writable_documents")
+    # Observe the current outer filing lock without replacing SQL or authorization.
+    backends = observe_lock_backend(monkeypatch, automation_service, "lock_writable_document")
     with db_connection() as blocker, ThreadPoolExecutor(max_workers=1) as pool:
         with blocker.cursor() as cur:
             cur.execute("UPDATE documents SET acl_mode='private' WHERE id=%s", (archive.document,))
