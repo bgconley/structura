@@ -39,6 +39,9 @@ class ReviewService:
                 actor_user_id=actor_user_id,
                 candidate_id=candidate_id,
                 reason=action.comment,
+                expectation=CorrectionExpectation(
+                    "expected_updated_at" in action.model_fields_set, action.expected_updated_at
+                ),
             )
         elif action.action_type == "correct_field":
             field_path = _required(action.field_path, "fieldPath")
@@ -74,6 +77,10 @@ class ReviewService:
                 actor_user_id=actor_user_id,
                 field_path=field_path,
                 reason=action.comment,
+                ordinal=_correction_ordinal(action),
+                expectation=CorrectionExpectation(
+                    "expected_updated_at" in action.model_fields_set, action.expected_updated_at
+                ),
             )
         elif action.action_type == "reclassify_document":
             family, subtype = _classification_from_action(action)

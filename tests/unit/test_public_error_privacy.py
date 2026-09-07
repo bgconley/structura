@@ -148,6 +148,33 @@ def test_validation_errors_do_not_serialize_private_input_or_extra_keys() -> Non
     assert PRIVATE not in response.text
 
 
+@pytest.mark.parametrize(
+    ("status", "message"),
+    [
+        (409, "This field changed since it was loaded. Reload it before saving your decision."),
+        (400, "A confirmation must keep the existing field's value type."),
+    ],
+)
+def test_review_conflicts_keep_safe_instructions_without_echoing_extra_content(status, message):
+    app = FastAPI()
+    install_error_handling(app)
+
+    @app.get("/review-decision")
+    def decision(include_private: bool = False):
+        raise HTTPException(
+            status_code=status, detail=message + PRIVATE if include_private else message
+        )
+
+    with TestClient(app) as client:
+        response = client.get("/review-decision")
+        assert response.status_code == status
+        assert response.json() == {"detail": message}
+        redacted = client.get("/review-decision?include_private=true")
+        assert redacted.status_code == status
+        assert PRIVATE not in redacted.text
+        assert redacted.json()["detail"] != message + PRIVATE
+
+
 def test_request_logging_uses_route_template_and_validated_reference(caplog) -> None:
     caplog.set_level(logging.INFO, logger="structura")
     reference = str(uuid4())

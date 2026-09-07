@@ -81,17 +81,36 @@ def record_history(
     )
 
 
-def close_field_review_tasks(cur: Any, document_id: UUID, field_path: str) -> None:
+def close_field_review_tasks(
+    cur: Any, document_id: UUID, field_path: str, *, ordinal: int | None = None
+) -> None:
     cur.execute(
         """
-        UPDATE review_tasks
+        UPDATE review_tasks rt
         SET status = 'resolved',
             updated_at = now()
         WHERE document_id = %s
           AND status IN ('open', 'in_progress')
           AND COALESCE(metadata_json->>'fieldPath', '') = %s
+          AND (
+            %s::integer IS NULL OR
+            CASE
+              WHEN metadata_json ? 'candidateId' THEN (
+                SELECT fc.ordinal::text FROM field_candidates fc
+                WHERE fc.id::text = rt.metadata_json->>'candidateId'
+                  AND fc.document_id = rt.document_id
+                  AND fc.field_path = rt.metadata_json->>'fieldPath'
+                  AND (
+                    NOT (rt.metadata_json ? 'ordinal')
+                    OR fc.ordinal::text = rt.metadata_json->>'ordinal'
+                  )
+              )
+              WHEN metadata_json ? 'ordinal' THEN metadata_json->>'ordinal'
+              ELSE '1'
+            END = %s::text
+          )
         """,
-        (document_id, field_path),
+        (document_id, field_path, ordinal, str(ordinal) if ordinal is not None else None),
     )
 
 

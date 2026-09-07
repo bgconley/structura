@@ -10,6 +10,7 @@ from lib.extraction.candidate_repository import (
     candidate_value_json,
     canonical_column_values,
 )
+from lib.extraction.canonical_authority import canonical_field_is_human_controlled
 from lib.extraction.canonical_promotion_policy import candidate_auto_promotion_rejection_reason
 from lib.extraction.errors import ExtractionRepositoryError
 from lib.extraction.models import ExtractionSourceDocument, ValidationReport
@@ -204,16 +205,7 @@ def canonical_is_human_controlled(
         (document_id, field_path, ordinal),
     )
     row = cur.fetchone()
-    # Confirming a candidate keeps its candidate origin. The human decision,
-    # including retained actor attribution, must still survive automatic reruns.
-    return bool(
-        row
-        and (
-            row["source_kind"] == "human"
-            or row["review_status"] in {"user_confirmed", "user_corrected"}
-            or row["accepted_by_user_id"] is not None
-        )
-    )
+    return canonical_field_is_human_controlled(row)
 
 
 def record_canonical_history(

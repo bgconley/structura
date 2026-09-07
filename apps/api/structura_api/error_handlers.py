@@ -46,6 +46,8 @@ _SAFE_DETAILS = frozenset(
         "A field ordinal must be a positive integer.",
         "This field has a human decision. Reload it and include its current revision.",
         "This field changed since it was loaded. Reload it before saving your correction.",
+        "This field changed since it was loaded. Reload it before saving your decision.",
+        "A confirmation must keep the existing field's value type.",
     }
 )
 _STATUS_DETAILS = {

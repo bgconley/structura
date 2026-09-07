@@ -1,12 +1,32 @@
 import {evidenceTargetFromRef, selectEvidenceRef} from "./evidence";
-import type {EvidenceTarget, FieldCandidate, ReviewTask} from "./types";
+import type {CanonicalField, EvidenceTarget, FieldCandidate, ReviewTask} from "./types";
+
+export function canonicalFieldForCandidate(
+  fields: CanonicalField[],
+  candidate: Pick<FieldCandidate, "documentId" | "fieldPath" | "ordinal">,
+): CanonicalField | undefined {
+  return fields.find((field) => field.documentId === candidate.documentId
+    && field.fieldPath === candidate.fieldPath
+    && (field.ordinal ?? 1) === (candidate.ordinal ?? 1));
+}
 
 export function referenceCandidate(
   task: ReviewTask,
   candidates: FieldCandidate[],
 ): FieldCandidate | undefined {
+  const metadata = task.metadata ?? {};
+  const hasCandidateId = Object.prototype.hasOwnProperty.call(metadata, "candidateId");
+  const hasOrdinal = Object.prototype.hasOwnProperty.call(metadata, "ordinal");
+  const candidateId = metadata.candidateId;
+  const ordinal = metadata.ordinal;
+  if (hasCandidateId && (typeof candidateId !== "string" || !candidateId)) return undefined;
+  if (hasOrdinal && (typeof ordinal !== "number" || !Number.isInteger(ordinal)
+    || ordinal < 1 || ordinal > 2147483647)) return undefined;
+  const expectedOrdinal = hasOrdinal ? ordinal : hasCandidateId ? undefined : 1;
   return candidates.find((candidate) => candidate.documentId === task.documentId
-    && candidate.fieldPath === task.fieldPath);
+    && candidate.fieldPath === task.fieldPath
+    && (!hasCandidateId || candidate.id === candidateId)
+    && (expectedOrdinal === undefined || (candidate.ordinal ?? 1) === expectedOrdinal));
 }
 
 export function evidenceTargetFromCandidate(candidate: FieldCandidate): EvidenceTarget {

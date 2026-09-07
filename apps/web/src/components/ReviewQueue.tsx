@@ -2,6 +2,7 @@ import {useEffect, useMemo} from "react";
 
 import {useReviewQueueState} from "../useReviewQueueState";
 import {
+  canonicalFieldForCandidate,
   coerceCorrectionValue,
   evidenceTargetFromCandidate,
   referenceCandidate,
@@ -36,6 +37,17 @@ export function ReviewQueue({
   });
 
   async function handleAccept(candidate: FieldCandidate) {
+    const reference = activeTask ? referenceCandidate(activeTask, candidates) : undefined;
+    if (activeTask?.fieldPath && (!reference || candidate.fieldPath !== reference.fieldPath
+      || (candidate.ordinal ?? 1) !== (reference.ordinal ?? 1))) {
+      setStatus("Reload the selected field's candidate before accepting.");
+      return false;
+    }
+    const currentField = canonicalFieldForCandidate(canonical, candidate);
+    if (currentField && !currentField.updatedAt) {
+      setStatus("Reload this field to obtain its current revision before accepting.");
+      return false;
+    }
     await applyReviewAction(
       {
         schemaName: "review_action",
@@ -46,6 +58,7 @@ export function ReviewQueue({
         actorType: "human",
         fieldPath: candidate.fieldPath,
         newValue: candidate.id,
+        expectedUpdatedAt: currentField?.updatedAt ?? null,
         metadata: {candidateId: candidate.id},
         comment: "Accepted from review queue.",
         createdAt: new Date().toISOString(),
@@ -101,8 +114,7 @@ export function ReviewQueue({
     }
     const reference = referenceCandidate(activeTask, candidates);
     if (!reference) throw new Error("Wait for the selected field's candidate before correcting.");
-    const currentField = canonical.find((field) => field.fieldPath === activeTask.fieldPath
-      && (field.ordinal ?? 1) === (reference.ordinal ?? 1));
+    const currentField = canonicalFieldForCandidate(canonical, reference);
     if (currentField && !currentField.updatedAt) {
       throw new Error("Reload this field to obtain its current revision before correcting.");
     }
@@ -136,6 +148,19 @@ export function ReviewQueue({
       setStatus("Select a field review task before rejecting.");
       return false;
     }
+    const reference = referenceCandidate(activeTask, candidates);
+    if (!reference) {
+      setStatus("Reload the selected field's candidate before rejecting.");
+      return false;
+    }
+    const ordinal = reference.ordinal ?? 1;
+    const currentField = canonicalFieldForCandidate(canonical, {
+      documentId: activeTask.documentId, fieldPath: activeTask.fieldPath, ordinal,
+    });
+    if (currentField && !currentField.updatedAt) {
+      setStatus("Reload this field to obtain its current revision before rejecting.");
+      return false;
+    }
     return applyReviewAction(
       {
         schemaName: "review_action",
@@ -145,6 +170,8 @@ export function ReviewQueue({
         actionType: "reject_field",
         actorType: "human",
         fieldPath: activeTask.fieldPath,
+        expectedUpdatedAt: currentField?.updatedAt ?? null,
+        metadata: {ordinal},
         comment: comment || "Rejected from review queue.",
         createdAt: new Date().toISOString(),
       },
@@ -212,8 +239,8 @@ export function ReviewQueue({
 
   const fieldGroups = useMemo(() => groupCandidates(candidates), [candidates]);
   const activeReferenceCandidate = activeTask ? referenceCandidate(activeTask, candidates) : undefined;
-  const activeCanonical = canonical.find((field) => field.fieldPath === activeTask?.fieldPath
-    && (field.ordinal ?? 1) === (activeReferenceCandidate?.ordinal ?? 1));
+  const activeCanonical = activeReferenceCandidate
+    ? canonicalFieldForCandidate(canonical, activeReferenceCandidate) : undefined;
   const correctionRevisionReady = !activeCanonical || !!activeCanonical.updatedAt;
 
   return (
@@ -270,7 +297,12 @@ export function ReviewQueue({
                       <p>{candidate.status ?? "proposed"} · {evidenceLabel(candidate.evidence)}</p>
                       <small>{selectEvidenceRef(candidate.evidence)?.sourceText ?? "Evidence locator available."}</small>
                       <div className="candidate-actions">
-                        <button type="button" disabled={decisionDisabled} onClick={() => handleAccept(candidate)}>
+                        <button type="button" disabled={decisionDisabled
+                          || (!!activeTask.fieldPath && (!activeReferenceCandidate
+                            || candidate.fieldPath !== activeReferenceCandidate.fieldPath
+                            || (candidate.ordinal ?? 1) !== (activeReferenceCandidate.ordinal ?? 1)))
+                          || (canonicalFieldForCandidate(canonical, candidate) !== undefined
+                            && !canonicalFieldForCandidate(canonical, candidate)?.updatedAt)} onClick={() => handleAccept(candidate)}>
                           Accept candidate
                         </button>
                         <button

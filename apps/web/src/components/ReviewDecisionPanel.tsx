@@ -137,7 +137,7 @@ export function ReviewDecisionPanel({
         className="review-decision-form compact"
         onSubmit={async (event) => {
           event.preventDefault();
-          if (disabled) return;
+          if (!correctionReady) return;
           const form = event.currentTarget;
           const data = new FormData(form);
           if (await onReject(String(data.get("comment") ?? ""))) form.reset();
@@ -153,7 +153,7 @@ export function ReviewDecisionPanel({
             disabled={disabled}
           />
         </label>
-        <button type="submit" disabled={disabled}>Reject field</button>
+        <button type="submit" disabled={!correctionReady}>Reject field</button>
       </form>
       ) : null}
 

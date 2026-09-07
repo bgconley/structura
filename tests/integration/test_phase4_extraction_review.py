@@ -325,6 +325,14 @@ def test_phase4_receipt_review_actions_correct_reject_and_reclassify(
     )
     assert corrected.status_code == 200
 
+    corrected_revision = client.get(f"/api/v1/documents/{document_id}/canonical-fields").json()[
+        "items"
+    ]
+    total_revision = next(
+        field["updatedAt"]
+        for field in corrected_revision
+        if field["fieldPath"] == "receipt.transaction.total"
+    )
     rejected = client.post(
         f"/api/v1/documents/{document_id}/review-actions",
         headers={"X-CSRF-Token": client.cookies["structura_csrf"]},
@@ -333,6 +341,7 @@ def test_phase4_receipt_review_actions_correct_reject_and_reclassify(
             "schemaVersion": "v1",
             "documentId": str(document_id),
             "actionType": "reject_field",
+            "expectedUpdatedAt": total_revision,
             "actorType": "human",
             "fieldPath": "receipt.transaction.total",
             "comment": "Total candidate rejected for regression coverage.",

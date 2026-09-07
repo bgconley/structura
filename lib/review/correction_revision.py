@@ -1,8 +1,11 @@
-"""Optimistic concurrency policy for human canonical corrections."""
+"""Optimistic concurrency policy for human canonical field decisions."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
+from lib.extraction.canonical_authority import canonical_field_is_human_controlled
 from lib.review.correction_values import correction_storage_value
 
 
@@ -14,6 +17,17 @@ class CorrectionConflictError(Exception):
 class CorrectionExpectation:
     supplied: bool = False
     updated_at: str | None = None
+
+
+def assert_canonical_revision(
+    previous: Mapping[str, Any] | None, expectation: CorrectionExpectation
+) -> None:
+    assert_correction_revision(
+        exists=previous is not None,
+        updated_at=previous.get("updated_at") if previous else None,
+        human_reviewed=canonical_field_is_human_controlled(previous),
+        expectation=expectation,
+    )
 
 
 def assert_correction_revision(
@@ -39,5 +53,5 @@ def assert_correction_revision(
         matches = exists and parsed == updated_at
     if not matches:
         raise CorrectionConflictError(
-            "This field changed since it was loaded. Reload it before saving your correction."
+            "This field changed since it was loaded. Reload it before saving your decision."
         )

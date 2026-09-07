@@ -20,7 +20,7 @@ from lib.review.audit_repository import (
     record_review_event,
     update_document_review_status,
 )
-from lib.review.correction_revision import CorrectionExpectation, assert_correction_revision
+from lib.review.correction_revision import CorrectionExpectation, assert_canonical_revision
 from lib.review.correction_values import CorrectionValueError, correction_storage_value
 from lib.review.errors import ReviewRepositoryError
 from lib.review.mappers import canonical_field_from_row, canonical_value
@@ -86,12 +86,7 @@ def upsert_human_canonical_field(
                     selected["value_type"],
                 ) != (field_path, ordinal, value_type):
                     raise CorrectionValueError("Selected candidate does not match this field.")
-            assert_correction_revision(
-                exists=previous is not None,
-                updated_at=previous.get("updated_at") if previous else None,
-                human_reviewed=bool(previous and previous.get("accepted_by_user_id")),
-                expectation=expectation,
-            )
+            assert_canonical_revision(previous, expectation)
             canonical_id = _upsert_canonical_row(
                 cur,
                 document_id=document_id,
@@ -128,7 +123,7 @@ def upsert_human_canonical_field(
                 actor_user_id=actor_user_id,
                 reason=reason,
             )
-            close_field_review_tasks(cur, document_id, field_path)
+            close_field_review_tasks(cur, document_id, field_path, ordinal=ordinal)
             update_document_review_status(cur, document_id)
             cur.execute("SELECT * FROM canonical_fields WHERE id = %s", (canonical_id,))
             row = cur.fetchone()
@@ -145,6 +140,7 @@ def confirm_candidate(
     actor_user_id: UUID,
     candidate_id: UUID,
     reason: str | None,
+    expectation: CorrectionExpectation = LEGACY_CORRECTION_EXPECTATION,
 ) -> UUID:
     with db_connection() as conn:
         with conn.cursor() as cur:
@@ -155,6 +151,11 @@ def confirm_candidate(
             previous = _canonical_row(
                 cur, document_id, candidate["field_path"], candidate["ordinal"]
             )
+            assert_canonical_revision(previous, expectation)
+            if previous and previous["value_type"] != candidate["value_type"]:
+                raise CorrectionValueError(
+                    "A confirmation must keep the existing field's value type."
+                )
             canonical_id = _upsert_canonical_row(
                 cur,
                 document_id=document_id,
@@ -195,7 +196,9 @@ def confirm_candidate(
                 actor_user_id=actor_user_id,
                 reason=reason,
             )
-            close_field_review_tasks(cur, document_id, candidate["field_path"])
+            close_field_review_tasks(
+                cur, document_id, candidate["field_path"], ordinal=candidate["ordinal"]
+            )
             update_document_review_status(cur, document_id)
         conn.commit()
     return event_id
@@ -208,10 +211,14 @@ def reject_field(
     actor_user_id: UUID,
     field_path: str,
     reason: str | None,
+    ordinal: int = 1,
+    expectation: CorrectionExpectation = LEGACY_CORRECTION_EXPECTATION,
 ) -> UUID:
     with db_connection() as conn:
         with conn.cursor() as cur:
             assert_writable(cur, document_id, access)
+            previous = _canonical_row(cur, document_id, field_path, ordinal)
+            assert_canonical_revision(previous, expectation)
             cur.execute(
                 """
                 UPDATE field_candidates
@@ -219,20 +226,23 @@ def reject_field(
                     updated_at = now()
                 WHERE document_id = %s
                   AND field_path = %s
+                  AND ordinal = %s
                   AND status <> 'rejected'
                 """,
-                (document_id, field_path),
+                (document_id, field_path, ordinal),
             )
-            previous = _canonical_row(cur, document_id, field_path, 1)
             cur.execute(
                 """
                 UPDATE canonical_fields
                 SET review_status = 'rejected',
-                    updated_at = now()
+                    updated_at = GREATEST(
+                      clock_timestamp(), updated_at + interval '1 microsecond'
+                    )
                 WHERE document_id = %s
                   AND field_path = %s
+                  AND ordinal = %s
                 """,
-                (document_id, field_path),
+                (document_id, field_path, ordinal),
             )
             event_id = record_review_event(
                 cur,
@@ -257,7 +267,7 @@ def reject_field(
                     actor_user_id=actor_user_id,
                     reason=reason,
                 )
-            close_field_review_tasks(cur, document_id, field_path)
+            close_field_review_tasks(cur, document_id, field_path, ordinal=ordinal)
             update_document_review_status(cur, document_id)
         conn.commit()
     return event_id
