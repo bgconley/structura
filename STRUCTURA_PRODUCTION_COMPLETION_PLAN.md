@@ -12,7 +12,7 @@ Deliver the polished local-first application described by the v1.3 app specifica
 
 This is the execution overlay for [STRUCTURA_IMPLEMENTATION_PLAN.md](STRUCTURA_IMPLEMENTATION_PLAN.md), not a replacement phase map. The root plan still controls phase order and stop points. The associated phase plans, current contracts, database/infrastructure files, normalization artifacts and accepted ADRs supply acceptance detail. Read the relevant non-archive artifacts before each implementation package. Markdown is the default for duplicate artifacts. Never inspect `archive/`.
 
-The user selected the existing Qwen3.8-27B BF16 service on Oxcart as the ingestion model and requested this plan update. That model choice is settled; it does not depend on winning a new comparison against the previous 8B model. Integration, quality, simplification and capacity gates remain open. This planning task changes documentation only. During execution, use the authorization then in effect; do not introduce repeated confirmations for ordinary edits, isolated tests, or already-authorized actions. Prepare concrete deployment/migration/rollback artifacts before any operational approval that is actually needed.
+The user selected the existing Qwen3.8-27B BF16 service on Oxcart as the ingestion model and subsequently authorized execution of this plan. That model choice is settled; it does not depend on winning a new comparison against the previous 8B model. Work proceeds on `codex/production-completion`; the closure register links exact implementation and verification checkpoints. Integration, quality, simplification and capacity gates remain open. Use the authorization in effect; do not introduce repeated confirmations for ordinary edits, isolated tests, or already-authorized actions. Prepare concrete deployment/migration/rollback artifacts before any operational approval that is actually needed.
 
 ## Plan contents
 
@@ -27,6 +27,8 @@ The user selected the existing Qwen3.8-27B BF16 service on Oxcart as the ingesti
 | [Blackbird topology ADR](docs/adr/0007-blackbird-production-validation-topology.md) | Observed hardware, proposed topology, constraints and experiments required before adoption |
 | [Qwen3.8-27B ingestion decision](docs/adr/0008-qwen38-27b-ingestion.md) | Accepted model selection, preserved evidence boundaries, profile migration and measured simplification |
 | [Qwen-native parsing decision](docs/adr/0009-qwen-native-document-parsing.md) | Target parser replacement, explicit spec amendment, original evidence and Docling retirement gates |
+| [Combined page understanding](docs/plans/production-completion/native-page-understanding.md) | One combined 27B response per new page, full structure/classification/typed coverage, versioned provenance and downstream claim integration |
+| [Native parser versioning](docs/plans/production-completion/native-page-versioning.md) | Explicit v2 opt-in, frozen source/request settings, preserved v1 history and coordinated evidence/index/capture readers |
 
 The workstream documents define packages; the milestone order below controls when they execute. If a package combines an early defect repair and a later-phase feature, split the change at that boundary. A package is not complete simply because a screen, route, schema, or test fixture exists.
 
@@ -128,10 +130,10 @@ Field/row quality, required-field presence, numeric accuracy, evidence completen
 | --- | --- | --- |
 | Release baseline | Current feature implementation, not stale master | Integrator records accepted base and final matching source/image/config SHAs |
 | Ingestion model | **Accepted: existing Qwen3.8-27B BF16 on Oxcart** | ADR 0008 records the choice; X-01/G3 verify integration and quality, not model selection |
-| GPU topology | Existing Oxcart 27B + CPU/archive; Blackbird PRO 4000 for retrieval embeddings | G0 inventory and G3 concurrent workload evidence; adopt the measured embedding profile under ADR 0007 |
+| GPU topology | Existing Oxcart 27B + CPU/archive; Blackbird PRO 4000 for ingestion, reindexing and query embeddings | G0 inventory and G3 concurrent workload evidence; adopt the measured embedding profile under ADR 0007 |
 | Model residency | Reuse Oxcart 27B; measure text/visual embedding co-residency on Blackbird | Authenticated exact-model/dimension smokes, bounded ingestion admission and measured impact on existing Oxcart clients; preserve Blackbird Gemma |
 | Parser architecture | **Accepted target: Qwen-native parse + thin PDF/image source handling** | ADR 0009 migration, full-content/evidence gates, Docling-free ingestion/recovery and controlled legacy retirement |
-| Extraction call structure | Bounded 27B parse/extraction tasks; combine when useful | Full page/field/row coverage, source fidelity, review and latency gates; no mandatory Docling agreement |
+| Extraction call structure | One combined 27B structure/classification/extraction response per new page, with immutable checkpoint resume | Full page/field/row coverage, source fidelity, review and measured output/latency gates; no mandatory Docling agreement or hidden extra model pass |
 | Analysis model | Separate bounded profile selected at Phase 9 | Local quality/citation/capacity trial; Smart Parse is not silently reclassified as an analysis service |
 | Quality thresholds | Use existing approved thresholds; otherwise calibrate and propose per family | Frozen annotation/threshold manifest before the final holdout run, reviewed alongside precision/recall/review tradeoffs |
 | Recovery objectives | Proposed RPO ≤24 h and offline archive/evidence RTO ≤4 h; full model-backed recovery RTO to be defined with independent recovery compute | OPS-02/OPS-03 separately prove archive reads and restored model-backed new intake/search; both require measured recovery and archive-owner acceptance at release |

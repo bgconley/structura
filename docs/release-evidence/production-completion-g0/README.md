@@ -79,7 +79,16 @@ warm follow-up are recorded without claiming production capacity.
 [The upload and native claim checkpoint](upload-claims-checkpoint.md) records
 migrations 103–105 and the `874eb4f` backend gate: 1,836 unit and 463 database tests,
 plus static checks. Separate browser and Node 20 socket candidates are identified
-explicitly; batch-client, cleanup deployment and native activation remain open.
+explicitly. Follow-on cleanup passed 474 database tests at `d56c038`; ordinary Linux
+comparison passed 218 tests at `d03a77e`; five real upload workflows plus the
+isolation guard passed at `0f2efca` against the recorded disposable images. Native
+activation and broader product/capacity acceptance remain open.
+
+[The combined-page checkpoint](combined-page-checkpoint.md) records the frozen
+27B v2 contract and explicit adapter/readers at `30284d2`: 1,960 unit and 477
+database tests plus all static checks passed. V1 instance history remains exact.
+Migration 106 is allocated to model-emission import but is not yet validated;
+real v2 model quality and coherent native publication remain open.
 
 The cached validation images observed on Oxcart are:
 

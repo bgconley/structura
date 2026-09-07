@@ -28,6 +28,12 @@ The [upload and native claim checkpoint](../../release-evidence/production-compl
 
 ## Package owners and gates
 
+[Combined-page verification](../../release-evidence/production-completion-g0/combined-page-checkpoint.md)
+adds the explicit v2 adapter/readers at `30284d2`, with 1,960 unit and 477 database
+passes and all static checks. Historical v1 instances remain exact. Model-emission
+import, live v2 quality and native publication remain open; this advances X-01–X-05
+and JOB-02 without accepting G2/G3.
+
 | Packages | Accountable workstream | Gate |
 | --- | --- | --- |
 | UI-01 | Product + integrator | G0 design/contract inventory, completed per-surface before coding |
