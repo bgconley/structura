@@ -195,7 +195,7 @@ def canonical_is_human_controlled(
 ) -> bool:
     cur.execute(
         """
-        SELECT source_kind, review_status::text AS review_status
+        SELECT source_kind, review_status::text AS review_status, accepted_by_user_id
         FROM canonical_fields
         WHERE document_id = %s
           AND field_path = %s
@@ -204,7 +204,16 @@ def canonical_is_human_controlled(
         (document_id, field_path, ordinal),
     )
     row = cur.fetchone()
-    return bool(row and (row["source_kind"] == "human" or row["review_status"] == "user_corrected"))
+    # Confirming a candidate keeps its candidate origin. The human decision,
+    # including retained actor attribution, must still survive automatic reruns.
+    return bool(
+        row
+        and (
+            row["source_kind"] == "human"
+            or row["review_status"] in {"user_confirmed", "user_corrected"}
+            or row["accepted_by_user_id"] is not None
+        )
+    )
 
 
 def record_canonical_history(
