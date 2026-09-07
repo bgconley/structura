@@ -57,7 +57,8 @@ class EmbeddingHttpClient:
     def embed(self, request: EmbeddingRequest) -> EmbeddingResponse:
         validate_embedding_request(request, self.profile, requires_image=self.requires_image)
         protocol = self.profile.embedding_protocol
-        assert protocol is not None  # Validated before constructing the HTTP client.
+        if protocol is None:
+            raise ModelConfigurationError("Embedding profile must declare its protocol.")
         start = time.monotonic()
         input_hashes = embedding_input_hashes(request, self.profile)
         requests = (
@@ -91,7 +92,8 @@ class EmbeddingHttpClient:
                 )
             model_name, model_version = reported_name, reported_version
             vectors.extend(parsed)
-        assert model_name is not None and model_version is not None
+        if model_name is None or model_version is None:
+            raise ModelProtocolError("Embedding response is missing its model identity.")
         return EmbeddingResponse(
             profile_name=self.profile.name,
             model_name=model_name,

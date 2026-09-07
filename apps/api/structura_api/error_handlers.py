@@ -99,7 +99,7 @@ def _log_request(request: Request, status_code: int, *, completed: bool, failed:
     }
     try:
         log_event("api.request", **fields)
-    except Exception:
+    except Exception:  # nosec B110
         # A failing logging sink must not change an already handled request.
         # Do not log the logging exception: it may include the original payload.
         pass

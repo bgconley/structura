@@ -109,7 +109,8 @@ class DocumentSource:
                 )
             finally:
                 page.close()
-        assert self._image is not None
+        if self._image is None:
+            raise DocumentSourceError("Original source is closed or unavailable.")
         self._image.seek(number - 1)
         width, height = self._image.size
         if self._image.getexif().get(274) in {5, 6, 7, 8}:
@@ -151,7 +152,8 @@ class DocumentSource:
             else:
                 if source.width * source.height > max_pixels:
                     raise DocumentSourceError("Source image exceeds its pixel budget.")
-                assert self._image is not None
+                if self._image is None:
+                    raise DocumentSourceError("Original source is closed or unavailable.")
                 self._image.seek(page_number - 1)
                 raster = ImageOps.exif_transpose(self._image).convert("RGB")
                 renderer, renderer_version = renderer_identity(self.inventory.mime_type)
