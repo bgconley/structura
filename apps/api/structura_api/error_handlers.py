@@ -48,6 +48,7 @@ _SAFE_DETAILS = frozenset(
         "This field changed since it was loaded. Reload it before saving your correction.",
         "This field changed since it was loaded. Reload it before saving your decision.",
         "A confirmation must keep the existing field's value type.",
+        "A correction must keep the existing field's value type.",
     }
 )
 _STATUS_DETAILS = {

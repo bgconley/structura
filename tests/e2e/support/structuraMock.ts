@@ -35,6 +35,7 @@ import {
   webOrigin,
 } from "./structuraFixtures";
 import {documentBrowseResponse} from "./documentBrowseMock";
+import {reviewAuthorityFixture} from "./reviewAuthorityFixture";
 
 export {apiOrigin, csrfToken} from "./structuraFixtures";
 
@@ -514,9 +515,7 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
       await route.fulfill({
         status: 200,
         headers: {"Content-Type": "application/json", ...corsHeaders},
-        json: {
-          items: canonicalFields.filter((field) => field.documentId === canonicalMatch[1]),
-        },
+        json: reviewAuthorityFixture(canonicalMatch[1], canonicalFields.filter((field) => field.documentId === canonicalMatch[1])),
       });
       return;
     }

@@ -1,4 +1,5 @@
 import {expect, test} from "@playwright/test";
+import {reviewAuthorityFixture} from "./support/reviewAuthorityFixture";
 
 import {coerceCorrectionValue} from "../../apps/web/src/reviewActions";
 import {csrfToken, mockStructuraApi} from "./support/structuraMock";
@@ -41,9 +42,9 @@ for (const [kind, value, expected] of [
     const candidate = {...seededFieldCandidates()[0], valueType: kind, value};
     const revision = "2026-09-07T10:11:12.123456Z";
     await page.route("**/api/v1/documents/*/field-candidates?*", (route) => route.fulfill({json: {items: [candidate]}}));
-    await page.route("**/api/v1/documents/*/canonical-fields", (route) => route.fulfill({json: {items: [{
+    await page.route("**/api/v1/documents/*/canonical-fields", (route) => route.fulfill({json: reviewAuthorityFixture(candidate.documentId, [{
       ...candidate, id: "canonical", sourceKind: "human", reviewStatus: "user_corrected", updatedAt: revision,
-    }]}}));
+    }])}));
     const mutations: unknown[] = [];
     await page.route("**/api/v1/documents/*/review-actions", async (route) => {
       mutations.push(route.request().postDataJSON());
@@ -75,7 +76,7 @@ test("reordered task responses cannot expose stale decisions under another docum
   const waitB = new Promise<void>((resolve) => { releaseB = resolve; });
   await page.route("**/api/v1/review-tasks?*", (route) => route.fulfill({json: {items: tasks}}));
   await page.route("**/api/v1/review-tasks/*", (route) => route.fulfill({json: tasks.find((task) => route.request().url().endsWith(task.id))}));
-  await page.route("**/api/v1/documents/*/canonical-fields", (route) => route.fulfill({json: {items: []}}));
+  await page.route("**/api/v1/documents/*/canonical-fields", (route) => route.fulfill({json: reviewAuthorityFixture(route.request().url().split("/documents/")[1].split("/")[0])}));
   await page.route("**/api/v1/documents/*/field-candidates?*", async (route) => {
     const isA = route.request().url().includes(a.documentId);
     await (isA ? waitA : waitB);

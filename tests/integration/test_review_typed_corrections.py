@@ -70,6 +70,7 @@ def write(
     *,
     endpoint="canonical-fields",
     revision=None,
+    decision_revision=None,
     supplied=True,
 ):
     evidence = [{"pageNumber": 1, "sourceEngine": "human", "sourceText": "Original typed evidence"}]
@@ -93,6 +94,8 @@ def write(
         }
     if supplied:
         payload["expectedUpdatedAt"] = revision
+        payload["expectedDecisionRevision"] = decision_revision
+        payload["expectedPathGuardRevision"] = None
     return client.post(f"/api/v1/documents/{document_id}/{endpoint}", json=payload)
 
 
@@ -150,6 +153,7 @@ def test_typed_values_persist_in_native_columns_and_history(reviewers, endpoint)
             updated,
             endpoint=endpoint,
             revision=loaded["updatedAt"],
+            decision_revision=loaded["decision"]["revision"],
         )
         assert response.status_code == 200, response.text
         assert fields(first, document_id)[field]["updatedAt"] != loaded["updatedAt"]
@@ -206,7 +210,9 @@ def test_two_reviewers_cannot_silently_replace_a_newer_decision(reviewers):
             (document_id, field),
         )
         persisted_revision = cur.fetchone()["updated_at"]
-    revision = fields(first, document_id)[field]["updatedAt"]
+    loaded = fields(first, document_id)[field]
+    revision = loaded["updatedAt"]
+    decision_revision = loaded["decision"]["revision"]
     assert datetime.fromisoformat(revision.replace("Z", "+00:00")) == persisted_revision
     assert fields(second, document_id)[field]["updatedAt"] == revision
     accepted = write(
@@ -217,6 +223,7 @@ def test_two_reviewers_cannot_silently_replace_a_newer_decision(reviewers):
         "2025-02-01",
         endpoint="review-actions",
         revision=revision,
+        decision_revision=decision_revision,
     )
     assert accepted.status_code == 200, accepted.text
     unchanged = snapshot(document_id)
@@ -230,6 +237,7 @@ def test_two_reviewers_cannot_silently_replace_a_newer_decision(reviewers):
                 "2026-03-01",
                 endpoint=endpoint,
                 revision=expected,
+                decision_revision=decision_revision,
                 supplied=supplied,
             )
             assert conflict.status_code == 409, conflict.text
@@ -250,12 +258,22 @@ def test_simultaneous_corrections_have_one_auditable_winner(reviewers):
     first, second, document_id, _ = reviewers
     field = "document.issued_on"
     assert write(first, document_id, field, "date", "2024-01-01").status_code == 200
-    revision = fields(first, document_id)[field]["updatedAt"]
+    loaded = fields(first, document_id)[field]
+    revision = loaded["updatedAt"]
+    decision_revision = loaded["decision"]["revision"]
     barrier = Barrier(2)
 
     def submit(client, value):
         barrier.wait(timeout=5)
-        return write(client, document_id, field, "date", value, revision=revision).status_code
+        return write(
+            client,
+            document_id,
+            field,
+            "date",
+            value,
+            revision=revision,
+            decision_revision=decision_revision,
+        ).status_code
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         attempts = [
@@ -266,3 +284,44 @@ def test_simultaneous_corrections_have_one_auditable_winner(reviewers):
     assert fields(first, document_id)[field]["value"] in {"2025-01-01", "2026-01-01"}
     _, counts = snapshot(document_id)
     assert counts["history"] == counts["events"] == 2
+
+
+def test_api_tombstone_envelope_and_independent_revision_conflict(reviewers):
+    client, _, document_id, _ = reviewers
+    path = f"/api/v1/documents/{document_id}"
+    field_path = "document.rejected_before_acceptance"
+    rejected = client.post(
+        f"{path}/review-actions",
+        json={
+            "documentId": str(document_id),
+            "actionType": "reject_field",
+            "fieldPath": field_path,
+            "expectedUpdatedAt": None,
+            "expectedDecisionRevision": None,
+            "expectedPathGuardRevision": None,
+        },
+    )
+    assert rejected.status_code == 200, rejected.text
+    assert rejected.json()["canonical"] is None
+    current = client.get(f"{path}/canonical-fields").json()
+    assert current["authorityVersion"] == "human_authority.v1"
+    assert current["items"] == [] and current["decisions"] == [rejected.json()["decision"]]
+    assert current["projection"] == rejected.json()["projection"]
+    before = snapshot(document_id)
+    conflict = write(client, document_id, field_path, "string", "Explicit replacement")
+    assert conflict.status_code == 409
+    assert conflict.json()["detail"] == (
+        "This field changed since it was loaded. Reload it before saving your decision."
+    )
+    assert snapshot(document_id) == before
+    accepted = write(
+        client,
+        document_id,
+        field_path,
+        "string",
+        "Explicit replacement",
+        decision_revision=current["decisions"][0]["revision"],
+    )
+    assert accepted.status_code == 200, accepted.text
+    assert accepted.json()["decision"]["revision"] != current["decisions"][0]["revision"]
+    assert accepted.json()["decision"]["canonicalFieldId"] == accepted.json()["id"]

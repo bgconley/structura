@@ -14,6 +14,7 @@ from lib.extraction.canonical_authority import canonical_field_is_human_controll
 from lib.extraction.canonical_promotion_policy import candidate_auto_promotion_rejection_reason
 from lib.extraction.errors import ExtractionRepositoryError
 from lib.extraction.models import ExtractionSourceDocument, ValidationReport
+from lib.fact_authority.projection_repository import refresh_accepted_projection
 from lib.review.task_repository import upsert_review_task
 
 
@@ -195,6 +196,15 @@ def canonical_is_human_controlled(
     ordinal: int,
 ) -> bool:
     cur.execute(
+        """SELECT EXISTS(SELECT 1 FROM canonical_field_decisions
+          WHERE document_id=%s AND field_path=%s AND ordinal=%s)
+        OR EXISTS(SELECT 1 FROM canonical_field_path_guards
+          WHERE document_id=%s AND field_path=%s AND status='active') AS protected""",
+        (document_id, field_path, ordinal, document_id, field_path),
+    )
+    if cur.fetchone()["protected"]:
+        return True
+    cur.execute(
         """
         SELECT source_kind, review_status::text AS review_status, accepted_by_user_id
         FROM canonical_fields
@@ -243,78 +253,16 @@ def record_canonical_history(
 
 
 def update_document_rollups(cur: Any, document_id: UUID) -> None:
+    refresh_accepted_projection(cur, document_id)
     cur.execute(
-        """
-        SELECT
-          MAX(CASE WHEN field_path IN (
-            'receipt.merchant.display_name',
-            'invoice.seller.display_name',
-            'medical_eob.provider.display_name',
-            'medical_eob.payer.display_name'
-          ) THEN text_value END) AS counterparty,
-          MAX(CASE WHEN field_path IN (
-            'receipt.transaction.date_local',
-            'invoice.issue_date'
-          ) THEN date_value END) AS document_date,
-          MAX(CASE WHEN field_path IN (
-            'receipt.transaction.total',
-            'invoice.total_amount',
-            'medical_eob.total_patient_responsibility'
-          ) THEN numeric_value END) AS total_amount,
-          MAX(currency_code) FILTER (WHERE currency_code IS NOT NULL) AS currency_code
-        FROM canonical_fields
-        WHERE document_id = %s
-          AND review_status IN ('auto_accepted', 'user_confirmed', 'user_corrected')
-        """,
-        (document_id,),
+        """UPDATE documents SET review_status=CASE
+        WHEN EXISTS(SELECT 1 FROM review_tasks
+          WHERE document_id=%s AND status IN ('open','in_progress'))
+          THEN 'needs_review'::review_status_enum
+        WHEN review_status IN ('unreviewed','needs_review') THEN 'auto_accepted'::review_status_enum
+        ELSE review_status END,updated_at=now() WHERE id=%s""",
+        (document_id, document_id),
     )
-    row = cur.fetchone() or {}
-    cur.execute(
-        """
-        UPDATE documents
-        SET counterparty_display = COALESCE(%s, counterparty_display),
-            document_date = COALESCE(%s, document_date),
-            review_status = CASE
-              WHEN EXISTS (
-                SELECT 1 FROM review_tasks
-                WHERE document_id = %s AND status IN ('open', 'in_progress')
-              ) THEN 'needs_review'::review_status_enum
-              WHEN review_status IN ('unreviewed', 'needs_review')
-                THEN 'auto_accepted'::review_status_enum
-              ELSE review_status
-            END,
-            updated_at = now()
-        WHERE id = %s
-        """,
-        (row.get("counterparty"), row.get("document_date"), document_id, document_id),
-    )
-    amount = row.get("total_amount")
-    if amount is not None:
-        cur.execute(
-            """
-            DELETE FROM document_amounts
-            WHERE document_id = %s
-              AND amount_role = 'total'
-              AND metadata_json @> %s::jsonb
-            """,
-            (
-                document_id,
-                Jsonb({"phase": "phase4", "source": "canonical_fields"}),
-            ),
-        )
-        cur.execute(
-            """
-            INSERT INTO document_amounts
-              (document_id, amount_role, amount, currency_code, metadata_json)
-            VALUES (%s, 'total', %s, %s, %s::jsonb)
-            """,
-            (
-                document_id,
-                amount,
-                row.get("currency_code"),
-                Jsonb({"phase": "phase4", "source": "canonical_fields"}),
-            ),
-        )
 
 
 def refresh_document_chunk_projection(cur: Any, document_id: UUID) -> None:

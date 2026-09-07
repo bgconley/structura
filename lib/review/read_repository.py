@@ -12,8 +12,8 @@ from lib.contracts import (
 from lib.db.connection import db_connection
 from lib.documents.access_policy import DocumentAccessContext, document_read_access_params
 from lib.review.access import assert_readable
+from lib.review.canonical_read_repository import get_canonical_field_response
 from lib.review.mappers import (
-    canonical_field_from_row,
     field_candidate_from_row,
     line_item_candidate_from_row,
     observation_candidate_from_row,
@@ -171,17 +171,4 @@ def list_canonical_fields(
     document_id: UUID,
     access: DocumentAccessContext,
 ) -> list[CanonicalField]:
-    with db_connection() as conn:
-        with conn.cursor() as cur:
-            assert_readable(cur, document_id, access)
-            cur.execute(
-                """
-                SELECT *
-                FROM canonical_fields
-                WHERE document_id = %s
-                ORDER BY field_path, ordinal
-                """,
-                (document_id,),
-            )
-            rows = cur.fetchall()
-    return [canonical_field_from_row(row) for row in rows]
+    return get_canonical_field_response(document_id=document_id, access=access).items

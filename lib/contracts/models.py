@@ -168,6 +168,42 @@ class FieldCandidate(ContractModel):
     status: str | None = None
 
 
+class FieldDecision(ContractModel):
+    id: UUID
+    document_id: UUID = Field(alias="documentId")
+    field_path: str = Field(alias="fieldPath")
+    ordinal: int = Field(ge=1)
+    revision: UUID
+    disposition: Literal["confirmed", "corrected", "rejected", "protected_legacy"]
+    origin: Literal["live_review", "legacy_current_field"]
+    canonical_field_id: UUID | None = Field(alias="canonicalFieldId")
+    review_event_id: UUID | None = Field(alias="reviewEventId")
+    actor_user_id: UUID | None = Field(alias="actorUserId")
+    decided_at: datetime | None = Field(alias="decidedAt")
+    recorded_at: datetime = Field(alias="recordedAt")
+
+
+class FieldPathGuard(ContractModel):
+    id: UUID
+    document_id: UUID = Field(alias="documentId")
+    field_path: str = Field(alias="fieldPath")
+    revision: UUID
+    status: Literal["active", "resolved"]
+    origin: Literal["legacy_path_rejection"]
+    review_event_id: UUID | None = Field(alias="reviewEventId")
+    actor_user_id: UUID | None = Field(alias="actorUserId")
+
+
+class FieldProjectionRevision(ContractModel):
+    schema_version: Literal["accepted_fact_projection.v1"] = Field(alias="schemaVersion")
+    document_id: UUID = Field(alias="documentId")
+    state: Literal["unestablished", "current"]
+    accepted_fact_revision: int = Field(alias="acceptedFactRevision", ge=0)
+    projection_revision: int = Field(alias="projectionRevision", ge=0)
+    accepted_facts_sha256: str | None = Field(alias="acceptedFactsSha256")
+    indexed_metadata_sha256: str | None = Field(alias="indexedMetadataSha256")
+
+
 class CanonicalField(ContractModel):
     id: UUID
     document_id: UUID = Field(alias="documentId")
@@ -183,11 +219,20 @@ class CanonicalField(ContractModel):
     validation: dict[str, Any] | None = None
     accepted_at: datetime | None = Field(default=None, alias="acceptedAt")
     updated_at: datetime | None = Field(default=None, alias="updatedAt")
+    decision: FieldDecision | None = None
+
+
+class CanonicalFieldResponse(ContractModel):
+    authority_version: Literal["human_authority.v1"] = Field(alias="authorityVersion")
+    items: list[CanonicalField]
+    decisions: list[FieldDecision]
+    path_guards: list[FieldPathGuard] = Field(alias="pathGuards")
+    projection: FieldProjectionRevision
 
 
 class CanonicalFieldWrite(ContractModel):
     selected_candidate_id: UUID | None = Field(default=None, alias="selectedCandidateId")
-    field_path: str = Field(alias="fieldPath")
+    field_path: str = Field(alias="fieldPath", min_length=1, pattern=r"\S")
     ordinal: int = Field(default=1, ge=1, le=2147483647)
     value_type: str = Field(alias="valueType")
     value: Any
@@ -196,6 +241,10 @@ class CanonicalFieldWrite(ContractModel):
     evidence: list[EvidenceRef] = Field(min_length=1)
     reason: str | None = None
     expected_updated_at: str | None = Field(default=None, alias="expectedUpdatedAt")
+    expected_decision_revision: UUID | None = Field(default=None, alias="expectedDecisionRevision")
+    expected_path_guard_revision: UUID | None = Field(
+        default=None, alias="expectedPathGuardRevision"
+    )
 
 
 class ReviewActionRequest(ContractModel):
@@ -218,7 +267,7 @@ class ReviewActionRequest(ContractModel):
         "reject_line_item",
     ] = Field(alias="actionType")
     actor_type: Literal["human", "system", "agent"] = Field(default="human", alias="actorType")
-    field_path: str | None = Field(default=None, alias="fieldPath")
+    field_path: str | None = Field(default=None, alias="fieldPath", min_length=1, pattern=r"\S")
     old_value: Any = Field(default=None, alias="oldValue")
     new_value: Any = Field(default=None, alias="newValue")
     comment: str | None = None
@@ -226,6 +275,18 @@ class ReviewActionRequest(ContractModel):
     metadata: dict[str, Any] | None = None
     created_at: datetime | None = Field(default=None, alias="createdAt")
     expected_updated_at: str | None = Field(default=None, alias="expectedUpdatedAt")
+    expected_decision_revision: UUID | None = Field(default=None, alias="expectedDecisionRevision")
+    expected_path_guard_revision: UUID | None = Field(
+        default=None, alias="expectedPathGuardRevision"
+    )
+
+    @model_validator(mode="after")
+    def field_revisions_require_field_action(self) -> ReviewActionRequest:
+        if self.action_type not in {"confirm_field", "correct_field", "reject_field"} and (
+            self.model_fields_set & {"expected_decision_revision", "expected_path_guard_revision"}
+        ):
+            raise ValueError("Field revision preconditions require a canonical field action.")
+        return self
 
 
 class FilingRule(ContractModel):

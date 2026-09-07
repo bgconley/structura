@@ -9,7 +9,7 @@ from psycopg.types.json import Jsonb
 from lib.contracts import ReviewActionRequest
 from lib.db.connection import db_connection
 from lib.documents.access_policy import DocumentAccessContext
-from lib.review import action_repository
+from lib.review import canonical_field_repository as action_repository
 from lib.review.correction_revision import CorrectionConflictError
 from lib.review.service import ReviewService
 
@@ -38,6 +38,21 @@ def decide(document_id, access, item, action, revision=MISSING):
     }
     if revision is not MISSING:
         payload["expectedUpdatedAt"] = revision
+        with db_connection() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT revision FROM canonical_field_decisions "
+                "WHERE document_id=%s AND field_path=%s AND ordinal=%s",
+                (document_id, item["field_path"], item["ordinal"]),
+            )
+            decision = cur.fetchone()
+            payload["expectedDecisionRevision"] = str(decision["revision"]) if decision else None
+            cur.execute(
+                "SELECT revision FROM canonical_field_path_guards "
+                "WHERE document_id=%s AND field_path=%s AND status='active'",
+                (document_id, item["field_path"]),
+            )
+            guard = cur.fetchone()
+            payload["expectedPathGuardRevision"] = str(guard["revision"]) if guard else None
     return ReviewService().apply_review_action(
         ReviewActionRequest.model_validate(payload), access=access, actor_user_id=access.user_id
     )

@@ -9,13 +9,14 @@ from apps.api.structura_api.dependencies import require_document_read, require_d
 from lib.auth import AuthPrincipal
 from lib.contracts import CanonicalFieldWrite, ReviewActionRequest, ReviewTask
 from lib.documents.access_policy import DocumentAccessContext
+from lib.fact_authority.preconditions import AuthorityRevisionConflict
 from lib.review import ReviewService
 from lib.review.correction_revision import CorrectionConflictError
 from lib.review.correction_values import CorrectionValueError
 from lib.review.repository import (
     ReviewRepositoryError,
+    get_canonical_field_response,
     get_review_task,
-    list_canonical_fields,
     list_field_candidates,
     list_line_item_candidates,
     list_observation_candidates,
@@ -122,12 +123,12 @@ def get_canonical_fields(
 ) -> dict[str, object]:
     access = _access_context(principal)
     try:
-        items = list_canonical_fields(document_id=documentId, access=access)
+        response = get_canonical_field_response(document_id=documentId, access=access)
     except ReviewRepositoryError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
         ) from exc
-    return {"items": [item.model_dump(by_alias=True) for item in items]}
+    return response.model_dump(by_alias=True)
 
 
 @router.post("/documents/{documentId}/canonical-fields")
@@ -145,6 +146,13 @@ def post_canonical_field(
             access=access,
             actor_user_id=principal.user_id,
         )
+    except AuthorityRevisionConflict as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "This field changed since it was loaded. Reload it before saving your decision."
+            ),
+        ) from exc
     except CorrectionConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except CorrectionValueError as exc:
@@ -171,6 +179,13 @@ def post_review_action(
             access=access,
             actor_user_id=principal.user_id,
         )
+    except AuthorityRevisionConflict as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "This field changed since it was loaded. Reload it before saving your decision."
+            ),
+        ) from exc
     except CorrectionConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except CorrectionValueError as exc:

@@ -16,6 +16,7 @@ from .test_human_confirmed_promotion import promotion_document as promotion_docu
 
 def reapply_099(cur):
     # Reconstruct the actual pre-099 shape inside this test transaction only.
+    cur.execute("DROP VIEW IF EXISTS selected_canonical_fields")
     cur.execute(
         "DROP TABLE canonical_field_decisions,canonical_field_path_guards,"
         "document_metadata_decisions,document_fact_projection_state"

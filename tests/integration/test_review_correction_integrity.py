@@ -102,7 +102,8 @@ def _exercise_corrections(client: TestClient, headers: dict[str, str], document_
             assert _snapshot(document_id) == baseline
 
     for amount in (0, -12.3456):
-        revision = client.get(f"{path}/canonical-fields").json()["items"][0]["updatedAt"]
+        current = client.get(f"{path}/canonical-fields").json()
+        revision = current["items"][0]["updatedAt"]
         response = client.post(
             f"{path}/review-actions",
             headers=headers,
@@ -112,6 +113,8 @@ def _exercise_corrections(client: TestClient, headers: dict[str, str], document_
                 "fieldPath": base["fieldPath"],
                 "newValue": {"amount": amount, "currency": "USD"},
                 "expectedUpdatedAt": revision,
+                "expectedDecisionRevision": current["decisions"][0]["revision"],
+                "expectedPathGuardRevision": None,
                 "evidenceContext": evidence,
                 "metadata": {"valueType": "money", "currency": "USD"},
                 "comment": f"Reviewed amount {amount}",
@@ -119,7 +122,7 @@ def _exercise_corrections(client: TestClient, headers: dict[str, str], document_
         )
         assert response.status_code == 200
         fields = client.get(f"{path}/canonical-fields").json()["items"]
-        assert fields[0]["value"] == {"amount": amount, "currency": "USD"}
+        assert fields[0]["value"] == {"amount": f"{amount:.4f}", "currency": "USD"}
         assert fields[0]["reviewStatus"] == "user_corrected"
         assert fields[0]["evidence"][0]["sourceText"] == "Reviewed total"
 
@@ -138,9 +141,9 @@ def _exercise_corrections(client: TestClient, headers: dict[str, str], document_
         )
         history = cur.fetchall()
         assert len(history) == 3
-        assert history[1]["old_value_json"] == {"amount": 12.5, "currency": "USD"}
+        assert history[1]["old_value_json"] == {"amount": "12.5000", "currency": "USD"}
         assert history[1]["new_value_json"]["value"] == {"amount": 0, "currency": "USD"}
-        assert history[2]["old_value_json"] == {"amount": 0, "currency": "USD"}
+        assert history[2]["old_value_json"] == {"amount": "0.0000", "currency": "USD"}
         assert history[2]["new_value_json"]["value"] == {"amount": -12.3456, "currency": "USD"}
         assert all(row["actor_user_id"] and row["reason"] for row in history)
 

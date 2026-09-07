@@ -153,6 +153,7 @@ def test_validation_errors_do_not_serialize_private_input_or_extra_keys() -> Non
     [
         (409, "This field changed since it was loaded. Reload it before saving your decision."),
         (400, "A confirmation must keep the existing field's value type."),
+        (422, "A correction must keep the existing field's value type."),
     ],
 )
 def test_review_conflicts_keep_safe_instructions_without_echoing_extra_content(status, message):

@@ -132,7 +132,7 @@ def canonical_field_from_row(row: Mapping[str, Any]) -> CanonicalField:
             "currency": row.get("currency_code"),
             "sourceKind": row["source_kind"],
             "reviewStatus": row["review_status"],
-            "evidence": row.get("evidence_json") or [],
+            "evidence": evidence_refs_from_json(row.get("evidence_json")) or [],
             "validation": row.get("validation_json") or {},
             "acceptedAt": row.get("accepted_at"),
             "updatedAt": row.get("updated_at"),
@@ -143,6 +143,16 @@ def canonical_field_from_row(row: Mapping[str, Any]) -> CanonicalField:
 def canonical_value(row: Mapping[str, Any] | None) -> Any:
     if not row:
         return None
+    # Canonical numeric columns are PostgreSQL numeric(18,4). JSON floats lose
+    # large/four-place values; the public value shape permits exact strings.
+    integer = row.get("integer_value")
+    if integer is not None and row.get("value_type") == "integer":
+        return str(integer)
+    numeric = row.get("numeric_value")
+    if numeric is not None and row.get("value_type") == "money":
+        return {"amount": str(numeric), "currency": row.get("currency_code")}
+    if numeric is not None and row.get("value_type") == "number":
+        return str(numeric)
     return value_from_candidate_row(row)
 
 

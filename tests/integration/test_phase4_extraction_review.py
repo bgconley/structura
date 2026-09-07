@@ -342,6 +342,8 @@ def test_phase4_receipt_review_actions_correct_reject_and_reclassify(
             "documentId": str(document_id),
             "actionType": "reject_field",
             "expectedUpdatedAt": total_revision,
+            "expectedDecisionRevision": corrected.json()["decision"]["revision"],
+            "expectedPathGuardRevision": None,
             "actorType": "human",
             "fieldPath": "receipt.transaction.total",
             "comment": "Total candidate rejected for regression coverage.",

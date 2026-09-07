@@ -175,7 +175,7 @@ def document_context_rows(
                 to_jsonb(cf.boolean_value)
               )
             )
-            FROM canonical_fields cf
+            FROM selected_canonical_fields cf
             WHERE cf.document_id = d.id
               AND cf.review_status IN ('auto_accepted', 'user_confirmed', 'user_corrected')
           ), '{}'::jsonb) AS canonical_facts,

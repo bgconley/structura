@@ -292,7 +292,7 @@ class RelationshipService:
                       cf.date_value,
                       cf.evidence_json,
                       fc.confidence
-                    FROM canonical_fields cf
+                    FROM selected_canonical_fields cf
                     LEFT JOIN field_candidates fc ON fc.id = cf.selected_candidate_id
                     WHERE cf.document_id = %s
                       AND cf.date_value IS NOT NULL

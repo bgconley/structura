@@ -521,6 +521,57 @@ export type CanonicalField = {
   validation?: Record<string, unknown>;
   acceptedAt?: string;
   updatedAt?: string;
+  decision?: FieldDecision | null;
+};
+
+export type FieldDecision = {
+  id: string;
+  documentId: string;
+  fieldPath: string;
+  ordinal: number;
+  revision: string;
+  disposition: "confirmed" | "corrected" | "rejected" | "protected_legacy";
+  origin: "live_review" | "legacy_current_field";
+  canonicalFieldId: string | null;
+  reviewEventId: string | null;
+  actorUserId: string | null;
+  decidedAt: string | null;
+  recordedAt: string;
+};
+
+export type FieldPathGuard = {
+  id: string;
+  documentId: string;
+  fieldPath: string;
+  revision: string;
+  status: "active" | "resolved";
+  origin: "legacy_path_rejection";
+  reviewEventId: string | null;
+  actorUserId: string | null;
+};
+
+export type ProjectionRevision = {
+  schemaVersion: "accepted_fact_projection.v1";
+  documentId: string;
+  state: "unestablished" | "current";
+  acceptedFactRevision: number;
+  projectionRevision: number;
+  acceptedFactsSha256: string | null;
+  indexedMetadataSha256: string | null;
+};
+
+export type CanonicalFieldResponse = {
+  authorityVersion: "human_authority.v1";
+  items: CanonicalField[];
+  decisions: FieldDecision[];
+  pathGuards: FieldPathGuard[];
+  projection: ProjectionRevision;
+};
+
+export type FieldDecisionPreconditions = {
+  expectedUpdatedAt: string | null;
+  expectedDecisionRevision: string | null;
+  expectedPathGuardRevision: string | null;
 };
 
 export type ReviewTask = {
@@ -588,6 +639,8 @@ export type ReviewActionType =
 
 export type ReviewActionPayload = {
   expectedUpdatedAt?: string | null;
+  expectedDecisionRevision?: string | null;
+  expectedPathGuardRevision?: string | null;
   schemaName: "review_action";
   schemaVersion: "v1";
   documentId: string;

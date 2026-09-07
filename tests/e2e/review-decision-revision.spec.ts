@@ -3,6 +3,7 @@ import {expect, test} from "@playwright/test";
 import {canonicalFieldForCandidate, referenceCandidate} from "../../apps/web/src/reviewActions";
 import {csrfToken, mockStructuraApi} from "./support/structuraMock";
 import {seededFieldCandidates, seededReviewTasks} from "./support/structuraFixtures";
+import {reviewAuthorityFixture} from "./support/reviewAuthorityFixture";
 
 test.skip(process.env.STRUCTURA_E2E_LIVE === "1", "Mocked decision regressions are local-only.");
 
@@ -31,10 +32,10 @@ for (const action of ["confirm_field", "correct_field", "reject_field"] as const
       {...candidate, id: "11111111-1111-4111-8111-111111111111", ordinal: 1, value: {amount: 111, currency: "USD"}},
       candidate,
     ]}}));
-    await page.route("**/api/v1/documents/*/canonical-fields", (route) => route.fulfill({json: {items: [
+    await page.route("**/api/v1/documents/*/canonical-fields", (route) => route.fulfill({json: reviewAuthorityFixture(candidate.documentId, [
       {...canonical, id: "other-ordinal", ordinal: 1, updatedAt: "2026-09-07T09:00:00Z"},
       canonical,
-    ]}}));
+    ])}));
     const mutations: Record<string, unknown>[] = [];
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
@@ -59,21 +60,22 @@ for (const action of ["confirm_field", "correct_field", "reject_field"] as const
   });
 
   test(`${action} uses an explicit absent-field revision for the first decision`, async ({page}) => {
-    await page.route("**/api/v1/documents/*/canonical-fields", (route) => route.fulfill({json: {items: []}}));
+    await page.route("**/api/v1/documents/*/canonical-fields", (route) => route.fulfill({json: reviewAuthorityFixture(seededFieldCandidates()[0].documentId)}));
     const mutation = page.waitForRequest((request) => request.method() === "POST" && request.url().endsWith("/review-actions"));
     await page.goto("/");
     await page.getByRole("button", {name: /Review Queue/}).click();
     if (action === "correct_field") await page.getByLabel("Corrected value").fill("1000");
     await page.getByRole("button", {name: actionLabels[action], exact: true}).click();
-    expect((await mutation).postDataJSON()).toMatchObject({actionType: action, expectedUpdatedAt: null});
+    expect((await mutation).postDataJSON()).toMatchObject({actionType: action, expectedUpdatedAt: null,
+      expectedDecisionRevision: null, expectedPathGuardRevision: null});
   });
 }
 
 test("a canonical row without its revision cannot enable a destructive decision", async ({page}) => {
   const candidate = seededFieldCandidates()[0];
-  await page.route("**/api/v1/documents/*/canonical-fields", (route) => route.fulfill({json: {items: [{
+  await page.route("**/api/v1/documents/*/canonical-fields", (route) => route.fulfill({json: reviewAuthorityFixture(candidate.documentId, [{
     ...candidate, id: "canonical-missing-revision", sourceKind: "human", reviewStatus: "user_confirmed",
-  }]}}));
+  }])}));
   await page.goto("/");
   await page.getByRole("button", {name: /Review Queue/}).click();
   await expect(page.getByRole("button", {name: "Accept candidate", exact: true})).toBeDisabled();

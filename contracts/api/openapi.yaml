@@ -441,7 +441,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: ../schemas/review_action.v1.schema.json
+              $ref: '#/components/schemas/ReviewActionRequest'
       responses:
         '200':
           description: Review action applied
@@ -458,11 +458,20 @@ paths:
                   reviewEventId:
                     type: string
                     format: uuid
+                  decision:
+                    $ref: '#/components/schemas/FieldDecision'
+                  canonical:
+                    nullable: true
+                    allOf:
+                    - $ref: '#/components/schemas/CanonicalField'
+                  projection:
+                    $ref: '#/components/schemas/FieldProjectionRevision'
                   jobId:
                     type: string
                     format: uuid
         '409':
-          description: Canonical revision changed or a human-reviewed fact requires an explicit revision
+          description: Canonical revision changed or a human-reviewed fact requires
+            an explicit revision
         '422':
           description: Invalid typed correction value
         '401':
@@ -580,7 +589,7 @@ paths:
     get:
       tags:
       - Review
-      summary: List canonical accepted fields for a document
+      summary: List canonical rows and durable field decisions for a document
       parameters:
       - in: path
         name: documentId
@@ -594,15 +603,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: false
-                required:
-                - items
-                properties:
-                  items:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/CanonicalField'
+                $ref: '#/components/schemas/CanonicalFieldResponse'
         '401':
           description: Not authenticated
     post:
@@ -630,7 +631,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/CanonicalField'
         '409':
-          description: Canonical revision changed or a human-reviewed fact requires an explicit revision
+          description: Canonical revision changed or a human-reviewed fact requires
+            an explicit revision
         '422':
           description: Invalid typed correction value
         '401':
@@ -2877,9 +2879,324 @@ components:
           additionalProperties: true
         status:
           type: string
-    CanonicalField:
-      type: object
+    FieldDecision:
       additionalProperties: false
+      properties:
+        id:
+          format: uuid
+          type: string
+        documentId:
+          format: uuid
+          type: string
+        fieldPath:
+          type: string
+        ordinal:
+          minimum: 1
+          type: integer
+        revision:
+          format: uuid
+          type: string
+        disposition:
+          enum:
+          - confirmed
+          - corrected
+          - rejected
+          - protected_legacy
+          type: string
+        origin:
+          enum:
+          - live_review
+          - legacy_current_field
+          type: string
+        canonicalFieldId:
+          format: uuid
+          type: string
+          nullable: true
+        reviewEventId:
+          format: uuid
+          type: string
+          nullable: true
+        actorUserId:
+          format: uuid
+          type: string
+          nullable: true
+        decidedAt:
+          format: date-time
+          type: string
+          nullable: true
+        recordedAt:
+          format: date-time
+          type: string
+      required:
+      - id
+      - documentId
+      - fieldPath
+      - ordinal
+      - revision
+      - disposition
+      - origin
+      - canonicalFieldId
+      - reviewEventId
+      - actorUserId
+      - decidedAt
+      - recordedAt
+      type: object
+    FieldPathGuard:
+      additionalProperties: false
+      properties:
+        id:
+          format: uuid
+          type: string
+        documentId:
+          format: uuid
+          type: string
+        fieldPath:
+          type: string
+        revision:
+          format: uuid
+          type: string
+        status:
+          enum:
+          - active
+          - resolved
+          type: string
+        origin:
+          type: string
+          enum:
+          - legacy_path_rejection
+        reviewEventId:
+          format: uuid
+          type: string
+          nullable: true
+        actorUserId:
+          format: uuid
+          type: string
+          nullable: true
+      required:
+      - id
+      - documentId
+      - fieldPath
+      - revision
+      - status
+      - origin
+      - reviewEventId
+      - actorUserId
+      type: object
+    FieldProjectionRevision:
+      additionalProperties: false
+      properties:
+        schemaVersion:
+          type: string
+          enum:
+          - accepted_fact_projection.v1
+        documentId:
+          format: uuid
+          type: string
+        state:
+          enum:
+          - unestablished
+          - current
+          type: string
+        acceptedFactRevision:
+          minimum: 0
+          type: integer
+        projectionRevision:
+          minimum: 0
+          type: integer
+        acceptedFactsSha256:
+          type: string
+          nullable: true
+        indexedMetadataSha256:
+          type: string
+          nullable: true
+      required:
+      - schemaVersion
+      - documentId
+      - state
+      - acceptedFactRevision
+      - projectionRevision
+      - acceptedFactsSha256
+      - indexedMetadataSha256
+      type: object
+    CanonicalFieldResponse:
+      additionalProperties: false
+      properties:
+        authorityVersion:
+          type: string
+          enum:
+          - human_authority.v1
+        items:
+          items:
+            $ref: '#/components/schemas/CanonicalField'
+          type: array
+        decisions:
+          items:
+            $ref: '#/components/schemas/FieldDecision'
+          type: array
+        pathGuards:
+          items:
+            $ref: '#/components/schemas/FieldPathGuard'
+          type: array
+        projection:
+          $ref: '#/components/schemas/FieldProjectionRevision'
+      required:
+      - authorityVersion
+      - items
+      - decisions
+      - pathGuards
+      - projection
+      type: object
+    ReviewActionRequest:
+      additionalProperties: false
+      properties:
+        schemaName:
+          default: review_action
+          type: string
+          enum:
+          - review_action
+        schemaVersion:
+          default: v1
+          type: string
+          enum:
+          - v1
+        documentId:
+          format: uuid
+          type: string
+        reviewTaskId:
+          default: null
+          format: uuid
+          type: string
+          nullable: true
+        actionType:
+          enum:
+          - confirm_field
+          - correct_field
+          - reject_field
+          - reclassify_document
+          - rerun_extraction
+          - mark_done
+          - accept_relationship
+          - reject_relationship
+          - accept_observation
+          - reject_observation
+          - accept_line_item
+          - reject_line_item
+          type: string
+        actorType:
+          default: human
+          enum:
+          - human
+          - system
+          - agent
+          type: string
+        fieldPath:
+          default: null
+          type: string
+          nullable: true
+          minLength: 1
+          pattern: \S
+        oldValue:
+          default: null
+        newValue:
+          default: null
+        comment:
+          default: null
+          type: string
+          nullable: true
+        evidenceContext:
+          default: null
+          items:
+            $ref: '#/components/schemas/EvidenceRef'
+          type: array
+          nullable: true
+        metadata:
+          default: null
+          additionalProperties: true
+          type: object
+          nullable: true
+        createdAt:
+          default: null
+          format: date-time
+          type: string
+          nullable: true
+        expectedUpdatedAt:
+          default: null
+          type: string
+          nullable: true
+        expectedDecisionRevision:
+          default: null
+          format: uuid
+          type: string
+          nullable: true
+        expectedPathGuardRevision:
+          default: null
+          format: uuid
+          type: string
+          nullable: true
+      required:
+      - documentId
+      - actionType
+      type: object
+    CanonicalField:
+      additionalProperties: false
+      properties:
+        id:
+          format: uuid
+          type: string
+        documentId:
+          format: uuid
+          type: string
+        fieldPath:
+          type: string
+        valueType:
+          type: string
+        value: {}
+        sourceKind:
+          enum:
+          - candidate
+          - validator
+          - human
+          - system
+          type: string
+        reviewStatus:
+          type: string
+        evidence:
+          items:
+            $ref: '#/components/schemas/EvidenceRef'
+          minItems: 1
+          type: array
+        selectedCandidateId:
+          default: null
+          format: uuid
+          type: string
+          nullable: true
+        ordinal:
+          default: null
+          type: integer
+          nullable: true
+        currency:
+          default: null
+          type: string
+          nullable: true
+        validation:
+          default: null
+          additionalProperties: true
+          type: object
+          nullable: true
+        acceptedAt:
+          default: null
+          format: date-time
+          type: string
+          nullable: true
+        updatedAt:
+          default: null
+          format: date-time
+          type: string
+          nullable: true
+        decision:
+          default: null
+          $ref: '#/components/schemas/FieldDecision'
+          nullable: true
       required:
       - id
       - documentId
@@ -2889,95 +3206,72 @@ components:
       - sourceKind
       - reviewStatus
       - evidence
+      type: object
+    CanonicalFieldWrite:
+      additionalProperties: false
       properties:
-        id:
-          type: string
-          format: uuid
-        documentId:
-          type: string
-          format: uuid
         selectedCandidateId:
-          type: string
+          default: null
           format: uuid
+          type: string
+          nullable: true
         fieldPath:
           type: string
+          minLength: 1
+          pattern: \S
         ordinal:
+          default: 1
+          maximum: 2147483647
+          minimum: 1
           type: integer
         valueType:
           type: string
-        value:
-          nullable: true
+        value: {}
         currency:
+          default: null
           type: string
+          nullable: true
         sourceKind:
-          type: string
           enum:
           - candidate
           - validator
           - human
           - system
-        reviewStatus:
           type: string
         evidence:
-          type: array
-          minItems: 1
           items:
             $ref: '#/components/schemas/EvidenceRef'
-        validation:
-          type: object
-          additionalProperties: true
-        acceptedAt:
+          minItems: 1
+          type: array
+        reason:
+          default: null
           type: string
-          format: date-time
-        updatedAt:
+          nullable: true
+        expectedUpdatedAt:
+          default: null
           type: string
-          format: date-time
-          description: Exact opaque revision for optimistic human correction; retain fractional precision.
-    CanonicalFieldWrite:
-      type: object
-      additionalProperties: false
+          nullable: true
+        expectedDecisionRevision:
+          default: null
+          format: uuid
+          type: string
+          nullable: true
+          description: Exact decision UUID; null asserts no decision. Omission cannot
+            replace existing human authority.
+        expectedPathGuardRevision:
+          default: null
+          format: uuid
+          type: string
+          nullable: true
+          description: Exact active legacy path-guard UUID; null asserts none. Acknowledgement
+            is scoped to this field decision.
       required:
       - fieldPath
       - valueType
       - value
       - sourceKind
       - evidence
-      properties:
-        selectedCandidateId:
-          type: string
-          format: uuid
-        fieldPath:
-          type: string
-        ordinal:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-          default: 1
-        valueType:
-          type: string
-        value:
-          nullable: true
-        currency:
-          type: string
-        sourceKind:
-          type: string
-          enum:
-          - candidate
-          - validator
-          - human
-          - system
-        evidence:
-          type: array
-          minItems: 1
-          items:
-            $ref: '#/components/schemas/EvidenceRef'
-        reason:
-          type: string
-        expectedUpdatedAt:
-          type: string
-          format: date-time
-          nullable: true
-          description: Exact loaded updatedAt; null requires an absent fact. Omission cannot overwrite a human-reviewed fact.
+      type: object
     Folder:
       type: object
       additionalProperties: false

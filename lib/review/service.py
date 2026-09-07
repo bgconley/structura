@@ -13,8 +13,8 @@ from lib.db.connection import db_connection
 from lib.documents.access_policy import DocumentAccessContext
 from lib.relationships.errors import RelationshipServiceError
 from lib.relationships.service import RelationshipService
-from lib.review.correction_revision import CorrectionExpectation
 from lib.review.correction_values import CorrectionValueError, validate_correction_value
+from lib.review.revision_request import field_revision_arguments
 from lib.search.projection import refresh_projection_and_enqueue_embedding
 from lib.semantic_annotations.jobs import enqueue_semantic_annotation_job
 
@@ -33,23 +33,26 @@ class ReviewService:
     ) -> dict[str, object]:
         if action.action_type == "confirm_field":
             candidate_id = _candidate_id_from_action(action)
-            event_id = repository.confirm_candidate(
+            result = repository.confirm_candidate_result(
                 document_id=action.document_id,
                 access=access,
                 actor_user_id=actor_user_id,
                 candidate_id=candidate_id,
                 reason=action.comment,
-                expectation=CorrectionExpectation(
-                    "expected_updated_at" in action.model_fields_set, action.expected_updated_at
+                expected_field_path=action.field_path,
+                expected_ordinal=(
+                    _correction_ordinal(action) if "ordinal" in (action.metadata or {}) else None
                 ),
+                **field_revision_arguments(action),
             )
+            return result.response()
         elif action.action_type == "correct_field":
             field_path = _required(action.field_path, "fieldPath")
             validate_correction_value(
                 _value_type_from_action(action), action.new_value, _currency_from_action(action)
             )
             evidence = _evidence_context_json(action)
-            _, event_id = repository.upsert_human_canonical_field(
+            result = repository.correct_field_result(
                 document_id=action.document_id,
                 access=access,
                 actor_user_id=actor_user_id,
@@ -65,23 +68,26 @@ class ReviewService:
                 evidence=evidence,
                 currency=_currency_from_action(action),
                 reason=action.comment,
-                expectation=CorrectionExpectation(
-                    "expected_updated_at" in action.model_fields_set, action.expected_updated_at
-                ),
+                **field_revision_arguments(action),
             )
+            return result.response()
         elif action.action_type == "reject_field":
             field_path = _required(action.field_path, "fieldPath")
-            event_id = repository.reject_field(
+            result = repository.reject_field_result(
                 document_id=action.document_id,
                 access=access,
                 actor_user_id=actor_user_id,
                 field_path=field_path,
                 reason=action.comment,
                 ordinal=_correction_ordinal(action),
-                expectation=CorrectionExpectation(
-                    "expected_updated_at" in action.model_fields_set, action.expected_updated_at
+                selected_candidate_id=(
+                    _candidate_id_from_action(action)
+                    if (action.metadata or {}).get("candidateId")
+                    else None
                 ),
+                **field_revision_arguments(action),
             )
+            return result.response()
         elif action.action_type == "reclassify_document":
             family, subtype = _classification_from_action(action)
             event_id = repository.record_reclassify(
@@ -150,12 +156,7 @@ class ReviewService:
             return {"ok": True, "relationshipId": str(relationship.id)}
         else:  # pragma: no cover - Pydantic constrains this.
             raise ReviewServiceError(f"Unsupported review action: {action.action_type}")
-        if action.action_type in {
-            "confirm_field",
-            "correct_field",
-            "reject_field",
-            "reclassify_document",
-        }:
+        if action.action_type == "reclassify_document":
             refresh_projection_and_enqueue_embedding(
                 document_id=action.document_id,
                 household_id=access.household_id,
@@ -188,14 +189,7 @@ class ReviewService:
             selected_candidate_id=payload.selected_candidate_id,
             source_kind=payload.source_kind,
             reason=payload.reason,
-            expectation=CorrectionExpectation(
-                "expected_updated_at" in payload.model_fields_set, payload.expected_updated_at
-            ),
-        )
-        refresh_projection_and_enqueue_embedding(
-            document_id=document_id,
-            household_id=access.household_id,
-            force_reembed=False,
+            **field_revision_arguments(payload),
         )
         return field
 
@@ -256,7 +250,10 @@ def _candidate_id_from_action(action: ReviewActionRequest) -> UUID:
         except ValueError as exc:
             raise CorrectionValueError("Selected candidate does not match this field.") from exc
     if action.new_value:
-        return UUID(str(action.new_value))
+        try:
+            return UUID(str(action.new_value))
+        except ValueError as exc:
+            raise CorrectionValueError("Selected candidate does not match this field.") from exc
     raise ReviewServiceError("confirm_field requires metadata.candidateId.")
 
 

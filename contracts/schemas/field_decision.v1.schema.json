@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://structura.local/contracts/schemas/field_decision.v1.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+    },
+    "document_id": {
+      "format": "uuid",
+      "title": "Document Id",
+      "type": "string"
+    },
+    "field_path": {
+      "title": "Field Path",
+      "type": "string"
+    },
+    "ordinal": {
+      "minimum": 1,
+      "title": "Ordinal",
+      "type": "integer"
+    },
+    "revision": {
+      "format": "uuid",
+      "title": "Revision",
+      "type": "string"
+    },
+    "disposition": {
+      "enum": [
+        "confirmed",
+        "corrected",
+        "rejected",
+        "protected_legacy"
+      ],
+      "title": "Disposition",
+      "type": "string"
+    },
+    "origin": {
+      "enum": [
+        "live_review",
+        "legacy_current_field"
+      ],
+      "title": "Origin",
+      "type": "string"
+    },
+    "canonical_field_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Canonical Field Id"
+    },
+    "review_event_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Review Event Id"
+    },
+    "actor_user_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Actor User Id"
+    },
+    "decided_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Decided At"
+    },
+    "recorded_at": {
+      "format": "date-time",
+      "title": "Recorded At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "document_id",
+    "field_path",
+    "ordinal",
+    "revision",
+    "disposition",
+    "origin",
+    "canonical_field_id",
+    "review_event_id",
+    "actor_user_id",
+    "decided_at",
+    "recorded_at"
+  ],
+  "title": "FieldDecision",
+  "type": "object"
+}

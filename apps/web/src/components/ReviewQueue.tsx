@@ -2,14 +2,14 @@ import {useEffect, useMemo} from "react";
 
 import {useReviewQueueState} from "../useReviewQueueState";
 import {
-  canonicalFieldForCandidate,
   coerceCorrectionValue,
   evidenceTargetFromCandidate,
   referenceCandidate,
 } from "../reviewActions";
 import {evidenceTargetFromRef, selectEvidenceRef} from "../evidence";
+import {fieldDecisionPreconditions} from "../reviewAuthority";
+import {recordedValue} from "../recordedFactValues";
 import type {
-  CanonicalField,
   EvidenceRef,
   EvidenceTarget,
   FieldCandidate,
@@ -17,6 +17,7 @@ import type {
   ObservationCandidate,
 } from "../types";
 import {ReviewDecisionPanel} from "./ReviewDecisionPanel";
+import {ReviewFieldHistory} from "./ReviewFieldHistory";
 import "./ReviewQueue.css";
 
 export function ReviewQueue({
@@ -28,12 +29,13 @@ export function ReviewQueue({
   onSelectTask: (taskId: string | undefined) => void;
   onOpenDocument: (documentId: string, evidenceTarget?: EvidenceTarget) => void;
 }) {
-  const {tasks, activeTask, selectTask, candidates, observations, lineItems, canonical,
-    status, setStatus, pending, detailReady, selectionError, taskLoading, tasksLoaded, refresh, applyReviewAction}
+  const {tasks, activeTask, selectTask, candidates, observations, lineItems, authority, authorityError,
+    status, setStatus, pending, detailReady, detailFailed, fieldDecisionReady, fieldConflict,
+    selectionError, taskLoading, tasksLoaded, refresh, applyReviewAction}
     = useReviewQueueState(selectedTaskId, documentId, onSelectTask);
   const decisionDisabled = pending || !detailReady || activeTask?.status !== "open";
   useEffect(() => {
-    if (selectionError || detailReady || (tasksLoaded && !taskLoading && !activeTask)) onReady();
+    if (selectionError || detailReady || detailFailed || (tasksLoaded && !taskLoading && !activeTask)) onReady();
   });
 
   async function handleAccept(candidate: FieldCandidate) {
@@ -43,8 +45,8 @@ export function ReviewQueue({
       setStatus("Reload the selected field's candidate before accepting.");
       return false;
     }
-    const currentField = canonicalFieldForCandidate(canonical, candidate);
-    if (currentField && !currentField.updatedAt) {
+    const preconditions = fieldDecisionPreconditions(authority, candidate);
+    if (!preconditions || !fieldDecisionReady) {
       setStatus("Reload this field to obtain its current revision before accepting.");
       return false;
     }
@@ -58,7 +60,7 @@ export function ReviewQueue({
         actorType: "human",
         fieldPath: candidate.fieldPath,
         newValue: candidate.id,
-        expectedUpdatedAt: currentField?.updatedAt ?? null,
+        ...preconditions,
         metadata: {candidateId: candidate.id},
         comment: "Accepted from review queue.",
         createdAt: new Date().toISOString(),
@@ -114,8 +116,8 @@ export function ReviewQueue({
     }
     const reference = referenceCandidate(activeTask, candidates);
     if (!reference) throw new Error("Wait for the selected field's candidate before correcting.");
-    const currentField = canonicalFieldForCandidate(canonical, reference);
-    if (currentField && !currentField.updatedAt) {
+    const preconditions = fieldDecisionPreconditions(authority, reference);
+    if (!preconditions || !fieldDecisionReady) {
       throw new Error("Reload this field to obtain its current revision before correcting.");
     }
     const coerced = coerceCorrectionValue(
@@ -133,7 +135,7 @@ export function ReviewQueue({
         actorType: "human",
         fieldPath: activeTask.fieldPath,
         newValue: coerced.value,
-        expectedUpdatedAt: currentField?.updatedAt ?? null,
+        ...preconditions,
         evidenceContext: reference?.evidence,
         metadata: {...coerced.metadata, ordinal: reference.ordinal ?? 1, candidateId: reference.id},
         comment: comment || "Corrected from review queue.",
@@ -154,10 +156,10 @@ export function ReviewQueue({
       return false;
     }
     const ordinal = reference.ordinal ?? 1;
-    const currentField = canonicalFieldForCandidate(canonical, {
+    const preconditions = fieldDecisionPreconditions(authority, {
       documentId: activeTask.documentId, fieldPath: activeTask.fieldPath, ordinal,
     });
-    if (currentField && !currentField.updatedAt) {
+    if (!preconditions || !fieldDecisionReady) {
       setStatus("Reload this field to obtain its current revision before rejecting.");
       return false;
     }
@@ -170,7 +172,7 @@ export function ReviewQueue({
         actionType: "reject_field",
         actorType: "human",
         fieldPath: activeTask.fieldPath,
-        expectedUpdatedAt: currentField?.updatedAt ?? null,
+        ...preconditions,
         metadata: {ordinal},
         comment: comment || "Rejected from review queue.",
         createdAt: new Date().toISOString(),
@@ -239,9 +241,8 @@ export function ReviewQueue({
 
   const fieldGroups = useMemo(() => groupCandidates(candidates), [candidates]);
   const activeReferenceCandidate = activeTask ? referenceCandidate(activeTask, candidates) : undefined;
-  const activeCanonical = activeReferenceCandidate
-    ? canonicalFieldForCandidate(canonical, activeReferenceCandidate) : undefined;
-  const correctionRevisionReady = !activeCanonical || !!activeCanonical.updatedAt;
+  const correctionRevisionReady = fieldDecisionReady && !!activeReferenceCandidate
+    && !!fieldDecisionPreconditions(authority, activeReferenceCandidate);
 
   return (
     <section className="review-workbench">
@@ -283,8 +284,10 @@ export function ReviewQueue({
                 </button>
               </div>
               {activeTask.status !== "open" ? <p role="status">This task is {activeTask.status}. Its review history is preserved; decisions are disabled.</p> : null}
-              {!detailReady ? <p role="status">Loading review details…</p> : null}
-              <CanonicalSummary canonical={canonical} fieldPath={activeTask.fieldPath} />
+              {!detailReady ? <p role="status">{detailFailed ? "Review details could not be refreshed. Your entries are preserved; refresh to retry." : "Loading review details…"}</p> : null}
+              {authorityError ? <p role="alert">{authorityError}</p> : null}
+              {fieldConflict ? <p role="alert">This field has a newer decision. Refresh to review it before saving again. Your entries are preserved.</p> : null}
+              <ReviewFieldHistory authority={authority} fieldPath={activeTask.fieldPath} formatValue={formatValue} />
               {fieldGroups.map(([fieldPath, items]) => (
                 <div className="candidate-group" key={fieldPath}>
                   <h3>{fieldPath}</h3>
@@ -297,12 +300,11 @@ export function ReviewQueue({
                       <p>{candidate.status ?? "proposed"} · {evidenceLabel(candidate.evidence)}</p>
                       <small>{selectEvidenceRef(candidate.evidence)?.sourceText ?? "Evidence locator available."}</small>
                       <div className="candidate-actions">
-                        <button type="button" disabled={decisionDisabled
+                        <button type="button" disabled={decisionDisabled || !fieldDecisionReady
                           || (!!activeTask.fieldPath && (!activeReferenceCandidate
                             || candidate.fieldPath !== activeReferenceCandidate.fieldPath
                             || (candidate.ordinal ?? 1) !== (activeReferenceCandidate.ordinal ?? 1)))
-                          || (canonicalFieldForCandidate(canonical, candidate) !== undefined
-                            && !canonicalFieldForCandidate(canonical, candidate)?.updatedAt)} onClick={() => handleAccept(candidate)}>
+                          || !fieldDecisionPreconditions(authority, candidate)} onClick={() => handleAccept(candidate)}>
                           Accept candidate
                         </button>
                         <button
@@ -399,7 +401,7 @@ export function ReviewQueue({
                 <p className="empty-state">No line-item candidate found for this task.</p>
               ) : null}
               <ReviewDecisionPanel
-                key={`${activeTask.id}:${activeReferenceCandidate?.id ?? "loading"}:${activeCanonical?.updatedAt ?? "absent"}`}
+                key={`${activeTask.id}:${activeReferenceCandidate?.id ?? "loading"}`}
                 disabled={decisionDisabled}
                 correctionRevisionReady={correctionRevisionReady}
                 activeTask={activeTask}
@@ -418,27 +420,6 @@ export function ReviewQueue({
         </section>
       </div>
     </section>
-  );
-}
-
-function CanonicalSummary({
-  canonical,
-  fieldPath,
-}: {
-  canonical: CanonicalField[];
-  fieldPath?: string;
-}) {
-  const fields = fieldPath ? canonical.filter((field) => field.fieldPath === fieldPath) : canonical;
-  return (
-    <div className="canonical-summary">
-      <h3>Canonical facts</h3>
-      {fields.length ? fields.map((field) => (
-        <p key={field.id}>
-          <strong>{field.fieldPath}</strong>
-          <span>{formatValue(field.value, field.currency, field.valueType)} · {field.reviewStatus}</span>
-        </p>
-      )) : <p>No accepted fact yet.</p>}
-    </div>
   );
 }
 
@@ -469,10 +450,5 @@ function formatAmount(amount?: number | null, currency?: string | null): string 
 }
 
 function formatValue(value: unknown, currency?: string, valueType?: string): string {
-  if (valueType === "json") return JSON.stringify(value) ?? "Not set";
-  if (value && typeof value === "object" && "amount" in value) {
-    const money = value as {amount?: number; currency?: string};
-    return `${money.currency ?? currency ?? "USD"} ${money.amount ?? ""}`.trim();
-  }
-  return value === null || value === undefined ? "Not set" : String(value);
+  return recordedValue(value, valueType, currency);
 }

@@ -1,12 +1,16 @@
 import {csrfToken, fetchJson} from "./api";
 import type {
+  CanonicalFieldResponse,
   CanonicalField,
+  FieldDecision,
+  ProjectionRevision,
   FieldCandidate,
   LineItemCandidate,
   ObservationCandidate,
   ReviewActionPayload,
   ReviewTask,
 } from "./types";
+import {parseCanonicalFieldResponse} from "./reviewAuthority";
 
 export async function listReviewTasks(status?: string, documentId?: string): Promise<ReviewTask[]> {
   const params = new URLSearchParams();
@@ -66,16 +70,17 @@ export async function listLineItemCandidates(
   return payload.items;
 }
 
-export async function listCanonicalFields(documentId: string): Promise<CanonicalField[]> {
-  const payload = await fetchJson<{items: CanonicalField[]}>(
+export async function listCanonicalFields(documentId: string): Promise<CanonicalFieldResponse> {
+  const payload = await fetchJson<unknown>(
     `/api/v1/documents/${documentId}/canonical-fields`,
   );
-  return payload.items;
+  return parseCanonicalFieldResponse(payload, documentId);
 }
 
 export async function postReviewAction(
   payload: ReviewActionPayload,
-): Promise<{ok: boolean; reviewEventId?: string; jobId?: string}> {
+): Promise<{ok: boolean; reviewEventId?: string; jobId?: string;
+  decision?: FieldDecision; canonical?: CanonicalField | null; projection?: ProjectionRevision}> {
   return fetchJson(`/api/v1/documents/${payload.documentId}/review-actions`, {
     method: "POST",
     headers: {"Content-Type": "application/json", "X-CSRF-Token": csrfToken()},

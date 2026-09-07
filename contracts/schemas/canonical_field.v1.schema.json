@@ -95,6 +95,16 @@
     "updated_at": {
       "type": "string",
       "format": "date-time"
+    },
+    "decision": {
+      "anyOf": [
+        {
+          "$ref": "field_decision.v1.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   }
 }

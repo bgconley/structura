@@ -19,7 +19,7 @@ from lib.extraction.canonical_repository import promote_candidates
 from lib.extraction.extraction_repository import _lock_document
 from lib.extraction.models import ValidationReport
 from lib.extraction.source_repository import load_extraction_source
-from lib.review import action_repository
+from lib.review import canonical_field_repository as action_repository
 
 
 @pytest.fixture
@@ -64,7 +64,13 @@ def candidate(document_id, text):
             (document_id,extraction_id,field_path,source_engine,value_type,text_value,
              evidence_json,validation_json)
             VALUES (%s,%s,'invoice.purchase_order','validator','string',%s,%s,%s) RETURNING *""",
-            (document_id, extraction_id, text, Jsonb([{"pageNumber": 1}]), Jsonb({"valid": True})),
+            (
+                document_id,
+                extraction_id,
+                text,
+                Jsonb([{"pageNumber": 1, "sourceEngine": "validator", "sourceText": text}]),
+                Jsonb({"valid": True}),
+            ),
         )
         return cur.fetchone()
 

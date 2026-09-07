@@ -2,10 +2,13 @@ from __future__ import annotations
 
 from lib.review.action_repository import (
     confirm_candidate,
+    confirm_candidate_result,
+    correct_field_result,
     mark_done,
     record_reclassify,
     record_rerun_request,
     reject_field,
+    reject_field_result,
     upsert_human_canonical_field,
 )
 from lib.review.candidate_decision_repository import (
@@ -14,6 +17,7 @@ from lib.review.candidate_decision_repository import (
 )
 from lib.review.errors import ReviewRepositoryError
 from lib.review.read_repository import (
+    get_canonical_field_response,
     get_review_task,
     list_canonical_fields,
     list_field_candidates,
@@ -25,9 +29,13 @@ from lib.review.read_repository import (
 __all__ = [
     "ReviewRepositoryError",
     "confirm_candidate",
+    "confirm_candidate_result",
+    "correct_field_result",
+    "reject_field_result",
     "decide_line_item",
     "decide_observation",
     "get_review_task",
+    "get_canonical_field_response",
     "list_canonical_fields",
     "list_field_candidates",
     "list_line_item_candidates",

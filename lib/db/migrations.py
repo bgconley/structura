@@ -49,6 +49,7 @@ BASELINE_SQL_FILES = (
     "098_completion_native_index_candidates.sql",
     "099_completion_human_fact_authority.sql",
     "100_completion_generation_retention_cascades.sql",
+    "101_completion_accepted_field_projection.sql",
 )
 
 

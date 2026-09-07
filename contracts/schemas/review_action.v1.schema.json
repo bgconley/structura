@@ -51,7 +51,9 @@
       ]
     },
     "field_path": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
     },
     "old_value": {},
     "new_value": {},
@@ -76,7 +78,23 @@
         "null"
       ],
       "format": "date-time",
-      "description": "For correct_field: exact loaded canonical updated_at, or null to require no existing fact. Omission cannot overwrite a human-reviewed fact."
+      "description": "For confirm/correct/reject: exact loaded canonical updated_at, or null to require no row. Omission cannot overwrite human-controlled rows."
+    },
+    "expected_decision_revision": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid",
+      "description": "Exact loaded authority revision; null asserts absence. Omission cannot replace existing authority."
+    },
+    "expected_path_guard_revision": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid",
+      "description": "Exact loaded authority revision; null asserts absence. Omission cannot replace existing authority."
     }
   }
 }

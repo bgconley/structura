@@ -1,6 +1,7 @@
 # Durable human decisions and fact projections
 
-Status: root-approved design; migration 099 is reserved exclusively for this work.
+Status: root-approved design; migration 099 foundation is integrated. Migration 101
+and the first field-writer activation are awaiting the canonical database gate.
 The first bounded slice contains additive schema, immutable DTOs and transaction
 protocols for review. Existing writers and public response activation are a later
 integration slice; these foundations alone do not close the preservation gates.
@@ -186,3 +187,39 @@ All candidate/native publishers must later call this same accepted-selection sea
 The initial 098 hidden parse-only index does not bind or claim these facts. No current
 index activation, human line-item promotion, phase advancement or full closure is
 implied by the additive schema, domain policy tests or transaction port declarations.
+
+
+## Migration 101 field-writer activation boundary
+
+The first writer slice refactors the old review facade into canonical field,
+canonical value, and document workflow repositories. Confirm/correct/reject persist
+exact field decisions, canonical changes, immutable history/events, task closure,
+owned scalar/total rollups, lexical text and queued embedding work in one transaction.
+A fresh post-lock authority check follows the household/actor/membership/token,
+document/folder prefix. Existing browser-session lifetime policy is unchanged.
+
+`acceptedFactRevision` and `acceptedFactsSha256` currently bind **accepted_fields.v1**:
+selected canonical fields and their exact evidence/decision identity. They do not
+claim a complete canonical line-item fact basis. Existing line-item selection is
+preserved. Native candidate indexes keep `fact_basis=not_collected` until every
+required field, line-item and metadata input is coordinated and explicitly bound.
+
+The lexical function materializes indexed document/tag/folder/amount metadata and
+updates chunks in a single SQL statement, returning that same snapshot for hashing.
+Amounts remain decimal text in the fingerprint. A concurrent label rename cannot
+make the stored hash describe different inputs from the lexical write. This does
+not make existing folder/tag label writers revision-aware: their mutation paths
+must later refresh all affected document projections with a coherent lock order.
+
+Canonical number values and money amounts are returned as exact decimal strings
+from persisted typed columns, including confirmation audit values. Numeric value
+kind and currency remain explicit; input validation retains the existing numeric
+correction contract and never silently rounds an unsupported client number.
+
+Manual classification/date writer activation remains the next metadata slice.
+This field projection honors already-established date decisions, including explicit
+null, and preserves unknown legacy scalar values. Automatic field promotion now
+checks durable decisions/path guards and uses common rollup selection, but legacy
+worker scheduling and independent metadata-refresh transactions are still pending
+their own integrations. No active index switch, model call, reindex or phase closure
+is implied by this checkpoint.
