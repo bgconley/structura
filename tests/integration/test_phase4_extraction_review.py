@@ -4,6 +4,7 @@ import json
 import os
 import time
 import uuid
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -170,15 +171,20 @@ def test_phase4_invoice_extraction_persists_candidates_canonical_and_assets(
             }
             cur.execute(
                 """
-                SELECT count(*) AS total
+                SELECT amount, currency_code, metadata_json
                 FROM document_amounts
                 WHERE document_id = %s
                   AND amount_role = 'total'
-                  AND metadata_json @> %s::jsonb
                 """,
-                (document_id, json.dumps({"phase": "phase4", "source": "canonical_fields"})),
+                (document_id,),
             )
-            assert cur.fetchone()["total"] == 1
+            assert cur.fetchall() == [
+                {
+                    "amount": Decimal("1042.1500"),
+                    "currency_code": "USD",
+                    "metadata_json": {"source": "accepted_field_projection.v1"},
+                }
+            ]
 
 
 @pytest.mark.skipif(
