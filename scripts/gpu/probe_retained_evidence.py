@@ -98,7 +98,7 @@ def verify_historical_api(
                 "page_count": first.total,
                 "historical_page_and_render_replay_equal": True,
                 "unauthenticated_status": 401,
-                "revoked_token_status": 401,
+                "revoked_credential_http_status": 401,
                 "invalid_identity_statuses": statuses,
                 "later_run_invocations": 0,
                 "render_sha256": [r["sha256"] for r in before["renders"]],
