@@ -45,7 +45,8 @@ def read_generation(
                 'page_number',c.page_number,'page_id',c.page_id,
                 'source_page',g.inventory_json->'pages'->(c.page_number-1),
                 'parse_state',c.page_json->>'state',
-                'raster',c.page_json->'source'-'native_text'-'native_text_origin'-'page_number',
+                'raster',(c.page_json->'source')-
+                  ARRAY['native_text','native_text_origin','page_number']::text[],
                 'checkpoint_sha256',c.content_sha256,
                 'expected_page',s.expected_json->'pages'->(c.page_number-1),
                 'asset',a.asset_json,'asset_sha256',a.content_sha256,
