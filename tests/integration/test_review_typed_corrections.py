@@ -198,15 +198,16 @@ def test_two_reviewers_cannot_silently_replace_a_newer_decision(reviewers):
     first, second, document_id, people = reviewers
     field = "document.issued_on"
     assert write(first, document_id, field, "date", "2024-01-01").status_code == 200
-    # Both editors loaded the same exact DB microsecond revision.
+    # Both editors load the exact persisted revision, including its microseconds.
+    # The production update trigger owns this timestamp; do not override it in a fixture.
     with db_connection() as conn, conn.cursor() as cur:
         cur.execute(
-            "UPDATE canonical_fields SET updated_at='2026-09-07T10:11:12.123456Z' "
-            "WHERE document_id=%s",
-            (document_id,),
+            "SELECT updated_at FROM canonical_fields WHERE document_id=%s AND field_path=%s",
+            (document_id, field),
         )
+        persisted_revision = cur.fetchone()["updated_at"]
     revision = fields(first, document_id)[field]["updatedAt"]
-    assert ".123456" in revision
+    assert datetime.fromisoformat(revision.replace("Z", "+00:00")) == persisted_revision
     assert fields(second, document_id)[field]["updatedAt"] == revision
     accepted = write(
         second,
