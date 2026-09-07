@@ -42,8 +42,8 @@ def make_granted_member(processing):
         )
         cur.execute(
             """INSERT INTO folders (name,household_id,owner_user_id,acl_mode)
-            VALUES ('Private shared source',%s,%s,'custom') RETURNING id""",
-            (processing.principal.household_id, owner_id),
+            VALUES (%s,%s,%s,'custom') RETURNING id""",
+            (f"Private shared source {uuid4()}", processing.principal.household_id, owner_id),
         )
         folder_id = cur.fetchone()["id"]
         cur.execute(
@@ -81,9 +81,9 @@ def revoke(cur, processing, kind, *, grant_id=None):
         )
     elif kind == "refiled":
         cur.execute(
-            "INSERT INTO folders (name,household_id,acl_mode) VALUES ('Unavailable',%s,'private') "
+            "INSERT INTO folders (name,household_id,acl_mode) VALUES (%s,%s,'private') "
             "RETURNING id",
-            (processing.principal.household_id,),
+            (f"Unavailable {uuid4()}", processing.principal.household_id),
         )
         folder_id = cur.fetchone()["id"]
         cur.execute(
