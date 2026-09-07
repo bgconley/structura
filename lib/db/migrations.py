@@ -44,6 +44,7 @@ BASELINE_SQL_FILES = (
     "093_completion_household_tags.sql",
     "094_completion_neutral_parse_provenance.sql",
     "095_completion_session_binding.sql",
+    "096_completion_document_processing.sql",
 )
 
 

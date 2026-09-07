@@ -40,4 +40,6 @@ def claimed_job_from_row(row: Mapping[str, Any]) -> ClaimedJob:
         lease_expires_at=cast(datetime, row["lease_expires_at"]),
         attempt_count=int(row["attempt_count"]),
         max_attempts=int(row["max_attempts"]),
+        processing_run_id=cast(UUID | None, row.get("processing_run_id")),
+        parse_generation_id=cast(UUID | None, row.get("parse_generation_id")),
     )

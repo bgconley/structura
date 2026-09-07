@@ -25,6 +25,8 @@ class ClaimedJob:
     lease_expires_at: datetime
     attempt_count: int
     max_attempts: int
+    processing_run_id: UUID | None = None
+    parse_generation_id: UUID | None = None
 
 
 @dataclass(frozen=True)

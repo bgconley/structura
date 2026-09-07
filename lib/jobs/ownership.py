@@ -66,6 +66,7 @@ def require_owned_job(cur: Any, attempt: JobAttempt) -> None:
         SELECT id FROM pipeline_jobs
         WHERE id = %s AND claim_token = %s AND status = 'running'
           AND lease_expires_at > clock_timestamp()
+          AND processing_job_is_current(processing_run_id, parse_generation_id)
         """,
         (attempt.job_id, attempt.claim_token),
     )

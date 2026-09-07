@@ -24,6 +24,7 @@ def claim_runnable_job(
         WHERE j.status IN ('queued', 'failed') AND j.queue_name = %s
           AND (%s::uuid IS NULL OR j.document_id = %s)
           AND j.lineage_revoked_at IS NULL
+          AND processing_job_is_current(j.processing_run_id, j.parse_generation_id)
           AND j.scheduled_at <= clock_timestamp() AND j.attempt_count < j.max_attempts
           AND (j.parent_job_id IS NULL OR (
             parent.status = 'succeeded' AND parent.lineage_revoked_at IS NULL
@@ -57,6 +58,7 @@ def claim_runnable_job(
             WHERE id = %s AND status IN ('queued', 'failed')
               AND scheduled_at <= clock_timestamp() AND attempt_count < max_attempts
               AND lineage_revoked_at IS NULL
+              AND processing_job_is_current(processing_run_id, parse_generation_id)
             RETURNING *
             """,
             (worker_name, uuid4(), lease_seconds, candidate["id"]),

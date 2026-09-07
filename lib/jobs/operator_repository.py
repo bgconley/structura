@@ -114,6 +114,7 @@ def retry_job(cur: Any, *, job_id: UUID, household_id: UUID | None) -> Mapping[s
             lease_expires_at = NULL, claim_token = NULL, scheduled_at = clock_timestamp(),
             finished_at = NULL, error_json = '{}'::jsonb, result_json = '{}'::jsonb
         WHERE id = %s AND lineage_revoked_at IS NULL
+          AND processing_job_is_current(processing_run_id, parse_generation_id)
           AND (status IN ('failed', 'dead_letter', 'cancelled') OR
             (status = 'running' AND lease_expires_at <= clock_timestamp()))
         RETURNING id, status::text

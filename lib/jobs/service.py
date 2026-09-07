@@ -42,6 +42,8 @@ def create_job_with_cursor(
     priority: int = 50,
     queue_name: str = "default",
     max_attempts: int = 5,
+    processing_run_id: UUID | None = None,
+    parse_generation_id: UUID | None = None,
 ) -> JobState:
     row = insert_job(
         cur,
@@ -54,6 +56,8 @@ def create_job_with_cursor(
         priority=priority,
         queue_name=queue_name,
         max_attempts=max_attempts,
+        processing_run_id=processing_run_id,
+        parse_generation_id=parse_generation_id,
     )
     return job_state_from_row(row)
 
@@ -74,6 +78,8 @@ class JobService:
         priority: int = 50,
         queue_name: str = "default",
         max_attempts: int = 5,
+        processing_run_id: UUID | None = None,
+        parse_generation_id: UUID | None = None,
     ) -> JobState:
         with db_connection() as conn:
             with conn.cursor() as cur:
@@ -88,6 +94,8 @@ class JobService:
                     priority=priority,
                     queue_name=queue_name,
                     max_attempts=max_attempts,
+                    processing_run_id=processing_run_id,
+                    parse_generation_id=parse_generation_id,
                 )
                 fence_current_job(cur)
             conn.commit()

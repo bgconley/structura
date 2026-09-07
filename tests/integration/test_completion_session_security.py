@@ -260,7 +260,18 @@ def observe_user_locks(monkeypatch):
 def wait_for_blocked(cur, blocker, waiter):
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
-        cur.execute("SELECT %s = ANY(pg_blocking_pids(%s)) AS blocked", (blocker, waiter))
+        # PostgreSQL may queue the second tuple-lock waiter behind the first,
+        # which itself waits on our transaction. Verify the complete chain
+        # instead of assuming every contender names the original blocker.
+        cur.execute(
+            """WITH RECURSIVE blockers(pid) AS (
+                 SELECT unnest(pg_blocking_pids(%s))
+                 UNION
+                 SELECT unnest(pg_blocking_pids(b.pid)) FROM blockers b
+               )
+               SELECT EXISTS (SELECT 1 FROM blockers WHERE pid = %s) AS blocked""",
+            (waiter, blocker),
+        )
         if cur.fetchone()["blocked"]:
             return
         time.sleep(0.01)
