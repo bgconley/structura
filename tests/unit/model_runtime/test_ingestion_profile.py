@@ -140,3 +140,35 @@ def test_response_limit_stops_stream_before_unbounded_read():
     with pytest.raises(ModelProtocolError, match="too large"):
         client.post_json("/v1/chat/completions", {})
     assert len(consumed) < 10
+
+
+@pytest.mark.parametrize("model_name", [None, "another-model"])
+def test_ingestion_rejects_wrong_or_missing_served_model_identity(model_name):
+    client = OpenAITextGenerateClient(
+        profile=get_model_profile(QWEN_INGESTION_PROFILE),
+        http_client_base_url="http://model",
+        transport=httpx.MockTransport(
+            lambda _: httpx.Response(
+                200,
+                json={
+                    "model": model_name,
+                    "choices": [
+                        {"finish_reason": "stop", "message": {"content": '{"text":"A-123"}'}}
+                    ],
+                },
+            )
+        ),
+    )
+    with pytest.raises(ModelProtocolError, match="identity"):
+        client.generate(
+            TextGenerateRequest(
+                profile_name=QWEN_INGESTION_PROFILE,
+                prompt_version="test",
+                prompt="synthetic",
+                response_schema_name="test",
+                response_json_schema=SCHEMA,
+                max_output_tokens=128,
+                temperature=0,
+                timeout_seconds=10,
+            )
+        )

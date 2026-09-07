@@ -1,0 +1,242 @@
+{
+  "$defs": {
+    "ModelBox": {
+      "additionalProperties": false,
+      "properties": {
+        "left": {
+          "maximum": 1000,
+          "minimum": 0,
+          "title": "Left",
+          "type": "number"
+        },
+        "top": {
+          "maximum": 1000,
+          "minimum": 0,
+          "title": "Top",
+          "type": "number"
+        },
+        "right": {
+          "exclusiveMinimum": 0,
+          "maximum": 1000,
+          "title": "Right",
+          "type": "number"
+        },
+        "bottom": {
+          "exclusiveMinimum": 0,
+          "maximum": 1000,
+          "title": "Bottom",
+          "type": "number"
+        }
+      },
+      "required": [
+        "left",
+        "top",
+        "right",
+        "bottom"
+      ],
+      "title": "ModelBox",
+      "type": "object"
+    },
+    "ModelCell": {
+      "additionalProperties": false,
+      "properties": {
+        "row": {
+          "maximum": 5000,
+          "minimum": 0,
+          "title": "Row",
+          "type": "integer"
+        },
+        "column": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Column",
+          "type": "integer"
+        },
+        "row_span": {
+          "maximum": 5000,
+          "minimum": 1,
+          "title": "Row Span",
+          "type": "integer"
+        },
+        "column_span": {
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Column Span",
+          "type": "integer"
+        },
+        "text": {
+          "maxLength": 20000,
+          "title": "Text",
+          "type": "string"
+        },
+        "bbox": {
+          "$ref": "#/$defs/ModelBox"
+        },
+        "is_header": {
+          "title": "Is Header",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "row",
+        "column",
+        "row_span",
+        "column_span",
+        "text",
+        "bbox",
+        "is_header"
+      ],
+      "title": "ModelCell",
+      "type": "object"
+    },
+    "ModelElement": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "paragraph",
+            "heading",
+            "header",
+            "footer",
+            "list_item",
+            "caption",
+            "table",
+            "figure",
+            "form_field",
+            "other"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 100000,
+          "title": "Text",
+          "type": "string"
+        },
+        "bbox": {
+          "$ref": "#/$defs/ModelBox"
+        },
+        "parent_index": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Parent Index"
+        },
+        "table": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ModelTable"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "text",
+        "bbox",
+        "parent_index",
+        "table"
+      ],
+      "title": "ModelElement",
+      "type": "object"
+    },
+    "ModelTable": {
+      "additionalProperties": false,
+      "properties": {
+        "row_count": {
+          "maximum": 5000,
+          "minimum": 1,
+          "title": "Row Count",
+          "type": "integer"
+        },
+        "column_count": {
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Column Count",
+          "type": "integer"
+        },
+        "cells": {
+          "items": {
+            "$ref": "#/$defs/ModelCell"
+          },
+          "maxItems": 3000,
+          "title": "Cells",
+          "type": "array"
+        },
+        "continuation_key": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Continuation Key"
+        }
+      },
+      "required": [
+        "row_count",
+        "column_count",
+        "cells",
+        "continuation_key"
+      ],
+      "title": "ModelTable",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "page_number": {
+      "minimum": 1,
+      "title": "Page Number",
+      "type": "integer"
+    },
+    "state": {
+      "enum": [
+        "processed",
+        "partial",
+        "insufficient_signal"
+      ],
+      "title": "State",
+      "type": "string"
+    },
+    "diagnostics": {
+      "items": {
+        "enum": [
+          "content_omitted",
+          "unreadable_region"
+        ],
+        "type": "string"
+      },
+      "title": "Diagnostics",
+      "type": "array"
+    },
+    "elements": {
+      "items": {
+        "$ref": "#/$defs/ModelElement"
+      },
+      "maxItems": 400,
+      "title": "Elements",
+      "type": "array"
+    }
+  },
+  "required": [
+    "page_number",
+    "state",
+    "diagnostics",
+    "elements"
+  ],
+  "title": "PageParseOutput",
+  "type": "object"
+}

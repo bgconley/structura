@@ -11,6 +11,7 @@ from lib.model_runtime.clients._openai_vision import (
     _raw_message_content,
     _response_format_schema_name,
     _usage_json,
+    _validate_served_model,
     _validate_structured_content,
 )
 from lib.model_runtime.contracts import TextGenerateRequest, TextGenerateResponse
@@ -57,6 +58,7 @@ class OpenAITextGenerateClient:
             payload,
             timeout_seconds=request.timeout_seconds,
         )
+        _validate_served_model(response, self.profile)
         raw_text, finish_reason = _raw_message_content(response)
         normalized = _structured_text_content(
             raw_text,

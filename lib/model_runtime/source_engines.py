@@ -35,6 +35,7 @@ NON_MODEL_SOURCE_ENGINES = frozenset(
         "deterministic",
         "docling",
         "docling_text",
+        "pdf_native",
         "fixture",
         "heuristic",
         "human",

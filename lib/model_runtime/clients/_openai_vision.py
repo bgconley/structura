@@ -55,6 +55,7 @@ class OpenAIVisionGenerateClient:
             payload,
             timeout_seconds=request.timeout_seconds,
         )
+        _validate_served_model(response, self.profile)
         raw_text, finish_reason = _raw_message_content(response)
         normalized, confidence = _structured_content(
             raw_text,
@@ -99,6 +100,11 @@ def _validated_input_hashes(
         except ValueError as exc:
             raise ModelProtocolError(str(exc)) from exc
     return tuple(hashes)
+
+
+def _validate_served_model(response: dict[str, Any], profile: ModelProfile) -> None:
+    if profile.served_model_name and response.get("model") != profile.served_model_name:
+        raise ModelProtocolError("Model response identity does not match its configured service.")
 
 
 def _openai_payload(
