@@ -349,52 +349,6 @@ button:disabled {
   font-size: 12px;
 }
 
-.status-chip,
-.review-chip {
-  height: 24px;
-  border-radius: 6px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 8px;
-  font-size: 11px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.status-chip i,
-.review-chip i {
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  background: currentColor;
-}
-
-.status-chip.green,
-.review-chip.green {
-  color: var(--green);
-  background: var(--green-soft);
-  border: 1px solid #bde7dc;
-}
-
-.status-chip.blue {
-  color: var(--blue);
-  background: var(--blue-soft);
-  border: 1px solid #bfdbfe;
-}
-
-.status-chip.neutral {
-  color: var(--muted);
-  background: var(--raised);
-  border: 1px solid var(--line);
-}
-
-.status-chip.amber,
-.review-chip.amber {
-  color: var(--amber);
-  background: var(--amber-soft);
-  border: 1px solid #fed7aa;
-}
 
 .avatar {
   margin-left: auto;

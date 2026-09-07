@@ -1,18 +1,34 @@
+import "./Status.css";
+
+type ReviewPresentation = {tone: "neutral" | "amber" | "rejected" | "green"; label: string};
+const reviewStates = new Map<string, ReviewPresentation>([
+  ["unreviewed", {tone: "neutral", label: "Unreviewed"}],
+  ["needs_review", {tone: "amber", label: "Needs Review"}],
+  ["rejected", {tone: "rejected", label: "Rejected"}],
+  ["auto_accepted", {tone: "green", label: "Auto accepted"}],
+  ["user_confirmed", {tone: "green", label: "User confirmed"}],
+  ["user_corrected", {tone: "green", label: "User corrected"}],
+]);
+
+export function reviewPresentation(status: string | null | undefined): ReviewPresentation {
+  return reviewStates.get(status ?? "") ?? {tone: "neutral", label: "Review status unknown"};
+}
+
 export function StatusChip({tone, label}: {tone: "green" | "blue" | "neutral" | "amber"; label: string}) {
   return (
     <span className={`status-chip ${tone}`}>
-      <i />
+      <i aria-hidden="true" />
       {label}
     </span>
   );
 }
 
-export function ReviewChip({status}: {status: string}) {
-  const needsReview = status === "needs_review";
+export function ReviewChip({status}: {status: string | null | undefined}) {
+  const {tone, label} = reviewPresentation(status);
   return (
-    <span className={`review-chip ${needsReview ? "amber" : "green"}`}>
-      <i />
-      {needsReview ? "Needs Review" : status.replace("_", " ")}
+    <span className={`review-chip ${tone}`}>
+      <i aria-hidden="true" />
+      {label}
     </span>
   );
 }

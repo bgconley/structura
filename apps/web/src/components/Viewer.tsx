@@ -19,7 +19,7 @@ import type {
 import {FilingPanel} from "./FilingPanel";
 import {ParseDebugPanel} from "./ParseDebugPanel";
 import {RelationshipPanel} from "./RelationshipPanel";
-import {FactRow, ReviewChip, StatusChip, TrustLine} from "./Status";
+import {FactRow, ReviewChip, StatusChip, TrustLine, reviewPresentation} from "./Status";
 import {ViewerRecordedFacts} from "./ViewerRecordedFacts";
 
 export function Viewer({
@@ -176,17 +176,17 @@ export function Viewer({
         <TrustLine ok={Boolean(original?.sha256 && /^[a-f\d]{64}$/i.test(original.sha256))}
           label={original?.sha256 && /^[a-f\d]{64}$/i.test(original.sha256) ? "SHA-256 recorded" : "SHA-256 not recorded"} />
         <TrustLine ok={Boolean(preview)} label={preview ? "Preview asset recorded" : "Preview asset not recorded"} />
-        <TrustLine ok={["auto_accepted", "user_confirmed", "user_corrected"].includes(active.reviewStatus)}
-          label={`Document review: ${active.reviewStatus.replaceAll("_", " ")}`} />
+        <TrustLine ok={reviewPresentation(active.reviewStatus).tone === "green"}
+          label={`Document review: ${reviewPresentation(active.reviewStatus).label.toLowerCase()}`} />
         {quality ? (
           <>
             <TrustLine ok={!quality.reviewRequired} label={quality.reviewRequired ? "Difficult-document review required" : "No difficult-document review needed"} />
-            <TrustLine ok={!quality.visualEmbeddingEligible} label={quality.visualEmbeddingEligible ? "Visual retrieval eligible" : "Text retrieval sufficient"} />
+            <TrustLine ok={Boolean(quality.visualEmbeddingEligible)} label={quality.visualEmbeddingEligible ? "Visual retrieval eligible" : "Visual indexing not indicated"} />
           </>
         ) : null}
         <h3>Document details</h3>
         <FactRow label="Family" value={familyLabel(active.family)} />
-        <FactRow label="Counterparty" value={active.counterpartyDisplay ?? "Pending extraction"} />
+        <FactRow label="Counterparty" value={active.counterpartyDisplay ?? "Not recorded"} />
         <FactRow label="Date" value={formatDate(active.documentDate)} />
         <FactRow label="Folder" value={active.folderPaths?.[0] ?? "Unfiled"} />
         {document ? <ViewerRecordedFacts key={document.id} documentId={document.id} family={document.family}
@@ -251,7 +251,7 @@ function extractionChip(
     ?? extractions.find((extraction) => extraction.extractionScope === "document")
     ?? extractions[0];
   if (!current) {
-    return {tone: "neutral", label: "Extraction pending"};
+    return {tone: "neutral", label: "No extraction recorded"};
   }
   if (current.qualityOutcome) {
     return QUALITY_OUTCOME_LABELS[current.qualityOutcome];

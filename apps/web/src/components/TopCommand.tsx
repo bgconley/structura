@@ -68,7 +68,7 @@ export function TopCommand({
         />
       </label>
       <StatusChip tone="green" label="Local-first" />
-      <StatusChip tone="green" label="No cloud inference" />
+      <StatusChip tone="neutral" label="Inference routing unreported" />
       <StatusChip tone="neutral" label="Search health unreported" />
       <StatusChip tone="neutral" label="Worker status unknown" />
       <SessionMenu session={session} onSignOut={onSignOut} error={sessionError} />
