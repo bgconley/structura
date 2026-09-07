@@ -6,9 +6,18 @@ export function formatDate(value?: string): string {
   if (!value) {
     return "-";
   }
-  return new Intl.DateTimeFormat(undefined, {month: "short", day: "numeric", year: "numeric"}).format(
-    new Date(value),
-  );
+  const calendarDate = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const parsed = new Date(calendarDate ? `${value}T00:00:00Z` : value);
+  if (!Number.isFinite(parsed.getTime()) || (calendarDate
+    && (value.startsWith("0000") || parsed.toISOString().slice(0, 10) !== value))) {
+    return "-";
+  }
+  // A source calendar date is not an instant. Formatting it in the user's
+  // zone would move UTC midnight into the prior day west of Greenwich.
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short", day: "numeric", year: "numeric",
+    ...(calendarDate ? {timeZone: "UTC"} : {}),
+  }).format(parsed);
 }
 
 export function formatAmount(value?: number): string {
