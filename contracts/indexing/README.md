@@ -1,8 +1,9 @@
 # Native candidate indexing contracts
 
-Status: root-approved bounded storage foundation, pending canonical migration-098
-validation. No worker, HTTP endpoint, model call, default retrieval path or active
-index pointer uses these contracts yet.
+Status: hidden storage foundation with an explicit bounded embedding executor.
+The executor's local checks and canonical database/live-probe evidence are recorded
+separately. No worker queue, HTTP endpoint, default retrieval path or active index
+pointer uses these contracts yet.
 
 The JSON schemas mirror `lib/search/indexing` frozen types. Python validation
 additionally checks the complete current v2 profile/protocol, ordered complete
@@ -25,9 +26,27 @@ missing object leaves a blocked/resumable candidate, never a successful vector.
 Sealing snapshots the exact registered assets under authority, verifies all bytes
 outside the transaction, and then applies a fresh DB seal fence. Missing or changed
 bytes after vector checkpointing refuse completion. Restore only identical sealed
-bytes. Future model execution must read and verify
+bytes. The explicit executor reads and verifies
 these same bytes immediately before inference; a caller-supplied descriptor or
 response is not proof of a live invocation.
+
+`prepare_index_candidate` loads the exact sealed source/configuration, reproduces
+only the eligible original renders and requires exact renderer/PNG identity.
+Prepared replay reuses registered bytes. Interrupted staging cleans newly created
+unreferenced objects after transactions close; reused/referenced hashes remain.
+Cleanup of process-kill orphans remains an operational maintenance gate.
+
+`execute_index_candidate` runs under the caller's independently renewed job lease,
+dispatches one input per request, checks authority after expensive source reads,
+and fences each response checkpoint. It preserves the full reported embedding
+identity, validates exact frozen v2 input/protocol/artifact/dimensions, and resumes
+only missing immutable checkpoints. Completion counts come from persisted state.
+The default 128-new-input budget and 90-second timeout (allowed 1–4096 inputs and
+1–120 seconds) are bounded execution settings, not quality/latency targets. The
+result records them as execution metadata; existing persisted model-space identity
+does not claim a frozen transport timeout. A pending result must not be ACKed.
+Transport observation and retrieval scoring belong to the isolated live probe;
+adapter counters or declared artifact revisions alone do not attest a live model.
 
 The candidate uses its exact still-desired processing run and current claimed
 producer job. It cannot be resumed by an unrelated job or after independent run or

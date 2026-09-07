@@ -2,7 +2,7 @@
 
 Date: 2026-09-07
 
-Status: **Root-approved bounded first slice; migration-098/storage implementation prepared, canonical DB validation pending. Model execution and activation remain unimplemented.**
+Status: **Root-approved hidden storage foundation and bounded embedding executor implemented; executor canonical DB/live-probe validation pending. Ordinary retrieval activation remains unimplemented.**
 
 Scope: the hidden candidate-index portion of X-05/X-07, using sealed migration-096
 parse artifacts and migration-097 request authority. Migration
@@ -15,8 +15,9 @@ the selected models, or claim that X-05/X-07 or the Phase 8.5 gate is complete.
 The bounded implementation in `lib/search/indexing/` supplies immutable accepted
 configuration/input/render/observation types, pure parse-only projection, exact
 producer/run/build binding, atomic preparation, insert-or-verify float32 vector
-checkpoints, complete sealing and candidate cancellation. Its service never invokes
-models. The reserved `CandidateIndexEvent` is a contract only; no worker/default
+checkpoints, complete sealing and candidate cancellation. Its transaction service
+never invokes models; the explicit execution adapter invokes one exact input per
+request outside transactions. The reserved `CandidateIndexEvent` is a contract only; no worker/default
 queue is wired. Local unit results and canonical database results must be recorded
 separately; the migration is not a quality or release gate by itself.
 
@@ -47,10 +48,26 @@ catalog entries used by retained v2 configurations must remain immutable; change
 need a new version and migration policy, never silent profile substitution.
 
 The first producer is the still-claimed parse job after parse seal and before ACK.
-A later bounded execution adapter must validate actual Blackbird document/query
-responses, verify the exact image bytes immediately before dispatch, use no open
-DB transaction over inference, count real invocations separately from checkpoint
-reuse, and prove cancellation during calls. Historical index inspection, independent
+The bounded executor preserves the complete model response, verifies exact image
+bytes and input/model hashes, and checks lightweight current authority immediately
+before every request. Each returned response is validated and independently fenced
+before checkpoint commit. It resumes persisted missing inputs only; complete
+sealing precedes ACK, and a pending result requires bounded continuation. The caller
+owns lease renewal and job lifecycle. Initial execution uses one text or image input
+per request, a default 128-new-input budget (1–4096 allowed) and a 90-second timeout
+(1–120 allowed). These limits are implementation settings, not ratified performance
+targets. Results record actual execution settings; the frozen model-space contract
+does not claim to persist a transport timeout.
+
+The source adapter stages only exact eligible PNGs from the frozen original/parser
+configuration; replay uses registered bytes without rerendering. Interrupted
+staging cleans newly created unreferenced objects after DB contexts close, preserving
+reused and referenced hashes. Process-kill orphan cleanup remains a maintenance gate.
+Canonical independent-connection tests and an owned live Blackbird document/query
+probe must still establish response persistence, cancellation during calls, actual
+transport counts versus checkpoint reuse, and retrieval behavior. Declared model
+mode and artifact identity are not independent live-invocation attestation.
+Historical index inspection, independent
 reindex authority, all-page evidence assets, accepted-fact/metadata revisions,
 generation-aware readers and coherent selection/rollback remain required follow-on
 work within the approved completion scope. They do not require another model-choice
@@ -418,7 +435,7 @@ The bounded implementation is ready for integration only with these checks:
   time and fixture/live provenance. No threshold or quality pass is inferred from
   vectors merely being nonzero or from endpoint health.
 
-Proposed first execution budgets are small text batches and one image per call;
+The initial executor uses one text input or one image per call;
 exact batch/token/concurrency/p95/soak limits require a recorded development
 baseline and ratification before release measurement. Existing stated semantic
 median <500 ms and hybrid median <1 second targets remain contextual operational

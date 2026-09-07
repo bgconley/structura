@@ -6,7 +6,12 @@ from uuid import UUID
 
 from lib.db.connection import db_connection
 from lib.document_processing.models import ProcessingBinding
-from lib.search.indexing import header_repository, input_repository, vector_repository
+from lib.search.indexing import (
+    header_repository,
+    input_repository,
+    snapshot_repository,
+    vector_repository,
+)
 from lib.search.indexing.authority_repository import fence_index, lock_checkpoint_index
 from lib.search.indexing.configuration import IndexConfiguration
 from lib.search.indexing.errors import IndexCheckpointConflict
@@ -14,10 +19,12 @@ from lib.search.indexing.models import (
     IndexBinding,
     IndexInput,
     IndexManifest,
+    IndexPreparationSource,
     IndexRenderAsset,
+    PreparedIndexSnapshot,
     VectorObservation,
 )
-from lib.search.indexing.render_verification import read_verified_render
+from lib.search.indexing.render_verification import read_verified_render, validate_render_inventory
 from lib.storage import ObjectStorage
 
 
@@ -43,6 +50,7 @@ class CandidateIndexService:
     def prepare(
         self, binding: IndexBinding, assets: tuple[IndexRenderAsset, ...] = ()
     ) -> IndexManifest:
+        validate_render_inventory(assets)
         self.assert_authority(binding)
         # Reads are bounded and occur outside the transaction, one page at a time.
         for asset in assets:
@@ -55,6 +63,14 @@ class CandidateIndexService:
         for asset in assets:
             read_verified_render(asset, self.storage)
         return manifest
+
+    def load_preparation(self, binding: IndexBinding) -> IndexPreparationSource:
+        with db_connection(connect_timeout=5) as conn, conn.cursor() as cur:
+            return snapshot_repository.load_preparation(cur, binding)
+
+    def load_prepared(self, binding: IndexBinding) -> PreparedIndexSnapshot:
+        with db_connection(connect_timeout=5) as conn, conn.cursor() as cur:
+            return snapshot_repository.load_prepared(cur, binding)
 
     def missing_inputs(self, binding: IndexBinding) -> tuple[IndexInput, ...]:
         with db_connection(connect_timeout=5) as conn, conn.cursor() as cur:

@@ -19,7 +19,7 @@ from lib.search.indexing.vectors import VectorCheckpoint, canonical_checkpoint
 def list_missing_inputs(cur: Any, binding: IndexBinding) -> tuple[IndexInput, ...]:
     _, header = lock_index(cur, binding)
     manifest = load_manifest(cur, binding, header)
-    stored = _validated_checkpoints(
+    stored = validated_checkpoints(
         cur, binding, manifest, IndexConfiguration.model_validate(header["config_json"])
     )
     fence_index(cur, binding)
@@ -70,7 +70,7 @@ def seal_index(cur: Any, binding: IndexBinding) -> dict[str, Any]:
     _, header = lock_index(cur, binding)
     manifest = load_manifest(cur, binding, header)
     config = IndexConfiguration.model_validate(header["config_json"])
-    stored = _validated_checkpoints(cur, binding, manifest, config)
+    stored = validated_checkpoints(cur, binding, manifest, config)
     if set(stored) != {item.id for item in manifest.inputs}:
         raise IndexCheckpointConflict(
             "Candidate index cannot seal with missing vector checkpoints."
@@ -117,7 +117,7 @@ def seal_index(cur: Any, binding: IndexBinding) -> dict[str, Any]:
     return completion
 
 
-def _validated_checkpoints(
+def validated_checkpoints(
     cur: Any,
     binding: IndexBinding,
     manifest: IndexManifest,

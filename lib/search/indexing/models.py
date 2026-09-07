@@ -8,9 +8,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from lib.document_parsing.structure import Sha256, SourceRender, TextOrigin
-from lib.document_processing.models import ProcessingBinding, content_digest
-from lib.search.indexing.configuration import Modality
+from lib.document_parsing.structure import DocumentStructure, Sha256, SourceRender, TextOrigin
+from lib.document_processing.models import ParseConfiguration, ProcessingBinding, content_digest
+from lib.search.indexing.configuration import IndexConfiguration, Modality
 
 
 class IndexModel(BaseModel):
@@ -125,3 +125,45 @@ class VectorObservation(IndexModel):
         if not isinstance(value, list | tuple) or any(type(v) not in {int, float} for v in value):
             raise ValueError("Vector coordinates must be numbers, without coercion.")
         return value
+
+
+@dataclass(frozen=True)
+class IndexPreparationSource:
+    configuration: IndexConfiguration
+    parse_configuration: ParseConfiguration
+    structure: DocumentStructure
+    original_uri: str
+    prepared: bool
+
+
+@dataclass(frozen=True)
+class PreparedIndexSnapshot:
+    configuration: IndexConfiguration
+    manifest: IndexManifest
+    assets: tuple[IndexRenderAsset, ...]
+    completed_input_ids: tuple[UUID, ...]
+
+
+@dataclass(frozen=True)
+class IndexModalityCounts:
+    modality: Modality
+    eligible: int
+    completed: int
+    resumed: int
+    new: int
+    remaining: int
+
+
+@dataclass(frozen=True)
+class IndexExecutionResult:
+    state: Literal["pending", "sealed"]
+    manifest_sha256: str
+    completion_sha256: str | None
+    counts: tuple[IndexModalityCounts, ...]
+    adapter_calls_started: int
+    adapter_calls_completed: int
+    elapsed_ms: int
+    model_mode: Literal["live", "fixture"]
+    timeout_seconds: int
+    max_new_inputs: int
+    live_invocation_attestation: Literal["not_evaluated"] = "not_evaluated"

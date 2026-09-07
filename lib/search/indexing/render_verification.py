@@ -6,11 +6,28 @@ import hashlib
 import io
 
 from PIL import Image, UnidentifiedImageError
+from pydantic import ValidationError
 
 from lib.search.indexing.errors import IndexCandidateError
 from lib.search.indexing.models import IndexRenderAsset
 from lib.storage import ObjectStorage
 from lib.storage.service import StorageError, parse_object_uri
+
+
+def validate_render_inventory(assets: tuple[IndexRenderAsset, ...]) -> None:
+    """Reject oversized/duplicate inventories before any filesystem operation."""
+    if (
+        len(assets) > 500
+        or len({a.id for a in assets}) != len(assets)
+        or len({a.page_id for a in assets}) != len(assets)
+        or len({a.page_number for a in assets}) != len(assets)
+    ):
+        raise IndexCandidateError("Candidate render inventory exceeds its unique page bound.")
+    try:
+        for asset in assets:
+            IndexRenderAsset.model_validate(asset.model_dump(mode="json"))
+    except ValidationError:
+        raise IndexCandidateError("Candidate render inventory is invalid.") from None
 
 
 def read_verified_render(asset: IndexRenderAsset, storage: ObjectStorage) -> bytes:
