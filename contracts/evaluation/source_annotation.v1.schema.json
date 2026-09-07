@@ -1,0 +1,446 @@
+{
+  "$defs": {
+    "AnnotatedCell": {
+      "additionalProperties": false,
+      "properties": {
+        "column": {
+          "minimum": 0,
+          "title": "Column",
+          "type": "integer"
+        },
+        "column_span": {
+          "minimum": 1,
+          "title": "Column Span",
+          "type": "integer"
+        },
+        "readability": {
+          "enum": [
+            "readable",
+            "unreadable",
+            "ambiguous",
+            "blank"
+          ],
+          "title": "Readability",
+          "type": "string"
+        },
+        "row": {
+          "minimum": 0,
+          "title": "Row",
+          "type": "integer"
+        },
+        "row_span": {
+          "minimum": 1,
+          "title": "Row Span",
+          "type": "integer"
+        },
+        "text": {
+          "maxLength": 20000,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "row",
+        "column",
+        "row_span",
+        "column_span",
+        "text",
+        "readability"
+      ],
+      "title": "AnnotatedCell",
+      "type": "object"
+    },
+    "AnnotatedPage": {
+      "additionalProperties": false,
+      "properties": {
+        "image_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Image Sha256",
+          "type": "string"
+        },
+        "page_number": {
+          "minimum": 1,
+          "title": "Page Number",
+          "type": "integer"
+        },
+        "pixel_height": {
+          "minimum": 1,
+          "title": "Pixel Height",
+          "type": "integer"
+        },
+        "pixel_width": {
+          "minimum": 1,
+          "title": "Pixel Width",
+          "type": "integer"
+        },
+        "reading_order_pairs": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              }
+            ],
+            "type": "array"
+          },
+          "maxItems": 10000,
+          "title": "Reading Order Pairs",
+          "type": "array"
+        },
+        "regions": {
+          "items": {
+            "$ref": "#/$defs/AnnotatedRegion"
+          },
+          "maxItems": 400,
+          "title": "Regions",
+          "type": "array"
+        },
+        "sensitive_text": {
+          "items": {
+            "$ref": "#/$defs/SensitiveText"
+          },
+          "maxItems": 1000,
+          "title": "Sensitive Text",
+          "type": "array"
+        },
+        "tables": {
+          "items": {
+            "$ref": "#/$defs/AnnotatedTable"
+          },
+          "maxItems": 400,
+          "title": "Tables",
+          "type": "array"
+        }
+      },
+      "required": [
+        "page_number",
+        "image_sha256",
+        "pixel_width",
+        "pixel_height",
+        "regions",
+        "tables",
+        "reading_order_pairs",
+        "sensitive_text"
+      ],
+      "title": "AnnotatedPage",
+      "type": "object"
+    },
+    "AnnotatedRegion": {
+      "additionalProperties": false,
+      "properties": {
+        "bbox": {
+          "$ref": "#/$defs/SourceBox"
+        },
+        "id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "paragraph",
+            "heading",
+            "header",
+            "footer",
+            "list_item",
+            "caption",
+            "table",
+            "figure",
+            "form_field",
+            "other"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "readability": {
+          "enum": [
+            "readable",
+            "unreadable",
+            "ambiguous",
+            "blank"
+          ],
+          "title": "Readability",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 100000,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "readability",
+        "text",
+        "bbox"
+      ],
+      "title": "AnnotatedRegion",
+      "type": "object"
+    },
+    "AnnotatedTable": {
+      "additionalProperties": false,
+      "properties": {
+        "cells": {
+          "items": {
+            "$ref": "#/$defs/AnnotatedCell"
+          },
+          "maxItems": 3000,
+          "title": "Cells",
+          "type": "array"
+        },
+        "column_count": {
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Column Count",
+          "type": "integer"
+        },
+        "continuation_group": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Continuation Group"
+        },
+        "region_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Region Id",
+          "type": "string"
+        },
+        "row_count": {
+          "maximum": 5000,
+          "minimum": 1,
+          "title": "Row Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "region_id",
+        "row_count",
+        "column_count",
+        "cells",
+        "continuation_group"
+      ],
+      "title": "AnnotatedTable",
+      "type": "object"
+    },
+    "AnnotationProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "adjudicator_reference": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Adjudicator Reference"
+        },
+        "annotation_revision": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Annotation Revision",
+          "type": "string"
+        },
+        "author_reference": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Author Reference",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "origin": {
+          "enum": [
+            "human_original",
+            "synthetic_author"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "source_only": {
+          "const": true,
+          "title": "Source Only",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "origin",
+        "annotation_revision",
+        "author_reference",
+        "adjudicator_reference",
+        "created_at",
+        "source_only"
+      ],
+      "title": "AnnotationProvenance",
+      "type": "object"
+    },
+    "SensitiveText": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "identifier",
+            "amount",
+            "date"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "occurrences": {
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Occurrences",
+          "type": "integer"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "kind",
+        "occurrences"
+      ],
+      "title": "SensitiveText",
+      "type": "object"
+    },
+    "SourceBox": {
+      "additionalProperties": false,
+      "properties": {
+        "bottom": {
+          "exclusiveMinimum": 0,
+          "title": "Bottom",
+          "type": "number"
+        },
+        "left": {
+          "minimum": 0,
+          "title": "Left",
+          "type": "number"
+        },
+        "right": {
+          "exclusiveMinimum": 0,
+          "title": "Right",
+          "type": "number"
+        },
+        "top": {
+          "minimum": 0,
+          "title": "Top",
+          "type": "number"
+        }
+      },
+      "required": [
+        "left",
+        "top",
+        "right",
+        "bottom"
+      ],
+      "title": "SourceBox",
+      "type": "object"
+    }
+  },
+  "$id": "structura:source_annotation.v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "family_labels": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Family Labels",
+      "type": "array"
+    },
+    "item_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Item Id",
+      "type": "string"
+    },
+    "modality": {
+      "enum": [
+        "digital",
+        "scan",
+        "image",
+        "mixed"
+      ],
+      "title": "Modality",
+      "type": "string"
+    },
+    "origin_group": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Origin Group",
+      "type": "string"
+    },
+    "original_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Original Sha256",
+      "type": "string"
+    },
+    "pages": {
+      "items": {
+        "$ref": "#/$defs/AnnotatedPage"
+      },
+      "maxItems": 500,
+      "minItems": 1,
+      "title": "Pages",
+      "type": "array"
+    },
+    "provenance": {
+      "$ref": "#/$defs/AnnotationProvenance"
+    },
+    "schema_version": {
+      "const": "structura.source_annotation.v1",
+      "default": "structura.source_annotation.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "template_group": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Template Group",
+      "type": "string"
+    }
+  },
+  "required": [
+    "item_id",
+    "original_sha256",
+    "family_labels",
+    "modality",
+    "origin_group",
+    "template_group",
+    "provenance",
+    "pages"
+  ],
+  "title": "DocumentAnnotation",
+  "type": "object"
+}

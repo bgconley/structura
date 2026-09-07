@@ -1,0 +1,29 @@
+{
+  "cases": [
+    {
+      "annotation_sha256": "1a085acaab5e740b976183d67e6f38de0ac70c58714cb9511e56f498d34b5fb4",
+      "capture_sha256": "acbb756da4511852f9be6f62b11212cbb53c5ed351da3623f8fff3a9013e58fe",
+      "configuration_sha256": "cc31578131d1b5cbd0894485f68db412fee787f84f6fb7a3ecd536a2e486d89d",
+      "fixture_type": "deterministic_fixture",
+      "item_id": "synthetic-invoice",
+      "origin_group": "synthetic-origin-v1",
+      "original_sha256": "9229d55ba55a35f98362aeb788c5d9640a1026f6e3c3e05c715390f11be3e905",
+      "parse_generation_id": "74de48c8-4342-56ad-9a26-92e891ae0ef9",
+      "processing_run_id": "0025ac1b-a21f-5dab-8398-2eae6eec8d96",
+      "profile": "synthetic-parse-fixture:v1",
+      "served_model": "synthetic-fixture",
+      "source_engine": "synthetic-fixture",
+      "template_group": "synthetic-template-v1"
+    }
+  ],
+  "development_origin_groups": [],
+  "development_template_groups": [],
+  "evaluation_id": "b8671ca4-4d58-5296-b3f6-bb2cc6892d48",
+  "exposures": [],
+  "frozen_at": "2026-09-02T00:00:00Z",
+  "matching_policy": "structura.parse_matching.v1",
+  "schema_version": "structura.parse_evaluation.v1",
+  "split": "synthetic_regression",
+  "split_revision": "v1",
+  "threshold_policy": "not_ratified"
+}

@@ -1,0 +1,237 @@
+{
+  "$defs": {
+    "CaseBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "annotation_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Annotation Sha256",
+          "type": "string"
+        },
+        "capture_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Capture Sha256",
+          "type": "string"
+        },
+        "configuration_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Configuration Sha256",
+          "type": "string"
+        },
+        "fixture_type": {
+          "enum": [
+            "deterministic_fixture",
+            "model_backed"
+          ],
+          "title": "Fixture Type",
+          "type": "string"
+        },
+        "item_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Item Id",
+          "type": "string"
+        },
+        "origin_group": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Origin Group",
+          "type": "string"
+        },
+        "original_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Original Sha256",
+          "type": "string"
+        },
+        "parse_generation_id": {
+          "format": "uuid",
+          "title": "Parse Generation Id",
+          "type": "string"
+        },
+        "processing_run_id": {
+          "format": "uuid",
+          "title": "Processing Run Id",
+          "type": "string"
+        },
+        "profile": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Profile",
+          "type": "string"
+        },
+        "served_model": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Served Model",
+          "type": "string"
+        },
+        "source_engine": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Source Engine",
+          "type": "string"
+        },
+        "template_group": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Template Group",
+          "type": "string"
+        }
+      },
+      "required": [
+        "item_id",
+        "annotation_sha256",
+        "capture_sha256",
+        "original_sha256",
+        "processing_run_id",
+        "parse_generation_id",
+        "configuration_sha256",
+        "profile",
+        "served_model",
+        "source_engine",
+        "fixture_type",
+        "origin_group",
+        "template_group"
+      ],
+      "title": "CaseBinding",
+      "type": "object"
+    },
+    "ExposureRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_reference": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Actor Reference",
+          "type": "string"
+        },
+        "item_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Item Id",
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "purpose": {
+          "enum": [
+            "annotation",
+            "adjudication",
+            "development",
+            "prompt_tuning",
+            "evaluation"
+          ],
+          "title": "Purpose",
+          "type": "string"
+        }
+      },
+      "required": [
+        "item_id",
+        "purpose",
+        "occurred_at",
+        "actor_reference"
+      ],
+      "title": "ExposureRecord",
+      "type": "object"
+    }
+  },
+  "$id": "structura:parse_evaluation.v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "cases": {
+      "items": {
+        "$ref": "#/$defs/CaseBinding"
+      },
+      "maxItems": 1000,
+      "minItems": 1,
+      "title": "Cases",
+      "type": "array"
+    },
+    "development_origin_groups": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Development Origin Groups",
+      "type": "array"
+    },
+    "development_template_groups": {
+      "items": {
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Development Template Groups",
+      "type": "array"
+    },
+    "evaluation_id": {
+      "format": "uuid",
+      "title": "Evaluation Id",
+      "type": "string"
+    },
+    "exposures": {
+      "items": {
+        "$ref": "#/$defs/ExposureRecord"
+      },
+      "maxItems": 10000,
+      "title": "Exposures",
+      "type": "array"
+    },
+    "frozen_at": {
+      "format": "date-time",
+      "title": "Frozen At",
+      "type": "string"
+    },
+    "matching_policy": {
+      "const": "structura.parse_matching.v1",
+      "default": "structura.parse_matching.v1",
+      "title": "Matching Policy",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "structura.parse_evaluation.v1",
+      "default": "structura.parse_evaluation.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "split": {
+      "enum": [
+        "development",
+        "validation",
+        "blind_holdout",
+        "synthetic_regression"
+      ],
+      "title": "Split",
+      "type": "string"
+    },
+    "split_revision": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Split Revision",
+      "type": "string"
+    },
+    "threshold_policy": {
+      "const": "not_ratified",
+      "default": "not_ratified",
+      "title": "Threshold Policy",
+      "type": "string"
+    }
+  },
+  "required": [
+    "evaluation_id",
+    "frozen_at",
+    "split",
+    "split_revision",
+    "cases",
+    "exposures",
+    "development_origin_groups",
+    "development_template_groups"
+  ],
+  "title": "EvaluationManifest",
+  "type": "object"
+}

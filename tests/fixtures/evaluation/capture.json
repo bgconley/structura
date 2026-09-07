@@ -1,0 +1,360 @@
+{
+  "commit": "0000000000000000000000000000000000000000",
+  "configuration": {
+    "chunker_version": "v1",
+    "model_revision": "v1",
+    "normalizer_version": "v1",
+    "output_schema_version": "structura.page_parse.v1",
+    "profile": "synthetic-parse-fixture:v1",
+    "prompt_version": "synthetic-v1",
+    "render_scale": 1.0,
+    "renderer": "synthetic-reference",
+    "renderer_version": "v1",
+    "served_model": "synthetic-fixture",
+    "source_engine": "synthetic-fixture"
+  },
+  "configuration_sha256": "cc31578131d1b5cbd0894485f68db412fee787f84f6fb7a3ecd536a2e486d89d",
+  "fixture_type": "deterministic_fixture",
+  "item_id": "synthetic-invoice",
+  "max_output_tokens": 8192,
+  "model_mode": "fixture",
+  "raw_pages": [
+    {
+      "page_number": 1,
+      "raw_output": "{\"diagnostics\": [], \"elements\": [{\"bbox\": {\"bottom\": 87.5, \"left\": 50.0, \"right\": 416.6666666666667, \"top\": 37.5}, \"kind\": \"heading\", \"parent_index\": null, \"table\": null, \"text\": \"Invoice INV-001\"}, {\"bbox\": {\"bottom\": 150.0, \"left\": 50.0, \"right\": 250.0, \"top\": 125.0}, \"kind\": \"paragraph\", \"parent_index\": null, \"table\": null, \"text\": \"Copy\"}, {\"bbox\": {\"bottom\": 200.0, \"left\": 50.0, \"right\": 250.0, \"top\": 175.0}, \"kind\": \"paragraph\", \"parent_index\": null, \"table\": null, \"text\": \"Copy\"}, {\"bbox\": {\"bottom\": 350.0, \"left\": 50.0, \"right\": 550.0, \"top\": 250.0}, \"kind\": \"table\", \"parent_index\": null, \"table\": {\"cells\": [{\"bbox\": {\"bottom\": 300.0, \"left\": 50.0, \"right\": 300.0, \"top\": 250.0}, \"column\": 0, \"column_span\": 1, \"is_header\": true, \"row\": 0, \"row_span\": 1, \"text\": \"Item\"}, {\"bbox\": {\"bottom\": 300.0, \"left\": 300.0, \"right\": 550.0, \"top\": 250.0}, \"column\": 1, \"column_span\": 1, \"is_header\": true, \"row\": 0, \"row_span\": 1, \"text\": \"Amount\"}, {\"bbox\": {\"bottom\": 350.0, \"left\": 50.0, \"right\": 300.0, \"top\": 300.0}, \"column\": 0, \"column_span\": 1, \"is_header\": false, \"row\": 1, \"row_span\": 1, \"text\": \"Service\"}, {\"bbox\": {\"bottom\": 350.0, \"left\": 300.0, \"right\": 550.0, \"top\": 300.0}, \"column\": 1, \"column_span\": 1, \"is_header\": false, \"row\": 1, \"row_span\": 1, \"text\": \"12.50\"}], \"column_count\": 2, \"continuation_key\": null, \"row_count\": 2}, \"text\": \"\"}], \"page_number\": 1, \"state\": \"processed\"}",
+      "request_id": "4d422dc6-383e-5dd4-9c4f-8f25af587a2a"
+    },
+    {
+      "page_number": 2,
+      "raw_output": "{\"diagnostics\": [], \"elements\": [{\"bbox\": {\"bottom\": 87.5, \"left\": 50.0, \"right\": 416.6666666666667, \"top\": 37.5}, \"kind\": \"heading\", \"parent_index\": null, \"table\": null, \"text\": \"Terms\"}, {\"bbox\": {\"bottom\": 162.5, \"left\": 50.0, \"right\": 583.3333333333334, \"top\": 125.0}, \"kind\": \"paragraph\", \"parent_index\": null, \"table\": null, \"text\": \"Payment due 2026-09-30.\"}], \"page_number\": 2, \"state\": \"processed\"}",
+      "request_id": "e4af5a3e-5cd3-5ae0-9100-e8c1fbb0ca91"
+    }
+  ],
+  "schema_version": "structura.parse_capture.v1",
+  "structure": {
+    "chunks": [
+      {
+        "element_ids": [
+          "a537093f-e797-5a3e-bb3a-6e31121f3174"
+        ],
+        "id": "9b6e1646-4154-5713-801c-53383355de0a",
+        "page_number": 1,
+        "text": "Invoice INV-001",
+        "text_origins": [
+          "model_transcription"
+        ]
+      },
+      {
+        "element_ids": [
+          "6225a092-1337-5bdc-bd44-4f40171e4342"
+        ],
+        "id": "ae45697a-ee60-5396-9c8d-9fc67f785f69",
+        "page_number": 1,
+        "text": "Copy",
+        "text_origins": [
+          "model_transcription"
+        ]
+      },
+      {
+        "element_ids": [
+          "28bc21dc-c5aa-51b3-a972-6b15fc0da830"
+        ],
+        "id": "007e1c51-07b7-5b23-b4b1-be81c34b86c5",
+        "page_number": 1,
+        "text": "Copy",
+        "text_origins": [
+          "model_transcription"
+        ]
+      },
+      {
+        "element_ids": [
+          "fd407845-f155-5b5f-b77e-52f8460b0e27"
+        ],
+        "id": "76e8834e-42ae-5bbe-96b4-f23d98684f5a",
+        "page_number": 1,
+        "text": "Item\tAmount\nService\t12.50",
+        "text_origins": [
+          "model_transcription"
+        ]
+      },
+      {
+        "element_ids": [
+          "bb1db4a2-e545-550d-bc9f-d8c634eb0f93"
+        ],
+        "id": "55e2fb36-ca6a-52f6-b237-53897303ec2f",
+        "page_number": 2,
+        "text": "Terms",
+        "text_origins": [
+          "model_transcription"
+        ]
+      },
+      {
+        "element_ids": [
+          "735b1218-4347-5059-8d10-1d4e862c3873"
+        ],
+        "id": "78b3a551-4384-59d3-a279-24bc839826c2",
+        "page_number": 2,
+        "text": "Payment due 2026-09-30.",
+        "text_origins": [
+          "model_transcription"
+        ]
+      }
+    ],
+    "invocations": [
+      {
+        "finish_reason": "stop",
+        "latency_ms": 0,
+        "output_schema_version": "structura.page_parse.v1",
+        "page_numbers": [
+          1
+        ],
+        "profile": "synthetic-parse-fixture:v1",
+        "prompt_version": "synthetic-v1",
+        "raw_output_sha256": "78bab0185e94b42bb1380bec86c447d5537c96acf481c0710c8be01c2423ef58",
+        "request_id": "4d422dc6-383e-5dd4-9c4f-8f25af587a2a",
+        "served_model": "synthetic-fixture",
+        "source_engine": "synthetic-fixture"
+      },
+      {
+        "finish_reason": "stop",
+        "latency_ms": 0,
+        "output_schema_version": "structura.page_parse.v1",
+        "page_numbers": [
+          2
+        ],
+        "profile": "synthetic-parse-fixture:v1",
+        "prompt_version": "synthetic-v1",
+        "raw_output_sha256": "ba618da7fb132a4840b732f8a93ff37c812c791997313db603fe5a11cb4b2b22",
+        "request_id": "e4af5a3e-5cd3-5ae0-9100-e8c1fbb0ca91",
+        "served_model": "synthetic-fixture",
+        "source_engine": "synthetic-fixture"
+      }
+    ],
+    "pages": [
+      {
+        "diagnostics": [],
+        "elements": [
+          {
+            "bbox": {
+              "bottom": 70.0,
+              "left": 30.0,
+              "right": 250.0,
+              "top": 30.0
+            },
+            "id": "a537093f-e797-5a3e-bb3a-6e31121f3174",
+            "kind": "heading",
+            "ordinal": 1,
+            "parent_id": null,
+            "text": "Invoice INV-001",
+            "text_origin": "model_transcription"
+          },
+          {
+            "bbox": {
+              "bottom": 120.0,
+              "left": 30.0,
+              "right": 150.0,
+              "top": 100.0
+            },
+            "id": "6225a092-1337-5bdc-bd44-4f40171e4342",
+            "kind": "paragraph",
+            "ordinal": 2,
+            "parent_id": null,
+            "text": "Copy",
+            "text_origin": "model_transcription"
+          },
+          {
+            "bbox": {
+              "bottom": 160.0,
+              "left": 30.0,
+              "right": 150.0,
+              "top": 140.0
+            },
+            "id": "28bc21dc-c5aa-51b3-a972-6b15fc0da830",
+            "kind": "paragraph",
+            "ordinal": 3,
+            "parent_id": null,
+            "text": "Copy",
+            "text_origin": "model_transcription"
+          },
+          {
+            "bbox": {
+              "bottom": 280.0,
+              "left": 30.0,
+              "right": 330.0,
+              "top": 200.0
+            },
+            "id": "fd407845-f155-5b5f-b77e-52f8460b0e27",
+            "kind": "table",
+            "ordinal": 4,
+            "parent_id": null,
+            "text": "",
+            "text_origin": "model_transcription"
+          }
+        ],
+        "id": "0e458243-239b-5258-ac3e-b31818c110ae",
+        "page_number": 1,
+        "source": {
+          "coordinate_space": "rendered_source_pixels",
+          "image_sha256": "51751084e5cfe05350a213c9607fa66b6c209449e9b71b8591ea51e31b4f1689",
+          "native_text": null,
+          "native_text_origin": null,
+          "page_number": 1,
+          "pixel_height": 800,
+          "pixel_width": 600,
+          "renderer": "synthetic-reference",
+          "renderer_version": "v1"
+        },
+        "state": "processed",
+        "tables": [
+          {
+            "cells": [
+              {
+                "bbox": {
+                  "bottom": 240.0,
+                  "left": 30.0,
+                  "right": 180.0,
+                  "top": 200.0
+                },
+                "column": 0,
+                "column_span": 1,
+                "id": "cd31b6ef-4d41-5ae4-8630-aded85d2c2d4",
+                "is_header": true,
+                "row": 0,
+                "row_span": 1,
+                "text": "Item",
+                "text_origin": "model_transcription"
+              },
+              {
+                "bbox": {
+                  "bottom": 240.0,
+                  "left": 180.0,
+                  "right": 330.0,
+                  "top": 200.0
+                },
+                "column": 1,
+                "column_span": 1,
+                "id": "e371b7ae-c392-5d70-bf34-153d55f15fae",
+                "is_header": true,
+                "row": 0,
+                "row_span": 1,
+                "text": "Amount",
+                "text_origin": "model_transcription"
+              },
+              {
+                "bbox": {
+                  "bottom": 280.0,
+                  "left": 30.0,
+                  "right": 180.0,
+                  "top": 240.0
+                },
+                "column": 0,
+                "column_span": 1,
+                "id": "502351c9-390e-5e6b-a5e8-98426ace6754",
+                "is_header": false,
+                "row": 1,
+                "row_span": 1,
+                "text": "Service",
+                "text_origin": "model_transcription"
+              },
+              {
+                "bbox": {
+                  "bottom": 280.0,
+                  "left": 180.0,
+                  "right": 330.0,
+                  "top": 240.0
+                },
+                "column": 1,
+                "column_span": 1,
+                "id": "0d36dde2-0c10-5482-8f71-b7437052c7b1",
+                "is_header": false,
+                "row": 1,
+                "row_span": 1,
+                "text": "12.50",
+                "text_origin": "model_transcription"
+              }
+            ],
+            "column_count": 2,
+            "continuation_key": null,
+            "element_id": "fd407845-f155-5b5f-b77e-52f8460b0e27",
+            "id": "a86c9cda-9086-5657-899b-2e627bd70303",
+            "row_count": 2
+          }
+        ]
+      },
+      {
+        "diagnostics": [],
+        "elements": [
+          {
+            "bbox": {
+              "bottom": 70.0,
+              "left": 30.0,
+              "right": 250.0,
+              "top": 30.0
+            },
+            "id": "bb1db4a2-e545-550d-bc9f-d8c634eb0f93",
+            "kind": "heading",
+            "ordinal": 1,
+            "parent_id": null,
+            "text": "Terms",
+            "text_origin": "model_transcription"
+          },
+          {
+            "bbox": {
+              "bottom": 130.0,
+              "left": 30.0,
+              "right": 350.0,
+              "top": 100.0
+            },
+            "id": "735b1218-4347-5059-8d10-1d4e862c3873",
+            "kind": "paragraph",
+            "ordinal": 2,
+            "parent_id": null,
+            "text": "Payment due 2026-09-30.",
+            "text_origin": "model_transcription"
+          }
+        ],
+        "id": "f8eb4a58-5d4e-5d33-b43b-4f42aec48af1",
+        "page_number": 2,
+        "source": {
+          "coordinate_space": "rendered_source_pixels",
+          "image_sha256": "93c3fe0ac58cf9732debcc3c7d549f5622a3f20461ab531a32d3c9c7b35a2279",
+          "native_text": null,
+          "native_text_origin": null,
+          "page_number": 2,
+          "pixel_height": 800,
+          "pixel_width": 600,
+          "renderer": "synthetic-reference",
+          "renderer_version": "v1"
+        },
+        "state": "processed",
+        "tables": []
+      }
+    ],
+    "parse_generation_id": "74de48c8-4342-56ad-9a26-92e891ae0ef9",
+    "processing_run_id": "0025ac1b-a21f-5dab-8398-2eae6eec8d96",
+    "schema_version": "structura.document_structure.v1",
+    "source": {
+      "byte_size": 10048,
+      "mime_type": "image/tiff",
+      "original_asset_id": "f4e02766-51c6-5044-83c9-9d6e8a5b5bee",
+      "original_sha256": "9229d55ba55a35f98362aeb788c5d9640a1026f6e3c3e05c715390f11be3e905",
+      "pages": [
+        {
+          "height": 800.0,
+          "page_number": 1,
+          "rotation_degrees": 0,
+          "unit": "pixels",
+          "width": 600.0
+        },
+        {
+          "height": 800.0,
+          "page_number": 2,
+          "rotation_degrees": 0,
+          "unit": "pixels",
+          "width": 600.0
+        }
+      ]
+    }
+  },
+  "temperature": 0.0
+}

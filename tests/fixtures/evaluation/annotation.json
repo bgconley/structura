@@ -1,0 +1,191 @@
+{
+  "family_labels": [
+    "invoice"
+  ],
+  "item_id": "synthetic-invoice",
+  "modality": "image",
+  "origin_group": "synthetic-origin-v1",
+  "original_sha256": "9229d55ba55a35f98362aeb788c5d9640a1026f6e3c3e05c715390f11be3e905",
+  "pages": [
+    {
+      "image_sha256": "51751084e5cfe05350a213c9607fa66b6c209449e9b71b8591ea51e31b4f1689",
+      "page_number": 1,
+      "pixel_height": 800,
+      "pixel_width": 600,
+      "reading_order_pairs": [
+        [
+          "title",
+          "copy-a"
+        ],
+        [
+          "copy-a",
+          "copy-b"
+        ],
+        [
+          "copy-b",
+          "charges"
+        ]
+      ],
+      "regions": [
+        {
+          "bbox": {
+            "bottom": 70.0,
+            "left": 30.0,
+            "right": 250.0,
+            "top": 30.0
+          },
+          "id": "title",
+          "kind": "heading",
+          "readability": "readable",
+          "text": "Invoice INV-001"
+        },
+        {
+          "bbox": {
+            "bottom": 120.0,
+            "left": 30.0,
+            "right": 150.0,
+            "top": 100.0
+          },
+          "id": "copy-a",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Copy"
+        },
+        {
+          "bbox": {
+            "bottom": 160.0,
+            "left": 30.0,
+            "right": 150.0,
+            "top": 140.0
+          },
+          "id": "copy-b",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Copy"
+        },
+        {
+          "bbox": {
+            "bottom": 280.0,
+            "left": 30.0,
+            "right": 330.0,
+            "top": 200.0
+          },
+          "id": "charges",
+          "kind": "table",
+          "readability": "readable",
+          "text": ""
+        }
+      ],
+      "sensitive_text": [
+        {
+          "kind": "identifier",
+          "occurrences": 1,
+          "text": "INV-001"
+        },
+        {
+          "kind": "amount",
+          "occurrences": 1,
+          "text": "12.50"
+        }
+      ],
+      "tables": [
+        {
+          "cells": [
+            {
+              "column": 0,
+              "column_span": 1,
+              "readability": "readable",
+              "row": 0,
+              "row_span": 1,
+              "text": "Item"
+            },
+            {
+              "column": 1,
+              "column_span": 1,
+              "readability": "readable",
+              "row": 0,
+              "row_span": 1,
+              "text": "Amount"
+            },
+            {
+              "column": 0,
+              "column_span": 1,
+              "readability": "readable",
+              "row": 1,
+              "row_span": 1,
+              "text": "Service"
+            },
+            {
+              "column": 1,
+              "column_span": 1,
+              "readability": "readable",
+              "row": 1,
+              "row_span": 1,
+              "text": "12.50"
+            }
+          ],
+          "column_count": 2,
+          "continuation_group": null,
+          "region_id": "charges",
+          "row_count": 2
+        }
+      ]
+    },
+    {
+      "image_sha256": "93c3fe0ac58cf9732debcc3c7d549f5622a3f20461ab531a32d3c9c7b35a2279",
+      "page_number": 2,
+      "pixel_height": 800,
+      "pixel_width": 600,
+      "reading_order_pairs": [
+        [
+          "terms",
+          "due"
+        ]
+      ],
+      "regions": [
+        {
+          "bbox": {
+            "bottom": 70.0,
+            "left": 30.0,
+            "right": 250.0,
+            "top": 30.0
+          },
+          "id": "terms",
+          "kind": "heading",
+          "readability": "readable",
+          "text": "Terms"
+        },
+        {
+          "bbox": {
+            "bottom": 130.0,
+            "left": 30.0,
+            "right": 350.0,
+            "top": 100.0
+          },
+          "id": "due",
+          "kind": "paragraph",
+          "readability": "readable",
+          "text": "Payment due 2026-09-30."
+        }
+      ],
+      "sensitive_text": [
+        {
+          "kind": "date",
+          "occurrences": 1,
+          "text": "2026-09-30"
+        }
+      ],
+      "tables": []
+    }
+  ],
+  "provenance": {
+    "adjudicator_reference": null,
+    "annotation_revision": "v1",
+    "author_reference": "fixture-author",
+    "created_at": "2026-09-01T00:00:00Z",
+    "origin": "synthetic_author",
+    "source_only": true
+  },
+  "schema_version": "structura.source_annotation.v1",
+  "template_group": "synthetic-template-v1"
+}
