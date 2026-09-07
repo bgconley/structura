@@ -41,8 +41,8 @@ export function TopCommand({
       <button className="command-button" type="button">Bulk Import</button>
       <StatusChip tone="green" label="Local-first" />
       <StatusChip tone="green" label="No cloud inference" />
-      <StatusChip tone="blue" label="Hybrid search ready" />
-      <StatusChip tone="green" label="2 workers active" />
+      <StatusChip tone="neutral" label="Search health unreported" />
+      <StatusChip tone="neutral" label="Worker status unknown" />
       <span className="avatar">BD</span>
     </header>
   );

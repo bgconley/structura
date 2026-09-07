@@ -18,7 +18,7 @@ export function DocumentTable({
     <section className="document-panel">
       <div className="panel-title">
         <h2>Priority Document Activity</h2>
-        <p>1-{Math.min(documents.length, 7)} of {documents.length} documents</p>
+        <p>{documents.length} documents displayed</p>
       </div>
       {documents.length === 0 ? (
         <div className="empty-state">
@@ -47,7 +47,7 @@ export function DocumentTable({
               <th>Tags</th>
               <th>Related</th>
               <th>Review Status</th>
-              <th>Pipeline</th>
+              <th>Document State</th>
             </tr>
           </thead>
           <tbody>
@@ -85,7 +85,7 @@ export function DocumentTable({
                 </td>
                 <td>{document.relatedCount ?? 0}</td>
                 <td><ReviewChip status={document.reviewStatus} /></td>
-                <td><span className="pipeline-state">Ingested</span></td>
+                <td><span className="muted-cell">{document.lifecycleState.replaceAll("_", " ") || "Unknown"}</span></td>
               </tr>
             ))}
           </tbody>

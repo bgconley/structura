@@ -76,7 +76,7 @@ migrate:
 	$(PYTHON) scripts/migrate.py
 
 api-dev:
-	uvicorn apps.api.structura_api.main:app --reload --host 0.0.0.0 --port 8000
+	uvicorn apps.api.structura_api.main:app --reload --host 0.0.0.0 --port 8000 --no-access-log
 
 web-dev:
 	$(NPM) --workspace apps/web run dev -- --host 0.0.0.0

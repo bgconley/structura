@@ -4,6 +4,7 @@ from typing import Any
 from uuid import UUID
 
 from lib.auth import AuthPrincipal
+from lib.auth.authorization_policy import require_action
 from lib.automation import repository, watched_folder_repository
 from lib.automation.errors import AutomationError
 from lib.automation.watched_folder_policy import (
@@ -28,6 +29,7 @@ def list_watched_folders(principal: AuthPrincipal) -> list[WatchedFolder]:
 
 
 def upsert_watched_folder(payload: WatchedFolderWrite, principal: AuthPrincipal) -> WatchedFolder:
+    require_action(principal, "documents:write")
     household_id = _require_household(principal)
     settings = get_settings()
     try:

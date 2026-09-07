@@ -5,11 +5,12 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from apps.api.structura_api.dependencies import current_principal, require_csrf
+from apps.api.structura_api.dependencies import require_document_read, require_document_review
 from lib.auth import AuthPrincipal
 from lib.contracts import CanonicalFieldWrite, ReviewActionRequest
 from lib.documents.access_policy import DocumentAccessContext
 from lib.review import ReviewService
+from lib.review.correction_values import CorrectionValueError
 from lib.review.repository import (
     ReviewRepositoryError,
     list_canonical_fields,
@@ -25,7 +26,7 @@ router = APIRouter(prefix="/api/v1", tags=["Review"])
 
 @router.get("/review-tasks")
 def get_review_tasks(
-    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_read)],
     status_filter: Annotated[str | None, Query(alias="status")] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> dict[str, object]:
@@ -37,7 +38,7 @@ def get_review_tasks(
 @router.get("/documents/{documentId}/field-candidates")
 def get_field_candidates(
     documentId: UUID,
-    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_read)],
     fieldPath: str | None = None,
 ) -> dict[str, object]:
     access = _access_context(principal)
@@ -57,7 +58,7 @@ def get_field_candidates(
 @router.get("/documents/{documentId}/observation-candidates")
 def get_observation_candidates(
     documentId: UUID,
-    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_read)],
     observationId: UUID | None = None,
     status_filter: Annotated[str | None, Query(alias="status")] = None,
 ) -> dict[str, object]:
@@ -79,7 +80,7 @@ def get_observation_candidates(
 @router.get("/documents/{documentId}/line-item-candidates")
 def get_line_item_candidates(
     documentId: UUID,
-    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_read)],
     candidateId: UUID | None = None,
     status_filter: Annotated[str | None, Query(alias="status")] = None,
 ) -> dict[str, object]:
@@ -101,7 +102,7 @@ def get_line_item_candidates(
 @router.get("/documents/{documentId}/canonical-fields")
 def get_canonical_fields(
     documentId: UUID,
-    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_read)],
 ) -> dict[str, object]:
     access = _access_context(principal)
     try:
@@ -117,7 +118,7 @@ def get_canonical_fields(
 def post_canonical_field(
     documentId: UUID,
     payload: CanonicalFieldWrite,
-    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_review)],
 ) -> dict[str, object]:
     access = _access_context(principal)
     service = ReviewService()
@@ -128,6 +129,8 @@ def post_canonical_field(
             access=access,
             actor_user_id=principal.user_id,
         )
+    except CorrectionValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except (ReviewRepositoryError, ReviewServiceError) as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return field.model_dump(by_alias=True)
@@ -137,7 +140,7 @@ def post_canonical_field(
 def post_review_action(
     documentId: UUID,
     payload: ReviewActionRequest,
-    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_review)],
 ) -> dict[str, object]:
     if payload.document_id != documentId:
         raise HTTPException(
@@ -150,6 +153,8 @@ def post_review_action(
             access=access,
             actor_user_id=principal.user_id,
         )
+    except CorrectionValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except (ReviewRepositoryError, ReviewServiceError) as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return result
@@ -162,4 +167,6 @@ def _access_context(principal: AuthPrincipal) -> DocumentAccessContext:
         household_id=principal.household_id,
         user_id=principal.user_id,
         household_role=principal.household_role,
+        api_token_id=principal.api_token_id,
+        scopes=principal.scopes,
     )

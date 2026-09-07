@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import uuid
-from typing import Annotated, cast
+from typing import Annotated
 
 from fastapi import Depends, FastAPI
-from starlette.requests import Request
-from starlette.responses import Response
 
 from apps.api.structura_api import __version__
 from apps.api.structura_api.dependencies import require_admin
+from apps.api.structura_api.error_handlers import install_error_handling
 from apps.api.structura_api.openapi_contract import install_contract_aligned_openapi
 from apps.api.structura_api.routes_admin import router as admin_router
 from apps.api.structura_api.routes_assets import router as assets_router
@@ -26,7 +24,7 @@ from apps.api.structura_api.routes_search import router as search_router
 from lib.config import get_settings
 from lib.contracts import ContractRegistry
 from lib.db.migrations import baseline_migration_plan
-from lib.observability import configure_logging, log_event
+from lib.observability import configure_logging
 
 
 def create_app() -> FastAPI:
@@ -38,20 +36,7 @@ def create_app() -> FastAPI:
         summary="Local-first document workbench API",
     )
 
-    @app.middleware("http")
-    async def correlation_middleware(request: Request, call_next) -> Response:
-        correlation_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
-        request.state.correlation_id = correlation_id
-        response = cast(Response, await call_next(request))
-        response.headers["X-Request-ID"] = correlation_id
-        log_event(
-            "api.request",
-            correlation_id=correlation_id,
-            method=request.method,
-            path=request.url.path,
-            status_code=response.status_code,
-        )
-        return response
+    install_error_handling(app)
 
     @app.get("/healthz", tags=["Health"], include_in_schema=False)
     def healthz() -> dict[str, str]:

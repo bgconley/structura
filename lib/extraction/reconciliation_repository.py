@@ -50,6 +50,7 @@ def maybe_reconcile_semantic_annotation(
     schema_name: str,
     canonical_target_schema: str | None = None,
     settled_job_id: UUID | None = None,
+    settled_job_status: str = "succeeded",
 ) -> PersistedExtraction | None:
     """Build the document aggregate once every region job is terminal.
 
@@ -77,6 +78,7 @@ def maybe_reconcile_semantic_annotation(
                 canonical_target_schema=canonical_target_schema,
                 aggregate_schema_name=aggregate_schema_name,
                 settled_job_id=settled_job_id,
+                settled_job_status=settled_job_status,
                 wait_for_region_jobs=True,
             )
         finally:
@@ -112,6 +114,7 @@ def reconcile_semantic_annotation_from_current_regions(
                 canonical_target_schema=canonical_target_schema,
                 aggregate_schema_name=aggregate_schema_name,
                 settled_job_id=None,
+                settled_job_status="succeeded",
                 wait_for_region_jobs=False,
             )
         finally:
@@ -130,6 +133,7 @@ def _reconcile_semantic_annotation_locked(
     canonical_target_schema: str | None,
     aggregate_schema_name: str,
     settled_job_id: UUID | None,
+    settled_job_status: str,
     wait_for_region_jobs: bool,
 ) -> PersistedExtraction | None:
     with db_connection() as conn:
@@ -141,6 +145,7 @@ def _reconcile_semantic_annotation_locked(
                     semantic_annotation_id=semantic_annotation_id,
                     schema_name=schema_name,
                     settled_job_id=settled_job_id,
+                    settled_job_status=settled_job_status,
                 )
                 if wait_for_region_jobs
                 else {}
@@ -357,11 +362,12 @@ def _region_job_status_counts(
     semantic_annotation_id: UUID,
     schema_name: str,
     settled_job_id: UUID | None = None,
+    settled_job_status: str = "succeeded",
 ) -> dict[str, int]:
     cur.execute(
         """
         SELECT
-          CASE WHEN id = %s THEN 'succeeded' ELSE status END AS status,
+          CASE WHEN id = %s THEN %s::job_status_enum ELSE status END AS status,
           COUNT(*) AS job_count
         FROM pipeline_jobs
         WHERE document_id = %s
@@ -370,7 +376,7 @@ def _region_job_status_counts(
           AND payload_json ->> 'target_schema_name' = %s
         GROUP BY 1
         """,
-        (settled_job_id, document_id, str(semantic_annotation_id), schema_name),
+        (settled_job_id, settled_job_status, document_id, str(semantic_annotation_id), schema_name),
     )
     return {str(row["status"]): int(row["job_count"]) for row in cur.fetchall()}
 

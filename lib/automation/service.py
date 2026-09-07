@@ -7,6 +7,7 @@ from uuid import UUID
 from psycopg.errors import UniqueViolation
 
 from lib.auth import AuthPrincipal
+from lib.auth.authorization_policy import require_action
 from lib.automation import repository
 from lib.automation.action_application import (
     RuleActionApplication,
@@ -33,6 +34,7 @@ from lib.contracts import (
 )
 from lib.db.connection import db_connection
 from lib.documents.access_policy import DocumentAccessContext
+from lib.documents.access_repository import document_is_writable
 
 
 def list_filing_rules(principal: AuthPrincipal) -> list[FilingRule]:
@@ -44,6 +46,7 @@ def list_filing_rules(principal: AuthPrincipal) -> list[FilingRule]:
 
 
 def upsert_filing_rule(payload: FilingRuleWrite, principal: AuthPrincipal) -> FilingRule:
+    require_action(principal, "documents:write")
     household_id = _require_household(principal)
     try:
         validated = validate_rule_definition(payload.model_dump(by_alias=True))
@@ -89,6 +92,7 @@ def dry_run_rule(
     payload: FilingRuleDryRunRequest,
     principal: AuthPrincipal,
 ) -> FilingRuleDryRunResponse:
+    require_action(principal, "documents:write")
     household_id = _require_household(principal)
     with db_connection() as conn:
         with conn.cursor() as cur:
@@ -107,6 +111,8 @@ def dry_run_rule(
             )
             items: list[FilingRuleEvaluation] = []
             for row in rows:
+                if not document_is_writable(cur, _uuid(row["id"]), _access_context(principal)):
+                    raise AutomationError(404, "Document not found")
                 evaluation = _evaluate_row(rule, row, writable)
                 run = repository.insert_rule_run(
                     cur,
@@ -132,6 +138,7 @@ def apply_rule(
     payload: FilingRuleApplyRequest,
     principal: AuthPrincipal,
 ) -> FilingRuleApplyResponse:
+    require_action(principal, "documents:write")
     household_id = _require_household(principal)
     post_commit_application: RuleActionApplication | None = None
     with db_connection() as conn:
@@ -150,7 +157,9 @@ def apply_rule(
                 document_ids=[payload.document_id],
                 limit=1,
             )
-            if not rows:
+            if not rows or not document_is_writable(
+                cur, payload.document_id, _access_context(principal)
+            ):
                 raise AutomationError(404, "Document not found")
             evaluation = _evaluate_row(rule, rows[0], writable)
             if evaluation.matched and evaluation.review_required:
@@ -234,6 +243,7 @@ def list_filing_suggestions(principal: AuthPrincipal) -> list[FilingSuggestion]:
 
 
 def accept_suggestion(*, run_id: UUID, principal: AuthPrincipal) -> FilingRuleApplyResponse:
+    require_action(principal, "documents:write")
     household_id = _require_household(principal)
     post_commit_application: RuleActionApplication | None = None
     with db_connection() as conn:
@@ -243,7 +253,9 @@ def accept_suggestion(*, run_id: UUID, principal: AuthPrincipal) -> FilingRuleAp
                 run_id=run_id,
                 household_id=household_id,
             )
-            if not run:
+            if not run or not document_is_writable(
+                cur, _uuid(run["document_id"]), _access_context(principal)
+            ):
                 raise AutomationError(404, "Filing suggestion not found")
             document_id = _uuid(run["document_id"])
             application = apply_rule_actions_with_cursor(
@@ -281,6 +293,7 @@ def accept_suggestion(*, run_id: UUID, principal: AuthPrincipal) -> FilingRuleAp
 
 
 def reject_suggestion(*, run_id: UUID, principal: AuthPrincipal) -> dict[str, bool]:
+    require_action(principal, "documents:write")
     household_id = _require_household(principal)
     with db_connection() as conn:
         with conn.cursor() as cur:
@@ -289,7 +302,9 @@ def reject_suggestion(*, run_id: UUID, principal: AuthPrincipal) -> dict[str, bo
                 run_id=run_id,
                 household_id=household_id,
             )
-            if not run:
+            if not run or not document_is_writable(
+                cur, _uuid(run["document_id"]), _access_context(principal)
+            ):
                 raise AutomationError(404, "Filing suggestion not found")
             repository.mark_suggestion(cur, run_id=run_id, decision_status="rejected")
         conn.commit()
@@ -297,6 +312,7 @@ def reject_suggestion(*, run_id: UUID, principal: AuthPrincipal) -> dict[str, bo
 
 
 def defer_suggestion(*, run_id: UUID, principal: AuthPrincipal) -> dict[str, bool]:
+    require_action(principal, "documents:write")
     household_id = _require_household(principal)
     with db_connection() as conn:
         with conn.cursor() as cur:
@@ -305,7 +321,9 @@ def defer_suggestion(*, run_id: UUID, principal: AuthPrincipal) -> dict[str, boo
                 run_id=run_id,
                 household_id=household_id,
             )
-            if not run:
+            if not run or not document_is_writable(
+                cur, _uuid(run["document_id"]), _access_context(principal)
+            ):
                 raise AutomationError(404, "Filing suggestion not found")
             repository.mark_suggestion(cur, run_id=run_id, decision_status="deferred")
         conn.commit()
@@ -426,6 +444,8 @@ def _access_context(principal: AuthPrincipal) -> DocumentAccessContext:
         household_id=household_id,
         user_id=principal.user_id,
         household_role=principal.household_role,
+        api_token_id=principal.api_token_id,
+        scopes=principal.scopes,
     )
 
 

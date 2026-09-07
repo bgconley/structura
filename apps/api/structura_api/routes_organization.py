@@ -6,7 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from apps.api.structura_api.dependencies import current_principal, require_csrf
+from apps.api.structura_api.dependencies import require_document_read, require_document_write
 from lib.auth import AuthPrincipal
 from lib.contracts import (
     DocumentDetail,
@@ -25,7 +25,7 @@ T = TypeVar("T")
 
 @router.get("/folders", tags=["Organization"])
 def list_folders(
-    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_read)],
 ) -> dict[str, object]:
     return {
         "items": [
@@ -43,14 +43,14 @@ def list_folders(
 )
 def create_folder(
     payload: FolderWrite,
-    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_write)],
 ) -> Folder:
     return _call_organization(lambda: manual_filing.create_folder(payload, principal))
 
 
 @router.get("/tags", tags=["Organization"])
 def list_tags(
-    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_read)],
 ) -> dict[str, object]:
     return {
         "items": [
@@ -68,7 +68,7 @@ def list_tags(
 )
 def create_tag(
     payload: TagWrite,
-    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_write)],
 ) -> Tag:
     return _call_organization(lambda: manual_filing.create_tag(payload, principal))
 
@@ -81,7 +81,7 @@ def create_tag(
 def update_document_organization(
     documentId: UUID,
     payload: DocumentOrganizationWrite,
-    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_write)],
 ) -> DocumentDetail:
     return _call_organization(
         lambda: manual_filing.update_document_organization(

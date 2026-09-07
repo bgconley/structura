@@ -12,6 +12,7 @@ from psycopg.types.json import Jsonb
 
 from lib.db.connection import db_connection
 from lib.documents.assets import upsert_current_asset
+from lib.jobs.ownership import fence_current_job
 from lib.storage import ObjectStorage, StoredObject, cleanup_unreferenced_stored_object
 
 SVG_MIME = "image/svg+xml"
@@ -63,6 +64,8 @@ def generate_page_previews(
                         job_id=job_id,
                         created_objects=created_objects,
                     )
+            with conn.cursor() as fence_cur:
+                fence_current_job(fence_cur)
             conn.commit()
             db_committed = True
         finally:

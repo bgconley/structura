@@ -8,6 +8,7 @@ from uuid import UUID
 from psycopg.types.json import Jsonb
 
 from lib.db.connection import db_connection
+from lib.jobs.ownership import fence_current_job
 from lib.review.task_repository import upsert_review_task
 
 LOW_TEXT_CHAR_THRESHOLD = 32
@@ -179,6 +180,8 @@ def evaluate_document_quality(document_id: UUID) -> DocumentQualitySummary:
             _persist_quality_summary(cur, document_id, summary)
             if summary.review_required:
                 _upsert_document_quality_review_task(cur, document_id, summary)
+        with conn.cursor() as fence_cur:
+            fence_current_job(fence_cur)
         conn.commit()
     return summary
 

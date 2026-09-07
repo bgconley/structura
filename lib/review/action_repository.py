@@ -13,13 +13,14 @@ from lib.extraction.candidate_repository import (
     candidate_value_json,
     typed_value_columns,
 )
-from lib.review.access import assert_readable
+from lib.review.access import assert_writable
 from lib.review.audit_repository import (
     close_field_review_tasks,
     record_history,
     record_review_event,
     update_document_review_status,
 )
+from lib.review.correction_values import CorrectionValueError, validate_correction_value
 from lib.review.errors import ReviewRepositoryError
 from lib.review.mappers import canonical_field_from_row, canonical_value
 
@@ -57,13 +58,20 @@ def upsert_human_canonical_field(
     source_kind: str = "human",
     reason: str | None = None,
 ) -> tuple[CanonicalField, UUID]:
+    validate_correction_value(value_type, value, currency)
+    if value_type == "money" and isinstance(value, dict):
+        currency = str(value["currency"])
     typed = typed_value_columns(value_type, _typed_value_input(value_type, value, currency))
     if currency:
         typed["currency_code"] = currency
     with db_connection() as conn:
         with conn.cursor() as cur:
-            assert_readable(cur, document_id, access)
+            assert_writable(cur, document_id, access)
             previous = _canonical_row(cur, document_id, field_path, ordinal)
+            if previous and previous["value_type"] != value_type:
+                raise CorrectionValueError(
+                    "A correction must keep the existing field's value type."
+                )
             canonical_id = _upsert_canonical_row(
                 cur,
                 document_id=document_id,
@@ -120,7 +128,7 @@ def confirm_candidate(
 ) -> UUID:
     with db_connection() as conn:
         with conn.cursor() as cur:
-            assert_readable(cur, document_id, access)
+            assert_writable(cur, document_id, access)
             candidate = get_field_candidate(cur, document_id=document_id, candidate_id=candidate_id)
             if not candidate:
                 raise ReviewRepositoryError("Candidate not found.")
@@ -183,7 +191,7 @@ def reject_field(
 ) -> UUID:
     with db_connection() as conn:
         with conn.cursor() as cur:
-            assert_readable(cur, document_id, access)
+            assert_writable(cur, document_id, access)
             cur.execute(
                 """
                 UPDATE field_candidates
@@ -246,7 +254,7 @@ def record_reclassify(
 ) -> UUID:
     with db_connection() as conn:
         with conn.cursor() as cur:
-            assert_readable(cur, document_id, access)
+            assert_writable(cur, document_id, access)
             cur.execute(
                 """
                 SELECT document_family::text AS family, document_subtype
@@ -295,7 +303,7 @@ def mark_done(
 ) -> UUID:
     with db_connection() as conn:
         with conn.cursor() as cur:
-            assert_readable(cur, document_id, access)
+            assert_writable(cur, document_id, access)
             if review_task_id:
                 cur.execute(
                     """
@@ -344,7 +352,7 @@ def record_rerun_request(
 ) -> UUID:
     with db_connection() as conn:
         with conn.cursor() as cur:
-            assert_readable(cur, document_id, access)
+            assert_writable(cur, document_id, access)
             event_id = record_review_event(
                 cur,
                 document_id=document_id,

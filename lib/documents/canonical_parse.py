@@ -10,6 +10,7 @@ from lib.db.connection import db_connection
 from lib.documents.assets import upsert_current_asset
 from lib.documents.parse_models import CanonicalParseResult, PersistedParseSummary
 from lib.documents.parse_repository import replace_relational_parse, update_document_parse_state
+from lib.jobs.ownership import fence_current_job
 from lib.storage import ObjectStorage, StoredObject, cleanup_unreferenced_stored_object
 
 
@@ -113,6 +114,8 @@ def persist_canonical_parse(
                     result=result,
                     job_id=job_id,
                 )
+            with conn.cursor() as fence_cur:
+                fence_current_job(fence_cur)
             conn.commit()
     except Exception:
         _cleanup_created_objects(created_objects)
@@ -170,6 +173,8 @@ def mark_parse_failed(
                     document_id,
                 ),
             )
+        with conn.cursor() as fence_cur:
+            fence_current_job(fence_cur)
         conn.commit()
 
 

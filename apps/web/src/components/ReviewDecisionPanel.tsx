@@ -1,3 +1,5 @@
+import {useRef, useState} from "react";
+
 import type {FieldCandidate, ReviewTask} from "../types";
 
 const DOCUMENT_FAMILIES = [
@@ -37,7 +39,7 @@ export function ReviewDecisionPanel({
 }: {
   activeTask: ReviewTask;
   referenceCandidate?: FieldCandidate;
-  onCorrect: (value: string, comment: string) => Promise<void>;
+  onCorrect: (value: string, comment: string, currency?: string) => Promise<boolean>;
   onReject: (comment: string) => Promise<void>;
   onReclassify: (family: string, subtype: string, comment: string) => Promise<void>;
   onMarkDone: () => Promise<void>;
@@ -45,6 +47,16 @@ export function ReviewDecisionPanel({
 }) {
   const fieldPath = activeTask.fieldPath ?? "classification.document_family";
   const valueType = referenceCandidate?.valueType ?? "string";
+  const [correctionError, setCorrectionError] = useState<string | null>(null);
+  const [savingCorrection, setSavingCorrection] = useState(false);
+  const correctionPending = useRef(false);
+  const candidateCurrency = referenceCandidate?.currency ?? (
+    referenceCandidate?.value && typeof referenceCandidate.value === "object"
+      && "currency" in referenceCandidate.value
+      ? String(referenceCandidate.value.currency ?? "") : ""
+  );
+  const correctionReady = referenceCandidate?.documentId === activeTask.documentId
+    && referenceCandidate?.fieldPath === activeTask.fieldPath;
   // Observation and line-item tasks are decided on their candidate cards
   // (accept/reject); relationship suggestions are decided through the
   // relationship actions. Field-shaped correct/reject forms only apply to
@@ -69,14 +81,28 @@ export function ReviewDecisionPanel({
       {showFieldForms ? (
       <form
         className="review-decision-form"
-        onSubmit={(event) => {
+        onSubmit={async (event) => {
           event.preventDefault();
-          const data = new FormData(event.currentTarget);
-          void onCorrect(
-            String(data.get("correctedValue") ?? ""),
-            String(data.get("comment") ?? ""),
-          );
-          event.currentTarget.reset();
+          if (correctionPending.current || !correctionReady) return;
+          const form = event.currentTarget;
+          const data = new FormData(form);
+          correctionPending.current = true;
+          setSavingCorrection(true);
+          setCorrectionError(null);
+          try {
+            const saved = await onCorrect(
+              String(data.get("correctedValue") ?? ""),
+              String(data.get("comment") ?? ""),
+              valueType === "money" ? String(data.get("currency") ?? "").trim() : undefined,
+            );
+            if (saved) form.reset();
+            else setCorrectionError("Correction was not saved. Your entries have been kept; see the review status.");
+          } catch (error) {
+            setCorrectionError(error instanceof Error ? error.message : "Correction was not saved.");
+          } finally {
+            correctionPending.current = false;
+            setSavingCorrection(false);
+          }
         }}
       >
         <label>
@@ -86,14 +112,30 @@ export function ReviewDecisionPanel({
             aria-label="Corrected value"
             inputMode={valueType === "money" || valueType === "number" ? "decimal" : "text"}
             placeholder={formatValue(referenceCandidate?.value, referenceCandidate?.currency)}
+            aria-invalid={correctionError ? true : undefined}
+            aria-describedby={correctionError ? "correction-error" : undefined}
+            disabled={savingCorrection || !correctionReady}
             required
           />
         </label>
+        {valueType === "money" ? (
+          <label>
+            Currency
+            <input name="currency" aria-label="Correction currency" defaultValue={candidateCurrency}
+              pattern="[A-Z]{3}" maxLength={3} required disabled={savingCorrection} />
+          </label>
+        ) : null}
+        {valueType === "money" || valueType === "number" ? (
+          <small>Use a decimal amount such as 1234.56, without currency or grouping separators.</small>
+        ) : null}
         <label>
           Correction note
-          <input name="comment" aria-label="Correction note" />
+          <input name="comment" aria-label="Correction note" disabled={savingCorrection} />
         </label>
-        <button type="submit">Correct field</button>
+        {correctionError ? <p id="correction-error" role="alert">{correctionError}</p> : null}
+        <button type="submit" disabled={savingCorrection || !correctionReady}>
+          {savingCorrection ? "Saving correction…" : "Correct field"}
+        </button>
       </form>
       ) : null}
 

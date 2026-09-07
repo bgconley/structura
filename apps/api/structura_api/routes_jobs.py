@@ -5,7 +5,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from apps.api.structura_api.dependencies import current_principal, require_admin, require_admin_csrf
+from apps.api.structura_api.dependencies import (
+    current_principal,
+    require_admin_csrf,
+    require_jobs_admin,
+)
 from lib.auth import AuthPrincipal
 from lib.contracts import (
     AcceptedJob,
@@ -14,6 +18,7 @@ from lib.contracts import (
     JobCancelRequest,
     JobState,
 )
+from lib.documents.access_repository import job_is_readable
 from lib.jobs import JobService, JobServiceError
 
 router = APIRouter(prefix="/api/v1", tags=["Jobs"])
@@ -24,7 +29,7 @@ def get_job(
     jobId: UUID,
     principal: Annotated[AuthPrincipal, Depends(current_principal)],
 ) -> JobState:
-    if not principal.household_id:
+    if not job_is_readable(jobId, principal):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
     job = JobService().get_job(jobId, household_id=principal.household_id)
     if not job:
@@ -34,7 +39,7 @@ def get_job(
 
 @router.get("/admin/jobs", tags=["Admin"])
 def list_admin_jobs(
-    principal: Annotated[AuthPrincipal, Depends(require_admin)],
+    principal: Annotated[AuthPrincipal, Depends(require_jobs_admin)],
     status_filter: Annotated[str | None, Query(alias="status")] = None,
     job_type: Annotated[str | None, Query(alias="jobType")] = None,
 ) -> dict[str, list[JobState]]:

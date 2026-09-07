@@ -8,7 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from starlette.responses import FileResponse
 
-from apps.api.structura_api.dependencies import current_principal
+from apps.api.structura_api.dependencies import require_document_read
 from lib.auth import AuthPrincipal
 from lib.db.connection import db_connection
 from lib.documents.access_policy import (
@@ -23,7 +23,7 @@ router = APIRouter(prefix="/api/v1", tags=["Assets"])
 @router.get("/assets/{assetId}", tags=["Assets"])
 def get_asset(
     assetId: UUID,
-    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_read)],
 ) -> FileResponse:
     if not principal.household_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
@@ -53,6 +53,8 @@ def get_asset(
                             household_id=principal.household_id,
                             user_id=principal.user_id,
                             household_role=principal.household_role,
+                            api_token_id=principal.api_token_id,
+                            scopes=principal.scopes,
                         )
                     ),
                 ),

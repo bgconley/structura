@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from lib.auth import AuthPrincipal
+from lib.auth.authorization_policy import require_action
 from lib.contracts import DocumentOrganizationWrite
 from lib.documents.access_policy import DocumentAccessContext
 from lib.organization import policy, repository
@@ -28,6 +29,7 @@ def update_document_organization_with_cursor(
     payload: DocumentOrganizationWrite,
     principal: AuthPrincipal,
 ) -> OrganizationMutationResult:
+    require_action(principal, "documents:write")
     household_id = _require_household(principal)
     fields = payload.model_fields_set
     document = repository.lock_document_for_household(
@@ -112,6 +114,8 @@ def document_access_context(principal: AuthPrincipal) -> DocumentAccessContext:
         household_id=household_id,
         user_id=principal.user_id,
         household_role=principal.household_role,
+        api_token_id=principal.api_token_id,
+        scopes=principal.scopes,
     )
 
 

@@ -19,4 +19,4 @@ EXPOSE 8000
 
 USER structura
 
-CMD ["uvicorn", "apps.api.structura_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "apps.api.structura_api.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]

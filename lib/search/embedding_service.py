@@ -6,6 +6,7 @@ from uuid import UUID
 
 from lib.config import get_settings
 from lib.db.connection import db_connection
+from lib.jobs.ownership import fence_current_job
 from lib.search.embedding_defaults import (
     TextEmbeddingGatewayProtocol,
     VisualAssetEmbeddingGatewayProtocol,
@@ -93,6 +94,8 @@ class EmbeddingService:
                     inserted_count += visual_inserted
                     skipped_count += visual_skipped
                     modality_counts["visual"] = visual_count
+            with conn.cursor() as fence_cur:
+                fence_current_job(fence_cur)
             conn.commit()
         summary_profile = self._summary_profile(requested)
         return EmbeddingRunSummary(

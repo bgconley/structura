@@ -6,7 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from apps.api.structura_api.dependencies import current_principal, require_csrf
+from apps.api.structura_api.dependencies import require_document_read, require_document_write
 from lib.auth import AuthPrincipal
 from lib.automation import service as automation_service
 from lib.automation import watched_folders as watched_folder_service
@@ -28,7 +28,7 @@ T = TypeVar("T")
 
 @router.get("/filing-rules")
 def list_filing_rules(
-    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_read)],
 ) -> dict[str, object]:
     rules = _call_automation(lambda: automation_service.list_filing_rules(principal))
     return {"items": [rule.model_dump(by_alias=True) for rule in rules]}
@@ -42,7 +42,7 @@ def list_filing_rules(
 )
 def upsert_filing_rule(
     payload: FilingRuleWrite,
-    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_write)],
 ) -> FilingRule:
     return _call_automation(lambda: automation_service.upsert_filing_rule(payload, principal))
 
@@ -58,7 +58,7 @@ def upsert_filing_rule(
 def dry_run_filing_rule(
     ruleId: UUID,
     payload: FilingRuleDryRunRequest,
-    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_write)],
 ) -> FilingRuleDryRunResponse:
     return _call_automation(
         lambda: automation_service.dry_run_rule(
@@ -81,7 +81,7 @@ def dry_run_filing_rule(
 def apply_filing_rule(
     ruleId: UUID,
     payload: FilingRuleApplyRequest,
-    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_write)],
 ) -> FilingRuleApplyResponse:
     return _call_automation(
         lambda: automation_service.apply_rule(
@@ -94,7 +94,7 @@ def apply_filing_rule(
 
 @router.get("/filing-suggestions")
 def list_filing_suggestions(
-    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_read)],
 ) -> dict[str, object]:
     suggestions = _call_automation(lambda: automation_service.list_filing_suggestions(principal))
     return {"items": [suggestion.model_dump(by_alias=True) for suggestion in suggestions]}
@@ -110,7 +110,7 @@ def list_filing_suggestions(
 )
 def accept_filing_suggestion(
     runId: UUID,
-    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_write)],
 ) -> FilingRuleApplyResponse:
     return _call_automation(
         lambda: automation_service.accept_suggestion(run_id=runId, principal=principal)
@@ -126,7 +126,7 @@ def accept_filing_suggestion(
 )
 def reject_filing_suggestion(
     runId: UUID,
-    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_write)],
 ) -> dict[str, bool]:
     return _call_automation(
         lambda: automation_service.reject_suggestion(run_id=runId, principal=principal)
@@ -142,7 +142,7 @@ def reject_filing_suggestion(
 )
 def defer_filing_suggestion(
     runId: UUID,
-    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_write)],
 ) -> dict[str, bool]:
     return _call_automation(
         lambda: automation_service.defer_suggestion(run_id=runId, principal=principal)
@@ -151,7 +151,7 @@ def defer_filing_suggestion(
 
 @router.get("/watched-folders")
 def list_watched_folders(
-    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_read)],
 ) -> dict[str, object]:
     watched = _call_automation(lambda: watched_folder_service.list_watched_folders(principal))
     return {"items": [item.model_dump(by_alias=True) for item in watched]}
@@ -165,7 +165,7 @@ def list_watched_folders(
 )
 def upsert_watched_folder(
     payload: WatchedFolderWrite,
-    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_write)],
 ) -> WatchedFolder:
     return _call_automation(
         lambda: watched_folder_service.upsert_watched_folder(payload, principal)
@@ -174,7 +174,7 @@ def upsert_watched_folder(
 
 @router.get("/import-status")
 def list_import_status(
-    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_read)],
 ) -> dict[str, object]:
     statuses = _call_automation(lambda: watched_folder_service.list_import_status(principal))
     return {"items": [item.model_dump(by_alias=True) for item in statuses]}

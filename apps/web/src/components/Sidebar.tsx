@@ -1,15 +1,15 @@
 const navItems = [
-  ["I", "Inbox", "18"],
-  ["S", "Search", ""],
-  ["A", "Automation", ""],
-  ["F", "Folders", ""],
-  ["S", "Smart Folders", ""],
-  ["R", "Review Queue", "12"],
-  ["R", "Relationships", ""],
-  ["T", "Timelines", ""],
-  ["A", "Analysis", ""],
-  ["E", "Exports", ""],
-  ["S", "Settings", ""],
+  ["I", "Inbox"],
+  ["S", "Search"],
+  ["A", "Automation"],
+  ["F", "Folders"],
+  ["S", "Smart Folders"],
+  ["R", "Review Queue"],
+  ["R", "Relationships"],
+  ["T", "Timelines"],
+  ["A", "Analysis"],
+  ["E", "Exports"],
+  ["S", "Settings"],
 ];
 
 export function Sidebar({
@@ -28,7 +28,7 @@ export function Sidebar({
         <strong>Structura</strong>
       </div>
       <nav aria-label="Primary">
-        {navItems.map(([icon, label, badge]) => (
+        {navItems.map(([icon, label]) => (
           <button
             key={label}
             className={
@@ -61,16 +61,15 @@ export function Sidebar({
           >
             <span>{icon}</span>
             <em>{label}</em>
-            {label === "Inbox" ? <small>{total || badge}</small> : null}
-            {label === "Review Queue" ? <b>12</b> : null}
+            {label === "Inbox" ? <small>{total}</small> : null}
           </button>
         ))}
       </nav>
       <section className="machine-health" aria-label="Machine health">
         <h2>Machine Health</h2>
-        <HealthLine title="Backup healthy" detail="Last backup: 2h ago" />
-        <HealthLine title="Storage healthy" detail="68% used" />
-        <HealthLine title="Workers active" detail="2 of 2 online" />
+        <HealthLine title="Backup status unknown" detail="No backup observation available" />
+        <HealthLine title="Storage status unknown" detail="Usage has not been reported" />
+        <HealthLine title="Worker status unknown" detail="No worker observation available" />
       </section>
     </aside>
   );
@@ -79,7 +78,7 @@ export function Sidebar({
 function HealthLine({title, detail}: {title: string; detail: string}) {
   return (
     <div className="health-line">
-      <span />
+      <span style={{background: "var(--muted)"}} />
       <p>{title}</p>
       <small>{detail}</small>
     </div>

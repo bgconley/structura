@@ -52,6 +52,7 @@ def test_semantic_annotation_worker_processes_semantic_annotate_job() -> None:
     assert job_service.completed == [
         {
             "job_id": job_id,
+            "claim_token": job_service.claimed.claim_token,
             "result": {
                 "semantic_annotation_status": "succeeded",
                 "annotation_id": str(annotation_id),
@@ -91,6 +92,7 @@ def test_semantic_annotation_worker_rejects_removed_rescue_payload_nonretryably(
     assert job_service.failed == [
         {
             "job_id": job_id,
+            "claim_token": job_service.claimed.claim_token,
             "error_class": "SemanticAnnotationWorkerError",
             "message": "Removed high-quality/rescue semantic controls are not accepted.",
             "retryable": False,
@@ -122,39 +124,25 @@ def test_semantic_annotation_worker_fails_unknown_job_type() -> None:
     assert job_service.failed[0]["retryable"] is False
 
 
-def test_semantic_annotation_worker_cancels_granite_jobs_when_parent_was_cancelled() -> None:
-    document_id = uuid4()
-    job_id = uuid4()
-    queued_job_id = uuid4()
-    job_service = RecordingJobService(
+def test_semantic_annotation_worker_does_not_fail_or_cancel_after_ownership_loss() -> None:
+    from lib.jobs.errors import JobOwnershipLost
+
+    jobs = RecordingJobService(
         SimpleNamespace(
-            state=SimpleNamespace(job_id=job_id, job_type="semantic_annotate"),
-            document_id=document_id,
+            state=SimpleNamespace(job_id=uuid4(), job_type="semantic_annotate"),
+            document_id=uuid4(),
             household_id=uuid4(),
             payload={},
-        ),
-        complete_status="cancelled",
+        )
     )
-    service = RecordingSemanticService(
-        annotation_id=uuid4(),
-        queued_granite_job_ids=(queued_job_id,),
+    assert process_next_semantic_annotation_job(
+        worker_name="worker-test",
+        job_service=jobs,
+        service=RaisingSemanticService(JobOwnershipLost("stale")),
     )
-
-    processed = process_next_semantic_annotation_job(
-        worker_name="worker-semantic-annotations-test",
-        job_service=job_service,
-        service=service,
-    )
-
-    assert processed is True
-    assert job_service.cancelled == [
-        {
-            "job_id": queued_job_id,
-            "reason": "Parent semantic annotation job was cancelled.",
-            "include_running": True,
-            "requested_by": "worker-semantic-annotations-test",
-        }
-    ]
+    assert jobs.failed == []
+    assert jobs.completed == []
+    assert jobs.cancelled == []
 
 
 def test_semantic_annotation_worker_classifies_model_failures_by_exception_contract() -> None:
@@ -199,12 +187,19 @@ class RaisingSemanticService:
 class RecordingJobService:
     def __init__(self, claimed: object | None, *, complete_status: str | None = None) -> None:
         self.claimed = claimed
+        if claimed is not None:
+            claimed.claim_token = uuid4()
+            claimed.attempt_count = 1
+            claimed.max_attempts = 5
         self.complete_status = complete_status
         self.completed: list[dict[str, object]] = []
         self.failed: list[dict[str, object]] = []
         self.cancelled: list[dict[str, object]] = []
 
     def claim_next_job_record(self, **_kwargs: object) -> object | None:
+        return self.claimed
+
+    def heartbeat_job(self, **_kwargs: object) -> object:
         return self.claimed
 
     def complete_job(self, **kwargs: object) -> object | None:

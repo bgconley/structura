@@ -8,6 +8,7 @@ from psycopg import Cursor
 from psycopg.types.json import Jsonb
 
 from lib.db.connection import db_connection
+from lib.jobs.ownership import fence_current_job
 from lib.semantic_annotations.models import (
     DocumentSemanticManifest,
     PageSemanticAnnotation,
@@ -38,6 +39,8 @@ def persist_semantic_manifest_record(
     with db_connection() as conn:
         with conn.cursor() as cur:
             persisted = persist_semantic_manifest_with_cursor(cur, manifest)
+        with conn.cursor() as fence_cur:
+            fence_current_job(fence_cur)
         conn.commit()
     return persisted
 

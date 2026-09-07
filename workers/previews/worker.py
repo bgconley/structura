@@ -7,6 +7,8 @@ import time
 from uuid import UUID
 
 from lib.jobs import JobService, record_service_health
+from lib.jobs.errors import JobOwnershipLost
+from lib.jobs.lease import keep_job_lease
 from workers.previews import PreviewError, generate_page_previews
 from workers.runtime import start_health_server
 
@@ -37,21 +39,27 @@ def process_next_preview_job(
     if not claimed:
         return False
 
-    try:
-        document_id = _document_id_for_preview(claimed.document_id, claimed.payload)
-        generate_page_previews(document_id, job_id=claimed.state.job_id)
-        job_service.complete_job(
-            job_id=claimed.state.job_id,
-            result={"preview_status": "generated"},
-        )
-    except Exception as exc:
-        job_service.fail_job(
-            job_id=claimed.state.job_id,
-            error_class=exc.__class__.__name__,
-            message="Phase 1 preview generation failed",
-            retryable=True,
-            suppress=True,
-        )
+    with keep_job_lease(job_service, claimed, worker_name=worker_name):
+        try:
+            document_id = _document_id_for_preview(claimed.document_id, claimed.payload)
+            generate_page_previews(document_id, job_id=claimed.state.job_id)
+            job_service.complete_job(
+                job_id=claimed.state.job_id,
+                claim_token=claimed.claim_token,
+                result={"preview_status": "generated"},
+            )
+        except JobOwnershipLost:
+            raise
+        except Exception as exc:
+            job_service.fail_job(
+                job_id=claimed.state.job_id,
+                claim_token=claimed.claim_token,
+                error_class=exc.__class__.__name__,
+                message="Phase 1 preview generation failed",
+                retryable=True,
+                suppress=True,
+            )
+        return True
     return True
 
 

@@ -82,6 +82,14 @@ Older artifact-pack docs may group the same work differently. Treat the root pla
 
 ## Current Baseline And Next Phase
 
+Current execution authority (2026-09-07): the user approved `STRUCTURA_PRODUCTION_COMPLETION_PLAN.md` and authorized execution. The integration branch is `codex/production-completion`, based on application commit `d2820a8`. Use the completion workstreams and `docs/release-evidence/production-completion-g0/README.md` for active ownership, baseline and gate evidence. The April branch/runtime descriptions below are historical and must not override current inventory.
+
+ADRs 0008/0009 select the existing Oxcart Qwen3.8-27B BF16 service and Qwen-native full-document parsing with thin source handling. Docling is temporary migration/comparison support. Preserve originals, truthful native/model provenance, complete searchable structure, evidence/history, validation and human review. Blackbird's PRO 4000 serves planned ingestion/reindex and query embeddings; its unrelated PRO 6000/Gemma and Oxcart's shared 27B service must not be restarted or reconfigured as routine setup. Phase 8.5/G3 remains a prerequisite for Phase 9.
+
+Oxcart's current `/srv/structura` maps to existing `/tank/apps/structura` ZFS datasets; `/tank/repos/structura` and Blackbird's NFS `/tank/work/repos/structura` are the same checkout. `/tank/venvs` now resolves to `/tank/work/venvs`. Refresh inventory before operational changes, synchronize source only once from Oxcart, and validate on an isolated database before any real archive migration.
+
+## Historical Phase Baselines
+
 As of 2026-04-29, the repo is implemented through Phase 8 plus the Phase 8.5 live model-runtime and critical extraction-closure work on `master`; local, `origin/master`, and the GPU checkout at `/tank/repos/structura` must stay synced before any milestone validation. Current synchronized HEAD is `9fd1534` (`Record Phase 8.5 closure verification`). Remaining Phase 8.5 work must continue from `STRUCTURA_PHASE_8_5_IMPLEMENTATION_PLAN.md`, `STRUCTURA_PHASE_8_5_SEMANTIC_ANNOTATION_PLAN.md`, and `docs/superpowers/plans/2026-04-29-phase85-critical-extraction-closure.md`. Do not start Phase 9 analysis until the remaining Phase 8.5 model-service gates pass or the user explicitly accepts documented blockers.
 
 Phase 4 implementation code landed in commit `d04a762` (`Implement Phase 4 extraction review`). It adds the extraction/review foundation; before calling the phase complete, current HEAD must be pushed, pulled on the GPU node, migrated through `068_phase4_extraction_review.sql`, rebuilt with the extraction profile, and validated on the GPU node.

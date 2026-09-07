@@ -13,6 +13,8 @@ from lib.contracts import (
 )
 from lib.db.connection import db_connection
 from lib.documents.access_policy import DocumentAccessContext
+from lib.documents.access_repository import lock_writable_documents
+from lib.jobs.ownership import fence_current_job
 from lib.relationships import repository
 from lib.relationships.deadline_status import deadline_status, remind_from
 from lib.relationships.errors import RelationshipServiceError
@@ -275,6 +277,8 @@ class RelationshipService:
                         actor_user_id=None,
                         review_task_id=review_task_id,
                     )
+            with conn.cursor() as fence_cur:
+                fence_current_job(fence_cur)
             conn.commit()
         return len(suggestions)
 
@@ -322,6 +326,8 @@ class RelationshipService:
                         metadata={"sourceFieldPath": row["field_path"]},
                     )
                     count += 1
+            with conn.cursor() as fence_cur:
+                fence_current_job(fence_cur)
             conn.commit()
         return count
 
@@ -382,10 +388,8 @@ def _require_writable_pair(
     from_document_id: UUID,
     to_document_id: UUID,
 ) -> None:
-    if not repository.document_is_writable(cur, document_id=from_document_id, access=access):
-        raise RelationshipServiceError(404, "Source document not found")
-    if not repository.document_is_writable(cur, document_id=to_document_id, access=access):
-        raise RelationshipServiceError(404, "Related document not found")
+    if not lock_writable_documents(cur, [from_document_id, to_document_id], access):
+        raise RelationshipServiceError(404, "Document not found")
 
 
 def _relationship_from_row(row: dict[str, Any]) -> DocumentRelationship:

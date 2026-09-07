@@ -5,7 +5,11 @@ from uuid import UUID
 
 from psycopg.types.json import Jsonb
 
-from lib.documents.access_policy import DocumentAccessContext, document_read_access_params
+from lib.documents.access_policy import (
+    DocumentAccessContext,
+    document_read_access_params,
+)
+from lib.documents.access_repository import lock_writable_documents
 
 Row: TypeAlias = dict[str, Any]
 
@@ -169,24 +173,44 @@ def lock_writable_document(
     document_id: UUID,
     access: DocumentAccessContext,
 ) -> Row | None:
+    if not lock_writable_documents(cur, [document_id], access):
+        return None
     cur.execute(
-        """
-        SELECT id, title, household_id
-        FROM documents d
-        WHERE d.id = %s
-          AND d.deleted_at IS NULL
-          AND document_is_readable(d.id, %s, %s, %s)
-          AND (d.owner_user_id = %s OR %s IN ('owner', 'admin'))
-        FOR UPDATE
-        """,
-        (
-            document_id,
-            *document_read_access_params(access),
-            access.user_id,
-            access.household_role,
-        ),
+        "SELECT id, title, household_id FROM documents WHERE id = %s",
+        (document_id,),
     )
     return cast(Row | None, cur.fetchone())
+
+
+def contact_documents_are_writable(
+    cur: Any, *, contact_ids: list[UUID], access: DocumentAccessContext
+) -> bool:
+    """Stabilize contacts and their link sets before authorizing linked documents.
+
+    Contact/link mutations use contact IDs first, then document IDs, each sorted.
+    FOR UPDATE on contacts also conflicts with new foreign-key link references.
+    """
+    if not lock_contacts(cur, contact_ids=contact_ids, household_id=access.household_id):
+        return False
+    cur.execute(
+        """
+        SELECT DISTINCT document_id FROM document_contacts
+        WHERE contact_id = ANY(%s::uuid[]) ORDER BY document_id
+        """,
+        (contact_ids,),
+    )
+    document_ids = [row["document_id"] for row in cur.fetchall()]
+    return lock_writable_documents(cur, document_ids, access)
+
+
+def lock_contacts(cur: Any, *, contact_ids: list[UUID], household_id: UUID) -> bool:
+    ordered_ids = sorted(set(contact_ids))
+    cur.execute(
+        """SELECT id FROM contacts WHERE id = ANY(%s::uuid[]) AND household_id = %s
+        ORDER BY id FOR UPDATE""",
+        (ordered_ids, household_id),
+    )
+    return len(cur.fetchall()) == len(ordered_ids)
 
 
 def upsert_document_contact(

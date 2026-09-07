@@ -5,7 +5,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from apps.api.structura_api.dependencies import current_principal, require_csrf
+from apps.api.structura_api.dependencies import (
+    require_document_read,
+    require_document_review,
+    require_document_write,
+)
 from lib.auth import AuthPrincipal
 from lib.contracts import RelationshipDecisionRequest, RelationshipWrite
 from lib.documents.access_policy import DocumentAccessContext
@@ -20,7 +24,7 @@ router = APIRouter(prefix="/api/v1", tags=["Relationships"])
     responses={401: {"description": "Not authenticated"}},
 )
 def list_relationships(
-    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_read)],
     documentId: UUID | None = None,
     status: str | None = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 200,
@@ -45,7 +49,7 @@ def list_relationships(
 )
 def create_relationship(
     payload: RelationshipWrite,
-    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_write)],
 ) -> dict[str, object]:
     try:
         item = RelationshipService().create_relationship(
@@ -69,7 +73,7 @@ def create_relationship(
 def accept_relationship(
     relationshipId: UUID,
     payload: RelationshipDecisionRequest,
-    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_review)],
 ) -> dict[str, object]:
     try:
         item = RelationshipService().accept_relationship(
@@ -94,7 +98,7 @@ def accept_relationship(
 def reject_relationship(
     relationshipId: UUID,
     payload: RelationshipDecisionRequest,
-    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_review)],
 ) -> dict[str, object]:
     try:
         item = RelationshipService().reject_relationship(
@@ -113,7 +117,7 @@ def reject_relationship(
     responses={401: {"description": "Not authenticated"}},
 )
 def list_deadlines(
-    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_read)],
     documentId: UUID | None = None,
     status: str | None = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 200,
@@ -132,7 +136,7 @@ def list_deadlines(
     responses={401: {"description": "Not authenticated"}},
 )
 def get_timeline(
-    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_read)],
     documentId: UUID | None = None,
     contactId: UUID | None = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 200,
@@ -151,7 +155,7 @@ def get_timeline(
     responses={401: {"description": "Not authenticated"}},
 )
 def list_smart_views(
-    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_read)],
 ) -> dict[str, object]:
     items = RelationshipService().smart_views(access=_access_context(principal))
     return {"items": [item.model_dump(by_alias=True) for item in items]}
@@ -164,4 +168,6 @@ def _access_context(principal: AuthPrincipal) -> DocumentAccessContext:
         household_id=principal.household_id,
         user_id=principal.user_id,
         household_role=principal.household_role,
+        api_token_id=principal.api_token_id,
+        scopes=principal.scopes,
     )

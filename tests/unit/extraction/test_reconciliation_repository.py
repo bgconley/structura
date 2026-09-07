@@ -857,5 +857,5 @@ def test_region_job_status_counts_settles_in_flight_job_in_sql() -> None:
         schema_name="receipt",
         settled_job_id=settled,
     )
-    assert "CASE WHEN id = %s THEN 'succeeded' ELSE status END" in cursor.query
+    assert "CASE WHEN id = %s THEN %s::job_status_enum ELSE status END" in cursor.query
     assert cursor.args[0] == settled

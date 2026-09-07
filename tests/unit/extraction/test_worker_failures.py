@@ -225,6 +225,10 @@ def test_extraction_failure_policy_follows_model_exception_retryability_contract
 class RecordingJobService:
     def __init__(self, claimed: object | None) -> None:
         self.claimed = claimed
+        if claimed is not None:
+            claimed.claim_token = uuid4()
+            claimed.attempt_count = 1
+            claimed.max_attempts = 5
         self.failed: list[dict[str, object]] = []
 
     def claim_next_job_record(self, **_kwargs: object) -> object | None:
@@ -240,6 +244,10 @@ class RecordingJobService:
 class SuccessfulJobService:
     def __init__(self, claimed: object | None) -> None:
         self.claimed = claimed
+        if claimed is not None:
+            claimed.claim_token = uuid4()
+            claimed.attempt_count = 1
+            claimed.max_attempts = 5
         self.completed: list[dict[str, object]] = []
         self.failed: list[dict[str, object]] = []
 

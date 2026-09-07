@@ -1,149 +1,28 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 from uuid import UUID, uuid4
 
 from psycopg.types.json import Jsonb
 
-from lib.config import get_settings
 from lib.contracts import AcceptedJob, JobState
 from lib.db.connection import db_connection
-from lib.jobs.failure_taxonomy import failure_taxonomy_code
-
-SENSITIVE_PAYLOAD_KEYS = {
-    "document_text",
-    "raw_document_text",
-    "raw_text",
-    "raw_model_output",
-    "model_output",
-    "prompt",
-    "prompt_body",
-    "sensitive_fields",
-    "extracted_sensitive_fields",
-}
-
-SUPPORTED_QUEUE_TRANSPORTS = {"pgmq", "pipeline_jobs", "redis"}
-
-
-@dataclass(frozen=True)
-class QueueTransportProfile:
-    requested: str
-    active: str
-    reason: str | None = None
-
-
-@dataclass(frozen=True)
-class ClaimedJob:
-    state: JobState
-    payload: dict[str, Any]
-    document_id: UUID | None
-    household_id: UUID | None
-
-
-@dataclass(frozen=True)
-class BulkCancelResult:
-    cancelled_job_ids: tuple[UUID, ...]
-    skipped_job_ids: tuple[UUID, ...]
-
-    @property
-    def cancelled_count(self) -> int:
-        return len(self.cancelled_job_ids)
-
-    @property
-    def skipped_count(self) -> int:
-        return len(self.skipped_job_ids)
-
-
-class JobServiceError(Exception):
-    pass
-
-
-class PayloadSafetyError(JobServiceError):
-    pass
-
-
-def queue_transport_profile(requested: str | None = None) -> QueueTransportProfile:
-    transport = (requested or get_settings().queue_transport).lower()
-    if transport not in SUPPORTED_QUEUE_TRANSPORTS:
-        supported = ", ".join(sorted(SUPPORTED_QUEUE_TRANSPORTS))
-        raise JobServiceError(f"Unsupported queue transport '{transport}'. Supported: {supported}.")
-    if transport == "pgmq":
-        return QueueTransportProfile(
-            requested=transport,
-            active="pipeline_jobs",
-            reason=(
-                "PGMQ is the preferred transport, but Phase 0 uses the Postgres job "
-                "ledger directly because the pinned ParadeDB PG17 image does not package PGMQ."
-            ),
-        )
-    if transport == "redis":
-        return QueueTransportProfile(
-            requested=transport,
-            active="pipeline_jobs",
-            reason=(
-                "Redis remains a fallback profile; Phase 0 keeps pipeline_jobs as durable truth."
-            ),
-        )
-    return QueueTransportProfile(requested=transport, active="pipeline_jobs")
-
-
-def retry_delay_seconds(
-    attempt_count: int,
-    *,
-    base_seconds: int = 30,
-    cap_seconds: int = 3600,
-) -> int:
-    exponent = max(attempt_count - 1, 0)
-    return int(min(cap_seconds, base_seconds * (2**exponent)))
-
-
-def sanitize_job_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
-    def walk(value: Any, path: tuple[str, ...]) -> Any:
-        if isinstance(value, Mapping):
-            sanitized: dict[str, Any] = {}
-            for key, child in value.items():
-                normalized = str(key).lower()
-                if normalized in SENSITIVE_PAYLOAD_KEYS:
-                    raise PayloadSafetyError(
-                        f"Job payload key {'.'.join((*path, str(key)))} is not allowed."
-                    )
-                sanitized[str(key)] = walk(child, (*path, str(key)))
-            return sanitized
-        if isinstance(value, list):
-            return [walk(item, path) for item in value]
-        return value
-
-    return cast(dict[str, Any], walk(dict(payload), ()))
-
-
-def job_state_from_row(row: Mapping[str, Any]) -> JobState:
-    error_json = row.get("error_json") or {}
-    result_json = row.get("result_json") or {}
-    return JobState.model_validate(
-        {
-            "jobId": row["id"],
-            "jobType": row["job_type"],
-            "status": row["status"],
-            "createdAt": row["created_at"],
-            "startedAt": row.get("started_at"),
-            "finishedAt": row.get("finished_at"),
-            "errorMessage": error_json.get("message") or error_json.get("last_error"),
-            "result": result_json,
-        }
-    )
-
-
-def claimed_job_from_row(row: Mapping[str, Any]) -> ClaimedJob:
-    payload = row.get("payload_json") or {}
-    return ClaimedJob(
-        state=job_state_from_row(row),
-        payload=dict(payload) if isinstance(payload, Mapping) else {},
-        document_id=cast(UUID | None, row.get("document_id")),
-        household_id=cast(UUID | None, row.get("household_id")),
-    )
+from lib.jobs.errors import JobServiceError
+from lib.jobs.errors import PayloadSafetyError as PayloadSafetyError
+from lib.jobs.lifecycle_repository import (
+    claim_job,
+    complete_owned_job,
+    fail_owned_job,
+    renew_job,
+)
+from lib.jobs.models import BulkCancelResult, ClaimedJob
+from lib.jobs.models import QueueTransportProfile as QueueTransportProfile
+from lib.jobs.ownership import JobAttempt, fence_current_job
+from lib.jobs.payload_policy import queue_transport_profile, sanitize_job_payload
+from lib.jobs.payload_policy import retry_delay_seconds as retry_delay_seconds
+from lib.jobs.public_errors import safe_job_failure
+from lib.jobs.row_mapping import claimed_job_from_row, job_state_from_row
 
 
 def create_job_with_cursor(
@@ -226,6 +105,7 @@ class JobService:
                     queue_name=queue_name,
                     max_attempts=max_attempts,
                 )
+                fence_current_job(cur)
             conn.commit()
         return job
 
@@ -269,22 +149,6 @@ class JobService:
                 rows = cur.fetchall()
         return [job_state_from_row(row) for row in rows]
 
-    def claim_next_job(
-        self,
-        *,
-        worker_name: str,
-        queue_name: str = "default",
-        document_id: UUID | None = None,
-        lease_seconds: int = 300,
-    ) -> JobState | None:
-        claimed = self.claim_next_job_record(
-            worker_name=worker_name,
-            queue_name=queue_name,
-            document_id=document_id,
-            lease_seconds=lease_seconds,
-        )
-        return claimed.state if claimed else None
-
     def claim_next_job_record(
         self,
         *,
@@ -293,100 +157,50 @@ class JobService:
         document_id: UUID | None = None,
         lease_seconds: int = 300,
     ) -> ClaimedJob | None:
-        lease_expires_at = datetime.now(UTC) + timedelta(seconds=lease_seconds)
         with db_connection() as conn:
             with conn.cursor() as cur:
-                _recover_expired_running_jobs(
+                row = claim_job(
                     cur,
+                    worker_name=worker_name,
                     queue_name=queue_name,
                     document_id=document_id,
+                    lease_seconds=lease_seconds,
                 )
-                cur.execute(
-                    """
-                    WITH next_job AS (
-                      SELECT id
-                      FROM pipeline_jobs
-                      WHERE status IN ('queued', 'failed')
-                        AND queue_name = %s
-                        AND (%s::uuid IS NULL OR document_id = %s)
-                        AND scheduled_at <= now()
-                        AND attempt_count < max_attempts
-                      ORDER BY priority DESC, scheduled_at ASC, created_at ASC
-                      FOR UPDATE SKIP LOCKED
-                      LIMIT 1
-                    )
-                    UPDATE pipeline_jobs j
-                    SET status = 'running',
-                        worker_name = %s,
-                        lease_expires_at = %s,
-                        started_at = COALESCE(started_at, now()),
-                        attempt_count = attempt_count + 1
-                    FROM next_job
-                    WHERE j.id = next_job.id
-                    RETURNING j.*
-                    """,
-                    (queue_name, document_id, document_id, worker_name, lease_expires_at),
-                )
-                row = cur.fetchone()
             conn.commit()
         return claimed_job_from_row(row) if row else None
 
     def heartbeat_job(
-        self,
-        *,
-        job_id: UUID,
-        worker_name: str,
-        lease_seconds: int = 300,
-    ) -> JobState | None:
-        lease_expires_at = datetime.now(UTC) + timedelta(seconds=lease_seconds)
-        with db_connection() as conn:
+        self, *, job_id: UUID, claim_token: UUID, worker_name: str, lease_seconds: int = 300
+    ) -> JobState:
+        with db_connection(connect_timeout=5) as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    UPDATE pipeline_jobs
-                    SET worker_name = %s,
-                        lease_expires_at = %s
-                    WHERE id = %s
-                      AND status = 'running'
-                    RETURNING *
-                    """,
-                    (worker_name, lease_expires_at, job_id),
+                cur.execute("SET LOCAL statement_timeout = '5s'")
+                cur.execute("SET LOCAL lock_timeout = '2s'")
+                row = renew_job(
+                    cur,
+                    attempt=JobAttempt(job_id, claim_token),
+                    worker_name=worker_name,
+                    lease_seconds=lease_seconds,
                 )
-                row = cur.fetchone()
             conn.commit()
-        return job_state_from_row(row) if row else None
+        return job_state_from_row(row)
 
-    def complete_job(self, *, job_id: UUID, result: Mapping[str, Any] | None = None) -> JobState:
+    def complete_job(
+        self, *, job_id: UUID, claim_token: UUID, result: Mapping[str, Any] | None = None
+    ) -> JobState:
         with db_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT * FROM pipeline_jobs WHERE id = %s FOR UPDATE", (job_id,))
-                current = cur.fetchone()
-                if not current:
-                    raise JobServiceError("Job not found.")
-                if current["status"] == "cancelled":
-                    return job_state_from_row(current)
-                cur.execute(
-                    """
-                    UPDATE pipeline_jobs
-                    SET status = 'succeeded',
-                        finished_at = now(),
-                        lease_expires_at = NULL,
-                        result_json = %s::jsonb
-                    WHERE id = %s
-                    RETURNING *
-                    """,
-                    (Jsonb(dict(result or {})), job_id),
+                row = complete_owned_job(
+                    cur, attempt=JobAttempt(job_id, claim_token), result=result
                 )
-                row = cur.fetchone()
             conn.commit()
-        if not row:
-            raise JobServiceError("Job update failed.")
         return job_state_from_row(row)
 
     def fail_job(
         self,
         *,
         job_id: UUID,
+        claim_token: UUID,
         error_class: str,
         message: str,
         retryable: bool = True,
@@ -395,56 +209,16 @@ class JobService:
     ) -> JobState:
         with db_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT * FROM pipeline_jobs WHERE id = %s FOR UPDATE", (job_id,))
-                current = cur.fetchone()
-                if not current:
-                    raise JobServiceError("Job not found.")
-                if current["status"] == "cancelled":
-                    return job_state_from_row(current)
-                status = "failed"
-                if current["attempt_count"] >= current["max_attempts"] or not retryable:
-                    status = "dead_letter"
-                retry_after_seconds = retry_delay_seconds(current["attempt_count"])
-                next_retry_at = datetime.now(UTC) + timedelta(seconds=retry_after_seconds)
-                taxonomy_code = failure_taxonomy_code(
-                    queue_name=str(current["queue_name"]),
-                    job_type=str(current["job_type"]),
+                row = fail_owned_job(
+                    cur,
+                    attempt=JobAttempt(job_id, claim_token),
                     error_class=error_class,
+                    message=message,
+                    retryable=retryable,
+                    suppress=suppress,
                     details=details,
                 )
-                error_json = {
-                    "document_id": str(current["document_id"]) if current["document_id"] else None,
-                    "stage": current["job_type"],
-                    "error_class": error_class,
-                    "taxonomy_code": taxonomy_code,
-                    "message": message,
-                    "last_error": message,
-                    "retryable": retryable,
-                    "retry_action": f"/api/v1/admin/jobs/{job_id}/retry",
-                    "retry_after_seconds": retry_after_seconds if status == "failed" else None,
-                    "next_retry_at": next_retry_at.isoformat() if status == "failed" else None,
-                    "dismissed_at": None,
-                    "suppressed": suppress,
-                }
-                if details:
-                    error_json["details"] = dict(details)
-                cur.execute(
-                    """
-                    UPDATE pipeline_jobs
-                    SET status = %s,
-                        finished_at = CASE WHEN %s = 'dead_letter' THEN now() ELSE finished_at END,
-                        lease_expires_at = NULL,
-                        scheduled_at = CASE WHEN %s = 'failed' THEN %s ELSE scheduled_at END,
-                        error_json = %s::jsonb
-                    WHERE id = %s
-                    RETURNING *
-                    """,
-                    (status, status, status, next_retry_at, Jsonb(error_json), job_id),
-                )
-                row = cur.fetchone()
             conn.commit()
-        if not row:
-            raise JobServiceError("Job update failed.")
         return job_state_from_row(row)
 
     def cancel_job(
@@ -561,6 +335,7 @@ class JobService:
                         worker_name = NULL,
                         started_at = NULL,
                         lease_expires_at = NULL,
+                        claim_token = NULL,
                         scheduled_at = now(),
                         finished_at = NULL,
                         error_json = '{}'::jsonb
@@ -570,7 +345,7 @@ class JobService:
                         OR (
                           status = 'running'
                           AND lease_expires_at IS NOT NULL
-                          AND lease_expires_at <= now()
+                          AND lease_expires_at <= clock_timestamp()
                         )
                       )
                       AND (%s::uuid IS NULL OR household_id = %s)
@@ -583,70 +358,6 @@ class JobService:
         if not row:
             raise JobServiceError("Job is not retryable or does not exist.")
         return AcceptedJob.model_validate({"jobId": row["id"], "status": row["status"]})
-
-
-def _recover_expired_running_jobs(
-    cur: Any,
-    *,
-    queue_name: str,
-    document_id: UUID | None,
-) -> int:
-    taxonomy_code = failure_taxonomy_code(
-        queue_name=queue_name,
-        job_type="worker_lease",
-        error_class="WorkerLeaseExpired",
-        details=None,
-    )
-    cur.execute(
-        """
-        UPDATE pipeline_jobs
-        SET status = CASE
-              WHEN attempt_count >= max_attempts THEN 'dead_letter'::job_status_enum
-              ELSE 'failed'::job_status_enum
-            END,
-            worker_name = NULL,
-            started_at = CASE
-              WHEN attempt_count >= max_attempts THEN started_at
-              ELSE NULL
-            END,
-            lease_expires_at = NULL,
-            scheduled_at = CASE
-              WHEN attempt_count >= max_attempts THEN scheduled_at
-              ELSE now()
-            END,
-            finished_at = CASE
-              WHEN attempt_count >= max_attempts THEN now()
-              ELSE finished_at
-            END,
-            error_json = jsonb_strip_nulls(
-              COALESCE(error_json, '{}'::jsonb)
-              || jsonb_build_object(
-                'error_class',
-                'WorkerLeaseExpired',
-                'taxonomy_code',
-                %s::text,
-                'message',
-                'Worker lease expired before completion.',
-                'last_error',
-                'Worker lease expired before completion.',
-                'retryable',
-                attempt_count < max_attempts,
-                'retry_action',
-                CASE
-                  WHEN attempt_count >= max_attempts THEN '/api/v1/admin/jobs/' || id || '/retry'
-                  ELSE NULL
-                END
-              )
-            )
-        WHERE status = 'running'
-          AND queue_name = %s
-          AND (%s::uuid IS NULL OR document_id = %s)
-          AND lease_expires_at IS NOT NULL
-          AND lease_expires_at <= now()
-        """,
-        (taxonomy_code, queue_name, document_id, document_id),
-    )
-    return int(cur.rowcount)
 
 
 def _cancel_job_row(
@@ -666,28 +377,26 @@ def _cancel_job_row(
         raise JobServiceError("Running job cancellation requires include_running=true.")
     if status not in {"queued", "failed", "running", "leased"}:
         raise JobServiceError(f"Job in status '{status}' cannot be cancelled.")
+    # Cancellation metadata is a fresh event. Operator strings can contain source
+    # text and are not safe diagnostics; prior failure codes must not survive.
+    del reason, requested_by
+    safe_error = safe_job_failure("JobCancelled", "")
     cur.execute(
         """
         UPDATE pipeline_jobs
         SET status = 'cancelled',
-            finished_at = now(),
+            finished_at = clock_timestamp(),
             lease_expires_at = NULL,
-            scheduled_at = now(),
-            error_json = jsonb_strip_nulls(
-              COALESCE(error_json, '{}'::jsonb)
-              || jsonb_build_object(
-                'error_class', 'JobCancelled',
-                'message', %s::text,
-                'last_error', %s::text,
+            claim_token = NULL,
+            scheduled_at = clock_timestamp(),
+            error_json = %s::jsonb || jsonb_build_object(
                 'retryable', false,
-                'cancelled_by', %s::text,
-                'cancelled_at', now()
-              )
+                'cancelled_at', clock_timestamp()
             )
         WHERE id = %s
         RETURNING *
         """,
-        (reason, reason, requested_by, current["id"]),
+        (Jsonb(safe_error), current["id"]),
     )
     row = cur.fetchone()
     if not row:

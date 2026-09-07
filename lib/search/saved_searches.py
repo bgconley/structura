@@ -5,6 +5,7 @@ from typing import Any
 from psycopg.errors import UniqueViolation
 from psycopg.types.json import Jsonb
 
+from lib.auth.authorization_policy import require_action
 from lib.contracts import SavedSearch, SavedSearchWrite
 from lib.db.connection import db_connection
 from lib.documents.access_policy import DocumentAccessContext
@@ -41,6 +42,7 @@ def create_saved_search(
     access: DocumentAccessContext,
     owner_user_id: object,
 ) -> SavedSearch:
+    require_action(access, "documents:write")
     try:
         with db_connection() as conn:
             with conn.cursor() as cur:

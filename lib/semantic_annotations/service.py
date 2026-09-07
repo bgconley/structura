@@ -16,6 +16,7 @@ from lib.extraction.models import ExtractionSourceDocument
 from lib.extraction.repository import load_extraction_source
 from lib.jobs import JobService, create_job_with_cursor
 from lib.jobs.event_payloads import build_extract_document_job_payload
+from lib.jobs.ownership import fence_current_job
 from lib.model_runtime.http_client import ModelProtocolError
 from lib.model_runtime.reliability_versions import REGION_ENVELOPE_VERSION
 from lib.semantic_annotations.deterministic_plan import (
@@ -268,6 +269,8 @@ class SemanticAnnotationService:
                     requested_by_user_id=requested_by_user_id,
                     user_intent_reason=user_intent_reason,
                 )
+            with conn.cursor() as fence_cur:
+                fence_current_job(fence_cur)
             conn.commit()
         return SemanticAnnotationRunResult(
             annotation_id=persisted.annotation_id,

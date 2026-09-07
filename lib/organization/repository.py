@@ -8,7 +8,7 @@ from psycopg.types.json import Jsonb
 
 from lib.documents.access_policy import (
     DocumentAccessContext,
-    document_read_access_params,
+    document_write_access_params,
 )
 
 
@@ -29,9 +29,12 @@ def list_accessible_folders(
           f.saved_query_json,
           f.acl_mode
         FROM folders f
+        JOIN household_memberships hm ON hm.household_id = %s AND hm.user_id = %s
+        JOIN users u ON u.id = hm.user_id AND NOT u.is_disabled
         WHERE (f.household_id = %s OR (f.household_id IS NULL AND f.is_system))
           AND (
-            f.acl_mode = 'household'
+            hm.role IN ('owner', 'admin')
+            OR f.acl_mode = 'household'
             OR f.owner_user_id = %s
             OR EXISTS (
               SELECT 1
@@ -46,7 +49,7 @@ def list_accessible_folders(
           )
         ORDER BY f.folder_kind::text, COALESCE(f.path_cache, '/' || f.name), lower(f.name)
         """,
-        (household_id, user_id, user_id, household_id),
+        (household_id, user_id, household_id, user_id, user_id, household_id),
     )
     return cast(list[dict[str, object]], cur.fetchall())
 
@@ -69,10 +72,14 @@ def get_writable_folder(
           f.saved_query_json,
           f.acl_mode
         FROM folders f
+        JOIN household_memberships hm ON hm.household_id = %s AND hm.user_id = %s
+        JOIN users u ON u.id = hm.user_id AND NOT u.is_disabled
         WHERE f.id = %s
           AND (f.household_id = %s OR (f.household_id IS NULL AND f.is_system))
+          AND hm.role IN ('owner', 'admin', 'member')
           AND (
-            f.acl_mode = 'household'
+            hm.role IN ('owner', 'admin')
+            OR f.acl_mode = 'household'
             OR f.owner_user_id = %s
             OR EXISTS (
               SELECT 1
@@ -86,7 +93,7 @@ def get_writable_folder(
             )
           )
         """,
-        (folder_id, household_id, user_id, user_id, household_id),
+        (household_id, user_id, folder_id, household_id, user_id, user_id, household_id),
     )
     return cast(dict[str, object] | None, cur.fetchone())
 
@@ -217,10 +224,10 @@ def lock_document_for_household(
         FROM documents d
         WHERE d.id = %s
           AND deleted_at IS NULL
-          AND document_is_readable(d.id, %s, %s, %s)
+          AND document_is_writable(d.id, %s, %s, %s)
         FOR UPDATE
         """,
-        (document_id, *document_read_access_params(access)),
+        (document_id, *document_write_access_params(access)),
     )
     return cast(dict[str, object] | None, cur.fetchone())
 

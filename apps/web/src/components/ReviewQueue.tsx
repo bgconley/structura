@@ -145,18 +145,19 @@ export function ReviewQueue({
     );
   }
 
-  async function handleCorrect(valueText: string, comment: string) {
+  async function handleCorrect(valueText: string, comment: string, currency?: string) {
     if (!activeTask?.fieldPath) {
       setStatus("Select a field review task before correcting.");
-      return;
+      return false;
     }
     const reference = referenceCandidate(activeTask, candidates);
+    if (!reference) throw new Error("Wait for the selected field's candidate before correcting.");
     const coerced = coerceCorrectionValue(
       valueText,
-      reference?.valueType ?? "string",
-      reference?.currency,
+      reference.valueType,
+      currency,
     );
-    await applyReviewAction(
+    return applyReviewAction(
       {
         schemaName: "review_action",
         schemaVersion: "v1",
@@ -260,14 +261,20 @@ export function ReviewQueue({
   ) {
     try {
       await postReviewAction(payload);
-      setStatus(successMessage);
+    } catch (exc) {
+      setStatus(exc instanceof Error ? exc.message : "Review action failed.");
+      return false;
+    }
+    setStatus(successMessage);
+    try {
       await refreshTasks();
       if (activeTask) {
         await refreshReviewDetail(activeTask);
       }
-    } catch (exc) {
-      setStatus(exc instanceof Error ? exc.message : "Review action failed.");
+    } catch {
+      setStatus(`${successMessage} Refresh failed; refresh the queue to see the updated state.`);
     }
+    return true;
   }
 
   const fieldGroups = useMemo(() => groupCandidates(candidates), [candidates]);
@@ -418,6 +425,7 @@ export function ReviewQueue({
                 <p className="empty-state">No line-item candidate found for this task.</p>
               ) : null}
               <ReviewDecisionPanel
+                key={`${activeTask.id}:${activeReferenceCandidate?.id ?? "loading"}`}
                 activeTask={activeTask}
                 referenceCandidate={activeReferenceCandidate}
                 onCorrect={handleCorrect}

@@ -8,6 +8,8 @@ from uuid import UUID
 
 from lib.db.connection import db_connection
 from lib.jobs import JobService, record_service_health
+from lib.jobs.errors import JobOwnershipLost
+from lib.jobs.lease import keep_job_lease
 from workers.runtime import start_health_server
 
 
@@ -41,26 +43,32 @@ def process_next_ingest_job(
     if not claimed:
         return False
 
-    try:
-        target_document_id = _document_id_for_job(claimed.document_id, claimed.payload)
-        summary = _acknowledge_ingested_document(target_document_id)
-        job_service.complete_job(
-            job_id=claimed.state.job_id,
-            result={
-                "ingest_status": "acknowledged",
-                "document_id": str(target_document_id),
-                "original_asset_id": str(summary["asset_id"]),
-                "sha256": summary["sha256"],
-            },
-        )
-    except Exception as exc:
-        job_service.fail_job(
-            job_id=claimed.state.job_id,
-            error_class=exc.__class__.__name__,
-            message="Phase 1 ingest acknowledgement failed",
-            retryable=True,
-            suppress=False,
-        )
+    with keep_job_lease(job_service, claimed, worker_name=worker_name):
+        try:
+            target_document_id = _document_id_for_job(claimed.document_id, claimed.payload)
+            summary = _acknowledge_ingested_document(target_document_id)
+            job_service.complete_job(
+                job_id=claimed.state.job_id,
+                claim_token=claimed.claim_token,
+                result={
+                    "ingest_status": "acknowledged",
+                    "document_id": str(target_document_id),
+                    "original_asset_id": str(summary["asset_id"]),
+                    "sha256": summary["sha256"],
+                },
+            )
+        except JobOwnershipLost:
+            raise
+        except Exception as exc:
+            job_service.fail_job(
+                job_id=claimed.state.job_id,
+                claim_token=claimed.claim_token,
+                error_class=exc.__class__.__name__,
+                message="Phase 1 ingest acknowledgement failed",
+                retryable=True,
+                suppress=False,
+            )
+        return True
     return True
 
 

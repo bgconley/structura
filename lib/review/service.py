@@ -13,6 +13,7 @@ from lib.db.connection import db_connection
 from lib.documents.access_policy import DocumentAccessContext
 from lib.relationships.errors import RelationshipServiceError
 from lib.relationships.service import RelationshipService
+from lib.review.correction_values import validate_correction_value
 from lib.search.projection import refresh_projection_and_enqueue_embedding
 from lib.semantic_annotations.jobs import enqueue_semantic_annotation_job
 
@@ -40,6 +41,9 @@ class ReviewService:
             )
         elif action.action_type == "correct_field":
             field_path = _required(action.field_path, "fieldPath")
+            validate_correction_value(
+                _value_type_from_action(action), action.new_value, _currency_from_action(action)
+            )
             evidence = _evidence_context_json(action)
             _, event_id = repository.upsert_human_canonical_field(
                 document_id=action.document_id,
@@ -150,6 +154,7 @@ class ReviewService:
         access: DocumentAccessContext,
         actor_user_id: UUID,
     ) -> CanonicalField:
+        validate_correction_value(payload.value_type, payload.value, payload.currency)
         field, _event_id = repository.upsert_human_canonical_field(
             document_id=document_id,
             access=access,

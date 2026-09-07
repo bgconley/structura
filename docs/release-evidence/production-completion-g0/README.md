@@ -32,6 +32,14 @@ Migration numbers are coordinated: `090_completion_document_authorization.sql` b
 
 Use an owned disposable ParadeDB PG17 container on Oxcart with no archive bind mounts and a loopback-only dynamic port. `scripts/run_integration_tests.py` creates/drops its own uniquely named test databases. Keep all test storage in a disposable runtime root. Baseline and integration evidence must record the exact committed source; local Mac tests are preflight only.
 
+### Fresh baseline result
+
+At `12128a67bd54dc02194a6369f6e885d0719813bb`, local source, the pushed integration branch and Oxcart's shared checkout matched. A clean detached worktree of that commit on Oxcart passed **1,162 unit tests** and **52 database integration tests**, including a fresh schema built from all **32 migrations through 089**. Validation used the owned `structura-completion-g0-db-20260907` container, a loopback-only port and temporary database storage, with no archive mounts or writes. Protected logs remain in the temporary validation root on Oxcart.
+
+The first preflight exposed missing Pillow in the development lockfile; the existing runtime requirement is now pinned to `12.2.0`, matching the API lockfile, and installed in the test venv. An initial test run from the deployment checkout inherited its existing live-model `.env`; the canonical run instead used the clean worktree and scrubbed inherited `STRUCTURA_*` settings. The deployment configuration was preserved. These are environment corrections, not application test exclusions.
+
+The [publication inventory](job-publication-inventory.md) identifies the first claim-ownership changes and the independent generation/cancellation work that remains. This baseline establishes a reproducible starting point; it does not close G1 or the model and production gates.
+
 The cached validation images observed on Oxcart are:
 
 | Image | Local image ID |

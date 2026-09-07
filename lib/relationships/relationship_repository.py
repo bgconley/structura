@@ -6,7 +6,11 @@ from uuid import UUID
 
 from psycopg.types.json import Jsonb
 
-from lib.documents.access_policy import DocumentAccessContext, document_read_access_params
+from lib.documents.access_policy import (
+    DocumentAccessContext,
+    document_read_access_params,
+)
+from lib.documents.access_repository import lock_writable_documents
 
 Row: TypeAlias = dict[str, Any]
 
@@ -103,25 +107,7 @@ def get_relationship_row(
 
 
 def document_is_writable(cur: Any, *, document_id: UUID, access: DocumentAccessContext) -> bool:
-    cur.execute(
-        """
-        SELECT 1
-        FROM documents d
-        WHERE d.id = %s
-          AND d.deleted_at IS NULL
-          AND d.household_id = %s
-          AND document_is_readable(d.id, %s, %s, %s)
-          AND (d.owner_user_id = %s OR %s IN ('owner', 'admin'))
-        """,
-        (
-            document_id,
-            access.household_id,
-            *document_read_access_params(access),
-            access.user_id,
-            access.household_role,
-        ),
-    )
-    return cur.fetchone() is not None
+    return lock_writable_documents(cur, [document_id], access)
 
 
 def upsert_relationship(
@@ -239,9 +225,9 @@ def decide_relationship(
     row = get_relationship_row(cur, relationship_id=relationship_id, access=access)
     if not row:
         return None
-    if not document_is_writable(cur, document_id=row["from_document_id"], access=access):
-        return None
-    if not document_is_writable(cur, document_id=row["to_document_id"], access=access):
+    if not lock_writable_documents(
+        cur, [row["from_document_id"], row["to_document_id"]], access, action="review"
+    ):
         return None
     cur.execute(
         """

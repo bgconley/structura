@@ -279,7 +279,7 @@ class AuthService:
                       false AS must_rotate
                     FROM magic_links ml
                     JOIN users u ON u.id = ml.user_id
-                    LEFT JOIN household_memberships hm
+                    JOIN household_memberships hm
                       ON hm.user_id = u.id
                      AND hm.household_id = ml.household_id
                     WHERE ml.token_hash = %s
@@ -322,7 +322,7 @@ class AuthService:
                       hm.role AS household_role
                     FROM sessions s
                     JOIN users u ON u.id = s.user_id
-                    LEFT JOIN household_memberships hm
+                    JOIN household_memberships hm
                       ON hm.user_id = s.user_id
                      AND hm.household_id = s.household_id
                     WHERE s.token_hash = %s
@@ -365,7 +365,7 @@ class AuthService:
                       hm.role AS household_role
                     FROM api_tokens t
                     JOIN users u ON u.id = t.user_id
-                    LEFT JOIN household_memberships hm
+                    JOIN household_memberships hm
                       ON hm.user_id = t.user_id
                      AND hm.household_id = t.household_id
                     WHERE t.token_hash = %s
@@ -410,6 +410,8 @@ class AuthService:
                       COALESCE(c.must_rotate, false) AS password_rotation_required
                     FROM sessions s
                     JOIN users u ON u.id = s.user_id
+                    JOIN household_memberships hm
+                      ON hm.user_id = s.user_id AND hm.household_id = s.household_id
                     LEFT JOIN user_password_credentials c ON c.user_id = u.id
                     WHERE s.token_hash = %s
                       AND s.revoked_at IS NULL

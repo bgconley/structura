@@ -36,6 +36,7 @@ from lib.extraction.models import (
 )
 from lib.extraction.observation_repository import insert_observation_candidate
 from lib.extraction.region_envelope import region_envelope_from_normalization_json
+from lib.jobs.ownership import fence_current_job
 from lib.model_runtime.source_engines import is_model_source_engine
 from lib.review.task_repository import upsert_review_task
 from lib.storage import ObjectStorage, StoredObject, cleanup_unreferenced_stored_object
@@ -64,6 +65,8 @@ def persist_classification(
                     priority=80 if decision.family == "medical_eob" else 60,
                     metadata={"fieldPath": "classification.document_family"},
                 )
+        with conn.cursor() as fence_cur:
+            fence_current_job(fence_cur)
         conn.commit()
     return extraction_id
 
@@ -271,6 +274,8 @@ def _persist_extraction_rows(
             )
             update_document_rollups(cur, source.document_id)
             refresh_document_chunk_projection(cur, source.document_id)
+        with conn.cursor() as fence_cur:
+            fence_current_job(fence_cur)
         conn.commit()
     return PersistedExtraction(
         extraction_id=extraction_id,

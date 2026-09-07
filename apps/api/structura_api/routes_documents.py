@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 
-from apps.api.structura_api.dependencies import current_principal, require_csrf
+from apps.api.structura_api.dependencies import require_document_read, require_document_write
 from lib.auth import AuthPrincipal
 from lib.contracts import AcceptedJob
 from lib.documents.access_policy import DocumentAccessContext
@@ -26,7 +26,7 @@ router = APIRouter(prefix="/api/v1", tags=["Documents"])
 
 @router.get("/documents")
 def list_documents(
-    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_read)],
     q: str | None = None,
     family: str | None = None,
     reviewStatus: str | None = None,
@@ -60,7 +60,7 @@ def list_documents(
     status_code=status.HTTP_202_ACCEPTED,
 )
 def create_document(
-    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_write)],
     file: Annotated[UploadFile, File()],
     source: Annotated[str, Form()],
     suppliedTitle: Annotated[str | None, Form()] = None,
@@ -94,7 +94,7 @@ def create_document(
 @router.get("/documents/{documentId}")
 def get_document(
     documentId: UUID,
-    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_read)],
 ) -> dict[str, object]:
     if not principal.household_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
@@ -107,7 +107,7 @@ def get_document(
 @router.get("/documents/{documentId}/semantic-annotations/current")
 def get_current_semantic_annotation(
     documentId: UUID,
-    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_read)],
     qualityMode: Annotated[QualityMode, Query(alias="qualityMode")] = "smart",
 ) -> dict[str, object]:
     if not principal.household_id:
@@ -150,6 +150,8 @@ def _document_access_context(principal: AuthPrincipal) -> DocumentAccessContext:
         household_id=principal.household_id,
         user_id=principal.user_id,
         household_role=principal.household_role,
+        api_token_id=principal.api_token_id,
+        scopes=principal.scopes,
     )
 
 

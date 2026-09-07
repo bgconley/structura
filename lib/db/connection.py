@@ -11,11 +11,16 @@ from lib.config import get_settings
 
 
 @contextmanager
-def db_connection(database_url: str | None = None) -> Iterator[psycopg.Connection[dict[str, Any]]]:
+def db_connection(
+    database_url: str | None = None, *, connect_timeout: int | None = None
+) -> Iterator[psycopg.Connection[dict[str, Any]]]:
     settings = get_settings()
     url = database_url or settings.database_url
     row_factory = cast(Any, dict_row)
-    with psycopg.connect(url, row_factory=row_factory) as raw_conn:
+    options: dict[str, Any] = {}
+    if connect_timeout is not None:
+        options["connect_timeout"] = connect_timeout
+    with psycopg.connect(url, row_factory=row_factory, **options) as raw_conn:
         conn = cast(psycopg.Connection[dict[str, Any]], raw_conn)
         with conn.cursor() as cur:
             cur.execute("SET search_path TO structura, public")

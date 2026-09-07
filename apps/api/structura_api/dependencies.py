@@ -5,10 +5,8 @@ from typing import Annotated
 from fastapi import Depends, Header, HTTPException, Request, status
 
 from lib.auth import AuthPrincipal, AuthService
+from lib.auth.authorization_policy import Action, permits_action
 from lib.config import get_settings
-
-ADMIN_HOUSEHOLD_ROLES = {"owner", "admin"}
-ADMIN_API_SCOPES = {"admin", "admin:*", "jobs:admin", "service:admin"}
 
 
 def auth_service() -> AuthService:
@@ -24,10 +22,11 @@ def current_principal(
     x_api_token: Annotated[str | None, Header(alias="X-API-Token")] = None,
 ) -> AuthPrincipal:
     service = AuthService()
-    if x_api_token:
+    if x_api_token is not None:
         principal = service.resolve_api_token(x_api_token)
         if principal:
             return principal
+        raise HTTPException(status_code=401, detail="Not authenticated")
     structura_session = session_cookie_value(request)
     if structura_session:
         principal = service.resolve_session_token(structura_session)
@@ -51,29 +50,49 @@ def require_csrf(
     return principal
 
 
+def _require_capability(principal: AuthPrincipal, action: Action) -> AuthPrincipal:
+    if not permits_action(principal, action):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
+    return principal
+
+
+def require_document_read(
+    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+) -> AuthPrincipal:
+    return _require_capability(principal, "documents:read")
+
+
+def require_document_write(
+    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
+) -> AuthPrincipal:
+    return _require_capability(principal, "documents:write")
+
+
+def require_document_review(
+    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
+) -> AuthPrincipal:
+    return _require_capability(principal, "documents:review")
+
+
 def require_admin(
     principal: Annotated[AuthPrincipal, Depends(current_principal)],
 ) -> AuthPrincipal:
-    if principal.household_id and principal.household_role in ADMIN_HOUSEHOLD_ROLES:
-        return principal
-    if (
-        principal.household_id
-        and principal.api_token_id
-        and ADMIN_API_SCOPES.intersection(principal.scopes)
-    ):
-        return principal
-    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return _require_capability(principal, "service:admin")
+
+
+def require_jobs_admin(
+    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+) -> AuthPrincipal:
+    return _require_capability(principal, "jobs:admin")
+
+
+def require_parse_admin(
+    principal: Annotated[AuthPrincipal, Depends(require_admin)],
+) -> AuthPrincipal:
+    return _require_capability(principal, "documents:read")
 
 
 def require_admin_csrf(
     principal: Annotated[AuthPrincipal, Depends(require_csrf)],
 ) -> AuthPrincipal:
-    if principal.household_id and principal.household_role in ADMIN_HOUSEHOLD_ROLES:
-        return principal
-    if (
-        principal.household_id
-        and principal.api_token_id
-        and ADMIN_API_SCOPES.intersection(principal.scopes)
-    ):
-        return principal
-    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return _require_capability(principal, "jobs:admin")

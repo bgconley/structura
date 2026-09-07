@@ -1,3 +1,4 @@
+from lib.jobs.errors import JobOwnershipLost
 from lib.jobs.failure_taxonomy import failure_taxonomy_code
 from lib.jobs.service import (
     BulkCancelResult,
@@ -15,6 +16,7 @@ from lib.jobs.service import (
 
 __all__ = [
     "JobService",
+    "JobOwnershipLost",
     "BulkCancelResult",
     "ClaimedJob",
     "JobServiceError",

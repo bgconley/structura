@@ -7,6 +7,8 @@ import time
 from uuid import UUID
 
 from lib.jobs import JobService, record_service_health
+from lib.jobs.errors import JobOwnershipLost
+from lib.jobs.lease import keep_job_lease
 from lib.search.embedding_service import EmbeddingService
 from workers.runtime import start_health_server
 
@@ -44,35 +46,41 @@ def process_next_embedding_job(
     if not claimed:
         return False
 
-    embedding_service = service or EmbeddingService()
-    try:
-        target_document_id = _document_id_for_job(claimed.document_id, claimed.payload)
-        summary = embedding_service.embed_document(
-            target_document_id,
-            force_reembed=bool(claimed.payload.get("force_reembed", False)),
-            modalities=_modalities_for_job(claimed.payload),
-        )
-        job_service.complete_job(
-            job_id=claimed.state.job_id,
-            result={
-                "embedding_status": "succeeded",
-                "source_count": summary.source_count,
-                "inserted_count": summary.inserted_count,
-                "skipped_count": summary.skipped_count,
-                "model_name": summary.model_name,
-                "model_version": summary.model_version,
-                "dimensions": summary.dimensions,
-                "modality_counts": summary.modality_counts,
-            },
-        )
-    except Exception as exc:
-        job_service.fail_job(
-            job_id=claimed.state.job_id,
-            error_class=exc.__class__.__name__,
-            message="Phase 5 embedding job failed",
-            retryable=True,
-            suppress=False,
-        )
+    with keep_job_lease(job_service, claimed, worker_name=worker_name):
+        embedding_service = service or EmbeddingService()
+        try:
+            target_document_id = _document_id_for_job(claimed.document_id, claimed.payload)
+            summary = embedding_service.embed_document(
+                target_document_id,
+                force_reembed=bool(claimed.payload.get("force_reembed", False)),
+                modalities=_modalities_for_job(claimed.payload),
+            )
+            job_service.complete_job(
+                job_id=claimed.state.job_id,
+                claim_token=claimed.claim_token,
+                result={
+                    "embedding_status": "succeeded",
+                    "source_count": summary.source_count,
+                    "inserted_count": summary.inserted_count,
+                    "skipped_count": summary.skipped_count,
+                    "model_name": summary.model_name,
+                    "model_version": summary.model_version,
+                    "dimensions": summary.dimensions,
+                    "modality_counts": summary.modality_counts,
+                },
+            )
+        except JobOwnershipLost:
+            raise
+        except Exception as exc:
+            job_service.fail_job(
+                job_id=claimed.state.job_id,
+                claim_token=claimed.claim_token,
+                error_class=exc.__class__.__name__,
+                message="Phase 5 embedding job failed",
+                retryable=True,
+                suppress=False,
+            )
+        return True
     return True
 
 

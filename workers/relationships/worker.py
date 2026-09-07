@@ -8,6 +8,8 @@ from uuid import UUID
 
 from lib.db.connection import db_connection
 from lib.jobs import JobService, record_service_health
+from lib.jobs.errors import JobOwnershipLost
+from lib.jobs.lease import keep_job_lease
 from lib.relationships.service import RelationshipService
 from workers.runtime import start_health_server
 
@@ -44,35 +46,41 @@ def process_next_relationship_job(
     if not claimed:
         return False
 
-    relationship_service = service or RelationshipService()
-    target_document_id: UUID | None = None
-    try:
-        target_document_id = _document_id_for_job(claimed.document_id, claimed.payload)
-        household_id = claimed.household_id or _household_id_for_document(target_document_id)
-        if not household_id:
-            raise RelationshipWorkerError("Relationship job is missing household_id.")
-        deadline_count = relationship_service.refresh_deadlines(target_document_id)
-        suggestion_count = relationship_service.suggest_for_document(
-            target_document_id,
-            household_id=household_id,
-        )
-        job_service.complete_job(
-            job_id=claimed.state.job_id,
-            result={
-                "relationship_status": "succeeded",
-                "document_id": str(target_document_id),
-                "suggestion_count": suggestion_count,
-                "deadline_count": deadline_count,
-            },
-        )
-    except Exception as exc:
-        job_service.fail_job(
-            job_id=claimed.state.job_id,
-            error_class=exc.__class__.__name__,
-            message="Phase 7 relationship job failed",
-            retryable=True,
-            suppress=False,
-        )
+    with keep_job_lease(job_service, claimed, worker_name=worker_name):
+        relationship_service = service or RelationshipService()
+        target_document_id: UUID | None = None
+        try:
+            target_document_id = _document_id_for_job(claimed.document_id, claimed.payload)
+            household_id = claimed.household_id or _household_id_for_document(target_document_id)
+            if not household_id:
+                raise RelationshipWorkerError("Relationship job is missing household_id.")
+            deadline_count = relationship_service.refresh_deadlines(target_document_id)
+            suggestion_count = relationship_service.suggest_for_document(
+                target_document_id,
+                household_id=household_id,
+            )
+            job_service.complete_job(
+                job_id=claimed.state.job_id,
+                claim_token=claimed.claim_token,
+                result={
+                    "relationship_status": "succeeded",
+                    "document_id": str(target_document_id),
+                    "suggestion_count": suggestion_count,
+                    "deadline_count": deadline_count,
+                },
+            )
+        except JobOwnershipLost:
+            raise
+        except Exception as exc:
+            job_service.fail_job(
+                job_id=claimed.state.job_id,
+                claim_token=claimed.claim_token,
+                error_class=exc.__class__.__name__,
+                message="Phase 7 relationship job failed",
+                retryable=True,
+                suppress=False,
+            )
+        return True
     return True
 
 

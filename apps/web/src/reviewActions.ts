@@ -5,7 +5,8 @@ export function referenceCandidate(
   task: ReviewTask,
   candidates: FieldCandidate[],
 ): FieldCandidate | undefined {
-  return candidates.find((candidate) => candidate.fieldPath === task.fieldPath) ?? candidates[0];
+  return candidates.find((candidate) => candidate.documentId === task.documentId
+    && candidate.fieldPath === task.fieldPath);
 }
 
 export function evidenceTargetFromCandidate(candidate: FieldCandidate): EvidenceTarget {
@@ -26,23 +27,55 @@ export function coerceCorrectionValue(
     metadata.currency = currency;
   }
   if (valueType === "money") {
-    const amount = Number.parseFloat(trimmed.replace(/[^0-9.-]/g, ""));
+    if (!currency || !/^[A-Z]{3}$/.test(currency)) {
+      throw new Error("Enter a three-letter uppercase currency code.");
+    }
+    const amount = parseDecimalCorrection(trimmed);
     return {
-      value: {amount: Number.isFinite(amount) ? amount : 0, currency: currency ?? "USD"},
-      metadata: {...metadata, currency: currency ?? "USD"},
+      value: {amount, currency},
+      metadata,
     };
   }
   if (valueType === "number") {
-    const value = Number.parseFloat(trimmed);
-    return {value: Number.isFinite(value) ? value : 0, metadata};
+    return {value: parseDecimalCorrection(trimmed), metadata};
   }
   if (valueType === "integer") {
-    const value = Number.parseInt(trimmed, 10);
-    return {value: Number.isFinite(value) ? value : 0, metadata};
+    if (!/^[+-]?\d+$/.test(trimmed) || !Number.isSafeInteger(Number(trimmed))) {
+      throw new Error("Enter a whole integer within the supported range.");
+    }
+    return {value: Number(trimmed), metadata};
   }
   if (valueType === "boolean") {
-    return {value: ["1", "true", "yes"].includes(trimmed.toLowerCase()), metadata};
+    const normalized = trimmed.toLowerCase();
+    if (!["true", "false", "yes", "no", "1", "0"].includes(normalized)) {
+      throw new Error("Enter true or false (yes/no and 1/0 are also supported).");
+    }
+    return {value: ["true", "yes", "1"].includes(normalized), metadata};
   }
   return {value: trimmed, metadata};
 }
 
+function parseDecimalCorrection(value: string): number {
+  if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(value)) {
+    throw new Error("Enter a decimal amount such as 1234.56, without currency or separators.");
+  }
+  const fraction = (value.split(".")[1] ?? "").replace(/0+$/, "");
+  const number = Number(value);
+  if (fraction.length > 4) {
+    throw new Error("Use at most four decimal places; values are not rounded.");
+  }
+  if (!Number.isFinite(number) || Math.abs(number) >= 100_000_000_000_000) {
+    throw new Error("The amount exceeds the supported range.");
+  }
+  // Reject decimal text that JavaScript cannot carry to JSON without changing
+  // the user's value, even when it fits the database's numeric(18,4) range.
+  const units = (text: string) => {
+    const negative = text.startsWith("-");
+    const [whole, decimals = ""] = text.replace(/^[+-]/, "").split(".");
+    return BigInt(`${whole || "0"}${decimals.padEnd(4, "0").slice(0, 4)}`) * (negative ? -1n : 1n);
+  };
+  if (units(value) !== units(number.toFixed(4))) {
+    throw new Error("This amount cannot be represented exactly; use a smaller value.");
+  }
+  return number;
+}

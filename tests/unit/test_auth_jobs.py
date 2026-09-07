@@ -14,7 +14,10 @@ from lib.jobs import (
     sanitize_job_payload,
 )
 from lib.jobs.failure_taxonomy import failure_taxonomy_code
-from lib.jobs.service import _candidate_cancel_job_ids, _recover_expired_running_jobs
+from lib.jobs.lifecycle_repository import (
+    recover_expired_running_jobs as _recover_expired_running_jobs,
+)
+from lib.jobs.service import _candidate_cancel_job_ids
 
 
 class RecordingCursor:

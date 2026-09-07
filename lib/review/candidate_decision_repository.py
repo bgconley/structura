@@ -5,7 +5,7 @@ from uuid import UUID
 
 from lib.db.connection import db_connection
 from lib.documents.access_policy import DocumentAccessContext
-from lib.review.access import assert_readable
+from lib.review.access import assert_writable
 from lib.review.audit_repository import (
     close_field_review_tasks,
     record_review_event,
@@ -33,7 +33,7 @@ def decide_observation(
     status = _decision_status(decision)
     with db_connection() as conn:
         with conn.cursor() as cur:
-            assert_readable(cur, document_id, access)
+            assert_writable(cur, document_id, access)
             cur.execute(
                 """
                 UPDATE extraction_observations
@@ -78,7 +78,7 @@ def decide_line_item(
     status = _decision_status(decision)
     with db_connection() as conn:
         with conn.cursor() as cur:
-            assert_readable(cur, document_id, access)
+            assert_writable(cur, document_id, access)
             cur.execute(
                 """
                 UPDATE line_item_candidates

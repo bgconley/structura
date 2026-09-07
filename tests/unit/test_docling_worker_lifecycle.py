@@ -8,6 +8,9 @@ from workers.docling import worker
 
 def _claimed_job(document_id, household_id, job_id):
     return SimpleNamespace(
+        claim_token=uuid4(),
+        attempt_count=1,
+        max_attempts=5,
         document_id=document_id,
         household_id=household_id,
         payload={"document_id": str(document_id)},
@@ -114,42 +117,22 @@ def test_docling_worker_completes_job_and_records_degraded_health_for_embedding_
     assert metrics["failures"] == ["embeddings:RuntimeError"]
 
 
-def test_docling_worker_cancels_semantic_job_when_completion_reports_cancelled(
-    monkeypatch,
-) -> None:
-    document_id = uuid4()
-    job_id = uuid4()
-    semantic_job_id = uuid4()
-    job_service = RecordingJobService(
-        claimed=_claimed_job(document_id, uuid4(), job_id),
-        complete_status="cancelled",
-    )
+def test_docling_worker_does_not_mark_parse_failed_after_ownership_loss(monkeypatch) -> None:
+    from lib.jobs.errors import JobOwnershipLost
 
-    monkeypatch.setattr(worker, "JobService", lambda: job_service)
-    _stub_successful_parse(monkeypatch)
-    monkeypatch.setattr(
-        worker,
-        "_enqueue_semantic_annotation",
-        lambda *_args, **_kwargs: semantic_job_id,
-    )
-    embedding_calls: list[object] = []
-    monkeypatch.setattr(
-        worker,
-        "_enqueue_embedding_refresh",
-        lambda *args, **kwargs: embedding_calls.append((args, kwargs)),
-    )
+    jobs = RecordingJobService(claimed=_claimed_job(uuid4(), uuid4(), uuid4()))
+    monkeypatch.setattr(worker, "JobService", lambda: jobs)
 
+    def stale_publication(*_args, **_kwargs):
+        raise JobOwnershipLost("stale")
+
+    failures = []
+    monkeypatch.setattr(worker, "convert_document", stale_publication)
+    monkeypatch.setattr(worker, "mark_document_parse_failed", lambda **kw: failures.append(kw))
     assert worker.process_next_docling_job(worker_name="worker-test", queue_name="docling")
-
-    assert job_service.cancelled == [
-        {
-            "job_id": semantic_job_id,
-            "reason": "Parent docling job was cancelled.",
-            "include_running": True,
-            "requested_by": "worker-test",
-        }
-    ]
-    assert embedding_calls == []
+    assert failures == []
+    assert jobs.failed == []
+    assert jobs.completed == []
 
 
 class RecordingJobService:
@@ -165,7 +148,9 @@ class RecordingJobService:
     def claim_next_job_record(self, **_kwargs: object) -> object:
         return self.claimed
 
-    def complete_job(self, *, job_id: object, result: dict[str, object]) -> SimpleNamespace:
+    def complete_job(
+        self, *, job_id: object, claim_token: object, result: dict[str, object]
+    ) -> SimpleNamespace:
         self.completed.append(job_id)
         self.results.append(result)
         return SimpleNamespace(status=self.complete_status)

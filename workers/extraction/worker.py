@@ -12,6 +12,9 @@ from lib.extraction import ExtractionService
 from lib.extraction.model_failure_policy import extraction_failure_policy
 from lib.extraction.reconciliation_repository import maybe_reconcile_semantic_annotation
 from lib.jobs import JobService, record_service_health
+from lib.jobs.errors import JobOwnershipLost
+from lib.jobs.lease import keep_job_lease
+from lib.jobs.ownership import fence_current_job
 from lib.jobs.removed_semantic_controls import has_removed_semantic_controls
 from lib.relationships.jobs import enqueue_relationship_job
 from lib.search.jobs import enqueue_embed_document_job
@@ -49,70 +52,131 @@ def process_next_extraction_job(
     if not claimed:
         return False
 
-    extraction_service = service or ExtractionService()
-    target_document_id: UUID | None = None
-    try:
-        target_document_id = _document_id_for_job(claimed.document_id, claimed.payload)
-        if claimed.state.job_type == "classify":
-            result = extraction_service.classify_document(
-                target_document_id,
-                force_reclassify=bool(claimed.payload.get("force_reclassify", False)),
-            )
-            completed = job_service.complete_job(
-                job_id=claimed.state.job_id,
-                result={
-                    "classification_status": "succeeded",
-                    "family": result.decision.family,
-                    "extraction_id": str(result.extraction_id),
-                    "queued_extraction_job_id": (
-                        str(result.queued_extraction_job_id)
-                        if result.queued_extraction_job_id
-                        else None
-                    ),
-                },
-            )
-            if getattr(completed, "status", None) == "cancelled":
-                return True
-            _enqueue_embedding_refresh(
-                target_document_id,
-                household_id=claimed.household_id,
-                force_reembed=False,
-            )
-            _enqueue_relationship_refresh(
-                target_document_id,
-                household_id=claimed.household_id,
-            )
-        elif claimed.state.job_type == "extract":
-            schema_name = str(claimed.payload.get("target_schema_name") or "")
-            route_profile = str(
-                claimed.payload.get("route_profile") or "docling_plus_structured_extraction"
-            )
-            if has_removed_semantic_controls(claimed.payload):
-                job_service.fail_job(
-                    job_id=claimed.state.job_id,
-                    error_class=ExtractionWorkerError.__name__,
-                    message=(
-                        "Extraction job failed: Removed semantic rescue controls are not accepted."
-                    ),
-                    retryable=False,
-                    suppress=False,
-                    details={"model_failure_policy": "removed_semantic_rescue_control"},
-                )
-                return True
-            if _optional_str(claimed.payload.get("orchestration_mode")) == "semantic_document":
-                semantic_annotation_id = _optional_uuid(
-                    claimed.payload.get("semantic_annotation_id")
-                )
-                if semantic_annotation_id is None:
-                    raise ExtractionWorkerError(
-                        "Document orchestration extraction job is missing semantic_annotation_id."
-                    )
-                document_result = extraction_service.extract_semantic_annotation_document(
+    with keep_job_lease(job_service, claimed, worker_name=worker_name):
+        extraction_service = service or ExtractionService()
+        target_document_id: UUID | None = None
+        try:
+            target_document_id = _document_id_for_job(claimed.document_id, claimed.payload)
+            if claimed.state.job_type == "classify":
+                result = extraction_service.classify_document(
                     target_document_id,
-                    semantic_annotation_id=semantic_annotation_id,
-                    plan_id=_optional_uuid(claimed.payload.get("plan_id")),
+                    force_reclassify=bool(claimed.payload.get("force_reclassify", False)),
+                )
+                _enqueue_embedding_refresh(
+                    target_document_id,
+                    household_id=claimed.household_id,
+                    force_reembed=False,
+                )
+                _enqueue_relationship_refresh(
+                    target_document_id,
+                    household_id=claimed.household_id,
+                )
+                job_service.complete_job(
+                    job_id=claimed.state.job_id,
+                    claim_token=claimed.claim_token,
+                    result={
+                        "classification_status": "succeeded",
+                        "family": result.decision.family,
+                        "extraction_id": str(result.extraction_id),
+                        "queued_extraction_job_id": (
+                            str(result.queued_extraction_job_id)
+                            if result.queued_extraction_job_id
+                            else None
+                        ),
+                    },
+                )
+            elif claimed.state.job_type == "extract":
+                schema_name = str(claimed.payload.get("target_schema_name") or "")
+                route_profile = str(
+                    claimed.payload.get("route_profile") or "docling_plus_structured_extraction"
+                )
+                if has_removed_semantic_controls(claimed.payload):
+                    job_service.fail_job(
+                        job_id=claimed.state.job_id,
+                        claim_token=claimed.claim_token,
+                        error_class=ExtractionWorkerError.__name__,
+                        message=(
+                            "Extraction job failed: Removed semantic rescue controls "
+                            "are not accepted."
+                        ),
+                        retryable=False,
+                        suppress=False,
+                        details={"model_failure_policy": "removed_semantic_rescue_control"},
+                    )
+                    return True
+                if _optional_str(claimed.payload.get("orchestration_mode")) == "semantic_document":
+                    semantic_annotation_id = _optional_uuid(
+                        claimed.payload.get("semantic_annotation_id")
+                    )
+                    if semantic_annotation_id is None:
+                        raise ExtractionWorkerError(
+                            "Document orchestration extraction job is missing "
+                            "semantic_annotation_id."
+                        )
+                    document_result = extraction_service.extract_semantic_annotation_document(
+                        target_document_id,
+                        semantic_annotation_id=semantic_annotation_id,
+                        plan_id=_optional_uuid(claimed.payload.get("plan_id")),
+                        route_profile=route_profile,
+                        run_id=_metadata_run_id(claimed.payload),
+                        requested_by=str(claimed.payload.get("requested_by") or "system"),
+                        requested_by_user_id=_optional_uuid(
+                            claimed.payload.get("requested_by_user_id")
+                        ),
+                        user_intent_reason=(
+                            str(claimed.payload["user_intent_reason"])
+                            if claimed.payload.get("user_intent_reason")
+                            else None
+                        ),
+                    )
+                    _enqueue_embedding_refresh(
+                        target_document_id,
+                        household_id=claimed.household_id,
+                        force_reembed=False,
+                    )
+                    _enqueue_relationship_refresh(
+                        target_document_id,
+                        household_id=claimed.household_id,
+                    )
+                    job_service.complete_job(
+                        job_id=claimed.state.job_id,
+                        claim_token=claimed.claim_token,
+                        result={
+                            "extraction_status": "succeeded",
+                            "orchestration_mode": "semantic_document",
+                            "region_extraction_ids": [
+                                str(extraction_id)
+                                for extraction_id in document_result.region_extraction_ids
+                            ],
+                            "aggregate_extraction_ids": [
+                                str(extraction_id)
+                                for extraction_id in document_result.aggregate_extraction_ids
+                            ],
+                            "candidate_count": document_result.candidate_count,
+                            "canonical_count": document_result.canonical_count,
+                            "review_task_count": document_result.review_task_count,
+                        },
+                    )
+                    return True
+                persisted = extraction_service.extract_document(
+                    target_document_id,
+                    schema_name=schema_name,
                     route_profile=route_profile,
+                    semantic_region_id=_optional_uuid(claimed.payload.get("semantic_region_id")),
+                    plan_id=_optional_uuid(claimed.payload.get("plan_id")),
+                    plan_task_id=_optional_uuid(claimed.payload.get("plan_task_id")),
+                    canonical_target_schema=_optional_str(
+                        claimed.payload.get("canonical_target_schema")
+                    ),
+                    compatibility_mode=_optional_str(claimed.payload.get("compatibility_mode")),
+                    contract_resolution_reason=_optional_str(
+                        claimed.payload.get("contract_resolution_reason")
+                    ),
+                    region_envelope_version=_optional_str(
+                        claimed.payload.get("region_envelope_version")
+                    ),
                     run_id=_metadata_run_id(claimed.payload),
+                    allow_8b_rescue=bool(claimed.payload.get("allow_8b_rescue", False)),
                     requested_by=str(claimed.payload.get("requested_by") or "system"),
                     requested_by_user_id=_optional_uuid(
                         claimed.payload.get("requested_by_user_id")
@@ -123,26 +187,17 @@ def process_next_extraction_job(
                         else None
                     ),
                 )
-                completed = job_service.complete_job(
-                    job_id=claimed.state.job_id,
-                    result={
-                        "extraction_status": "succeeded",
-                        "orchestration_mode": "semantic_document",
-                        "region_extraction_ids": [
-                            str(extraction_id)
-                            for extraction_id in document_result.region_extraction_ids
-                        ],
-                        "aggregate_extraction_ids": [
-                            str(extraction_id)
-                            for extraction_id in document_result.aggregate_extraction_ids
-                        ],
-                        "candidate_count": document_result.candidate_count,
-                        "canonical_count": document_result.canonical_count,
-                        "review_task_count": document_result.review_task_count,
-                    },
+                aggregate = maybe_reconcile_semantic_annotation(
+                    document_id=target_document_id,
+                    semantic_annotation_id=_optional_uuid(
+                        claimed.payload.get("semantic_annotation_id")
+                    ),
+                    schema_name=schema_name,
+                    canonical_target_schema=_optional_str(
+                        claimed.payload.get("canonical_target_schema")
+                    ),
+                    settled_job_id=claimed.state.job_id,
                 )
-                if getattr(completed, "status", None) == "cancelled":
-                    return True
                 _enqueue_embedding_refresh(
                     target_document_id,
                     household_id=claimed.household_id,
@@ -152,93 +207,50 @@ def process_next_extraction_job(
                     target_document_id,
                     household_id=claimed.household_id,
                 )
-                return True
-            persisted = extraction_service.extract_document(
-                target_document_id,
-                schema_name=schema_name,
-                route_profile=route_profile,
-                semantic_region_id=_optional_uuid(claimed.payload.get("semantic_region_id")),
-                plan_id=_optional_uuid(claimed.payload.get("plan_id")),
-                plan_task_id=_optional_uuid(claimed.payload.get("plan_task_id")),
-                canonical_target_schema=_optional_str(
-                    claimed.payload.get("canonical_target_schema")
-                ),
-                compatibility_mode=_optional_str(claimed.payload.get("compatibility_mode")),
-                contract_resolution_reason=_optional_str(
-                    claimed.payload.get("contract_resolution_reason")
-                ),
-                region_envelope_version=_optional_str(
-                    claimed.payload.get("region_envelope_version")
-                ),
-                run_id=_metadata_run_id(claimed.payload),
-                allow_8b_rescue=bool(claimed.payload.get("allow_8b_rescue", False)),
-                requested_by=str(claimed.payload.get("requested_by") or "system"),
-                requested_by_user_id=_optional_uuid(claimed.payload.get("requested_by_user_id")),
-                user_intent_reason=(
-                    str(claimed.payload["user_intent_reason"])
-                    if claimed.payload.get("user_intent_reason")
-                    else None
-                ),
+                job_service.complete_job(
+                    job_id=claimed.state.job_id,
+                    claim_token=claimed.claim_token,
+                    result={
+                        "extraction_status": "succeeded",
+                        "extraction_id": str(persisted.extraction_id),
+                        "aggregate_extraction_id": (
+                            str(aggregate.extraction_id) if aggregate is not None else None
+                        ),
+                        "review_status": persisted.review_status,
+                        "candidate_count": persisted.candidate_count,
+                        "canonical_count": persisted.canonical_count,
+                        "review_task_count": persisted.review_task_count,
+                    },
+                )
+            else:
+                raise ExtractionWorkerError(
+                    f"Unsupported extraction queue job: {claimed.state.job_type}"
+                )
+        except JobOwnershipLost:
+            raise
+        except Exception as exc:
+            failure_policy = extraction_failure_policy(
+                payload=claimed.payload,
+                exc=exc,
             )
-            aggregate = maybe_reconcile_semantic_annotation(
-                document_id=target_document_id,
-                semantic_annotation_id=_optional_uuid(
-                    claimed.payload.get("semantic_annotation_id")
-                ),
-                schema_name=schema_name,
-                canonical_target_schema=_optional_str(
-                    claimed.payload.get("canonical_target_schema")
-                ),
-                settled_job_id=claimed.state.job_id,
-            )
-            completed = job_service.complete_job(
+            if not failure_policy.retryable or claimed.attempt_count >= claimed.max_attempts:
+                _maybe_reconcile_after_failure(
+                    worker_name=worker_name,
+                    job_type=claimed.state.job_type,
+                    document_id=target_document_id,
+                    payload=claimed.payload,
+                    settled_job_id=claimed.state.job_id,
+                )
+            job_service.fail_job(
                 job_id=claimed.state.job_id,
-                result={
-                    "extraction_status": "succeeded",
-                    "extraction_id": str(persisted.extraction_id),
-                    "aggregate_extraction_id": (
-                        str(aggregate.extraction_id) if aggregate is not None else None
-                    ),
-                    "review_status": persisted.review_status,
-                    "candidate_count": persisted.candidate_count,
-                    "canonical_count": persisted.canonical_count,
-                    "review_task_count": persisted.review_task_count,
-                },
+                claim_token=claimed.claim_token,
+                error_class=exc.__class__.__name__,
+                message=_failure_message(exc),
+                retryable=failure_policy.retryable,
+                suppress=False,
+                details=_failure_details(exc, failure_policy.policy),
             )
-            if getattr(completed, "status", None) == "cancelled":
-                return True
-            _enqueue_embedding_refresh(
-                target_document_id,
-                household_id=claimed.household_id,
-                force_reembed=False,
-            )
-            _enqueue_relationship_refresh(
-                target_document_id,
-                household_id=claimed.household_id,
-            )
-        else:
-            raise ExtractionWorkerError(
-                f"Unsupported extraction queue job: {claimed.state.job_type}"
-            )
-    except Exception as exc:
-        failure_policy = extraction_failure_policy(
-            payload=claimed.payload,
-            exc=exc,
-        )
-        job_service.fail_job(
-            job_id=claimed.state.job_id,
-            error_class=exc.__class__.__name__,
-            message=_failure_message(exc),
-            retryable=failure_policy.retryable,
-            suppress=False,
-            details=_failure_details(exc, failure_policy.policy),
-        )
-        _maybe_reconcile_after_failure(
-            worker_name=worker_name,
-            job_type=claimed.state.job_type,
-            document_id=target_document_id,
-            payload=claimed.payload,
-        )
+        return True
     return True
 
 
@@ -248,12 +260,12 @@ def _maybe_reconcile_after_failure(
     job_type: str,
     document_id: UUID | None,
     payload: dict[str, Any],
+    settled_job_id: UUID,
 ) -> None:
     """Build the document aggregate even when the final region job fails.
 
-    The reconciliation trigger requires every region job for the annotation to
-    be terminal; if the last one dead-letters, no later success event would
-    ever fire it, permanently suppressing the (partial) aggregate.
+    Reconcile before revoking the attempt through fail_job. The current job is
+    treated as terminal only when this failure has exhausted its retry policy.
     """
     if job_type != "extract" or document_id is None:
         return
@@ -265,10 +277,12 @@ def _maybe_reconcile_after_failure(
             semantic_annotation_id=_optional_uuid(payload.get("semantic_annotation_id")),
             schema_name=str(payload.get("target_schema_name") or ""),
             canonical_target_schema=_optional_str(payload.get("canonical_target_schema")),
+            settled_job_id=settled_job_id,
+            settled_job_status="dead_letter",
         )
-    except Exception as reconcile_exc:
+    except Exception:
         print(
-            f"{worker_name}: post-failure reconciliation skipped: {reconcile_exc}",
+            f"{worker_name}: terminal-failure reconciliation skipped",
             flush=True,
         )
 
@@ -337,6 +351,8 @@ def _enqueue_embedding_refresh(
                 household_id=household_id,
                 force_reembed=force_reembed,
             )
+        with conn.cursor() as fence_cur:
+            fence_current_job(fence_cur)
         conn.commit()
 
 
@@ -352,6 +368,8 @@ def _enqueue_relationship_refresh(document_id: UUID, *, household_id: UUID | Non
                 priority=35,
                 reason="phase7.extraction_relationship_refresh",
             )
+        with conn.cursor() as fence_cur:
+            fence_current_job(fence_cur)
         conn.commit()
 
 

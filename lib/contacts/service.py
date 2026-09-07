@@ -4,6 +4,7 @@ from typing import Any
 from uuid import UUID
 
 from lib.auth import AuthPrincipal
+from lib.auth.authorization_policy import require_action
 from lib.contacts import policy, repository
 from lib.contracts import (
     Contact,
@@ -39,6 +40,7 @@ def list_contacts(
 
 
 def upsert_contact(payload: ContactWrite, principal: AuthPrincipal) -> Contact:
+    require_action(principal, "documents:write")
     household_id = _require_household(principal)
     contact_type = policy.normalize_contact_type(payload.contact_type)
     display_name = policy.normalize_display_name(payload.display_name)
@@ -47,6 +49,10 @@ def upsert_contact(payload: ContactWrite, principal: AuthPrincipal) -> Contact:
     with db_connection() as conn:
         with conn.cursor() as cur:
             if payload.id:
+                if not repository.contact_documents_are_writable(
+                    cur, contact_ids=[payload.id], access=_access_context(principal)
+                ):
+                    raise policy.contact_error(404, "Contact not found")
                 row = repository.update_contact(
                     cur,
                     contact_id=payload.id,
@@ -91,10 +97,15 @@ def link_document_contact(
     payload: DocumentContactWrite,
     principal: AuthPrincipal,
 ) -> DocumentContact:
+    require_action(principal, "documents:write")
     household_id = _require_household(principal)
     role_name = policy.normalize_display_name(payload.role_name)
     with db_connection() as conn:
         with conn.cursor() as cur:
+            if not repository.lock_contacts(
+                cur, contact_ids=[payload.contact_id], household_id=household_id
+            ):
+                raise policy.contact_error(404, "Contact not found")
             document = repository.lock_writable_document(
                 cur,
                 document_id=document_id,
@@ -167,11 +178,18 @@ def merge_contacts(
     payload: ContactMergeWrite,
     principal: AuthPrincipal,
 ) -> Contact:
+    require_action(principal, "documents:write")
     household_id = _require_household(principal)
     if source_contact_id == payload.target_contact_id:
         raise policy.contact_error(422, "Cannot merge a contact into itself")
     with db_connection() as conn:
         with conn.cursor() as cur:
+            if not repository.contact_documents_are_writable(
+                cur,
+                contact_ids=[source_contact_id, payload.target_contact_id],
+                access=_access_context(principal),
+            ):
+                raise policy.contact_error(404, "Contact not found")
             row = repository.merge_contacts(
                 cur,
                 source_contact_id=source_contact_id,
@@ -201,6 +219,8 @@ def _access_context(principal: AuthPrincipal) -> DocumentAccessContext:
         household_id=household_id,
         user_id=principal.user_id,
         household_role=principal.household_role,
+        api_token_id=principal.api_token_id,
+        scopes=principal.scopes,
     )
 
 

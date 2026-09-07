@@ -12,7 +12,7 @@ from apps.api.structura_api.main import create_app
 from lib.auth import AuthService
 from lib.config import get_settings
 from lib.db.connection import db_connection
-from lib.jobs import JobService, record_service_health
+from lib.jobs import JobOwnershipLost, JobService, record_service_health
 
 
 @pytest.mark.skipif(
@@ -82,25 +82,32 @@ def test_phase0_auth_session_protection_jobs_and_service_health(
         payload={"document_id": "retryable-placeholder"},
         queue_name=queue_name,
     )
-    claimed = job_service.claim_next_job(worker_name="phase0-test", queue_name=queue_name)
+    claimed = job_service.claim_next_job_record(worker_name="phase0-test", queue_name=queue_name)
     assert claimed
-    assert claimed.job_id == retryable_job.job_id
+    assert claimed.state.job_id == retryable_job.job_id
     failed_retryable = job_service.fail_job(
         job_id=retryable_job.job_id,
+        claim_token=claimed.claim_token,
         error_class="Phase0Retryable",
         message="exercise delayed retry",
         retryable=True,
     )
     assert failed_retryable.status == "failed"
-    assert job_service.claim_next_job(worker_name="phase0-test", queue_name=queue_name) is None
+    assert (
+        job_service.claim_next_job_record(worker_name="phase0-test", queue_name=queue_name) is None
+    )
 
     job = job_service.create_job(
         job_type="ingest",
         household_id=bootstrap.household_id,
         payload={"document_id": "placeholder"},
+        queue_name=queue_name,
     )
+    claimed = job_service.claim_next_job_record(worker_name="phase0-test", queue_name=queue_name)
+    assert claimed and claimed.state.job_id == job.job_id
     failed = JobService().fail_job(
         job_id=job.job_id,
+        claim_token=claimed.claim_token,
         error_class="Phase0Test",
         message="exercise retry",
         retryable=False,
@@ -117,7 +124,7 @@ def test_phase0_auth_session_protection_jobs_and_service_health(
     )
     assert retry.status_code == 202
     assert retry.json()["status"] == "queued"
-    assert job_service.claim_next_job(worker_name="phase0-test") is not None
+    assert job_service.claim_next_job_record(worker_name="phase0-test", queue_name=queue_name)
 
     record_service_health(service_name="worker-phase0-test", status="ok", metrics={"jobs": 1})
     health = client.get("/api/v1/admin/service-health")
@@ -361,7 +368,10 @@ def test_phase0_admin_job_cancel_path(
     )
     assert cancelled.status_code == 202
     assert cancelled.json()["status"] == "cancelled"
-    assert job_service.claim_next_job(worker_name="phase0-cancel", queue_name=queue_name) is None
+    assert (
+        job_service.claim_next_job_record(worker_name="phase0-cancel", queue_name=queue_name)
+        is None
+    )
 
     running = job_service.create_job(
         job_type="ingest",
@@ -392,11 +402,12 @@ def test_phase0_admin_job_cancel_path(
     assert running_cancelled.status_code == 202
     assert running_cancelled.json()["status"] == "cancelled"
 
-    late_complete = job_service.complete_job(
-        job_id=running.job_id,
-        result={"late": "worker finished after cancellation"},
-    )
-    assert late_complete.status == "cancelled"
+    with pytest.raises(JobOwnershipLost):
+        job_service.complete_job(
+            job_id=running.job_id,
+            claim_token=claimed.claim_token,
+            result={"late": "worker finished after cancellation"},
+        )
     assert client.get(f"/api/v1/jobs/{running.job_id}").json()["status"] == "cancelled"
 
     failed = job_service.create_job(
@@ -405,8 +416,11 @@ def test_phase0_admin_job_cancel_path(
         payload={"document_id": "failed-cancel-placeholder"},
         queue_name=queue_name,
     )
+    claimed = job_service.claim_next_job_record(worker_name="phase0-test", queue_name=queue_name)
+    assert claimed and claimed.state.job_id == failed.job_id
     job_service.fail_job(
         job_id=failed.job_id,
+        claim_token=claimed.claim_token,
         error_class="Phase0Retryable",
         message="retryable before cancellation",
         retryable=True,

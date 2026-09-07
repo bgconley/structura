@@ -208,10 +208,14 @@ def writable_folders(cur: Any, *, household_id: UUID, user_id: UUID) -> list[Row
         """
         SELECT f.id, COALESCE(f.path_cache, '/' || f.name) AS path
         FROM folders f
+        JOIN household_memberships hm ON hm.household_id = %s AND hm.user_id = %s
+        JOIN users u ON u.id = hm.user_id AND NOT u.is_disabled
         WHERE (f.household_id = %s OR (f.household_id IS NULL AND f.is_system))
           AND f.folder_kind = 'manual'
+          AND hm.role IN ('owner', 'admin', 'member')
           AND (
-            f.acl_mode = 'household'
+            hm.role IN ('owner', 'admin')
+            OR f.acl_mode = 'household'
             OR f.owner_user_id = %s
             OR EXISTS (
               SELECT 1
@@ -225,7 +229,7 @@ def writable_folders(cur: Any, *, household_id: UUID, user_id: UUID) -> list[Row
             )
           )
         """,
-        (household_id, user_id, user_id, household_id),
+        (household_id, user_id, household_id, user_id, user_id, household_id),
     )
     return cast(list[Row], cur.fetchall())
 

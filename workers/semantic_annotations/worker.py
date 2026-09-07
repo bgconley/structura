@@ -9,6 +9,8 @@ from uuid import UUID
 
 from lib.extraction.model_failure_policy import model_exception_retryable
 from lib.jobs import JobService, record_service_health
+from lib.jobs.errors import JobOwnershipLost
+from lib.jobs.lease import keep_job_lease
 from lib.jobs.removed_semantic_controls import (
     REMOVED_SEMANTIC_CONTROL_MESSAGE,
     has_removed_semantic_controls,
@@ -40,6 +42,8 @@ class SemanticAnnotationServiceProtocol(Protocol):
 
 class SemanticJobServiceProtocol(Protocol):
     def claim_next_job_record(self, **kwargs: object) -> Any: ...
+
+    def heartbeat_job(self, **kwargs: object) -> object: ...
 
     def complete_job(self, **kwargs: object) -> None: ...
 
@@ -74,63 +78,60 @@ def process_next_semantic_annotation_job(
     if not claimed:
         return False
 
-    semantic_service = service or SemanticAnnotationService()
-    try:
-        target_document_id = _document_id_for_job(claimed.document_id, claimed.payload)
-        if claimed.state.job_type != "semantic_annotate":
-            raise SemanticAnnotationWorkerError(
-                f"Unsupported semantic annotation job: {claimed.state.job_type}"
+    with keep_job_lease(jobs, claimed, worker_name=worker_name):
+        semantic_service = service or SemanticAnnotationService()
+        try:
+            target_document_id = _document_id_for_job(claimed.document_id, claimed.payload)
+            if claimed.state.job_type != "semantic_annotate":
+                raise SemanticAnnotationWorkerError(
+                    f"Unsupported semantic annotation job: {claimed.state.job_type}"
+                )
+            if has_removed_semantic_controls(claimed.payload):
+                raise SemanticAnnotationWorkerError(REMOVED_SEMANTIC_CONTROL_MESSAGE)
+            result = semantic_service.annotate_document(
+                target_document_id,
+                quality_mode=cast(QualityMode, str(claimed.payload.get("quality_mode") or "smart")),
+                requested_by=str(claimed.payload.get("requested_by") or "system"),
+                allow_8b_rescue=bool(claimed.payload.get("allow_8b_rescue", False)),
+                requested_by_user_id=_optional_uuid(claimed.payload.get("requested_by_user_id")),
+                user_intent_reason=(
+                    str(claimed.payload["user_intent_reason"])
+                    if claimed.payload.get("user_intent_reason")
+                    else None
+                ),
             )
-        if has_removed_semantic_controls(claimed.payload):
-            raise SemanticAnnotationWorkerError(REMOVED_SEMANTIC_CONTROL_MESSAGE)
-        result = semantic_service.annotate_document(
-            target_document_id,
-            quality_mode=cast(QualityMode, str(claimed.payload.get("quality_mode") or "smart")),
-            requested_by=str(claimed.payload.get("requested_by") or "system"),
-            allow_8b_rescue=bool(claimed.payload.get("allow_8b_rescue", False)),
-            requested_by_user_id=_optional_uuid(claimed.payload.get("requested_by_user_id")),
-            user_intent_reason=(
-                str(claimed.payload["user_intent_reason"])
-                if claimed.payload.get("user_intent_reason")
-                else None
-            ),
-        )
-        annotation_id = result.annotation_id
-        queued_granite_job_ids = tuple(result.queued_granite_job_ids)
-        completed = jobs.complete_job(
-            job_id=claimed.state.job_id,
-            result={
-                "semantic_annotation_status": "succeeded",
-                "annotation_id": str(annotation_id),
-                "queued_granite_job_ids": [str(job_id) for job_id in queued_granite_job_ids],
-            },
-        )
-        if getattr(completed, "status", None) == "cancelled":
-            cancel_job = getattr(jobs, "cancel_job", None)
-            if callable(cancel_job):
-                for granite_job_id in queued_granite_job_ids:
-                    cancel_job(
-                        job_id=granite_job_id,
-                        reason="Parent semantic annotation job was cancelled.",
-                        include_running=True,
-                        requested_by=worker_name,
-                    )
-    except SemanticAnnotationWorkerError as exc:
-        jobs.fail_job(
-            job_id=claimed.state.job_id,
-            error_class=exc.__class__.__name__,
-            message=str(exc),
-            retryable=False,
-            suppress=False,
-        )
-    except Exception as exc:
-        jobs.fail_job(
-            job_id=claimed.state.job_id,
-            error_class=exc.__class__.__name__,
-            message="Semantic annotation job failed",
-            retryable=model_exception_retryable(exc),
-            suppress=False,
-        )
+            annotation_id = result.annotation_id
+            queued_granite_job_ids = tuple(result.queued_granite_job_ids)
+            jobs.complete_job(
+                job_id=claimed.state.job_id,
+                claim_token=claimed.claim_token,
+                result={
+                    "semantic_annotation_status": "succeeded",
+                    "annotation_id": str(annotation_id),
+                    "queued_granite_job_ids": [str(job_id) for job_id in queued_granite_job_ids],
+                },
+            )
+        except SemanticAnnotationWorkerError as exc:
+            jobs.fail_job(
+                job_id=claimed.state.job_id,
+                claim_token=claimed.claim_token,
+                error_class=exc.__class__.__name__,
+                message=str(exc),
+                retryable=False,
+                suppress=False,
+            )
+        except JobOwnershipLost:
+            raise
+        except Exception as exc:
+            jobs.fail_job(
+                job_id=claimed.state.job_id,
+                claim_token=claimed.claim_token,
+                error_class=exc.__class__.__name__,
+                message="Semantic annotation job failed",
+                retryable=model_exception_retryable(exc),
+                suppress=False,
+            )
+        return True
     return True
 
 

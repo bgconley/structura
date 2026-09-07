@@ -5,6 +5,7 @@ from uuid import UUID
 from psycopg.errors import UniqueViolation
 
 from lib.auth import AuthPrincipal
+from lib.auth.authorization_policy import require_action
 from lib.contracts import (
     DocumentDetail,
     DocumentOrganizationWrite,
@@ -36,6 +37,7 @@ def list_folders(principal: AuthPrincipal) -> list[Folder]:
 
 
 def create_folder(payload: FolderWrite, principal: AuthPrincipal) -> Folder:
+    require_action(principal, "documents:write")
     household_id = _require_household(principal)
     name = policy.normalize_folder_name(payload.name)
     acl_mode = policy.validate_acl_mode(payload.acl_mode)
@@ -93,6 +95,7 @@ def list_tags(_principal: AuthPrincipal) -> list[Tag]:
 
 
 def create_tag(payload: TagWrite, _principal: AuthPrincipal) -> Tag:
+    require_action(_principal, "documents:write")
     name = policy.normalize_tag_name(payload.name)
     color_hex = policy.normalize_color_hex(payload.color_hex)
     with db_connection() as conn:

@@ -6,7 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from apps.api.structura_api.dependencies import current_principal, require_csrf
+from apps.api.structura_api.dependencies import require_document_read, require_document_write
 from lib.auth import AuthPrincipal
 from lib.contacts import service as contact_service
 from lib.contacts.policy import ContactError
@@ -24,7 +24,7 @@ T = TypeVar("T")
 
 @router.get("/contacts", response_model=dict[str, list[Contact]])
 def list_contacts(
-    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_read)],
     q: str | None = None,
     contactType: str | None = None,
 ) -> dict[str, object]:
@@ -46,14 +46,14 @@ def list_contacts(
 )
 def upsert_contact(
     payload: ContactWrite,
-    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_write)],
 ) -> Contact:
     return _call_contacts(lambda: contact_service.upsert_contact(payload, principal))
 
 
 @router.get("/contact-merge-suggestions")
 def list_contact_merge_suggestions(
-    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_read)],
 ) -> dict[str, object]:
     suggestions = _call_contacts(lambda: contact_service.list_merge_suggestions(principal))
     return {"items": [item.model_dump(by_alias=True) for item in suggestions]}
@@ -70,7 +70,7 @@ def list_contact_merge_suggestions(
 def merge_contact(
     contactId: UUID,
     payload: ContactMergeWrite,
-    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_write)],
 ) -> Contact:
     return _call_contacts(
         lambda: contact_service.merge_contacts(
@@ -84,7 +84,7 @@ def merge_contact(
 @router.get("/documents/{documentId}/contacts")
 def list_document_contacts(
     documentId: UUID,
-    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_read)],
 ) -> dict[str, object]:
     links = _call_contacts(lambda: contact_service.list_document_contacts(documentId, principal))
     return {"items": [link.model_dump(by_alias=True) for link in links]}
@@ -102,7 +102,7 @@ def list_document_contacts(
 def link_document_contact(
     documentId: UUID,
     payload: DocumentContactWrite,
-    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_write)],
 ) -> DocumentContact:
     return _call_contacts(
         lambda: contact_service.link_document_contact(

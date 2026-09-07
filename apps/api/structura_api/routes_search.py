@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from apps.api.structura_api.dependencies import current_principal, require_csrf
+from apps.api.structura_api.dependencies import require_document_read, require_document_write
 from lib.auth import AuthPrincipal
 from lib.contracts import SavedSearch, SavedSearchWrite, SearchRequest, SearchResponse
 from lib.documents.access_policy import DocumentAccessContext
@@ -22,7 +22,7 @@ router = APIRouter(prefix="/api/v1", tags=["Search"])
 @router.post("/search", response_model=SearchResponse)
 def post_search(
     payload: SearchRequest,
-    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_read)],
 ) -> SearchResponse:
     access = _access_context(principal)
     try:
@@ -39,7 +39,7 @@ def post_search(
 
 @router.get("/saved-searches")
 def get_saved_searches(
-    principal: Annotated[AuthPrincipal, Depends(current_principal)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_read)],
 ) -> dict[str, object]:
     access = _access_context(principal)
     return {"items": [item.model_dump(by_alias=True) for item in list_saved_searches(access)]}
@@ -52,7 +52,7 @@ def get_saved_searches(
 )
 def post_saved_search(
     payload: SavedSearchWrite,
-    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
+    principal: Annotated[AuthPrincipal, Depends(require_document_write)],
 ) -> SavedSearch:
     access = _access_context(principal)
     try:
@@ -68,4 +68,6 @@ def _access_context(principal: AuthPrincipal) -> DocumentAccessContext:
         household_id=principal.household_id,
         user_id=principal.user_id,
         household_role=principal.household_role,
+        api_token_id=principal.api_token_id,
+        scopes=principal.scopes,
     )

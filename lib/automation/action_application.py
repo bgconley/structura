@@ -7,10 +7,11 @@ from uuid import UUID
 from psycopg.types.json import Jsonb
 
 from lib.auth import AuthPrincipal
+from lib.auth.authorization_policy import require_action
 from lib.automation.errors import AutomationError
 from lib.automation.repository import record_audit
 from lib.contracts import DocumentOrganizationWrite
-from lib.documents.access_policy import DocumentAccessContext, document_read_access_params
+from lib.documents.access_policy import DocumentAccessContext, document_write_access_params
 from lib.organization.document_organization import (
     document_access_context,
     update_document_organization_with_cursor,
@@ -34,6 +35,7 @@ def apply_rule_actions_with_cursor(
     actions: list[dict[str, Any]],
     principal: AuthPrincipal,
 ) -> RuleActionApplication:
+    require_action(principal, "documents:write")
     access = document_access_context(principal)
     state = _locked_document_state(cur, document_id=document_id, access=access)
     if not state:
@@ -173,10 +175,10 @@ def _locked_document_state(
         FROM documents d
         WHERE d.id = %s
           AND d.deleted_at IS NULL
-          AND document_is_readable(d.id, %s, %s, %s)
+          AND document_is_writable(d.id, %s, %s, %s)
         FOR UPDATE
         """,
-        (document_id, *document_read_access_params(access)),
+        (document_id, *document_write_access_params(access)),
     )
     row = cur.fetchone()
     return dict(row) if row else None

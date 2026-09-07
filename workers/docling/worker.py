@@ -8,6 +8,9 @@ from uuid import UUID
 
 from lib.documents.quality import evaluate_document_quality
 from lib.jobs import JobService, record_service_health
+from lib.jobs.errors import JobOwnershipLost
+from lib.jobs.lease import keep_job_lease
+from lib.jobs.ownership import fence_current_job
 from lib.search.jobs import enqueue_embed_document_job, enqueue_visual_embed_document_job
 from lib.semantic_annotations.jobs import enqueue_semantic_annotation_job
 from workers.docling.converter import DoclingConverter
@@ -46,110 +49,95 @@ def process_next_docling_job(
     if not claimed:
         return False
 
-    target_document_id: UUID | None = None
-    try:
-        target_document_id = _document_id_for_docling(claimed.document_id, claimed.payload)
-        summary = convert_document(
-            target_document_id,
-            job_id=claimed.state.job_id,
-            converter=converter,
-        )
-        quality = evaluate_document_quality(target_document_id)
-    except Exception as exc:
-        if target_document_id:
-            mark_document_parse_failed(
-                document_id=target_document_id,
+    with keep_job_lease(job_service, claimed, worker_name=worker_name):
+        target_document_id: UUID | None = None
+        try:
+            target_document_id = _document_id_for_docling(claimed.document_id, claimed.payload)
+            summary = convert_document(
+                target_document_id,
+                job_id=claimed.state.job_id,
+                converter=converter,
+            )
+            quality = evaluate_document_quality(target_document_id)
+        except JobOwnershipLost:
+            raise
+        except Exception as exc:
+            if target_document_id:
+                mark_document_parse_failed(
+                    document_id=target_document_id,
+                    error_class=exc.__class__.__name__,
+                    message="Docling canonical conversion failed",
+                    job_id=claimed.state.job_id,
+                )
+            job_service.fail_job(
+                job_id=claimed.state.job_id,
+                claim_token=claimed.claim_token,
                 error_class=exc.__class__.__name__,
                 message="Docling canonical conversion failed",
-                job_id=claimed.state.job_id,
+                retryable=True,
+                suppress=False,
             )
-        job_service.fail_job(
-            job_id=claimed.state.job_id,
-            error_class=exc.__class__.__name__,
-            message="Docling canonical conversion failed",
-            retryable=True,
-            suppress=False,
-        )
-        return True
+            return True
 
-    # Enqueue the semantic-annotation job before completing the docling job:
-    # a parsed document with no semantic_annotate job would silently never
-    # enter extraction, so an enqueue failure must keep this job retryable
-    # (parse artifacts are idempotent on retry).
-    try:
-        semantic_job_id = _enqueue_semantic_annotation(
-            target_document_id,
-            household_id=claimed.household_id,
-        )
-    except Exception as exc:
-        job_service.fail_job(
-            job_id=claimed.state.job_id,
-            error_class=exc.__class__.__name__,
-            message="Docling parse succeeded but semantic annotation enqueue failed",
-            retryable=True,
-            suppress=False,
-        )
-        return True
+        # Enqueue the semantic-annotation job before completing the docling job:
+        # a parsed document with no semantic_annotate job would silently never
+        # enter extraction, so an enqueue failure must keep this job retryable
+        # (parse artifacts are idempotent on retry).
+        try:
+            semantic_job_id = _enqueue_semantic_annotation(
+                target_document_id,
+                household_id=claimed.household_id,
+            )
+        except JobOwnershipLost:
+            raise
+        except Exception as exc:
+            job_service.fail_job(
+                job_id=claimed.state.job_id,
+                claim_token=claimed.claim_token,
+                error_class=exc.__class__.__name__,
+                message="Docling parse succeeded but semantic annotation enqueue failed",
+                retryable=True,
+                suppress=False,
+            )
+            return True
 
-    completed = job_service.complete_job(
-        job_id=claimed.state.job_id,
-        result={
-            "parse_status": "succeeded",
-            "docling_asset_id": str(summary.docling_asset_id),
-            "page_count": summary.page_count,
-            "element_count": summary.element_count,
-            "table_count": summary.table_count,
-            "chunk_count": summary.chunk_count,
-            "queued_semantic_annotation_job_id": str(semantic_job_id),
-            "phase8_quality": {
-                "review_required": quality.review_required,
-                "visual_embedding_eligible": quality.visual_embedding_eligible,
-                "qwen_route_eligible": quality.qwen_route_eligible,
+        try:
+            _enqueue_embedding_refresh(
+                target_document_id,
+                household_id=claimed.household_id,
+                include_visual=quality.visual_embedding_eligible,
+            )
+        except JobOwnershipLost:
+            raise
+        except Exception as exc:
+            _record_downstream_enqueue_failure(
+                worker_name=worker_name,
+                document_id=target_document_id,
+                job_id=claimed.state.job_id,
+                failures=[f"embeddings:{exc.__class__.__name__}"],
+            )
+
+        job_service.complete_job(
+            job_id=claimed.state.job_id,
+            claim_token=claimed.claim_token,
+            result={
+                "parse_status": "succeeded",
+                "docling_asset_id": str(summary.docling_asset_id),
+                "page_count": summary.page_count,
+                "element_count": summary.element_count,
+                "table_count": summary.table_count,
+                "chunk_count": summary.chunk_count,
+                "queued_semantic_annotation_job_id": str(semantic_job_id),
+                "phase8_quality": {
+                    "review_required": quality.review_required,
+                    "visual_embedding_eligible": quality.visual_embedding_eligible,
+                    "qwen_route_eligible": quality.qwen_route_eligible,
+                },
             },
-        },
-    )
-    if getattr(completed, "status", None) == "cancelled":
-        _cancel_semantic_annotation_job(
-            job_service,
-            semantic_job_id=semantic_job_id,
-            worker_name=worker_name,
         )
+
         return True
-
-    try:
-        _enqueue_embedding_refresh(
-            target_document_id,
-            household_id=claimed.household_id,
-            include_visual=quality.visual_embedding_eligible,
-        )
-    except Exception as exc:
-        _record_downstream_enqueue_failure(
-            worker_name=worker_name,
-            document_id=target_document_id,
-            job_id=claimed.state.job_id,
-            failures=[f"embeddings:{exc.__class__.__name__}"],
-        )
     return True
-
-
-def _cancel_semantic_annotation_job(
-    job_service: JobService,
-    *,
-    semantic_job_id: UUID,
-    worker_name: str,
-) -> None:
-    cancel_job = getattr(job_service, "cancel_job", None)
-    if not callable(cancel_job):
-        return
-    try:
-        cancel_job(
-            job_id=semantic_job_id,
-            reason="Parent docling job was cancelled.",
-            include_running=True,
-            requested_by=worker_name,
-        )
-    except Exception as exc:
-        print(f"{worker_name}: semantic annotation cancel skipped: {exc}", flush=True)
 
 
 def _document_id_for_docling(document_id: UUID | None, payload: dict[str, object]) -> UUID:
@@ -184,6 +172,8 @@ def _enqueue_embedding_refresh(
                     household_id=household_id,
                     force_reembed=False,
                 )
+        with conn.cursor() as fence_cur:
+            fence_current_job(fence_cur)
         conn.commit()
 
 
@@ -199,6 +189,8 @@ def _enqueue_semantic_annotation(document_id: UUID, *, household_id: UUID | None
                 quality_mode="smart",
                 requested_by="system",
             )
+        with conn.cursor() as fence_cur:
+            fence_current_job(fence_cur)
         conn.commit()
     return job_id
 
