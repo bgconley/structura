@@ -1,10 +1,10 @@
 # Durable human decisions and fact projections
 
-Status: root-approved design; migration 099 foundation is integrated. Migration 101
-and the first field-writer activation are awaiting the canonical database gate.
-The first bounded slice contains additive schema, immutable DTOs and transaction
-protocols for review. Existing writers and public response activation are a later
-integration slice; these foundations alone do not close the preservation gates.
+Status: migration 099 foundation and migration 101's first field-writer/API/editor
+activation are integrated and covered by the [316-test database checkpoint](../../release-evidence/production-completion-g0/retained-evidence-checkpoint.md).
+Confirmation, correction, rejection and accepted field projection are implemented.
+Complete line-item authority, remaining manual metadata writers, native publication
+and broader preservation/release gates remain separate open work.
 
 The current revision-guard repair protects existing human-controlled canonical
 fields during correction, confirmation and rejection. This follow-on closes the

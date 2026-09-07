@@ -69,6 +69,13 @@ pending human-authority writer and native publication/quality acceptance.
 model calls on sealed replay and four correct page-query rankings on the exposed
 two-page fixture. It preserves source-scoring and performance limitations.
 
+[The retained evidence and complete-data checkpoint](retained-evidence-checkpoint.md)
+records migration 101 field decisions, full Viewer data, migration 102 historical
+page reads, and both byte-publication race repairs. The gate passed 1,698 unit,
+316 database and 139 Linux browser tests; static and real 27B/Blackbird retained
+evidence proof passed at `2439134`. A visual query JIT latency spike and limited
+warm follow-up are recorded without claiming production capacity.
+
 The cached validation images observed on Oxcart are:
 
 | Image | Local image ID |
@@ -77,4 +84,4 @@ The cached validation images observed on Oxcart are:
 | `node:20-alpine` | `sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293` |
 | `mcr.microsoft.com/playwright:v1.59.1-noble` | `sha256:b0ab6f3cb99aa7803adbc14d9027ec1785fc6e433b97e134e0f8fe61683b6b53` |
 
-The earlier readiness review's test counts and June model UAT remain historical evidence. This record does not close fresh gates, prove Qwen-native parsing, or declare a production deployment. G2/G3 remain prerequisites for Phase 9; later features follow the root sequence. ADRs 0008/0009 supersede historical Docling/8B/Granite deployment instructions while preserving original evidence, model provenance, validation and human-review policy.
+The earlier readiness review's test counts and June model UAT remain historical evidence. The bounded proofs in this record do not close fresh release gates or declare a production deployment. G2/G3 remain prerequisites for Phase 9; later features follow the root sequence. ADRs 0008/0009 supersede historical Docling/8B/Granite deployment instructions while preserving original evidence, model provenance, validation and human-review policy.

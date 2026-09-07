@@ -2,11 +2,11 @@
 
 Date: 2026-09-07
 
-Status: **Root-approved bounded first slice implemented for integration review as
-migration 102 and `lib/evidence`. Local focused checks pass; the root-owned migration
-registration and API/error wiring are present in the shared integration checkpoint;
-isolated PostgreSQL validation remains pending.
-Nothing in this slice activates native publication or changes the ordinary Viewer.**
+Status: **The bounded migration 102 / `lib/evidence` slice is implemented and
+verified through the [retained evidence checkpoint](../../release-evidence/production-completion-g0/retained-evidence-checkpoint.md):
+fresh PostgreSQL, real credential/API history, cleanup races and real 27B/Blackbird
+retention/replay passed. Native current publication, ordinary Viewer integration
+and release acceptance remain open.**
 
 This is a bounded X-02/X-05/UI-06 slice. [ADR 0009](../../adr/0009-qwen-native-document-parsing.md)
 requires original-page evidence independent of Docling, and
@@ -239,8 +239,9 @@ bounded TIFF continuation, source mutation, private spool mode and transport fai
 DTO/OpenAPI parity, historical mapping and fresh post-IO access denial. Authored
 PostgreSQL cases cover immutable catalog rows, populated 096/098/102 document
 cascades, byte cleanup serialization, claim revocation/expiry after SQL lock waits
-and separate-connection token/member revocation during media IO. These are not yet
-reported as passing PostgreSQL or live service evidence.
+and separate-connection token/member revocation during media IO. Those cases passed
+in the 316-test PostgreSQL gate at `7a4377f`; `2439134` adds the recorded live-model
+retention and authenticated ASGI historical-read evidence.
 
 Required checks include:
 
