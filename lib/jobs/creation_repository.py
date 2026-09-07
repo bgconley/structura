@@ -14,6 +14,7 @@ from uuid import UUID
 from psycopg import sql
 from psycopg.types.json import Jsonb
 
+from lib.document_processing.models import ProcessingBinding
 from lib.jobs.errors import JobOwnershipLost, JobServiceError
 from lib.jobs.ownership import current_job_attempt, require_owned_job
 from lib.jobs.payload_policy import sanitize_job_payload
@@ -55,6 +56,18 @@ def insert_job(
     # Job INSERT takes FK locks. Acquire its fixed domain reference set before
     # the root lock; otherwise sibling publication can hold document FOR UPDATE
     # while waiting on this tree. Repeated children have exactly the same scope.
+    if (
+        processing_run_id is not None
+        and parse_generation_id is not None
+        and document_id is not None
+    ):
+        # Load after the public jobs package is initialized: processing errors
+        # intentionally inherit the shared job-ownership failure contract.
+        from lib.document_processing.request_authority_repository import lock_processing_request
+
+        lock_processing_request(
+            cur, ProcessingBinding(document_id, processing_run_id, parse_generation_id)
+        )
     _lock_domain_references(cur, household_id, document_id, batch_id)
     _lock_processing_references(
         cur, processing_run_id, parse_generation_id, document_id, household_id

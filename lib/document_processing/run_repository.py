@@ -7,8 +7,10 @@ from uuid import UUID, uuid4
 
 from psycopg.types.json import Jsonb
 
+from lib.auth.models import AuthPrincipal
 from lib.document_processing.errors import ProcessingError
 from lib.document_processing.models import ParseConfiguration, ProcessingBinding, ProcessingRun
+from lib.document_processing.request_authority_repository import admit_request
 from lib.documents.access_policy import DocumentAccessContext
 from lib.documents.access_repository import document_is_writable
 from lib.jobs import create_job_with_cursor
@@ -19,7 +21,7 @@ def start_parse_run(
     cur: Any,
     *,
     document_id: UUID,
-    access: DocumentAccessContext,
+    principal: AuthPrincipal,
     original_asset_id: UUID,
     original_sha256: str,
     request_key: UUID,
@@ -28,8 +30,7 @@ def start_parse_run(
 ) -> ProcessingRun:
     if current_job_attempt() is not None:
         raise ProcessingError("A worker cannot replace its inherited processing request.")
-    if not document_is_writable(cur, document_id, access):
-        raise ProcessingError("Document is unavailable for processing.")
+    origin = admit_request(cur, document_id, principal)
     cur.execute(
         """SELECT * FROM document_processing_runs
         WHERE document_id = %s AND request_key = %s""",
@@ -41,7 +42,10 @@ def start_parse_run(
             existing["original_asset_id"] != original_asset_id
             or existing["original_sha256"] != original_sha256
             or existing["config_sha256"] != configuration.fingerprint
-            or existing["requested_by_user_id"] != access.user_id
+            or existing["requested_by_user_id"] != origin.user_id
+            or existing["origin_kind"] != origin.kind
+            or existing["origin_session_id"] != origin.session_id
+            or existing["origin_api_token_id"] != origin.api_token_id
         ):
             raise ProcessingError("Processing request key was reused with different intent.")
         return run_from_row(existing)
@@ -70,21 +74,26 @@ def start_parse_run(
         """INSERT INTO document_processing_runs
         (id, document_id, household_id, generation, request_key, requested_by_user_id,
          original_asset_id, original_sha256, parse_generation_id, root_job_id,
-         config_json, config_sha256)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *""",
+         config_json, config_sha256, origin_kind, origin_session_id,
+         origin_api_token_id, origin_scope_ceiling)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *""",
         (
             run_id,
             document_id,
-            access.household_id,
+            origin.household_id,
             generation,
             request_key,
-            access.user_id,
+            origin.user_id,
             original_asset_id,
             original_sha256,
             parse_id,
             job_id,
             Jsonb(configuration.model_dump(mode="json")),
             configuration.fingerprint,
+            origin.kind,
+            origin.session_id,
+            origin.api_token_id,
+            list(origin.scope_ceiling),
         ),
     )
     run = run_from_row(cur.fetchone())
@@ -98,7 +107,7 @@ def start_parse_run(
         WHERE id = %s""",
         (generation, run_id, document_id),
     )
-    _audit(cur, run, access.user_id, "processing.requested")
+    _audit(cur, run, origin.user_id, "processing.requested")
     # No active worker listens to the candidate queue by default. Using the
     # existing ingest job enum avoids presenting this as legacy Docling work.
     create_job_with_cursor(
@@ -106,7 +115,7 @@ def start_parse_run(
         job_id=job_id,
         job_type="ingest",
         document_id=document_id,
-        household_id=access.household_id,
+        household_id=origin.household_id,
         queue_name=queue_name,
         processing_run_id=run_id,
         parse_generation_id=parse_id,

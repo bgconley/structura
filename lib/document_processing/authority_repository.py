@@ -6,13 +6,12 @@ from typing import Any, cast
 
 from lib.document_processing.errors import ProcessingAuthorityLost
 from lib.document_processing.models import ProcessingBinding
+from lib.document_processing.request_authority_repository import lock_processing_request
 from lib.jobs.ownership import current_job_attempt, require_owned_job
 
 
 def lock_current_run(cur: Any, binding: ProcessingBinding) -> dict[str, Any]:
-    cur.execute("SELECT id FROM documents WHERE id = %s FOR UPDATE", (binding.document_id,))
-    if cur.fetchone() is None:
-        raise ProcessingAuthorityLost("Processing document is unavailable.")
+    lock_processing_request(cur, binding)
     cur.execute(
         "SELECT id FROM document_processing_runs "
         "WHERE id = %s AND document_id = %s AND parse_generation_id = %s FOR UPDATE",
@@ -30,12 +29,13 @@ def lock_current_run(cur: Any, binding: ProcessingBinding) -> dict[str, Any]:
         WHERE r.id = %s AND r.document_id = %s AND r.parse_generation_id = %s
           AND g.creator_run_id = r.id AND g.document_id = r.document_id
           AND d.deleted_at IS NULL AND d.desired_processing_run_id = r.id
-          AND d.processing_generation = r.generation AND r.revoked_at IS NULL""",
+          AND d.processing_generation = r.generation AND r.revoked_at IS NULL
+          AND processing_request_is_authorized(r.id)""",
         (binding.processing_run_id, binding.document_id, binding.parse_generation_id),
     )
     row = cur.fetchone()
     if row is None:
-        raise ProcessingAuthorityLost("Processing run has been cancelled or superseded.")
+        raise ProcessingAuthorityLost("Processing request no longer has publication authority.")
     return cast(dict[str, Any], row)
 
 

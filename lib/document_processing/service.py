@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from lib.auth.models import AuthPrincipal
 from lib.db.connection import db_connection
 from lib.document_parsing.qwen_page_parser import ParsedSourcePage
 from lib.document_parsing.structure import DocumentStructure, SourceInventory
@@ -18,7 +19,7 @@ class DocumentProcessingService:
         self,
         *,
         document_id: UUID,
-        access: DocumentAccessContext,
+        principal: AuthPrincipal,
         original_asset_id: UUID,
         original_sha256: str,
         request_key: UUID,
@@ -29,7 +30,7 @@ class DocumentProcessingService:
             run = run_repository.start_parse_run(
                 cur,
                 document_id=document_id,
-                access=access,
+                principal=principal,
                 original_asset_id=original_asset_id,
                 original_sha256=original_sha256,
                 request_key=request_key,

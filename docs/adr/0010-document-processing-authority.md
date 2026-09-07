@@ -53,8 +53,12 @@ in isolated checkpoint/final JSON storage until all consumers are migrated.
 ## Lock order and publication authority
 
 External rendering, object staging and inference happen without open database
-transactions. Request-side services first acquire live authorization/document
-locks; worker persistence acquires the document lock before run/generation locks.
+transactions. Migration 097 adds the same actor/resource lock prefix to request
+admission, candidate persistence and bound child enqueue: household key-share,
+user share, membership share, credential share where lifecycle applies, document
+update, primary folder share and relevant existing ACL-row share, then run and
+generation locks. User/credential share locks prevent non-key revocation updates;
+key-share alone would not. New reads after waits check live authority.
 Any job foreign-key references are prelocked before the existing job-root advisory
 lock. Job roots are locked in UUID order, followed by job rows. Fresh checks after
 the locks verify desired run, exact source/generation, ancestry and the live claim
@@ -73,6 +77,45 @@ Processing-run creation is an authorized request operation, not an implicit work
 child rebind. Workers inherit fixed bindings. Future fan-in must use explicit
 assembly dependencies: an orchestration parent cannot wait for children that are
 only runnable after that parent succeeds.
+
+## Authenticated origin and durable-request lifetime
+
+Migration 097 records an immutable explicit browser-session or API-token origin,
+actor, household, `documents:write` capability and token scope ceiling. Admission
+accepts an authenticated principal, validates its credential against locked live
+rows, and captures the actual token scopes. Idempotency cannot move a request to
+another credential. Unknown pre-097 origin stays `legacy_unestablished`: it cannot
+execute, claim, renew, retry or publish, and its existing artifacts remain retained.
+No implicit operator/system authority or credential backfill is introduced.
+
+Browser session validity is an **admission requirement**. An admitted durable
+ingestion request continues after logout, session expiry/deletion or password
+reset. Its ongoing authority is the enabled actor's live household membership,
+current document write grant and desired run. Explicit run revocation, disability,
+membership loss/downgrade or loss of document access prevents further source/model
+access and publication. This is deliberate background-request lifetime, not an
+unimplemented session-revocation check.
+
+API-token-origin work additionally requires the same existing, unrevoked,
+unexpired token, matching actor/household, and write capability under both its
+captured scope ceiling and current scopes. Token reset/revocation/expiry therefore
+blocks remaining token-origin work. Browser origin IDs remain audit references;
+credential retention does not prevent their deletion, and no browser session is
+silently substituted for a missing API token.
+
+The native parser's source/model admission checks and checkpoint/inventory/seal
+transactions consume this boundary. Publication locks prevent a concurrent
+privilege removal from committing between the fresh authority check and commit.
+No locks span rendering or inference: revocation during a request cannot recall
+an already transmitted page, but rejects its checkpoint and all subsequent calls.
+Current ACLs are positive grants only; locking existing grants covers their removal
+or reduction, and the folder lock covers folder-policy changes. A future explicit
+deny/ACL management implementation must serialize policy changes on the folder
+row; nonexistent deny rows cannot be protected by row locks on today's grants.
+
+This is bounded candidate-run authority, not legacy-worker origin migration,
+watched-folder/system-origin admission, revoked-run cleanup or current-generation
+activation. These remain separate lifecycle and consumer-migration work.
 
 ## Staged consumer migration and activation
 

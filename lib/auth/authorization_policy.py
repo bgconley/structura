@@ -50,7 +50,12 @@ def permits_action(subject: AuthorizationSubject, action: Action) -> bool:
         return False
     if subject.api_token_id is None:
         return True
-    return bool(set(subject.scopes) & (_ACTION_SCOPES[action] | {"admin", "admin:*"}))
+    return scopes_permit_action(subject.scopes, action)
+
+
+def scopes_permit_action(scopes: tuple[str, ...], action: Action) -> bool:
+    """The token ceiling is independent of the live user/resource grant."""
+    return bool(set(scopes) & (_ACTION_SCOPES[action] | {"admin", "admin:*"}))
 
 
 def require_action(subject: AuthorizationSubject, action: Action) -> None:

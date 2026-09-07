@@ -45,6 +45,7 @@ BASELINE_SQL_FILES = (
     "094_completion_neutral_parse_provenance.sql",
     "095_completion_session_binding.sql",
     "096_completion_document_processing.sql",
+    "097_completion_processing_request_authority.sql",
 )
 
 

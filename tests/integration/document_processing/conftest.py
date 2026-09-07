@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import pytest
 
-from lib.auth import AuthService
+from lib.auth import AuthPrincipal, AuthService
 from lib.config import get_settings
 from lib.db.connection import db_connection
 from lib.document_parsing.model_output import PageParseOutput
@@ -32,6 +32,7 @@ from lib.jobs.ownership import JobAttempt, job_attempt_scope
 @dataclass
 class ProcessingHarness:
     access: DocumentAccessContext
+    principal: AuthPrincipal
     document_id: object
     asset_id: object
     original_sha256: str
@@ -43,7 +44,7 @@ class ProcessingHarness:
         return DocumentProcessingService().start_parse(
             **{
                 "document_id": self.document_id,
-                "access": self.access,
+                "principal": self.principal,
                 "original_asset_id": self.asset_id,
                 "original_sha256": self.original_sha256,
                 "request_key": uuid4(),
@@ -122,7 +123,7 @@ class ProcessingHarness:
 def processing(monkeypatch):
     url = os.environ.get("STRUCTURA_TEST_DATABASE_URL")
     if not url:
-        pytest.skip("Requires an isolated database migrated through 096.")
+        pytest.skip("Requires an isolated database migrated through 097.")
     monkeypatch.setenv("STRUCTURA_DATABASE_URL", url)
     monkeypatch.setenv("STRUCTURA_ENV", "test")
     get_settings.cache_clear()
@@ -131,6 +132,11 @@ def processing(monkeypatch):
         password="minimum8",
         household_name="Processing",
     )
+    session = AuthService().create_password_session(
+        email=owner.email, password="minimum8", household_id=owner.household_id
+    )
+    principal = AuthService().resolve_session_token(session.token)
+    assert principal is not None
     original = b"controlled source identity for database tests"
     digest = hashlib.sha256(original).hexdigest()
     with db_connection() as conn, conn.cursor() as cur:
@@ -167,6 +173,7 @@ def processing(monkeypatch):
     yield ProcessingHarness(
         # bootstrap_admin persists an owner membership; BootstrapResult contains IDs only.
         DocumentAccessContext(owner.household_id, owner.user_id, "owner"),
+        principal,
         document_id,
         asset_id,
         digest,

@@ -126,7 +126,7 @@ def test_concurrent_same_request_creates_one_run_and_one_root(processing):
 
 def test_request_requires_live_document_authority_and_matching_original(processing):
     with pytest.raises(ProcessingError):
-        processing.start(access=replace(processing.access, user_id=uuid4()))
+        processing.start(principal=replace(processing.principal, user_id=uuid4()))
     with pytest.raises(ProcessingError):
         processing.start(original_asset_id=uuid4())
     with db_connection() as conn, conn.cursor() as cur:
@@ -182,7 +182,7 @@ def test_candidate_commit_serializes_before_new_request_without_losing_history(p
             run = run_repository.start_parse_run(
                 cur,
                 document_id=processing.document_id,
-                access=processing.access,
+                principal=processing.principal,
                 original_asset_id=processing.asset_id,
                 original_sha256=processing.original_sha256,
                 request_key=uuid4(),
@@ -233,7 +233,7 @@ def test_new_request_commit_fences_waiting_old_candidate_after_lock(processing):
             run_repository.start_parse_run(
                 cur,
                 document_id=processing.document_id,
-                access=processing.access,
+                principal=processing.principal,
                 original_asset_id=processing.asset_id,
                 original_sha256=processing.original_sha256,
                 request_key=uuid4(),
