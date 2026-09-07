@@ -52,6 +52,8 @@ ParadeDB 17 instance and uniquely named disposable databases.
 | `47999f3` | Supervised cleanup: 1,851 unit tests, five Node-dependent skips and all static checks passed; Mypy checked 534 source files. Its database run was interrupted after 442 passes because a killed test process stranded a multiprocessing Event lock. |
 | `d56c038` | Test-only pipe barriers repaired that deadlock. All 474 PostgreSQL tests passed, including 11 real cleanup process/recovery cases, after the same 48 migrations. |
 | `c0476bf` | Batch client: 217 Linux browser tests passed, eight live-stack skips, one expected Phase 1 screenshot mismatch. The integrator inspected the new Inbox/Viewer images and captured both updated references in the pinned Linux image; their ordinary comparison gate remains separate. |
+| `d03a77e` | Complete ordinary Linux comparison passed: 218 browser tests, eight live-stack skips, with web lint/build. No screenshot tolerance was weakened. |
+| `0f2efca` | Five actual upload workflows and the disposable-stack guard passed (six tests, 11.8 seconds) against the isolated `d56c038` application images. Exact receipts and downloaded original bytes were checked. |
 
 The five Python-host skips are not counted as socket proof. That proof ran in the
 separate Node 20 image above, with six passing tests and no published host port.
@@ -83,7 +85,38 @@ fresh disposable database, new synthetic user and independent object root host t
 validation stack. No host port is published, no inference worker is running, and
 the archive database/storage and resident model services are untouched. Homepage
 HTTP 200, proxied unauthenticated session HTTP 401 and actual cleanup health HTTP 200
-were observed. These are startup checks; real browser upload acceptance is pending.
+were observed. Cleanup health remained HTTP 200 with zero consecutive failures
+after browser acceptance.
+
+The actual browser gate at `0f2efca` exercised PDF registration and Viewer download,
+same-name/different-byte batches without losing selection, exact duplicate reuse
+and separate copies, mobile keyboard PNG upload, refresh followed by an explicit
+GET without another PUT, and unsupported-signature rejection followed by a valid
+upload. Every accepted/reused original was compared byte-for-byte with its synthetic
+source and its receipt SHA256. Reuse preserved the existing document's metadata and
+facts. No inference or extraction quality is implied by upload acceptance.
+
+The first run at `a9ed8b1` had five false test failures: Chromium reported successful
+PUT responses but evicted their bodies from its inspector cache. A diagnostic run
+captured the exact `Network.getResponseBody` eviction error. The repaired helper
+observes the unchanged native XHR JSON alongside inspector responses and errors;
+it issues no recovery request, changes no transport or application behavior, and
+binds observations to the registered operation/batch and exact upload ID. The
+receipt, original-download and no-extra-PUT assertions remain intact.
+
+Test source and image source are deliberately recorded separately. The application
+images are `d56c038` API
+`sha256:af74ea68fa0c3cde4b2d0d6a189492b79a2783251ecd8fe3272a47c8c3dfaeeb`
+and web
+`sha256:23a77a1220dd2b94336790f74c62b83f43eaa192b10327e40a145af86e4501c7`.
+The browser dependency image is
+`sha256:38e19a8dd16b31ddb9325cc9b5696707fe5bbb59a9f51bb5303be4dc9543da33`,
+built on the pinned browser base with lockfile SHA256
+`0d2f97b41377fb4fb09bf9f62ee4b0a76113fd31606cff34b78e75c8068c5a26`.
+The runner used a clean `0f2efca` worktree on the internal network without egress.
+Protected traces, logs and the reviewed 390-pixel mobile capture remain under
+`upload-live-d56c038/browser-0f2efca` in the private validation root. This capture
+proves that tested responsive state, not final mobile product acceptance.
 
 The batch client uses exact operation/receipt identity, a bounded queue-wide capacity
 pause, explicit duplicate choices, raw File transport and fresh outcome checks.
@@ -94,13 +127,15 @@ removes the old global acceptance banner and adds functional upload queue contro
 
 ## Remaining acceptance
 
-The complete ordinary browser comparison gate and real browser/API/proxy upload
-acceptance remain required at this checkpoint. The isolated stack is not a production
-cutover. Process kills and fsync ordering do not establish host power-loss recovery.
+Ordinary browser comparison and the bounded real browser/API/proxy upload gate
+passed at the separately identified candidates above. The isolated stack is not a
+production cutover. Process kills and fsync ordering do not establish host power-loss
+recovery; broader access, workflow and capacity acceptance remains open.
 
-The combined page-understanding v2 contract, raw-member-bound claim import,
-candidate/review integration, coherent native parse/claim/index publication and
-Docling-free end-to-end operation remain unfinished. These persistence tests are
+The combined page-understanding v2 pure contract is integrated at `312e305` with
+79 focused synthetic tests. Its versioned runtime/reader integration, raw-member-bound
+claim import, candidate/review integration, coherent native parse/claim/index publication
+and Docling-free end-to-end operation remain unfinished. These persistence tests are
 not extraction-quality measurements. Representative original-scored coverage,
 unseen holdout evaluation, search usefulness, shared Oxcart admission and Blackbird
 ingestion/query embedding capacity remain open. No model service was restarted or
