@@ -112,9 +112,9 @@ def register_source(output_dir: Path, original: bytes) -> ProbeSource:
     if principal is None:
         raise RuntimeError("Isolated authenticated parser principal was not established.")
     storage = ObjectStorage(
-        canonical_root=output_dir / "canonical",
-        derived_root=output_dir / "derived",
-        export_root=output_dir / "exports",
+        canonical_root=output_dir / "objects" / "canonical",
+        derived_root=output_dir / "objects" / "derived",
+        export_root=output_dir / "objects" / "exports",
     )
     stored = storage.store_bytes(original, kind="canonical", role="original")
     with db_connection(database_url, connect_timeout=5) as conn, conn.cursor() as cur:

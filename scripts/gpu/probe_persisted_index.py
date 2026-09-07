@@ -54,6 +54,10 @@ from scripts.gpu.probe_persisted_parse import (  # noqa: E402
     score_persisted_run,
     write_private,
 )
+from scripts.gpu.probe_retained_evidence import (  # noqa: E402
+    retain_and_replay,
+    verify_historical_api,
+)
 
 QUERIES = (
     ("Which page has the invoice line items and service amount 12.50?", 1),
@@ -250,6 +254,8 @@ def main() -> int:
     settings = get_settings()
     if settings.model_mode not in {"live", "required"}:
         parser.error("This probe requires live models and an isolated integration database.")
+    if settings.runtime_root.resolve() != args.output_dir.resolve():
+        parser.error("--output-dir must match isolated STRUCTURA_RUNTIME_ROOT for evidence reads.")
     verify_isolated_database(settings.database_url)
     args.output_dir.mkdir(mode=0o700, parents=False, exist_ok=False)
     commit = subprocess.check_output(  # nosec B603
@@ -267,9 +273,10 @@ def main() -> int:
     # Query labels are frozen before any parse/embedding invocation, independently
     # of the later model outputs. This remains a tiny exposed regression fixture.
     write_private(args.output_dir / "query-reference.json", {"queries": QUERIES, "commit": commit})
-    indexed = []
+    indexed, retained = [], []
 
     def before_ack(run: ProcessingRun) -> None:
+        retained.append(retain_and_replay(run, source))
         indexed.append(index_and_replay(run, source, settings, args.output_dir))
 
     deployment = DeclaredParserDeployment(
@@ -294,6 +301,10 @@ def main() -> int:
             "parse_execution": execution,
             "parse_score": score,
             "index": indexed[0],
+            "retained_evidence": {
+                "execution": retained[0],
+                "api": verify_historical_api(run, source, args.output_dir),
+            },
             "production_activated": False,
             "release_acceptance": "not_evaluated",
         },
