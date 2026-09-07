@@ -3,10 +3,13 @@ from __future__ import annotations
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from starlette.concurrency import run_in_threadpool
 
 from apps.api.structura_api.dependencies import require_document_read, require_document_write
+from apps.api.structura_api.document_upload_form import read_document_upload
 from lib.auth import AuthPrincipal
+from lib.config import get_settings
 from lib.contracts import AcceptedDocumentUpload, DocumentListResponse
 from lib.documents.access_policy import DocumentAccessContext
 from lib.documents.browse_query import MAX_BROWSE_OFFSET, DocumentSort, InboxState
@@ -60,30 +63,30 @@ def list_documents(
     response_model=AcceptedDocumentUpload,
     status_code=status.HTTP_202_ACCEPTED,
 )
-def create_document(
+async def create_document(
+    request: Request,
     principal: Annotated[AuthPrincipal, Depends(require_document_write)],
-    file: Annotated[UploadFile, File()],
-    source: Annotated[str, Form()],
-    suppliedTitle: Annotated[str | None, Form()] = None,
-    hintsJson: Annotated[str | None, Form()] = None,
 ) -> AcceptedDocumentUpload:
     if not principal.household_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Household required")
     try:
-        hints = parse_hints_json(hintsJson)
-        result = ingest_document_stream(
-            file.file,
-            request=DocumentIngestionRequest(
-                household_id=principal.household_id,
-                owner_user_id=principal.user_id,
-                source=source,
-                filename=file.filename,
-                declared_mime_type=file.content_type,
-                supplied_title=suppliedTitle,
-                hints=hints,
-                requested_by="user",
-            ),
-        )
+        async with read_document_upload(
+            request, file_limit=get_settings().max_upload_bytes
+        ) as form:
+            result = await run_in_threadpool(
+                ingest_document_stream,
+                form.file.file,
+                request=DocumentIngestionRequest(
+                    household_id=principal.household_id,
+                    owner_user_id=principal.user_id,
+                    source=form.source,
+                    filename=form.file.filename,
+                    declared_mime_type=form.file.content_type,
+                    supplied_title=form.supplied_title,
+                    hints=parse_hints_json(form.hints_json),
+                    requested_by="user",
+                ),
+            )
     except DocumentIngestionError as exc:
         raise HTTPException(
             status_code=exc.status_code,

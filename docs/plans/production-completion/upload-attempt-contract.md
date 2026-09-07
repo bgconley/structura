@@ -21,6 +21,19 @@ one network hop. Legacy multipart gets a separately bounded envelope allowance.
 Small JSON control bodies have their own limit. Oversize and interrupted streams
 must release their file handles and leave no accepted receipt.
 
+The legacy API repair authenticates and checks write/CSRF authority before any
+multipart receive call. Its adapter enforces the configured file limit independently
+of a 64 KiB total envelope allowance, one file and three named control fields,
+16 KiB per field and aggregate part headers, matching actual/declared length when
+provided, a 30-second idle timeout and a ten-minute transfer deadline. Missing
+Content-Length remains supported. Ambiguous duplicate fields, unfinished multipart
+boundaries and malformed headers are rejected; completed and unfinished temporary
+files close on success, failure, disconnect and cancellation. These stricter bounds
+preserve the documented `file`, `source`, `suppliedTitle`, `hintsJson` wire format
+and acceptance receipt. Intake disk/database work runs outside the API event loop.
+This repair does not add durable admission/replay or a post-transfer credential
+fence to the legacy endpoint; those remain distinct from the stronger resource below.
+
 ## Resource and operation identity
 
 - `POST /api/v1/uploads`: an actor/household-scoped operation UUID, client batch UUID,
