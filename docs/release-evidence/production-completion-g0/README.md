@@ -50,6 +50,8 @@ runs/checkpoints through migration 096, and real concurrent ingestion/query adap
 proof for both embedding services on Blackbird's PRO 4000. It records cold latency
 spikes and remaining activation, quality and capacity gates explicitly.
 
+[The persisted source checkpoint](persisted-source-checkpoint.md) records exact-generation history, 097 request authority, transparent-image and PNG-encoding fixes, and two real 27B source-scored synthetic ingests at `5f61836`. It retains the weak layout diagnostics and explicitly open quality/publication gates.
+
 The cached validation images observed on Oxcart are:
 
 | Image | Local image ID |

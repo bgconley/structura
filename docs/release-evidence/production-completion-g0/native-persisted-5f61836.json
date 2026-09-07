@@ -1,0 +1,744 @@
+{
+  "pre-inference-reference": {
+    "annotation_sha256": "40b5eb9577d9d33f53c1f7f318e9ec646366372931c127b92085f380ba5fa0ff",
+    "matching_policy": "structura.parse_matching.v1",
+    "original_annotation_sha256": "1a085acaab5e740b976183d67e6f38de0ac70c58714cb9511e56f498d34b5fb4",
+    "original_sha256": "9229d55ba55a35f98362aeb788c5d9640a1026f6e3c3e05c715390f11be3e905",
+    "recorded_at": "2026-09-07T08:47:17.933130+00:00",
+    "source_commit": "5f618364cf516f691aec1ad1c97d9144053f8c45",
+    "split": "synthetic_regression",
+    "threshold_policy": "not_ratified"
+  },
+  "render-binding": {
+    "label_changes": "none",
+    "operation": "lossless_render_encoding_rebind_v1",
+    "original_annotation_sha256": "1a085acaab5e740b976183d67e6f38de0ac70c58714cb9511e56f498d34b5fb4",
+    "original_byte_size": 10048,
+    "original_mime_type": "image/tiff",
+    "original_sha256": "9229d55ba55a35f98362aeb788c5d9640a1026f6e3c3e05c715390f11be3e905",
+    "pages": [
+      {
+        "page_number": 1,
+        "pixel_height": 800,
+        "pixel_width": 600,
+        "rebound_image_sha256": "e100bab47ce6ba29fac9296469dc728672d975e73be8a72fc85261b609d267bf",
+        "reference_image_sha256": "51751084e5cfe05350a213c9607fa66b6c209449e9b71b8591ea51e31b4f1689",
+        "renderer": "pillow-exif-oriented",
+        "renderer_version": "native-image-raster-white-v2/Pillow-12.2.0/png-zlib-1.3",
+        "rgb8_sha256": "227d5edb253e664e8e91bd4a0a0b8cf601f3c0bdd4458efea002ca3d761fd252"
+      },
+      {
+        "page_number": 2,
+        "pixel_height": 800,
+        "pixel_width": 600,
+        "rebound_image_sha256": "6d7ce563a19428ea805fe33644c551f3c2b81e475ea6bf99987eeade2c35a47a",
+        "reference_image_sha256": "93c3fe0ac58cf9732debcc3c7d549f5622a3f20461ab531a32d3c9c7b35a2279",
+        "renderer": "pillow-exif-oriented",
+        "renderer_version": "native-image-raster-white-v2/Pillow-12.2.0/png-zlib-1.3",
+        "rgb8_sha256": "22d2a676b62663af59c12fc25ea031610e86326ca1549412502deda9208f2a4c"
+      }
+    ],
+    "rebound_annotation_sha256": "40b5eb9577d9d33f53c1f7f318e9ec646366372931c127b92085f380ba5fa0ff",
+    "render_scale": 2,
+    "source_inventory_sha256": "0b411fae3deda6d1e203e3b652dc0a4999d33ccaf5694723bddcfc2454f97880"
+  },
+  "report": {
+    "commit": "5f618364cf516f691aec1ad1c97d9144053f8c45",
+    "production_activated": false,
+    "release_acceptance": "not_evaluated",
+    "runs": [
+      {
+        "coverage": {
+          "inventoried_pages": 2,
+          "reported_processed_fraction": 1.0,
+          "reported_processed_pages": 2,
+          "source_pages": 2,
+          "state_counts": {
+            "processed": 2
+          },
+          "text_not_evaluated_pages": 0,
+          "text_scored_pages": 2
+        },
+        "execution": {
+          "actual_adapter_calls": 2,
+          "batches": 2,
+          "deployment_declaration": "declared-live:runtime-config-sha256:191e0af232104ed8b65258cf3fb2b842e288008baca7633c11b82a1ac7203aab",
+          "new_pages": 2,
+          "page_count": 2,
+          "replay_adapter_calls": 0,
+          "resumed_pages": 0,
+          "structure_sha256": "dbc26a070d7d47d6d23f8540121e4b9d59691e277fb59079f1df198ee91bbae5"
+        },
+        "parse_tokens": {
+          "expected": 12,
+          "inserted": 0,
+          "matched": 12,
+          "observed": 12,
+          "omitted": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "status": "computed"
+        },
+        "run_status": "superseded",
+        "searchable_tokens": {
+          "expected": 12,
+          "inserted": 0,
+          "matched": 12,
+          "observed": 12,
+          "omitted": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "status": "computed"
+        },
+        "source_verification": {
+          "invocation_authenticity": "not_evaluated",
+          "original_asset_id": "0cad7284-50e7-4049-bde6-9f1906c2107c",
+          "original_bytes": "verified",
+          "original_sha256": "9229d55ba55a35f98362aeb788c5d9640a1026f6e3c3e05c715390f11be3e905",
+          "rendered_source_identity": "reproduced",
+          "source_pixel_support": "not_evaluated",
+          "verified_pages": 2
+        }
+      },
+      {
+        "coverage": {
+          "inventoried_pages": 2,
+          "reported_processed_fraction": 1.0,
+          "reported_processed_pages": 2,
+          "source_pages": 2,
+          "state_counts": {
+            "processed": 2
+          },
+          "text_not_evaluated_pages": 0,
+          "text_scored_pages": 2
+        },
+        "execution": {
+          "actual_adapter_calls": 2,
+          "batches": 2,
+          "deployment_declaration": "declared-live:runtime-config-sha256:191e0af232104ed8b65258cf3fb2b842e288008baca7633c11b82a1ac7203aab",
+          "new_pages": 2,
+          "page_count": 2,
+          "replay_adapter_calls": 0,
+          "resumed_pages": 0,
+          "structure_sha256": "f86d98d3f2ad8056a2b58643e3cc69d3118775b0d44f47fb0d9d8c7c042200ca"
+        },
+        "parse_tokens": {
+          "expected": 12,
+          "inserted": 0,
+          "matched": 12,
+          "observed": 12,
+          "omitted": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "status": "computed"
+        },
+        "run_status": "sealed",
+        "searchable_tokens": {
+          "expected": 12,
+          "inserted": 0,
+          "matched": 12,
+          "observed": 12,
+          "omitted": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "status": "computed"
+        },
+        "source_verification": {
+          "invocation_authenticity": "not_evaluated",
+          "original_asset_id": "0cad7284-50e7-4049-bde6-9f1906c2107c",
+          "original_bytes": "verified",
+          "original_sha256": "9229d55ba55a35f98362aeb788c5d9640a1026f6e3c3e05c715390f11be3e905",
+          "rendered_source_identity": "reproduced",
+          "source_pixel_support": "not_evaluated",
+          "verified_pages": 2
+        }
+      }
+    ]
+  },
+  "score-1": {
+    "documents": [
+      {
+        "annotation_sha256": "40b5eb9577d9d33f53c1f7f318e9ec646366372931c127b92085f380ba5fa0ff",
+        "capture_sha256": "9048c3d50c169152227e7707fd7342dd079888e3caeaf4f0d6a64cc27188e6fc",
+        "continuation": {
+          "correct_links": 0,
+          "expected_links": 0,
+          "false_joins": 0,
+          "omitted_links": 0,
+          "unrelated_pairs": 0
+        },
+        "coverage": {
+          "inventoried_pages": 2,
+          "reported_processed_fraction": 1.0,
+          "reported_processed_pages": 2,
+          "source_pages": 2,
+          "state_counts": {
+            "processed": 2
+          },
+          "text_not_evaluated_pages": 0,
+          "text_scored_pages": 2
+        },
+        "fixture_type": "model_backed",
+        "item_id": "synthetic-invoice",
+        "pages": [
+          {
+            "layout": {
+              "geometry": {
+                "expected_regions": 4,
+                "iou_sum": 1.1949085123309466,
+                "matched_regions": 3,
+                "mean_iou_with_missing_zero": 0.29872712808273666,
+                "source_pixel_support": "not_evaluated"
+              },
+              "reading_order": {
+                "accuracy": 0.6666666666666666,
+                "correct_pairs": 2,
+                "expected_pairs": 3,
+                "missing_pairs": 1,
+                "reversed_pairs": 0
+              },
+              "regions": {
+                "expected": 4,
+                "inserted": 1,
+                "matched": 3,
+                "observed": 4,
+                "omitted": 1,
+                "precision": 0.75,
+                "recall": 0.75
+              },
+              "tables": {
+                "cell_text_exact": 4,
+                "cell_text_expected": 4,
+                "cells": {
+                  "expected": 4,
+                  "inserted": 0,
+                  "matched": 4,
+                  "observed": 4,
+                  "omitted": 0,
+                  "precision": 1.0,
+                  "recall": 1.0
+                },
+                "grid_exact": 1,
+                "grid_expected": 1,
+                "span_exact": 4,
+                "span_expected": 4,
+                "tables": {
+                  "expected": 1,
+                  "inserted": 0,
+                  "matched": 1,
+                  "observed": 1,
+                  "omitted": 0,
+                  "precision": 1.0,
+                  "recall": 1.0
+                }
+              }
+            },
+            "page_number": 1,
+            "state": "processed",
+            "text": {
+              "exact_sensitive_text": {
+                "amount": {
+                  "expected": 1,
+                  "inserted": 0,
+                  "matched": 1,
+                  "observed": 1,
+                  "omitted": 0,
+                  "precision": 1.0,
+                  "recall": 1.0
+                },
+                "date": {
+                  "expected": 0,
+                  "inserted": 0,
+                  "matched": 0,
+                  "observed": 0,
+                  "omitted": 0,
+                  "precision": null,
+                  "recall": null
+                },
+                "identifier": {
+                  "expected": 1,
+                  "inserted": 0,
+                  "matched": 1,
+                  "observed": 1,
+                  "omitted": 0,
+                  "precision": 1.0,
+                  "recall": 1.0
+                }
+              },
+              "parse_tokens": {
+                "expected": 8,
+                "inserted": 0,
+                "matched": 8,
+                "observed": 8,
+                "omitted": 0,
+                "precision": 1.0,
+                "recall": 1.0
+              },
+              "searchable_tokens": {
+                "expected": 8,
+                "inserted": 0,
+                "matched": 8,
+                "observed": 8,
+                "omitted": 0,
+                "precision": 1.0,
+                "recall": 1.0
+              },
+              "status": "computed"
+            }
+          },
+          {
+            "layout": {
+              "geometry": {
+                "expected_regions": 2,
+                "iou_sum": 0.14807364805464115,
+                "matched_regions": 2,
+                "mean_iou_with_missing_zero": 0.07403682402732058,
+                "source_pixel_support": "not_evaluated"
+              },
+              "reading_order": {
+                "accuracy": 1.0,
+                "correct_pairs": 1,
+                "expected_pairs": 1,
+                "missing_pairs": 0,
+                "reversed_pairs": 0
+              },
+              "regions": {
+                "expected": 2,
+                "inserted": 0,
+                "matched": 2,
+                "observed": 2,
+                "omitted": 0,
+                "precision": 1.0,
+                "recall": 1.0
+              },
+              "tables": {
+                "cell_text_exact": 0,
+                "cell_text_expected": 0,
+                "cells": {
+                  "expected": 0,
+                  "inserted": 0,
+                  "matched": 0,
+                  "observed": 0,
+                  "omitted": 0,
+                  "precision": null,
+                  "recall": null
+                },
+                "grid_exact": 0,
+                "grid_expected": 0,
+                "span_exact": 0,
+                "span_expected": 0,
+                "tables": {
+                  "expected": 0,
+                  "inserted": 0,
+                  "matched": 0,
+                  "observed": 0,
+                  "omitted": 0,
+                  "precision": null,
+                  "recall": null
+                }
+              }
+            },
+            "page_number": 2,
+            "state": "processed",
+            "text": {
+              "exact_sensitive_text": {
+                "amount": {
+                  "expected": 0,
+                  "inserted": 0,
+                  "matched": 0,
+                  "observed": 0,
+                  "omitted": 0,
+                  "precision": null,
+                  "recall": null
+                },
+                "date": {
+                  "expected": 1,
+                  "inserted": 0,
+                  "matched": 1,
+                  "observed": 1,
+                  "omitted": 0,
+                  "precision": 1.0,
+                  "recall": 1.0
+                },
+                "identifier": {
+                  "expected": 0,
+                  "inserted": 0,
+                  "matched": 0,
+                  "observed": 0,
+                  "omitted": 0,
+                  "precision": null,
+                  "recall": null
+                }
+              },
+              "parse_tokens": {
+                "expected": 4,
+                "inserted": 0,
+                "matched": 4,
+                "observed": 4,
+                "omitted": 0,
+                "precision": 1.0,
+                "recall": 1.0
+              },
+              "searchable_tokens": {
+                "expected": 4,
+                "inserted": 0,
+                "matched": 4,
+                "observed": 4,
+                "omitted": 0,
+                "precision": 1.0,
+                "recall": 1.0
+              },
+              "status": "computed"
+            }
+          }
+        ],
+        "parse_generation_id": "055b539a-bd42-4e0e-91f9-20a291a6976c",
+        "parse_tokens": {
+          "expected": 12,
+          "inserted": 0,
+          "matched": 12,
+          "observed": 12,
+          "omitted": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "status": "computed"
+        },
+        "processing_run_id": "41108f7c-c934-4f52-9fb7-75801cd17b11",
+        "searchable_tokens": {
+          "expected": 12,
+          "inserted": 0,
+          "matched": 12,
+          "observed": 12,
+          "omitted": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "status": "computed"
+        }
+      }
+    ],
+    "documents_expected": 1,
+    "documents_scored": 1,
+    "evaluation_id": "6b898fab-d31b-43fd-8f67-bb271b4d2761",
+    "limitations": [
+      "Hashes establish consistency with the caller's manifest pin, not independent authenticity.",
+      "Text uses NFC and whitespace tokenization with occurrence-aware contiguous-block alignment; it is not minimum edit distance, CER, or WER. Case, punctuation and digits are preserved.",
+      "Text on pages with unresolved annotation regions is not evaluated; those pages remain in coverage totals. Partial reference scoring needs a future adjudicated alignment policy.",
+      "Exact sensitive-text counts cover annotated literal values only, not all possible identifiers.",
+      "Region matching is greedy, same-kind and one-to-one; segmentation differences can reduce layout scores independently of full-page text fidelity. IoU does not establish pixel support.",
+      "Table cells match fixed grid positions; shifted/segmented rows and uncertain continuation labels need adjudication. Empty unannotated grid positions are not assumed absent cells.",
+      "Only the single-page structura.page_parse.v1 raw-to-normalized contract is supported.",
+      "No quality thresholds are ratified; computed diagnostics cannot pass a release gate."
+    ],
+    "manifest_sha256": "6dbb8373835e3641b593cf4030efd711c4a5be19cc8c631f292bc40c91bd9119",
+    "matching_policy": "structura.parse_matching.v1",
+    "schema_version": "structura.parse_score_report.v1",
+    "scorer_version": "structura.native_parse_scorer.v1",
+    "status": "computed",
+    "threshold_policy": "not_ratified",
+    "unevaluated_stages": {
+      "canonical_correctness": "not_evaluated",
+      "classification": "not_evaluated",
+      "holdout_registry_authenticity": "not_evaluated",
+      "live_invocation_authenticity": "not_evaluated",
+      "operational_recovery": "not_evaluated",
+      "release_acceptance": "not_evaluated",
+      "retrieval_relevance": "not_evaluated",
+      "review_effort": "not_evaluated",
+      "source_pixel_support": "not_evaluated",
+      "typed_extraction": "not_evaluated"
+    }
+  },
+  "score-2": {
+    "documents": [
+      {
+        "annotation_sha256": "40b5eb9577d9d33f53c1f7f318e9ec646366372931c127b92085f380ba5fa0ff",
+        "capture_sha256": "7c96fda4d3a582539e72466a9a623f3207da281662a3bc111ac676183ad50cb4",
+        "continuation": {
+          "correct_links": 0,
+          "expected_links": 0,
+          "false_joins": 0,
+          "omitted_links": 0,
+          "unrelated_pairs": 0
+        },
+        "coverage": {
+          "inventoried_pages": 2,
+          "reported_processed_fraction": 1.0,
+          "reported_processed_pages": 2,
+          "source_pages": 2,
+          "state_counts": {
+            "processed": 2
+          },
+          "text_not_evaluated_pages": 0,
+          "text_scored_pages": 2
+        },
+        "fixture_type": "model_backed",
+        "item_id": "synthetic-invoice",
+        "pages": [
+          {
+            "layout": {
+              "geometry": {
+                "expected_regions": 4,
+                "iou_sum": 1.1949085123309466,
+                "matched_regions": 3,
+                "mean_iou_with_missing_zero": 0.29872712808273666,
+                "source_pixel_support": "not_evaluated"
+              },
+              "reading_order": {
+                "accuracy": 0.6666666666666666,
+                "correct_pairs": 2,
+                "expected_pairs": 3,
+                "missing_pairs": 1,
+                "reversed_pairs": 0
+              },
+              "regions": {
+                "expected": 4,
+                "inserted": 1,
+                "matched": 3,
+                "observed": 4,
+                "omitted": 1,
+                "precision": 0.75,
+                "recall": 0.75
+              },
+              "tables": {
+                "cell_text_exact": 4,
+                "cell_text_expected": 4,
+                "cells": {
+                  "expected": 4,
+                  "inserted": 0,
+                  "matched": 4,
+                  "observed": 4,
+                  "omitted": 0,
+                  "precision": 1.0,
+                  "recall": 1.0
+                },
+                "grid_exact": 1,
+                "grid_expected": 1,
+                "span_exact": 4,
+                "span_expected": 4,
+                "tables": {
+                  "expected": 1,
+                  "inserted": 0,
+                  "matched": 1,
+                  "observed": 1,
+                  "omitted": 0,
+                  "precision": 1.0,
+                  "recall": 1.0
+                }
+              }
+            },
+            "page_number": 1,
+            "state": "processed",
+            "text": {
+              "exact_sensitive_text": {
+                "amount": {
+                  "expected": 1,
+                  "inserted": 0,
+                  "matched": 1,
+                  "observed": 1,
+                  "omitted": 0,
+                  "precision": 1.0,
+                  "recall": 1.0
+                },
+                "date": {
+                  "expected": 0,
+                  "inserted": 0,
+                  "matched": 0,
+                  "observed": 0,
+                  "omitted": 0,
+                  "precision": null,
+                  "recall": null
+                },
+                "identifier": {
+                  "expected": 1,
+                  "inserted": 0,
+                  "matched": 1,
+                  "observed": 1,
+                  "omitted": 0,
+                  "precision": 1.0,
+                  "recall": 1.0
+                }
+              },
+              "parse_tokens": {
+                "expected": 8,
+                "inserted": 0,
+                "matched": 8,
+                "observed": 8,
+                "omitted": 0,
+                "precision": 1.0,
+                "recall": 1.0
+              },
+              "searchable_tokens": {
+                "expected": 8,
+                "inserted": 0,
+                "matched": 8,
+                "observed": 8,
+                "omitted": 0,
+                "precision": 1.0,
+                "recall": 1.0
+              },
+              "status": "computed"
+            }
+          },
+          {
+            "layout": {
+              "geometry": {
+                "expected_regions": 2,
+                "iou_sum": 0.14807364805464115,
+                "matched_regions": 2,
+                "mean_iou_with_missing_zero": 0.07403682402732058,
+                "source_pixel_support": "not_evaluated"
+              },
+              "reading_order": {
+                "accuracy": 1.0,
+                "correct_pairs": 1,
+                "expected_pairs": 1,
+                "missing_pairs": 0,
+                "reversed_pairs": 0
+              },
+              "regions": {
+                "expected": 2,
+                "inserted": 0,
+                "matched": 2,
+                "observed": 2,
+                "omitted": 0,
+                "precision": 1.0,
+                "recall": 1.0
+              },
+              "tables": {
+                "cell_text_exact": 0,
+                "cell_text_expected": 0,
+                "cells": {
+                  "expected": 0,
+                  "inserted": 0,
+                  "matched": 0,
+                  "observed": 0,
+                  "omitted": 0,
+                  "precision": null,
+                  "recall": null
+                },
+                "grid_exact": 0,
+                "grid_expected": 0,
+                "span_exact": 0,
+                "span_expected": 0,
+                "tables": {
+                  "expected": 0,
+                  "inserted": 0,
+                  "matched": 0,
+                  "observed": 0,
+                  "omitted": 0,
+                  "precision": null,
+                  "recall": null
+                }
+              }
+            },
+            "page_number": 2,
+            "state": "processed",
+            "text": {
+              "exact_sensitive_text": {
+                "amount": {
+                  "expected": 0,
+                  "inserted": 0,
+                  "matched": 0,
+                  "observed": 0,
+                  "omitted": 0,
+                  "precision": null,
+                  "recall": null
+                },
+                "date": {
+                  "expected": 1,
+                  "inserted": 0,
+                  "matched": 1,
+                  "observed": 1,
+                  "omitted": 0,
+                  "precision": 1.0,
+                  "recall": 1.0
+                },
+                "identifier": {
+                  "expected": 0,
+                  "inserted": 0,
+                  "matched": 0,
+                  "observed": 0,
+                  "omitted": 0,
+                  "precision": null,
+                  "recall": null
+                }
+              },
+              "parse_tokens": {
+                "expected": 4,
+                "inserted": 0,
+                "matched": 4,
+                "observed": 4,
+                "omitted": 0,
+                "precision": 1.0,
+                "recall": 1.0
+              },
+              "searchable_tokens": {
+                "expected": 4,
+                "inserted": 0,
+                "matched": 4,
+                "observed": 4,
+                "omitted": 0,
+                "precision": 1.0,
+                "recall": 1.0
+              },
+              "status": "computed"
+            }
+          }
+        ],
+        "parse_generation_id": "6b23ee40-aeb9-4e1f-8fc2-088858edc665",
+        "parse_tokens": {
+          "expected": 12,
+          "inserted": 0,
+          "matched": 12,
+          "observed": 12,
+          "omitted": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "status": "computed"
+        },
+        "processing_run_id": "1a02b70d-46d3-4673-a190-2426feb1f053",
+        "searchable_tokens": {
+          "expected": 12,
+          "inserted": 0,
+          "matched": 12,
+          "observed": 12,
+          "omitted": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "status": "computed"
+        }
+      }
+    ],
+    "documents_expected": 1,
+    "documents_scored": 1,
+    "evaluation_id": "297bbcfd-0349-473c-9686-ccb1a854d502",
+    "limitations": [
+      "Hashes establish consistency with the caller's manifest pin, not independent authenticity.",
+      "Text uses NFC and whitespace tokenization with occurrence-aware contiguous-block alignment; it is not minimum edit distance, CER, or WER. Case, punctuation and digits are preserved.",
+      "Text on pages with unresolved annotation regions is not evaluated; those pages remain in coverage totals. Partial reference scoring needs a future adjudicated alignment policy.",
+      "Exact sensitive-text counts cover annotated literal values only, not all possible identifiers.",
+      "Region matching is greedy, same-kind and one-to-one; segmentation differences can reduce layout scores independently of full-page text fidelity. IoU does not establish pixel support.",
+      "Table cells match fixed grid positions; shifted/segmented rows and uncertain continuation labels need adjudication. Empty unannotated grid positions are not assumed absent cells.",
+      "Only the single-page structura.page_parse.v1 raw-to-normalized contract is supported.",
+      "No quality thresholds are ratified; computed diagnostics cannot pass a release gate."
+    ],
+    "manifest_sha256": "99e6a6dc559b457fbc3e6125eaa40701328303173f4739d23d67f1efcdc37bf4",
+    "matching_policy": "structura.parse_matching.v1",
+    "schema_version": "structura.parse_score_report.v1",
+    "scorer_version": "structura.native_parse_scorer.v1",
+    "status": "computed",
+    "threshold_policy": "not_ratified",
+    "unevaluated_stages": {
+      "canonical_correctness": "not_evaluated",
+      "classification": "not_evaluated",
+      "holdout_registry_authenticity": "not_evaluated",
+      "live_invocation_authenticity": "not_evaluated",
+      "operational_recovery": "not_evaluated",
+      "release_acceptance": "not_evaluated",
+      "retrieval_relevance": "not_evaluated",
+      "review_effort": "not_evaluated",
+      "source_pixel_support": "not_evaluated",
+      "typed_extraction": "not_evaluated"
+    }
+  }
+}

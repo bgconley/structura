@@ -1,0 +1,31 @@
+# Persisted source and authority checkpoint
+
+Date: 2026-09-07. Evaluated native model candidate: `5f618364cf516f691aec1ad1c97d9144053f8c45` on `codex/production-completion`. G1/G2/G3 and production activation remain open.
+
+## Real model and retained-source proof
+
+The [persisted parser probe](../../../scripts/gpu/probe_persisted_parse.py) ran against the existing authenticated Oxcart `qwen38-27b-bf16-oxcart` endpoint. Two independent ingests of the committed two-page synthetic TIFF each made **two actual adapter calls**, processed both pages in bounded batches and persisted a sealed generation. Replaying each generation made **zero additional calls** and retained its structure hash. The first generation was read by its exact IDs after the second superseded it; original bytes and source renders reproduced exactly for both captures. This used a fresh disposable database with all **40 migrations through 097** and an isolated object root. No active application publication or existing archive was changed. The run took 30.1 seconds including database initialization and authentication; that is not a per-request latency or capacity statistic.
+
+[The machine-readable evidence](native-persisted-5f61836.json) preserves both complete score reports, both execution summaries, the reference pin written before inference and the render-binding record. Each ingest retained all **12 expected reference tokens** in parse and searchable chunks, with zero omitted or inserted tokens. The one table's grid, four cell texts and four spans matched. Exact annotated identifier, amount and date occurrences survived. These are tiny synthetic regression results, not representative quality estimates, canonical fact correctness, retrieval relevance or blind holdout acceptance.
+
+Layout did not obtain equivalent diagnostics: page 1 matched three of four reference regions and two of three reading-order pairs, with one unmatched reference region and one unmatched output region. Mean region IoU with missing regions counted as zero was about **0.299** on page 1 and **0.074** on page 2, identically across both runs. The reference uses broad author-defined regions around small printed text; independent region adjudication and actual Viewer source-support review are still required to distinguish segmentation/label differences from incorrect localization. Do not interpret exact text or a schema-valid box as evidence that localization is production-ready. The full scores are retained without threshold changes or omission of these results.
+
+The capture adapter deliberately reports runtime invocation authenticity as `not_evaluated`; immutable database hashes cannot prove an HTTP call occurred. This controlled probe separately counted calls through the real authenticated client. Its runtime configuration revision remains externally declared, not a weight-checkpoint attestation. No model restart/reconfiguration or fixture fallback occurred.
+
+## Source encoding and transparency corrections
+
+Review reproduced a real defect where alpha was discarded from transparent black text, creating a solid black raster. Rendering now composites image transparency onto an explicitly versioned white canvas while preserving orientation and opaque pixels. Regressions include RGBA/LA, palette transparency, opaque input and source metadata. PDF rendering remains separate.
+
+The Linux gate then showed that Pillow 12.2 with zlib 1.3 and the Mac's zlib-ng 1.3.1 produced different compressed PNG bytes from **identical RGB pixels**. Renderer identity now records the actual PNG compression backend. The pre-inference rebinding adapter verifies original bytes, every pinned reference PNG and exact RGB pixel/dimension equality before creating a copy of the annotation with that runtime's encoded-image hashes. It preserves the original annotation and all labels, geometry, authorship and timestamps. Both annotations and the lossless encoding transform are recorded before inference. This neither regenerates labels from Qwen nor weakens exact encoded-byte checks on persisted captures. A changed pixel, missing page, alpha/color/orientation ambiguity or wrong reference hash fails closed. The committed original, reference images and original annotation were not rewritten.
+
+## Authority and integration evidence
+
+At `da030da`, the complete fresh-database suite passed **187 tests** and all **40 migrations**, including 097. Browser-origin ingestion survives logout, session expiry or password reset while its actor, membership, document access and desired run remain valid. API-token-origin work remains bounded by current token lifetime/scopes and its original scope ceiling. Permission changes serialize against publication; revocation during inference rejects the result and subsequent model calls. Unknown older request origins remain historical and ineligible for new execution.
+
+At `5f61836`, **1,491 unit tests passed** on the clean Oxcart validation worktree, including exact-source capture and cross-encoding regression coverage. The latest human-confirmation guard protects a candidate that a user explicitly confirmed from automatic replacement; its independent concurrent review/rerun database gate is recorded separately when completed.
+
+The first 097 DB run had 167 passes and 20 test-fixture failures because parametrized cases reused a unique folder name in their shared household. The fixture now creates distinct folder names and the complete 187-case rerun passed; no test was excluded. The earlier source-verifier unit failure exposed the PNG portability issue described above and was resolved through exact pixel proof.
+
+## Remaining gates
+
+The native pipeline still stages candidates. Selected-generation structural readers, immutable source-render assets, generation-aware lexical/text/visual index builds, persisted claim-based publication, active upload/rerun migration, full classification/typed extraction, accepted-history rollback, representative quality scoring and shared Oxcart/Blackbird contention remain required. The existing Docling-based live application path is not replaced by these library and probe results. UI, full-repository SAST and current-candidate integration results have separate checkpoints. Phase 9 remains gated by G2/G3.
