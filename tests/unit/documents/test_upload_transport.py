@@ -78,7 +78,9 @@ def transport(monkeypatch):
         spools.append(result)
         return result
 
-    def accept(stream, *, request):
+    def accept(stream, *, request, credential):
+        assert credential.user_id == request.owner_user_id
+        assert credential.household_id == request.household_id
         accepted.append((stream.read(), request))
         return SimpleNamespace(
             accepted_job=AcceptedJob(jobId=uuid4(), status="queued"), document_id=uuid4()
@@ -88,7 +90,7 @@ def transport(monkeypatch):
     monkeypatch.setattr(
         routes_documents, "get_settings", lambda: SimpleNamespace(max_upload_bytes=64)
     )
-    monkeypatch.setattr(routes_documents, "ingest_document_stream", accept)
+    monkeypatch.setattr(routes_documents, "ingest_authenticated_document_stream", accept)
     app = FastAPI()
     app.include_router(routes_documents.router)
     install_error_handling(app)
@@ -97,7 +99,13 @@ def transport(monkeypatch):
 
 def authorize(app):
     app.dependency_overrides[require_document_write] = lambda: AuthPrincipal(
-        uuid4(), uuid4(), "synthetic@example.com", "Synthetic", "password"
+        uuid4(),
+        uuid4(),
+        "synthetic@example.com",
+        "Synthetic",
+        "password",
+        session_id=uuid4(),
+        csrf_token_hash="synthetic-session-binding",
     )
 
 
@@ -254,7 +262,7 @@ def test_file_rolled_to_disk_closes_after_intake_failure(transport, monkeypatch)
         assert not stream.closed
         raise RuntimeError("Synthetic intake failure")
 
-    monkeypatch.setattr(routes_documents, "ingest_document_stream", fail)
+    monkeypatch.setattr(routes_documents, "ingest_authenticated_document_stream", fail)
     body = multipart(b"%PDF-" + b"x" * (1100 * 1024))
     assert asyncio.run(request(app, [body]))[0] == 500
     assert accepted == []

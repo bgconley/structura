@@ -4,9 +4,13 @@ from pathlib import Path
 from typing import BinaryIO
 from uuid import UUID
 
+from lib.auth.authorization_policy import AuthorizationError
+from lib.auth.request_authority import RequestCredential
+from lib.auth.request_authority_repository import assert_request_authority, lock_request_authority
 from lib.config import Settings, get_settings
 from lib.contracts import AcceptedJob
 from lib.db.connection import db_connection
+from lib.documents.ingestion_admission import lock_original_admission
 from lib.documents.ingestion_content import (
     ALLOWED_UPLOAD_MIME_TYPES as ALLOWED_UPLOAD_MIME_TYPES,
 )
@@ -60,6 +64,31 @@ def ingest_document_stream(
     request: DocumentIngestionRequest,
     settings: Settings | None = None,
 ) -> DocumentIngestionResult:
+    """Existing trusted internal intake; not an authenticated HTTP admission seam."""
+    return _ingest_document_stream(stream, request=request, settings=settings, credential=None)
+
+
+def ingest_authenticated_document_stream(
+    stream: BinaryIO,
+    *,
+    request: DocumentIngestionRequest,
+    credential: RequestCredential,
+    settings: Settings | None = None,
+) -> DocumentIngestionResult:
+    """Admit the same request credential captured before body IO, or fail closed."""
+    _assert_request_binding(request, credential)
+    return _ingest_document_stream(
+        stream, request=request, settings=settings, credential=credential
+    )
+
+
+def _ingest_document_stream(
+    stream: BinaryIO,
+    *,
+    request: DocumentIngestionRequest,
+    settings: Settings | None,
+    credential: RequestCredential | None,
+) -> DocumentIngestionResult:
     resolved_settings = settings or get_settings()
     storage = ObjectStorage(settings=resolved_settings)
     staged: StagedObject | None = None
@@ -69,7 +98,9 @@ def ingest_document_stream(
             kind="canonical",
             max_bytes=resolved_settings.max_upload_bytes,
         )
-        return ingest_staged_document(staged, request=request, storage=storage)
+        return ingest_staged_document(
+            staged, request=request, storage=storage, credential=credential
+        )
     except UploadTooLarge as exc:
         raise DocumentIngestionError(413, str(exc)) from exc
     finally:
@@ -100,7 +131,12 @@ def ingest_staged_document(
     *,
     request: DocumentIngestionRequest,
     storage: ObjectStorage,
+    credential: RequestCredential | None,
 ) -> DocumentIngestionResult:
+    # This internal persistence seam deliberately receives an explicit None only
+    # from the established trusted intake path. HTTP callers cannot select it.
+    if credential is not None:
+        _assert_request_binding(request, credential)
     if request.source not in UPLOAD_SOURCES:
         raise DocumentIngestionError(422, "Invalid source")
     if staged.byte_size <= 0:
@@ -122,6 +158,9 @@ def ingest_staged_document(
     try:
         with db_connection() as conn:
             with conn.cursor() as cur:
+                lock_original_admission(cur, request.household_id, staged.sha256)
+                if credential is not None:
+                    lock_request_authority(cur, credential, "documents:write")
                 duplicate_id = first_duplicate_document(
                     cur, household_id=request.household_id, sha256=staged.sha256
                 )
@@ -173,6 +212,10 @@ def ingest_staged_document(
                     asset_id=asset_id,
                     sha256=stored_original.sha256,
                 )
+                # Absolute expiry may pass during content IO or job/FK waits even
+                # with the credential row locked. No new browser-job lifetime rule.
+                if credential is not None:
+                    assert_request_authority(cur, credential, "documents:write")
             conn.commit()
             db_committed = True
     except DocumentIngestionError:
@@ -188,3 +231,14 @@ def ingest_staged_document(
             cleanup_unreferenced_stored_object(stored_original)
         raise
     return result
+
+
+def _assert_request_binding(
+    request: DocumentIngestionRequest, credential: RequestCredential
+) -> None:
+    if (
+        not isinstance(credential, RequestCredential)
+        or request.household_id != credential.household_id
+        or request.owner_user_id != credential.user_id
+    ):
+        raise AuthorizationError("Permission denied")

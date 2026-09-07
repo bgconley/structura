@@ -20,7 +20,9 @@ def test_upload_response_preserves_job_fields_and_returns_the_ingestion_document
         accepted_job=AcceptedJob(jobId=job_id, status="queued"),
         document_id=document_id,
     )
-    monkeypatch.setattr(routes_documents, "ingest_document_stream", lambda *args, **kwargs: result)
+    monkeypatch.setattr(
+        routes_documents, "ingest_authenticated_document_stream", lambda *args, **kwargs: result
+    )
     app = FastAPI()
     app.include_router(routes_documents.router)
     app.dependency_overrides[require_document_write] = lambda: AuthPrincipal(
@@ -29,6 +31,8 @@ def test_upload_response_preserves_job_fields_and_returns_the_ingestion_document
         "upload@example.com",
         "Uploader",
         "password",
+        session_id=uuid4(),
+        csrf_token_hash="synthetic-session-binding",
     )
     actual = TestClient(app).post(
         "/api/v1/documents",

@@ -9,6 +9,7 @@ from starlette.concurrency import run_in_threadpool
 from apps.api.structura_api.dependencies import require_document_read, require_document_write
 from apps.api.structura_api.document_upload_form import read_document_upload
 from lib.auth import AuthPrincipal
+from lib.auth.request_authority import RequestCredential
 from lib.config import get_settings
 from lib.contracts import AcceptedDocumentUpload, DocumentListResponse
 from lib.documents.access_policy import DocumentAccessContext
@@ -16,7 +17,7 @@ from lib.documents.browse_query import MAX_BROWSE_OFFSET, DocumentSort, InboxSta
 from lib.documents.ingestion import (
     DocumentIngestionError,
     DocumentIngestionRequest,
-    ingest_document_stream,
+    ingest_authenticated_document_stream,
     parse_hints_json,
 )
 from lib.documents.list_repository import DocumentListFilters, list_document_summaries
@@ -69,13 +70,15 @@ async def create_document(
 ) -> AcceptedDocumentUpload:
     if not principal.household_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Household required")
+    credential = RequestCredential.from_principal(principal)
     try:
         async with read_document_upload(
             request, file_limit=get_settings().max_upload_bytes
         ) as form:
             result = await run_in_threadpool(
-                ingest_document_stream,
+                ingest_authenticated_document_stream,
                 form.file.file,
+                credential=credential,
                 request=DocumentIngestionRequest(
                     household_id=principal.household_id,
                     owner_user_id=principal.user_id,
