@@ -65,10 +65,15 @@ test("Phase 6 automation workbench manages contacts, rules, watcher settings, an
   await expect(page.getByText("/srv/structura/imports/incoming", {exact: true})).toBeVisible();
   await expect(page.getByRole("button", {name: /Pause watcher/}).first()).toBeVisible();
 
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(page).toHaveScreenshot("phase6-automation-workbench.png", {
+    fullPage: true,
+    maxDiffPixelRatio: 0.02,
+  });
+
   await page.setViewportSize({width: 390, height: 900});
   await expect(page.getByRole("heading", {name: "Automation Workbench"})).toBeVisible();
-
-  await expect(page).toHaveScreenshot("phase6-automation-workbench.png", {
+  await expect(page).toHaveScreenshot("phase6-automation-workbench-mobile.png", {
     fullPage: true,
     maxDiffPixelRatio: 0.02,
   });

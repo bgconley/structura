@@ -40,6 +40,9 @@ test("Phase 8 difficult-document visual retrieval and review cues are visible", 
   await expect(page.getByRole("heading", {name: "Review Queue"})).toBeVisible();
   await expect(page.getByText("document_quality")).toBeVisible();
   await expect(page.getByText("Difficult document requires review")).toBeVisible();
+  await page.getByRole("button", {name: /document_quality/}).click();
+  await expect(page.locator(".candidate-panel-title")).toContainText("document_quality");
+  await page.evaluate(() => window.scrollTo(0, 0));
 
   await expect(page).toHaveScreenshot("phase8-difficult-documents.png", {
     fullPage: true,

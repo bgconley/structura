@@ -21,12 +21,12 @@ test("Phase 4 review queue accepts a candidate", async ({page}) => {
   await expect(page.locator(".candidate-panel")).toContainText("USD 1042.15");
   await expect(page.locator(".candidate-panel")).toContainText("evidence page 1");
 
-  await page.getByRole("button", {name: "Accept candidate"}).click();
-  await expect(page.locator(".review-status")).toContainText("Candidate accepted");
   await expect(page).toHaveScreenshot("phase4-review-queue.png", {
     fullPage: true,
     maxDiffPixelRatio: 0.02,
   });
+  await page.getByRole("button", {name: "Accept candidate"}).click();
+  await expect(page.locator(".review-status")).toContainText("Candidate accepted");
 });
 
 test("Phase 4 review queue corrects a field", async ({page}) => {

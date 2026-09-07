@@ -36,6 +36,11 @@ test("Phase 7 relationships, timelines, deadlines, and smart views are actionabl
   await expect(page.getByRole("heading", {name: "Relationship Workbench"})).toBeVisible();
   await expect(page.getByRole("heading", {name: "Open deadlines"})).toBeVisible();
   await expect(page.getByText("Relationship suggestions")).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(page).toHaveScreenshot("phase7-relationships-workbench.png", {
+    fullPage: true,
+    maxDiffPixelRatio: 0.02,
+  });
 
   await page.getByRole("button", {name: /Timelines/}).click();
   await expect(page.getByRole("heading", {name: "Document Timelines"})).toBeVisible();
@@ -45,6 +50,11 @@ test("Phase 7 relationships, timelines, deadlines, and smart views are actionabl
   await page.getByLabel("Timeline scope").selectOption("document");
   await page.getByLabel("Timeline document").selectOption({label: "Existing Warranty"});
   await expect(page.getByText("warranty_expiration")).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(page).toHaveScreenshot("phase7-relationships-timeline.png", {
+    fullPage: true,
+    maxDiffPixelRatio: 0.02,
+  });
 
   await page.getByRole("button", {name: /Search/}).click();
   await page.getByLabel("Corpus search query").fill("warranty");
@@ -56,8 +66,4 @@ test("Phase 7 relationships, timelines, deadlines, and smart views are actionabl
   await expect(page.locator(".facet-block").filter({hasText: "Relationships"})).toBeVisible();
   await expect(page.locator(".facet-block").filter({hasText: "Deadlines"})).toBeVisible();
 
-  await expect(page).toHaveScreenshot("phase7-relationships-timeline.png", {
-    fullPage: true,
-    maxDiffPixelRatio: 0.02,
-  });
 });
