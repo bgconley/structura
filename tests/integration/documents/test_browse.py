@@ -214,6 +214,11 @@ def test_private_and_other_household_duplicate_counterparts_do_not_affect_visibl
         (browse_corpus.identity.household_id, member.user_id),
     )
     visible = browse_corpus.document("Shared document")
+    shared_folder = browse_corpus.folder(acl_mode="household")
+    browse_rows(
+        "UPDATE documents SET primary_folder_id=%s,acl_mode='household' WHERE id=%s",
+        (shared_folder, visible),
+    )
     private = browse_corpus.document("Private duplicate")
     private_folder = browse_corpus.folder(acl_mode="private")
     browse_rows("UPDATE documents SET primary_folder_id=%s WHERE id=%s", (private_folder, private))
@@ -233,6 +238,10 @@ def test_private_and_other_household_duplicate_counterparts_do_not_affect_visibl
     assert result["total"] == result["counts"]["duplicates"] == 0
     assert result["items"] == []
     peer = browse_corpus.document("Shared duplicate")
+    browse_rows(
+        "UPDATE documents SET primary_folder_id=%s,acl_mode='household' WHERE id=%s",
+        (shared_folder, peer),
+    )
     browse_rows("UPDATE documents SET duplicate_of_document_id=%s WHERE id=%s", (visible, peer))
     result = browse_corpus.list(inboxState="duplicates")
     assert result["total"] == 2
