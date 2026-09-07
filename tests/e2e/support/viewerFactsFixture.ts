@@ -30,7 +30,7 @@ export function viewerFactsData() {
     disposition: "rejected", origin: "live_review", canonicalFieldId: null, reviewEventId: null, actorUserId: null,
     decidedAt: "2026-09-07T10:11:12Z", recordedAt: "2026-09-07T10:11:12Z"}];
   const lines: RecordedLineItem[] = Array.from({length: 25}, (_, index) => ({id: id(200 + index), documentId: document.id,
-    lineItemType: "service", ordinal: index + 1, description: `Recorded service ${index + 1}`, code: "99213", codeSystem: "CPT",
+    lineItemType: "service_line", ordinal: index + 1, description: `Recorded service ${index + 1}`, code: "99213", codeSystem: "CPT",
     serviceDate: "2026-01-26", quantity: "1.2345", unit: "hour", unitPrice: "0.0000", grossAmount: "99999999999999.9999",
     discountAmount: "-12.3400", taxAmount: null, netAmount: "120.0100", currency: "EUR", sourceKind: "human",
     reviewStatus: index === 24 ? "rejected" : "user_confirmed", validation: {warnings: ["Retained validation"]},

@@ -16,7 +16,7 @@ def line_item_row(**overrides):
     row = dict(
         id=uuid4(),
         document_id=uuid4(),
-        line_item_type="service",
+        line_item_type="service_line",
         ordinal=21,
         description="Recorded service",
         code="99213",

@@ -16,7 +16,7 @@ def test_document_api_returns_every_persisted_line_item_without_precision_loss(b
             (document_id,line_item_type,ordinal,description,code,code_system,service_date,
              quantity,unit,unit_price,gross_amount,discount_amount,tax_amount,net_amount,
              currency_code,source_kind,review_status,evidence_json,validation_json)
-            VALUES (%s,'service',%s,%s,'99213','CPT','2026-01-26',1.2345,'hour',0,
+            VALUES (%s,'service_line',%s,%s,'99213','CPT','2026-01-26',1.2345,'hour',0,
               99999999999999.9999,-12.34,NULL,%s,'EUR','human',%s,%s,%s)""",
             (
                 document_id,
