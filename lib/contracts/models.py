@@ -497,6 +497,10 @@ class AcceptedJob(ContractModel):
     status: Literal["queued", "running"]
 
 
+class AcceptedDocumentUpload(AcceptedJob):
+    document_id: UUID = Field(alias="documentId")
+
+
 class JobCancelRequest(ContractModel):
     reason: str = Field(min_length=1, max_length=500)
     include_running: bool = Field(default=False, alias="includeRunning")

@@ -1,4 +1,5 @@
 from lib.contracts.models import (
+    AcceptedDocumentUpload,
     AcceptedJob,
     CanonicalField,
     CanonicalFieldWrite,
@@ -61,6 +62,7 @@ from lib.contracts.models import (
 from lib.contracts.registry import ContractRegistry
 
 __all__ = [
+    "AcceptedDocumentUpload",
     "AcceptedJob",
     "CanonicalField",
     "CanonicalFieldWrite",

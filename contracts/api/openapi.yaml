@@ -304,11 +304,11 @@ paths:
               $ref: '#/components/schemas/UploadDocumentMultipartRequest'
       responses:
         '202':
-          description: Accepted for ingestion
+          description: Immutable original and document record accepted; exact documentId is available before background processing completes.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AcceptedJob'
+                $ref: '#/components/schemas/AcceptedDocumentUpload'
         '401':
           description: Not authenticated
   /api/v1/documents/{documentId}:
@@ -1775,6 +1775,21 @@ components:
           enum:
           - queued
           - running
+    AcceptedDocumentUpload:
+      type: object
+      additionalProperties: false
+      required: [jobId, status, documentId]
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [queued, running]
+        documentId:
+          type: string
+          format: uuid
+          description: Exact accepted document identity, including when titles or original hashes match an existing record.
     JobCancelRequest:
       type: object
       additionalProperties: false

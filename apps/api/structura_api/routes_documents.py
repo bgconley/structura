@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 
 from apps.api.structura_api.dependencies import require_document_read, require_document_write
 from lib.auth import AuthPrincipal
-from lib.contracts import AcceptedJob, DocumentListResponse
+from lib.contracts import AcceptedDocumentUpload, DocumentListResponse
 from lib.documents.access_policy import DocumentAccessContext
 from lib.documents.browse_query import MAX_BROWSE_OFFSET, DocumentSort, InboxState
 from lib.documents.ingestion import (
@@ -57,7 +57,7 @@ def list_documents(
 
 @router.post(
     "/documents",
-    response_model=AcceptedJob,
+    response_model=AcceptedDocumentUpload,
     status_code=status.HTTP_202_ACCEPTED,
 )
 def create_document(
@@ -66,7 +66,7 @@ def create_document(
     source: Annotated[str, Form()],
     suppliedTitle: Annotated[str | None, Form()] = None,
     hintsJson: Annotated[str | None, Form()] = None,
-) -> AcceptedJob:
+) -> AcceptedDocumentUpload:
     if not principal.household_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Household required")
     try:
@@ -89,7 +89,11 @@ def create_document(
             status_code=exc.status_code,
             detail=exc.detail,
         ) from exc
-    return result.accepted_job
+    return AcceptedDocumentUpload(
+        jobId=result.accepted_job.job_id,
+        status=result.accepted_job.status,
+        documentId=result.document_id,
+    )
 
 
 @router.get("/documents/{documentId}")
