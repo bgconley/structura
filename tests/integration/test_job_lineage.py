@@ -340,7 +340,7 @@ def test_worker_child_cannot_change_scope_after_first_enqueue(queue):
         conn.cursor() as cur,
     ):
         first = create_job_with_cursor(cur, job_id=uuid4(), job_type="extract", queue_name=queue)
-        with pytest.raises(JobServiceError, match="retain parent"):
+        with pytest.raises(JobServiceError, match=r"must retain .*scope"):
             create_job_with_cursor(
                 cur, job_id=uuid4(), job_type="extract", queue_name=queue, document_id=uuid4()
             )

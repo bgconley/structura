@@ -165,7 +165,8 @@ def processing(monkeypatch):
         render_scale=2,
     )
     yield ProcessingHarness(
-        DocumentAccessContext(owner.household_id, owner.user_id, owner.household_role),
+        # bootstrap_admin persists an owner membership; BootstrapResult contains IDs only.
+        DocumentAccessContext(owner.household_id, owner.user_id, "owner"),
         document_id,
         asset_id,
         digest,
