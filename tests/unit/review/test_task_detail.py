@@ -70,3 +70,31 @@ def test_task_identity_is_not_read_before_authentication(monkeypatch):
     app.include_router(router)
     assert TestClient(app).get(f"/api/v1/review-tasks/{uuid4()}").status_code == 401
     read.assert_not_called()
+
+
+def test_review_backlog_document_filter_is_typed_and_preserves_access(monkeypatch):
+    principal = AuthPrincipal(
+        user_id=uuid4(),
+        household_id=uuid4(),
+        email="reader@example.com",
+        display_name="Reader",
+        auth_method="api_token",
+        household_role="member",
+        api_token_id=uuid4(),
+        scopes=("documents:read",),
+    )
+    read = Mock(return_value=[])
+    monkeypatch.setattr("apps.api.structura_api.routes_review.list_review_tasks", read)
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[require_document_read] = lambda: principal
+    client = TestClient(app)
+    document_id = uuid4()
+    assert client.get(
+        "/api/v1/review-tasks", params={"documentId": str(document_id), "status": "open"}
+    ).json() == {"items": []}
+    assert read.call_args.kwargs["document_id"] == document_id
+    assert read.call_args.kwargs["access"].api_token_id == principal.api_token_id
+    read.reset_mock()
+    assert client.get("/api/v1/review-tasks", params={"documentId": "not-uuid"}).status_code == 422
+    read.assert_not_called()

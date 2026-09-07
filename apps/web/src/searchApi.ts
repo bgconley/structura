@@ -1,9 +1,10 @@
 import {csrfToken, fetchJson} from "./api";
 import type {SavedSearch, SearchRequest, SearchResponse} from "./types";
 
-export async function runSearch(payload: SearchRequest): Promise<SearchResponse> {
+export async function runSearch(payload: SearchRequest, signal?: AbortSignal): Promise<SearchResponse> {
   return fetchJson<SearchResponse>("/api/v1/search", {
     method: "POST",
+    signal,
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify(payload),
   });

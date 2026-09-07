@@ -66,14 +66,15 @@ test("reordered task responses cannot expose stale decisions under another docum
   const [a, b] = seededFieldCandidates();
   const base = seededReviewTasks()[0];
   const tasks = [
-    {...base, id: "task-a", documentId: a.documentId, fieldPath: a.fieldPath, rationale: "Task A"},
-    {...base, id: "task-b", documentId: b.documentId, fieldPath: b.fieldPath, rationale: "Task B"},
+    {...base, id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", documentId: a.documentId, fieldPath: a.fieldPath, rationale: "Task A"},
+    {...base, id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", documentId: b.documentId, fieldPath: b.fieldPath, rationale: "Task B"},
   ];
   let releaseA!: () => void;
   let releaseB!: () => void;
   const waitA = new Promise<void>((resolve) => { releaseA = resolve; });
   const waitB = new Promise<void>((resolve) => { releaseB = resolve; });
   await page.route("**/api/v1/review-tasks?*", (route) => route.fulfill({json: {items: tasks}}));
+  await page.route("**/api/v1/review-tasks/*", (route) => route.fulfill({json: tasks.find((task) => route.request().url().endsWith(task.id))}));
   await page.route("**/api/v1/documents/*/canonical-fields", (route) => route.fulfill({json: {items: []}}));
   await page.route("**/api/v1/documents/*/field-candidates?*", async (route) => {
     const isA = route.request().url().includes(a.documentId);

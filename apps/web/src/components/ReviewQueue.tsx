@@ -1,4 +1,4 @@
-import {useMemo} from "react";
+import {useEffect, useMemo} from "react";
 
 import {useReviewQueueState} from "../useReviewQueueState";
 import {
@@ -19,12 +19,21 @@ import {ReviewDecisionPanel} from "./ReviewDecisionPanel";
 import "./ReviewQueue.css";
 
 export function ReviewQueue({
-  onOpenDocument,
+  onOpenDocument, selectedTaskId, documentId, onSelectTask, onReady,
 }: {
+  onReady: () => void;
+  selectedTaskId?: string;
+  documentId?: string;
+  onSelectTask: (taskId: string | undefined) => void;
   onOpenDocument: (documentId: string, evidenceTarget?: EvidenceTarget) => void;
 }) {
   const {tasks, activeTask, selectTask, candidates, observations, lineItems, canonical,
-    status, setStatus, pending, detailReady, refresh, applyReviewAction} = useReviewQueueState();
+    status, setStatus, pending, detailReady, selectionError, taskLoading, tasksLoaded, refresh, applyReviewAction}
+    = useReviewQueueState(selectedTaskId, documentId, onSelectTask);
+  const decisionDisabled = pending || !detailReady || activeTask?.status !== "open";
+  useEffect(() => {
+    if (selectionError || detailReady || (tasksLoaded && !taskLoading && !activeTask)) onReady();
+  });
 
   async function handleAccept(candidate: FieldCandidate) {
     await applyReviewAction(
@@ -221,6 +230,7 @@ export function ReviewQueue({
           {tasks.length ? tasks.map((task) => (
             <button
               key={task.id}
+              id={`review-task-${task.id}`}
               className={task.id === activeTask?.id ? "selected" : undefined}
               type="button"
               onClick={() => selectTask(task.id)}
@@ -235,14 +245,17 @@ export function ReviewQueue({
           )}
         </aside>
         <section className="candidate-panel">
+          {taskLoading ? <p role="status">Loading selected review task…</p> : null}
+          {selectionError ? <p role="alert">{selectionError}</p> : null}
           {activeTask ? (
             <>
               <div className="candidate-panel-title">
                 <h2>{activeTask.fieldPath ?? activeTask.taskType}</h2>
-                <button type="button" onClick={() => onOpenDocument(activeTask.documentId)}>
+                <button id="review-open-document" type="button" onClick={() => onOpenDocument(activeTask.documentId)}>
                   Open document
                 </button>
               </div>
+              {activeTask.status !== "open" ? <p role="status">This task is {activeTask.status}. Its review history is preserved; decisions are disabled.</p> : null}
               {!detailReady ? <p role="status">Loading review details…</p> : null}
               <CanonicalSummary canonical={canonical} fieldPath={activeTask.fieldPath} />
               {fieldGroups.map(([fieldPath, items]) => (
@@ -257,7 +270,7 @@ export function ReviewQueue({
                       <p>{candidate.status ?? "proposed"} · {evidenceLabel(candidate.evidence)}</p>
                       <small>{selectEvidenceRef(candidate.evidence)?.sourceText ?? "Evidence locator available."}</small>
                       <div className="candidate-actions">
-                        <button type="button" disabled={pending || !detailReady} onClick={() => handleAccept(candidate)}>
+                        <button type="button" disabled={decisionDisabled} onClick={() => handleAccept(candidate)}>
                           Accept candidate
                         </button>
                         <button
@@ -286,10 +299,10 @@ export function ReviewQueue({
                   <p>{candidate.status ?? "needs_review"} · {evidenceLabel(candidate.evidence)}</p>
                   <small>{selectEvidenceRef(candidate.evidence)?.sourceText ?? "Evidence locator available."}</small>
                   <div className="candidate-actions">
-                    <button type="button" disabled={pending || !detailReady} onClick={() => handleObservationDecision(candidate, "accept")}>
+                    <button type="button" disabled={decisionDisabled} onClick={() => handleObservationDecision(candidate, "accept")}>
                       Accept observation
                     </button>
-                    <button type="button" disabled={pending || !detailReady} onClick={() => handleObservationDecision(candidate, "reject")}>
+                    <button type="button" disabled={decisionDisabled} onClick={() => handleObservationDecision(candidate, "reject")}>
                       Reject observation
                     </button>
                     <button
@@ -323,10 +336,10 @@ export function ReviewQueue({
                   <p>{candidate.status ?? "proposed"} · {evidenceLabel(candidate.evidence)}</p>
                   <small>{selectEvidenceRef(candidate.evidence)?.sourceText ?? "Evidence locator available."}</small>
                   <div className="candidate-actions">
-                    <button type="button" disabled={pending || !detailReady} onClick={() => handleLineItemDecision(candidate, "accept")}>
+                    <button type="button" disabled={decisionDisabled} onClick={() => handleLineItemDecision(candidate, "accept")}>
                       Accept line item
                     </button>
-                    <button type="button" disabled={pending || !detailReady} onClick={() => handleLineItemDecision(candidate, "reject")}>
+                    <button type="button" disabled={decisionDisabled} onClick={() => handleLineItemDecision(candidate, "reject")}>
                       Reject line item
                     </button>
                     <button
@@ -355,7 +368,7 @@ export function ReviewQueue({
               ) : null}
               <ReviewDecisionPanel
                 key={`${activeTask.id}:${activeReferenceCandidate?.id ?? "loading"}:${activeCanonical?.updatedAt ?? "absent"}`}
-                disabled={pending || !detailReady}
+                disabled={decisionDisabled}
                 correctionRevisionReady={correctionRevisionReady}
                 activeTask={activeTask}
                 referenceCandidate={activeReferenceCandidate}

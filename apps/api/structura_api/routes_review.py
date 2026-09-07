@@ -31,9 +31,12 @@ def get_review_tasks(
     principal: Annotated[AuthPrincipal, Depends(require_document_read)],
     status_filter: Annotated[str | None, Query(alias="status")] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    document_id: Annotated[UUID | None, Query(alias="documentId")] = None,
 ) -> dict[str, object]:
     access = _access_context(principal)
-    items = list_review_tasks(access=access, status=status_filter, limit=limit)
+    items = list_review_tasks(
+        access=access, status=status_filter, limit=limit, document_id=document_id
+    )
     return {"items": [item.model_dump(by_alias=True) for item in items]}
 
 

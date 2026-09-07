@@ -487,8 +487,15 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
       await route.fulfill({
         status: 200,
         headers: {"Content-Type": "application/json", ...corsHeaders},
-        json: {items: reviewTasks.filter((task) => task.status === "open")},
+        json: {items: reviewTasks.filter((task) => task.status === "open" && (!url.searchParams.get("documentId") || task.documentId === url.searchParams.get("documentId")))},
       });
+      return;
+    }
+
+    const reviewTaskMatch = url.pathname.match(/^\/api\/v1\/review-tasks\/([^/]+)$/);
+    if (reviewTaskMatch && request.method() === "GET") {
+      const task = reviewTasks.find((item) => item.id === reviewTaskMatch[1]);
+      await route.fulfill({status: task ? 200 : 404, headers: corsHeaders, json: task ?? {detail: "Not found"}});
       return;
     }
 

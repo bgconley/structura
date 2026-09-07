@@ -1,7 +1,9 @@
 import {useEffect, useRef, useState} from "react";
 
 import {listCanonicalFields, listFieldCandidates, listLineItemCandidates,
-  listObservationCandidates, listReviewTasks, postReviewAction} from "./reviewApi";
+  listObservationCandidates, listReviewTasks, getReviewTask, postReviewAction} from "./reviewApi";
+import {ApiError} from "./api";
+import {useKeyedRequest} from "./useKeyedRequest";
 import type {CanonicalField, FieldCandidate, LineItemCandidate, ObservationCandidate,
   ReviewActionPayload, ReviewTask} from "./types";
 
@@ -20,16 +22,28 @@ function taskIdentity(task: ReviewTask | null): string {
     task.metadata?.observationId, task.metadata?.lineItemCandidateId].join(":") : "";
 }
 
-export function useReviewQueueState() {
+export function useReviewQueueState(selectedTaskId: string | undefined, documentId: string | undefined,
+  onSelectTask: (id: string | undefined) => void) {
+  const [tasksLoaded, setTasksLoaded] = useState(false);
   const [tasks, setTasks] = useState<ReviewTask[]>([]);
-  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [loadedContext, setLoadedContext] = useState<string | undefined>(undefined);
   const [detail, setDetail] = useState<ReviewDetail | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const pendingRef = useRef(false);
   const taskSequence = useRef(0);
   const detailSequence = useRef(0);
-  const activeTask = tasks.find((task) => task.id === activeTaskId) ?? tasks[0] ?? null;
+  const context = useRef({documentId, selectedTaskId, onSelectTask});
+  context.current = {documentId, selectedTaskId, onSelectTask};
+  const exact = useKeyedRequest(selectedTaskId ? `${selectedTaskId}:${documentId ?? ""}` : null, async (signal) => {
+    const task = await getReviewTask(selectedTaskId!, signal);
+    if (task.id !== selectedTaskId || (documentId && task.documentId !== documentId)) {
+      throw new Error("This review task does not match the requested document.");
+    }
+    return task;
+  });
+  const visibleTasks = loadedContext === documentId ? tasks : [];
+  const activeTask = selectedTaskId ? exact.data : visibleTasks[0] ?? null;
   const identity = taskIdentity(activeTask);
   const detailReady = !!identity && detail?.identity === identity;
   const current = useRef<{task: ReviewTask | null; identity: string; detailReady: boolean}>(
@@ -44,7 +58,7 @@ export function useReviewQueueState() {
       detailSequence.current += 1;
       current.current = {task: null, identity: "", detailReady: false};
     };
-  }, []);
+  }, [documentId]);
 
   useEffect(() => {
     if (activeTask) void refreshReviewDetail(activeTask);
@@ -53,12 +67,14 @@ export function useReviewQueueState() {
 
   async function refreshTasks(): Promise<boolean> {
     const sequence = ++taskSequence.current;
+    const requestedContext = documentId;
     try {
-      const next = await listReviewTasks("open");
-      if (sequence !== taskSequence.current) return false;
+      const next = await listReviewTasks("open", requestedContext);
+      if (sequence !== taskSequence.current || context.current.documentId !== requestedContext) return false;
+      setTasksLoaded(true);
+      setLoadedContext(requestedContext);
       setTasks(next);
-      setActiveTaskId((selected) => next.some((task) => task.id === selected)
-        ? selected : next[0]?.id ?? null);
+      if (!context.current.selectedTaskId && next[0]) context.current.onSelectTask(next[0].id);
       return true;
     } catch (error) {
       if (sequence === taskSequence.current) {
@@ -106,25 +122,28 @@ export function useReviewQueueState() {
 
   async function refresh() {
     if (pendingRef.current) return;
-    await refreshTasks();
+    await Promise.all([refreshTasks(), exact.reload()]);
     const selected = current.current.task;
     if (selected) await refreshReviewDetail(selected);
   }
 
   async function applyReviewAction(payload: ReviewActionPayload, successMessage: string): Promise<boolean> {
     if (pendingRef.current) return false;
-    if (!current.current.detailReady || payload.documentId !== current.current.task?.documentId
+    if (current.current.task?.status !== "open" || !current.current.detailReady || payload.documentId !== current.current.task?.documentId
       || (payload.reviewTaskId && payload.reviewTaskId !== current.current.task?.id)) {
       setStatus("Wait for the selected task's details before making a decision.");
       return false;
     }
+    const actionIdentity = current.current.identity;
     pendingRef.current = true;
     setPending(true);
     try {
       const result = await postReviewAction(payload);
       if (!result.ok) throw new Error("Review action was not applied.");
+      if (current.current.identity !== actionIdentity) return true;
       setStatus(successMessage);
       const refreshed = await refreshTasks();
+      await exact.reload();
       const selected = current.current.task;
       const detailsRefreshed = selected ? await refreshReviewDetail(selected) : true;
       if (!refreshed || !detailsRefreshed) {
@@ -132,7 +151,9 @@ export function useReviewQueueState() {
       }
       return true;
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Review action failed.");
+      if (current.current.identity === actionIdentity) {
+        setStatus(error instanceof Error ? error.message : "Review action failed.");
+      }
       return false;
     } finally {
       pendingRef.current = false;
@@ -140,7 +161,11 @@ export function useReviewQueueState() {
     }
   }
 
-  return {tasks, activeTask, selectTask: setActiveTaskId, status, setStatus, pending,
+  const selectionError = exact.error instanceof ApiError && [403, 404].includes(exact.error.status)
+    ? "This review task is unavailable or you no longer have access." : exact.error?.message;
+  return {tasks: exact.data && !visibleTasks.some((task) => task.id === exact.data!.id)
+      ? [exact.data, ...visibleTasks] : visibleTasks, activeTask, selectTask: onSelectTask, status, setStatus, pending,
+    selectionError, taskLoading: exact.loading, tasksLoaded: tasksLoaded && loadedContext === documentId,
     detailReady, ...(detailReady && detail ? detail : EMPTY_DETAIL), refresh, applyReviewAction};
 }
 

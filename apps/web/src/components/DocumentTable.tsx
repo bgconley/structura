@@ -54,6 +54,14 @@ export function DocumentTable({
             {documents.map((document) => (
               <tr
                 key={document.id}
+                id={`document-row-${document.id}`}
+                tabIndex={0}
+                aria-selected={document.id === selectedId}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault(); setSelectedId(document.id);
+                  }
+                }}
                 className={document.id === selectedId ? "selected" : undefined}
                 onClick={() => setSelectedId(document.id)}
               >

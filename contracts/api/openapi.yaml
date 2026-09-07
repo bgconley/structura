@@ -1492,6 +1492,12 @@ paths:
         schema:
           type: string
       - in: query
+        name: documentId
+        description: Restrict the backlog to this document within the caller's existing document access.
+        schema:
+          type: string
+          format: uuid
+      - in: query
         name: limit
         schema:
           type: integer

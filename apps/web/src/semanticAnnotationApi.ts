@@ -4,7 +4,8 @@ import type {SemanticAnnotationResponse} from "./types";
 export function getCurrentSemanticAnnotation(
   documentId: string,
   qualityMode = "smart",
+  signal?: AbortSignal,
 ): Promise<SemanticAnnotationResponse> {
   const params = new URLSearchParams({qualityMode});
-  return fetchJson(`/api/v1/documents/${documentId}/semantic-annotations/current?${params}`);
+  return fetchJson(`/api/v1/documents/${documentId}/semantic-annotations/current?${params}`, {signal});
 }

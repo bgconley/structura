@@ -1,5 +1,3 @@
-import {useEffect, useState} from "react";
-
 import {assetUrl} from "../api";
 import {evidenceTargetFromRef, selectEvidenceRef} from "../evidence";
 import {familyLabel, formatDate} from "../format";
@@ -28,6 +26,9 @@ export function Viewer({
   summary,
   evidenceTarget,
   onBack,
+  backLabel,
+  pageNumber,
+  onPageChange,
   onOpenReview,
   folders,
   tags,
@@ -48,6 +49,9 @@ export function Viewer({
   summary?: DocumentSummary;
   evidenceTarget: EvidenceTarget | null;
   onBack: () => void;
+  backLabel: string;
+  pageNumber: number;
+  onPageChange: (page: number) => void;
   onOpenReview: () => void;
   folders: Folder[];
   tags: Tag[];
@@ -67,15 +71,8 @@ export function Viewer({
   const active = document ?? summary;
   const original = document?.assets.find((asset) => asset.assetRole === "original");
   const pages = document?.pages ?? [];
-  const evidencePageNumber = evidenceTarget?.pageNumber;
-  const [selectedPageNumber, setSelectedPageNumber] = useState<number | null>(null);
-
-  useEffect(() => {
-    setSelectedPageNumber(evidencePageNumber ?? null);
-  }, [evidencePageNumber, document?.id]);
-
-  const activePageNumber = selectedPageNumber ?? evidencePageNumber ?? pages[0]?.pageNumber ?? 1;
-  const activePage = pages.find((page) => page.pageNumber === activePageNumber) ?? pages[0];
+  const activePage = pages.find((page) => page.pageNumber === pageNumber);
+  const missingPage = !activePage && (pages.length > 0 || pageNumber !== 1);
   const preview = activePage?.imageUrl;
   const quality = document?.qualitySummary ?? summary?.qualitySummary ?? null;
   const extractionState = extractionChip(document);
@@ -95,7 +92,7 @@ export function Viewer({
           <h1>Document Viewer</h1>
           <p>Read the original document in-app while preserving trust and provenance context.</p>
         </div>
-        <button type="button" onClick={onBack}>Back to Inbox</button>
+        <button type="button" onClick={onBack}>{backLabel}</button>
       </div>
       <aside className="page-rail">
         {pages.length ? pages.map((page) => (
@@ -103,7 +100,9 @@ export function Viewer({
             className={page.pageNumber === activePage?.pageNumber ? "selected" : undefined}
             type="button"
             key={page.pageNumber}
-            onClick={() => setSelectedPageNumber(page.pageNumber)}
+            onClick={() => onPageChange(page.pageNumber)}
+            aria-label={`Page ${page.pageNumber}`}
+            aria-current={page.pageNumber === pageNumber ? "page" : undefined}
           >
             <span className="rail-thumb" />
             <small>{page.pageNumber}</small>
@@ -132,7 +131,12 @@ export function Viewer({
           </div>
         ) : null}
         <div className="rendered-page">
-          {preview ? (
+          {missingPage ? (
+            <div className="preview-fallback" role="alert">
+              <p>Page {pageNumber} is not available in this document.</p>
+              {pages[0] ? <button type="button" onClick={() => onPageChange(pages[0].pageNumber)}>Open page {pages[0].pageNumber}</button> : null}
+            </div>
+          ) : preview ? (
             <>
               <img src={assetUrl(preview)} alt={`Preview of ${active.title} page ${activePage?.pageNumber ?? 1}`} />
               {evidenceTarget && showHighlight ? (
@@ -140,7 +144,7 @@ export function Viewer({
               ) : null}
             </>
           ) : original?.mimeType === "application/pdf" ? (
-            <iframe src={assetUrl(original.assetUrl)} title={active.title} />
+            <iframe src={`${assetUrl(original.assetUrl)}#page=${pageNumber}`} title={active.title} />
           ) : (
             <div className="preview-fallback">
               <span className="thumb-skeleton large" />

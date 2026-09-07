@@ -8,15 +8,20 @@ import type {
   ReviewTask,
 } from "./types";
 
-export async function listReviewTasks(status?: string): Promise<ReviewTask[]> {
+export async function listReviewTasks(status?: string, documentId?: string): Promise<ReviewTask[]> {
   const params = new URLSearchParams();
   if (status) {
     params.set("status", status);
   }
+  if (documentId) params.set("documentId", documentId);
   const payload = await fetchJson<{items: ReviewTask[]}>(
     `/api/v1/review-tasks${params.size ? `?${params}` : ""}`,
   );
   return payload.items;
+}
+
+export function getReviewTask(taskId: string, signal?: AbortSignal): Promise<ReviewTask> {
+  return fetchJson(`/api/v1/review-tasks/${taskId}`, {signal});
 }
 
 export async function listFieldCandidates(

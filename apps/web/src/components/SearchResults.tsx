@@ -1,19 +1,22 @@
-import {FormEvent, useState} from "react";
+import {FormEvent} from "react";
 
 import {familyLabel, formatAmount, formatDate} from "../format";
 import type {EvidenceTarget, Folder, SearchRequest, SearchResponse, SearchResult, Tag} from "../types";
 import {
   activeSearchFilters,
-  defaultSearchFilterState,
   SearchFilterPanel,
   searchRequestFromFilters,
   selectedSearchFolder,
 } from "./SearchFilterPanel";
+import type {SearchFilterState} from "../searchFilters";
 import "./SearchResults.css";
 
 export function SearchResults({
   query,
   setQuery,
+  filters,
+  setFilters,
+  submitted,
   response,
   isLoading,
   error,
@@ -26,6 +29,9 @@ export function SearchResults({
 }: {
   query: string;
   setQuery: (query: string) => void;
+  filters: SearchFilterState;
+  setFilters: (filters: SearchFilterState) => void;
+  submitted: {query: string; filters: SearchFilterState} | null;
   response: SearchResponse | null;
   isLoading: boolean;
   error: string | null;
@@ -36,7 +42,6 @@ export function SearchResults({
   onSaveSearch: (payload: SearchRequest) => Promise<void>;
   onOpenDocument: (documentId: string, target?: EvidenceTarget) => void;
 }) {
-  const [filters, setFilters] = useState(defaultSearchFilterState);
 
   function requestPayload(): SearchRequest {
     return searchRequestFromFilters(query, filters);
@@ -48,8 +53,9 @@ export function SearchResults({
   }
 
   const items = response?.items ?? [];
-  const selectedFolder = selectedSearchFolder(filters, folders);
-  const activeFilters = activeSearchFilters(filters, folders);
+  const applied = submitted?.filters;
+  const selectedFolder = applied ? selectedSearchFolder(applied, folders) : undefined;
+  const activeFilters = applied ? activeSearchFilters(applied, folders) : [];
 
   return (
     <section className="search-workbench">
@@ -124,16 +130,16 @@ export function SearchResults({
           </p>
           <h3>Query interpretation</h3>
           <div className="filter-chip-list explanation">
-            <span>{query ? `query = ${query.slice(0, 42)}` : "query pending"}</span>
-            <span>mode = {filters.mode}</span>
-            {filters.includeVisual || filters.mode === "visual" ? <span>visual retrieval = on</span> : null}
-            {filters.family ? <span>document_family = {filters.family}</span> : null}
+            <span>{submitted ? `query = ${submitted.query.slice(0, 42)}` : "query pending"}</span>
+            {applied ? <span>mode = {applied.mode}</span> : null}
+            {applied?.includeVisual || applied?.mode === "visual" ? <span>visual retrieval = on</span> : null}
+            {applied?.family ? <span>document_family = {applied?.family}</span> : null}
             {selectedFolder ? <span>folder = {selectedFolder.name}</span> : null}
-            {filters.tag ? <span>tag = {filters.tag}</span> : null}
-            {filters.reviewStatus ? <span>review_status = {filters.reviewStatus}</span> : null}
-            {filters.sensitivity ? <span>sensitivity = {filters.sensitivity}</span> : null}
-            {filters.relationshipType ? <span>relationship = {filters.relationshipType}</span> : null}
-            {filters.deadlineType ? <span>deadline = {filters.deadlineType}</span> : null}
+            {applied?.tag ? <span>tag = {applied?.tag}</span> : null}
+            {applied?.reviewStatus ? <span>review_status = {applied?.reviewStatus}</span> : null}
+            {applied?.sensitivity ? <span>sensitivity = {applied?.sensitivity}</span> : null}
+            {applied?.relationshipType ? <span>relationship = {applied?.relationshipType}</span> : null}
+            {applied?.deadlineType ? <span>deadline = {applied?.deadlineType}</span> : null}
             {response?.debug?.filtersApplied !== undefined ? (
               <span>filters = {String(response.debug.filtersApplied)}</span>
             ) : null}
@@ -145,6 +151,7 @@ export function SearchResults({
                 key={item.documentId}
                 type="button"
                 onClick={() => onOpenDocument(item.documentId, evidenceTargetFromResult(item))}
+                id={`search-evidence-source-${item.documentId}`}
               >
                 <span>{item.evidence?.[0]?.sourceText ?? item.snippet ?? item.title}</span>
                 <em>go</em>
@@ -186,7 +193,7 @@ function SearchResultCard({
 }) {
   return (
     <article className={`search-result-card ${selected ? "selected" : ""}`}>
-      <button type="button" onClick={() => onOpenDocument(item.documentId)}>
+      <button id={`search-result-${item.documentId}`} type="button" onClick={() => onOpenDocument(item.documentId)}>
         <span className="search-thumb" />
         <span>
           <strong>{item.title}</strong>
@@ -205,6 +212,7 @@ function SearchResultCard({
       <div className="result-actions">
         <span>{(item.score ?? 0) > 0.02 ? "High match" : "Medium match"}</span>
         <button
+          id={`search-evidence-${item.documentId}`}
           type="button"
           onClick={() => onOpenDocument(item.documentId, evidenceTargetFromResult(item))}
         >

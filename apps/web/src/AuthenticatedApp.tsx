@@ -1,6 +1,6 @@
-import {startTransition, useDeferredValue, useEffect, useState} from "react";
-
-import {csrfToken, fetchJson} from "./api";
+import {useEffect, useRef, useState} from "react";
+import {ApiError, csrfToken, fetchJson} from "./api";
+import {defaultRoute, parseAppRoute, routeLabel, routeUrl, type AppRoute} from "./appRoutes";
 import {AutomationWorkbench} from "./components/AutomationWorkbench";
 import {Inbox} from "./components/Inbox";
 import {ReviewQueue} from "./components/ReviewQueue";
@@ -9,161 +9,70 @@ import {SearchResults} from "./components/SearchResults";
 import {Sidebar} from "./components/Sidebar";
 import {TopCommand} from "./components/TopCommand";
 import {Viewer} from "./components/Viewer";
-import {
-  createFolder,
-  createTag,
-  listFolders,
-  listTags,
-  updateDocumentOrganization,
-} from "./organizationApi";
-import {getParseDebug} from "./parseDebugApi";
-import {createSavedSearch, runSearch} from "./searchApi";
-import {getCurrentSemanticAnnotation} from "./semanticAnnotationApi";
-import type {
-  DocumentDetail,
-  DocumentListResponse,
-  DocumentOrganizationWrite,
-  DocumentSummary,
-  EvidenceTarget,
-  Folder,
-  ParseDebugView,
-  SearchRequest,
-  SearchResponse,
-  SemanticAnnotationManifest,
-  SessionInfo,
-  Tag,
-  ViewMode,
-} from "./types";
+import {createFolder, createTag, listFolders, listTags, updateDocumentOrganization} from "./organizationApi";
+import {defaultSearchFilterState} from "./searchFilters";
+import {useAppNavigation} from "./useAppNavigation";
+import {useCorpusSearch} from "./useCorpusSearch";
+import {useDocumentList} from "./useDocumentList";
+import {useDocumentWorkspace} from "./useDocumentWorkspace";
+import {useKeyedRequest} from "./useKeyedRequest";
+import type {DocumentOrganizationWrite, EvidenceTarget, SessionInfo, ViewMode} from "./types";
 
 export function AuthenticatedApp({session, onSignOut, sessionError}: {
   session: SessionInfo;
   onSignOut: () => Promise<void>;
   sessionError: string | null;
 }) {
-  const [documents, setDocuments] = useState<DocumentSummary[]>([]);
-  const [total, setTotal] = useState(0);
-  const [folders, setFolders] = useState<Folder[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [detail, setDetail] = useState<DocumentDetail | null>(null);
-  const [evidenceTarget, setEvidenceTarget] = useState<EvidenceTarget | null>(null);
-  const [parseDebug, setParseDebug] = useState<ParseDebugView | null>(null);
-  const [parseDebugError, setParseDebugError] = useState<string | null>(null);
-  const [isParseDebugLoading, setIsParseDebugLoading] = useState(false);
-  const [semanticAnnotation, setSemanticAnnotation] = useState<SemanticAnnotationManifest | null>(null);
-  const [semanticAnnotationError, setSemanticAnnotationError] = useState<string | null>(null);
-  const [isSemanticAnnotationLoading, setIsSemanticAnnotationLoading] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>("inbox");
+  const navigation = useAppNavigation();
+  const {route, entry, navigate} = navigation;
+  const previousRoutes = useRef(new Map<string, AppRoute>());
+  if (route.view !== "viewer" && route.view !== "unavailable") previousRoutes.current.set(route.view, route);
+  const inboxRoute = previousRoutes.current.get("inbox");
+  const inboxQuery = inboxRoute?.view === "inbox" ? inboxRoute.query ?? "" : "";
+  const folderId = inboxRoute?.view === "inbox" ? inboxRoute.folderId : undefined;
+  const list = useDocumentList(inboxQuery, folderId);
+  const organization = useKeyedRequest("organization", async () => {
+    const [folders, tags] = await Promise.all([listFolders(), listTags()]);
+    return {folders, tags};
+  });
+  const folders = organization.data?.folders ?? [];
+  const tags = organization.data?.tags ?? [];
+  const selectedId = route.view === "viewer" || route.view === "inbox" ? route.documentId ?? null : null;
+  const workspace = useDocumentWorkspace(selectedId, entry.key);
+  const search = useCorpusSearch(route.view === "search" ? route : null, entry.key);
+  const [globalQuery, setGlobalQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
-  const [query, setQuery] = useState("");
-  const [searchResponse, setSearchResponse] = useState<SearchResponse | null>(null);
-  const [isSearchLoading, setIsSearchLoading] = useState(false);
-  const [searchStatus, setSearchStatus] = useState<string | null>(null);
-  const deferredQuery = useDeferredValue(query);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const selectedSummary = list.documents.find((document) => document.id === selectedId);
+  const detail = workspace.detail.data;
+  const selected = workspace.detail.error ? null : detail ?? selectedSummary ?? null;
+  const currentSelection = useRef(selectedId);
+  currentSelection.current = selectedId;
 
   useEffect(() => {
-    void loadOrganization().catch((exc) => setError(exc instanceof Error ? exc.message : "Unable to load folders and tags."));
-  }, []);
+    if (route.view === "inbox" && !route.documentId && !list.loading && list.documents[0]) {
+      navigate({...route, documentId: list.documents[0].id}, {replace: true});
+    }
+  }, [route, list.loading, list.documents]);
 
   useEffect(() => {
-    void loadDocuments(deferredQuery, activeFolderId).catch((exc) => setError(exc instanceof Error ? exc.message : "Unable to load documents."));
-  }, [activeFolderId, deferredQuery]);
+    const ready = route.view === "viewer" ? !workspace.detail.loading
+      : route.view === "search" ? !search.loading : route.view === "inbox" ? !list.loading && !workspace.detail.loading : true;
+    if (route.view !== "review") navigation.restore(ready);
+  });
 
-  useEffect(() => {
-    if (!selectedId) {
-      setDetail(null);
-      setParseDebug(null);
-      setParseDebugError(null);
-      setSemanticAnnotation(null);
-      setSemanticAnnotationError(null);
-      return;
-    }
-    let cancelled = false;
-    setDetail(null);
-    setParseDebug(null);
-    setParseDebugError(null);
-    setSemanticAnnotation(null);
-    setSemanticAnnotationError(null);
-    void (async () => {
-      try {
-        const next = await fetchJson<DocumentDetail>(`/api/v1/documents/${selectedId}`);
-        if (!cancelled) {
-          setDetail(next);
-        }
-      } catch (exc) {
-        if (!cancelled) {
-          setError(exc instanceof Error ? exc.message : "Unable to load document detail");
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedId]);
-
-  async function handleLoadParseDebug(documentId: string) {
-    setIsParseDebugLoading(true);
-    setParseDebugError(null);
-    try {
-      setParseDebug(await getParseDebug(documentId));
-    } catch (exc) {
-      setParseDebug(null);
-      setParseDebugError(exc instanceof Error ? exc.message : "Unable to load parse debug");
-    } finally {
-      setIsParseDebugLoading(false);
-    }
+  function navigateView(view: Exclude<ViewMode, "viewer">) {
+    navigate(previousRoutes.current.get(view) ?? defaultRoute(view));
   }
 
-  async function handleLoadSemanticAnnotation(documentId: string) {
-    setIsSemanticAnnotationLoading(true);
-    setSemanticAnnotationError(null);
-    try {
-      const response = await getCurrentSemanticAnnotation(documentId, "smart");
-      setSemanticAnnotation(response.current);
-      if (!response.current) {
-        setSemanticAnnotationError("No Smart Parse manifest has been persisted yet.");
-      }
-    } catch (exc) {
-      setSemanticAnnotation(null);
-      setSemanticAnnotationError(
-        exc instanceof Error ? exc.message : "Unable to load semantic annotation",
-      );
-    } finally {
-      setIsSemanticAnnotationLoading(false);
-    }
-  }
-
-  async function loadDocuments(search: string, folderId: string | null) {
-    const params = new URLSearchParams();
-    if (search.trim()) {
-      params.set("q", search.trim());
-    }
-    if (folderId) {
-      params.set("folderId", folderId);
-    }
-    const payload = await fetchJson<DocumentListResponse>(
-      `/api/v1/documents${params.size ? `?${params}` : ""}`,
-    );
-    setDocuments(payload.items);
-    setTotal(payload.total);
-    startTransition(() => {
-      setSelectedId((current) => current ?? payload.items[0]?.id ?? null);
-    });
-  }
-
-  async function loadOrganization() {
-    const [folderItems, tagItems] = await Promise.all([listFolders(), listTags()]);
-    setFolders(folderItems);
-    setTags(tagItems);
+  function openDocument(documentId: string, target?: EvidenceTarget) {
+    const returnTo = route.view === "viewer" ? route.returnTo : routeUrl(route);
+    navigate({view: "viewer", documentId, page: target?.pageNumber ?? 1, returnTo}, {evidence: target});
   }
 
   async function uploadFile(file: File | undefined) {
-    if (!file) {
-      return;
-    }
+    if (!file) return;
     const body = new FormData();
     body.set("file", file);
     body.set("source", "web_upload");
@@ -171,234 +80,108 @@ export function AuthenticatedApp({session, onSignOut, sessionError}: {
     setIsUploading(true);
     setError(null);
     try {
-      await fetchJson("/api/v1/documents", {
-        method: "POST",
-        headers: {"X-CSRF-Token": csrfToken()},
-        body,
-      });
-      await loadDocuments(deferredQuery, activeFolderId);
-    } catch (exc) {
-      setError(exc instanceof Error ? exc.message : "Upload failed");
-    } finally {
-      setIsUploading(false);
-    }
-  }
-
-  async function handleSelectFolder(folderId: string | null) {
-    setActiveFolderId(folderId);
-    setEvidenceTarget(null);
+      await fetchJson("/api/v1/documents", {method: "POST", headers: {"X-CSRF-Token": csrfToken()}, body});
+      await list.reload();
+    } catch (exc) { setError(exc instanceof Error ? exc.message : "Upload failed"); }
+    finally { setIsUploading(false); }
   }
 
   async function handleCreateFolder(name: string, folderKind: "manual" | "smart") {
-    const trimmed = name.trim();
-    if (!trimmed) {
-      return;
-    }
-    await createFolder({
-      folderKind,
-      name: trimmed,
-      ...(folderKind === "smart" ? {savedQuery: {review_status: ["needs_review"]}} : {}),
-    });
-    await loadOrganization();
+    if (!name.trim()) return;
+    await createFolder({folderKind, name: name.trim(),
+      ...(folderKind === "smart" ? {savedQuery: {review_status: ["needs_review"]}} : {})});
+    await organization.reload();
   }
-
   async function handleCreateTag(name: string) {
-    const trimmed = name.trim();
-    if (!trimmed) {
-      return;
-    }
-    await createTag({name: trimmed});
-    await loadOrganization();
+    if (!name.trim()) return;
+    await createTag({name: name.trim()});
+    await organization.reload();
   }
-
-  async function handleSaveOrganization(
-    documentId: string,
-    payload: DocumentOrganizationWrite,
-  ) {
-    const updated = await updateDocumentOrganization(documentId, payload);
-    setDetail(updated);
-    await loadDocuments(deferredQuery, activeFolderId);
+  async function handleSaveOrganization(documentId: string, payload: DocumentOrganizationWrite) {
+    await updateDocumentOrganization(documentId, payload);
+    if (currentSelection.current === documentId) await workspace.detail.reload();
+    await list.reload();
   }
-
-  async function reloadSelectedDocument(documentId: string | null = selectedId) {
-    if (!documentId) {
-      return;
-    }
-    const next = await fetchJson<DocumentDetail>(`/api/v1/documents/${documentId}`);
-    setDetail(next);
-    await loadDocuments(deferredQuery, activeFolderId);
+  async function reloadSelectedDocument() {
+    await Promise.all([workspace.detail.reload(), list.reload()]);
   }
-
-  function openDocument(documentId: string, target?: EvidenceTarget) {
-    setEvidenceTarget(target ?? null);
-    setParseDebug(null);
-    setParseDebugError(null);
-    setSemanticAnnotation(null);
-    setSemanticAnnotationError(null);
-    if (documentId === selectedId) {
-      setDetail(null);
-      void (async () => {
-        try {
-          setDetail(await fetchJson<DocumentDetail>(`/api/v1/documents/${documentId}`));
-        } catch (exc) {
-          setError(exc instanceof Error ? exc.message : "Unable to load document detail");
-        }
-      })();
-    } else {
-      setSelectedId(documentId);
-    }
-    setViewMode("viewer");
+  async function submitSearch() {
+    const next: AppRoute = route.view === "search"
+      ? {view: "search", query: search.query, filters: {...search.filters}, submitted: true}
+      : {view: "search", query: route.view === "inbox" ? inboxQuery : globalQuery,
+        filters: {...defaultSearchFilterState}, submitted: true};
+    if (routeUrl(next) === routeUrl(route)) await search.reload();
+    else navigate(next);
   }
-
-  async function handleSearch(payload?: SearchRequest) {
-    const target: SearchRequest = payload ?? {
-      query,
-      mode: "hybrid",
-      includeDebug: true,
-    };
-    setViewMode("search");
-    if (!target.query.trim()) {
-      return;
-    }
-    setIsSearchLoading(true);
-    setError(null);
-    setSearchStatus(null);
-    try {
-      const next = await runSearch(target);
-      setSearchResponse(next);
-    } catch (exc) {
-      setError(exc instanceof Error ? exc.message : "Search failed");
-      setSearchResponse(null);
-    } finally {
-      setIsSearchLoading(false);
-    }
+  const commandQuery = route.view === "search" ? search.query : route.view === "inbox" ? inboxQuery : globalQuery;
+  function setCommandQuery(value: string) {
+    if (route.view === "search") search.setQuery(value);
+    else if (route.view === "inbox") navigate({...route, query: value, documentId: undefined}, {replace: true});
+    else setGlobalQuery(value);
   }
-
-  async function handleSaveSearch(payload: SearchRequest) {
-    if (!payload.query.trim()) {
-      setSearchStatus("Enter a search query before saving.");
-      return;
-    }
-    try {
-      const saved = await createSavedSearch({
-        name: `Search: ${payload.query.trim().slice(0, 72)}`,
-        queryText: payload.query.trim(),
-        filters: {
-          mode: payload.mode ?? "hybrid",
-          families: payload.families ?? [],
-          folderIds: payload.folderIds ?? [],
-          tags: payload.tags ?? [],
-          reviewStatuses: payload.reviewStatuses ?? [],
-          reviewedOnly: payload.reviewedOnly ?? false,
-          dateFrom: payload.dateFrom ?? null,
-          dateTo: payload.dateTo ?? null,
-          amountMin: payload.amountMin ?? null,
-          amountMax: payload.amountMax ?? null,
-          sensitivity: payload.sensitivity ?? [],
-          primaryFolderOnly: payload.primaryFolderOnly ?? false,
-        },
-      });
-      setSearchStatus(`Saved search: ${saved.name}`);
-    } catch (exc) {
-      setSearchStatus(exc instanceof Error ? exc.message : "Unable to save search.");
-    }
-  }
-
-  const selectedSummary = documents.find((document) => document.id === selectedId) ?? documents[0];
-  const selected = detail ?? selectedSummary ?? null;
+  const returnRoute = route.view === "viewer" ? parseAppRoute(route.returnTo) : defaultRoute("inbox");
 
   return (
     <div className="app-shell">
-      <Sidebar
-        total={total}
-        active={viewMode}
-        onNavigate={(view) => setViewMode(view)}
-      />
+      <Sidebar total={list.total} active={route.view} onNavigate={navigateView} />
       <main className="app-main">
-        <TopCommand
-          session={session}
-          onSignOut={onSignOut}
-          sessionError={sessionError}
-          query={query}
-          setQuery={setQuery}
-          onSubmitSearch={() => void handleSearch()}
-          isUploading={isUploading}
-          uploadFile={uploadFile}
-        />
-        {viewMode === "automation" ? (
-          <AutomationWorkbench />
-        ) : viewMode === "relationships" || viewMode === "timelines" ? (
-          <RelationshipWorkspace
-            mode={viewMode}
-            documents={documents}
-            onOpenDocument={(documentId) => openDocument(documentId)}
-          />
-        ) : viewMode === "review" ? (
-          <ReviewQueue
-            onOpenDocument={openDocument}
-          />
-        ) : viewMode === "search" ? (
-          <SearchResults
-            query={query}
-            setQuery={setQuery}
-            response={searchResponse}
-            isLoading={isSearchLoading}
-            error={error}
-            status={searchStatus}
-            folders={folders}
-            tags={tags}
-            onSubmit={handleSearch}
-            onSaveSearch={handleSaveSearch}
-            onOpenDocument={openDocument}
-          />
-        ) : viewMode === "viewer" && selected ? (
-          <Viewer
-            document={detail}
-            summary={selectedSummary}
-            evidenceTarget={evidenceTarget}
-            onBack={() => setViewMode("inbox")}
-            onOpenReview={() => setViewMode("review")}
-            folders={folders}
-            tags={tags}
-            onSaveOrganization={handleSaveOrganization}
-            documents={documents}
-            onOpenDocument={openDocument}
-            onRelationshipsChanged={() => reloadSelectedDocument(selectedId)}
-            parseDebug={parseDebug}
-            parseDebugError={parseDebugError}
-            isParseDebugLoading={isParseDebugLoading}
-            onLoadParseDebug={handleLoadParseDebug}
-            semanticAnnotation={semanticAnnotation}
-            semanticAnnotationError={semanticAnnotationError}
-            isSemanticAnnotationLoading={isSemanticAnnotationLoading}
-            onLoadSemanticAnnotation={handleLoadSemanticAnnotation}
-          />
-        ) : (
-          <Inbox
-            documents={documents}
-            total={total}
-            selectedId={selectedId}
-            selected={selected}
-            detail={detail}
-            error={error}
-            activeFilter={activeFilter}
-            setActiveFilter={setActiveFilter}
-            setSelectedId={(documentId) => {
-              setEvidenceTarget(null);
-              setSelectedId(documentId);
-            }}
-            openViewer={() => setViewMode("viewer")}
-            uploadFile={uploadFile}
-            folders={folders}
-            tags={tags}
-            activeFolderId={activeFolderId}
-            onSelectFolder={handleSelectFolder}
-            onCreateFolder={handleCreateFolder}
-            onCreateTag={handleCreateTag}
-            onSaveOrganization={handleSaveOrganization}
-          />
-        )}
+        <TopCommand session={session} onSignOut={onSignOut} sessionError={sessionError}
+          query={commandQuery} setQuery={setCommandQuery} onSubmitSearch={() => void submitSearch()}
+          isUploading={isUploading} uploadFile={uploadFile} />
+        <div id="route-content" tabIndex={-1}>
+          {route.view === "unavailable" ? (
+            <RouteNotice message={route.message} onBack={() => navigate(defaultRoute("inbox"))} />
+          ) : route.view === "automation" ? <AutomationWorkbench />
+          : route.view === "relationships" || route.view === "timelines" ? (
+            <RelationshipWorkspace mode={route.view} documents={list.documents} onOpenDocument={openDocument} />
+          ) : route.view === "review" ? (
+            <ReviewQueue onReady={() => navigation.restore(true)} selectedTaskId={route.taskId} documentId={route.documentId}
+              onSelectTask={(taskId) => navigate({...route, taskId}, {replace: true})} onOpenDocument={openDocument} />
+          ) : route.view === "search" ? (
+            <SearchResults query={search.query} setQuery={search.setQuery} filters={search.filters}
+              setFilters={search.setFilters} submitted={search.submitted} response={search.data}
+              isLoading={search.loading} error={search.error?.message ?? null} status={search.status}
+              folders={folders} tags={tags} onSubmit={submitSearch} onSaveSearch={search.save} onOpenDocument={openDocument} />
+          ) : route.view === "viewer" ? (
+            workspace.detail.loading ? <RouteNotice message="Loading document…" loading />
+            : !detail ? <RouteNotice message={documentError(workspace.detail.error)}
+              onRetry={() => void workspace.detail.reload()} onBack={() => navigation.returnTo(returnRoute)} backLabel={`Back to ${routeLabel(returnRoute)}`} />
+            : <Viewer document={detail} evidenceTarget={navigation.evidenceTarget} pageNumber={route.page}
+              onPageChange={(page) => navigate({...route, page}, {replace: true})}
+              onBack={() => navigation.returnTo(returnRoute)} backLabel={`Back to ${routeLabel(returnRoute)}`}
+              onOpenReview={() => navigate({view: "review", documentId: detail.id})}
+              folders={folders} tags={tags} onSaveOrganization={handleSaveOrganization}
+              documents={list.documents} onOpenDocument={openDocument} onRelationshipsChanged={reloadSelectedDocument}
+              parseDebug={workspace.parse.data} parseDebugError={workspace.parse.error?.message ?? null}
+              isParseDebugLoading={workspace.parse.loading} onLoadParseDebug={workspace.loadParse}
+              semanticAnnotation={workspace.semantic.data} semanticAnnotationError={workspace.semantic.error?.message ?? null}
+              isSemanticAnnotationLoading={workspace.semantic.loading} onLoadSemanticAnnotation={workspace.loadSemantic} />
+          ) : (
+            <Inbox documents={list.documents} total={list.total} selectedId={selectedId} selected={selected} detail={detail}
+              error={workspace.detail.error ? documentError(workspace.detail.error) : list.error?.message ?? organization.error?.message ?? error}
+              activeFilter={activeFilter} setActiveFilter={setActiveFilter}
+              setSelectedId={(documentId) => navigate({view: "inbox", query: inboxQuery, folderId, documentId}, {replace: true})}
+              openViewer={() => { if (selectedId && detail) openDocument(selectedId); }}
+              uploadFile={uploadFile} folders={folders} tags={tags} activeFolderId={folderId ?? null}
+              onSelectFolder={(nextFolderId) => navigate({view: "inbox", query: inboxQuery, folderId: nextFolderId ?? undefined})}
+              onCreateFolder={handleCreateFolder} onCreateTag={handleCreateTag} onSaveOrganization={handleSaveOrganization} />
+          )}
+        </div>
       </main>
     </div>
   );
+}
+
+function documentError(error: Error | null): string {
+  if (error instanceof ApiError && (error.status === 404 || error.status === 403)) return "This document is unavailable or you no longer have access.";
+  return error?.message ?? "This document is unavailable.";
+}
+function RouteNotice({message, loading, onRetry, onBack, backLabel = "Open Inbox"}: {
+  message: string; loading?: boolean; onRetry?: () => void; onBack?: () => void; backLabel?: string;
+}) {
+  return <section className="search-workbench"><h1>{loading ? "Loading" : "Page unavailable"}</h1>
+    <p role={loading ? "status" : "alert"}>{message}</p>
+    {onRetry ? <button type="button" onClick={onRetry}>Retry</button> : null}
+    {onBack ? <button type="button" onClick={onBack}>{backLabel}</button> : null}
+  </section>;
 }

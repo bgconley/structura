@@ -26,6 +26,7 @@ def list_review_tasks(
     access: DocumentAccessContext,
     status: str | None = None,
     limit: int = 50,
+    document_id: UUID | None = None,
 ) -> list[ReviewTask]:
     with db_connection() as conn:
         with conn.cursor() as cur:
@@ -43,10 +44,18 @@ def list_review_tasks(
                 JOIN documents d ON d.id = rt.document_id
                 WHERE document_is_readable(d.id, %s, %s, %s)
                   AND (%s::text IS NULL OR rt.status::text = %s)
+                  AND (%s::uuid IS NULL OR rt.document_id = %s)
                 ORDER BY rt.priority DESC, rt.created_at ASC
                 LIMIT %s
                 """,
-                (*document_read_access_params(access), status, status, limit),
+                (
+                    *document_read_access_params(access),
+                    status,
+                    status,
+                    document_id,
+                    document_id,
+                    limit,
+                ),
             )
             rows = cur.fetchall()
     return [review_task_from_row(row) for row in rows]

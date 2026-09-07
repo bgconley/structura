@@ -31,6 +31,7 @@ export function Sidebar({
         {navItems.map(([icon, label]) => (
           <button
             key={label}
+            id={`nav-${label.toLowerCase().replaceAll(" ", "-")}`}
             className={
               (label === "Inbox" && active === "inbox")
               || (label === "Search" && active === "search")

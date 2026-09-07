@@ -14,7 +14,7 @@ test.beforeEach(async ({context, page}) => {
 
 test("Phase 8 difficult-document visual retrieval and review cues are visible", async ({page}) => {
   await page.goto("/");
-  await page.getByRole("button", {name: /Search/}).click();
+  await page.getByRole("navigation", {name: "Primary"}).getByRole("button", {name: /Search/}).click();
 
   await page.getByLabel("Corpus search query").fill("handwritten degraded intake");
   await page.getByLabel("Search mode").selectOption("visual");
@@ -48,7 +48,7 @@ test("Phase 8 difficult-document visual retrieval and review cues are visible", 
 
 test("Phase 8.5 Smart Parse manifest is visible with the active Qwen semantic path", async ({page}) => {
   await page.goto("/");
-  await page.getByRole("button", {name: /Search/}).click();
+  await page.getByRole("navigation", {name: "Primary"}).getByRole("button", {name: /Search/}).click();
   await page.getByLabel("Corpus search query").fill("handwritten degraded intake");
   await page.getByLabel("Search mode").selectOption("visual");
   await page.getByRole("button", {name: "Search corpus"}).click();
@@ -76,7 +76,7 @@ test("Phase 8 evidence viewer stays open when a stale visual search completes", 
   await mockStructuraApi(page, {searchDelayMs: 800});
 
   await page.goto("/");
-  await page.getByRole("button", {name: /Search/}).click();
+  await page.getByRole("navigation", {name: "Primary"}).getByRole("button", {name: /Search/}).click();
 
   await page.getByLabel("Corpus search query").fill("handwritten degraded intake");
   await page.getByLabel("Search mode").selectOption("visual");
@@ -99,7 +99,7 @@ test("Phase 8 evidence viewer refreshes stale selected detail before showing qua
   await mockStructuraApi(page, {staleReceiptDetailOnce: true});
 
   await page.goto("/");
-  await page.getByRole("button", {name: /Search/}).click();
+  await page.getByRole("navigation", {name: "Primary"}).getByRole("button", {name: /Search/}).click();
   await page.getByLabel("Corpus search query").fill("handwritten degraded intake");
   await page.getByLabel("Search mode").selectOption("visual");
   await page.getByRole("button", {name: "Search corpus"}).click();
@@ -110,7 +110,7 @@ test("Phase 8 evidence viewer refreshes stale selected detail before showing qua
   await expect(page.getByRole("heading", {name: "Document Viewer"})).toBeVisible();
   await expect(page.getByText("Difficult document")).toBeHidden();
 
-  await page.getByRole("button", {name: /Search/}).click();
+  await page.getByRole("navigation", {name: "Primary"}).getByRole("button", {name: /Search/}).click();
   await result.getByRole("button", {name: "Jump to evidence"}).click();
   await expect(page.getByRole("heading", {name: "Document Viewer"})).toBeVisible();
   await expect(page.getByText("Difficult document")).toBeVisible();

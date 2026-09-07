@@ -75,7 +75,9 @@ test("login rediscovers a custom CSRF binding after local session state was clea
     }
     await route.fulfill({headers, json: {...session, csrfCookieName: "private_csrf"}});
   });
-  await page.route(`${apiOrigin}/api/v1/review-tasks*`, (route) => route.fulfill({status: 401, headers, json: {detail: "Not authenticated"}}));
+  await page.route(`${apiOrigin}/api/v1/review-tasks*`, (route) => posts === 0
+    ? route.fulfill({status: 401, headers, json: {detail: "Not authenticated"}})
+    : route.fallback());
   await page.goto("/");
   await page.getByRole("button", {name: /Review Queue/}).click();
   await expect(page.getByRole("button", {name: "Sign in", exact: true})).toBeVisible();

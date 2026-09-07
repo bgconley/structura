@@ -52,7 +52,7 @@ export function Inbox({
             <h1>Document Operations</h1>
             <p>Overview of document review, filing, and trust state.</p>
           </div>
-          <button type="button" onClick={openViewer} disabled={!selected}>
+          <button id="inbox-open-viewer" type="button" onClick={openViewer} disabled={!detail}>
             Open Viewer
           </button>
         </div>

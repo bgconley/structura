@@ -136,3 +136,18 @@ def test_task_missing_cross_household_and_revoked_access_are_indistinguishable(t
     assert revoked.json() == unknown.json()
     assert owner.get(path).status_code == 200
     assert member.get("/api/v1/review-tasks").json()["items"] == []
+
+
+def test_document_backlog_filter_cannot_disclose_another_document(task_access):
+    clients, folder, document, _ = task_access
+    owner, member, outsider = clients
+    params = {"documentId": str(document), "status": "open"}
+    rows = member.get("/api/v1/review-tasks", params=params).json()["items"]
+    assert rows and all(row["documentId"] == str(document) for row in rows)
+    assert owner.get("/api/v1/review-tasks", params={"documentId": str(uuid4())}).json() == {
+        "items": []
+    }
+    assert outsider.get("/api/v1/review-tasks", params=params).json() == {"items": []}
+    with db_connection() as conn, conn.cursor() as cur:
+        cur.execute("DELETE FROM folder_acl WHERE folder_id=%s", (folder,))
+    assert member.get("/api/v1/review-tasks", params=params).json() == {"items": []}
