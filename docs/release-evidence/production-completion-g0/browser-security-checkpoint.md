@@ -1,0 +1,23 @@
+# Browser and static-analysis checkpoint
+
+Date: 2026-09-07. Evaluated candidate: `76fe3e6` on `codex/production-completion`. This is a foundation checkpoint; production, G1, G2 and G3 acceptance remain open.
+
+## Verified execution
+
+A clean detached worktree on Oxcart passed the web lint and production build, then **70 browser tests** in the pinned Linux Playwright image. The eight separately gated live-stack tests were skipped because no candidate application stack was deployed. This run used `--ignore-snapshots` to assess functional behavior independently of the knowingly stale visual references; it does not establish screenshot acceptance. The subsequent 18 phase 1–8 cases passed while generating proposed screenshots for visual inspection. These are mocked application workflows, not model or persisted live-product acceptance.
+
+The browser suite includes 390px navigation, keyboard entry, narrow document/detail panels, preserved Viewer state during background refresh, stale-response handling, correction input validation and calendar-date behavior in four time zones. Dates stored as `YYYY-MM-DD` preserve the source calendar day; timestamps retain local display semantics. Source and earlier database evidence are recorded in the [persisted source checkpoint](persisted-source-checkpoint.md).
+
+At the same candidate, **`make sast` passed**: Bandit, Semgrep, Pyright and Mypy reported no findings/errors. Semgrep used 512 rules on 1,095 tracked targets, with one file exceeding its size limit, one ignored file and partial parsing of a small portion of the input; this is not a claim that every source byte or security risk was analyzed. Mypy checked 415 source files. Both local Make and CI Semgrep commands now fail the gate on findings through `--error`; GitHub actions are pinned to resolved commits. Affected review/authority database tests also passed **27 cases** against all 40 migrations after the static-analysis cleanup.
+
+Validation used the owned temporary database/container roots described in the [execution baseline](README.md), with no existing archive mounts or writes. The browser image was `sha256:b0ab6f3cb99aa7803adbc14d9027ec1785fc6e433b97e134e0f8fe61683b6b53`. Protected output remains under the validation root as `browser-76fe3e6.log`, `browser-76fe3e6/` and the candidate's static/integration logs.
+
+## Visual review and remaining work
+
+Review of all nine proposed Linux images identified incorrect capture points: the relationship reference showed Search, difficult-document review had selected the unrelated invoice task, parse-debug retained a scrolled sticky-sidebar position, and the automation reference represented only mobile. `fff08b7` corrects those capture points, adds separate desktop/mobile automation and relationship-workbench/timeline references, and captures the populated actionable review state before resolving it. Updated baselines require a fresh Linux capture and direct image inspection before acceptance.
+
+The corrected `fff08b7` capture passed all **18 phase 1–8 cases**. The integrator inspected the seven new/changed images and verified the other four were byte-identical to the already inspected captures. All **11 Linux reference images** under `tests/e2e/phase*.spec.ts-snapshots/` are accepted as regression baselines for this bounded foundation. Desktop viewports are 1440×960 with full-page capture extending image height where needed; automation additionally has a separate 390×900 mobile capture. No pixel tolerance was loosened. The approval establishes a reproducible reference, not final visual/product acceptance: the tall Viewer information column, internal field labels, historical model copy and generic quality-task actions remain visible work for UI-06/07/13.
+
+The same dependency installation reported **six npm audit findings (two low, four high)**. SAST success does not resolve dependency findings; their package/advisory analysis and remediation remain open under OPS-03/REL-02.
+
+The responsive foundation does not close the broader product work. Inbox filtering/pagination and real scoped counts, complete facts/line items/evidence, task-specific review/history, native-model status and reader activation, cross-browser accessibility, representative live workflows and production operational assurance remain open. Existing provider-specific UI in historical parse panels is still awaiting the native reader migration; the screenshots do not imply that Qwen3.8 ingestion is activated in the application.

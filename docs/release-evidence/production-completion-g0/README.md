@@ -52,6 +52,8 @@ spikes and remaining activation, quality and capacity gates explicitly.
 
 [The persisted source checkpoint](persisted-source-checkpoint.md) records exact-generation history, 097 request authority, transparent-image and PNG-encoding fixes, and two real 27B source-scored synthetic ingests at `5f61836`. It retains the weak layout diagnostics and explicitly open quality/publication gates.
 
+[The browser and static-analysis checkpoint](browser-security-checkpoint.md) records 70 Linux browser passes (eight live-stack skips), web lint/build, the enforced SAST gate and scoped database verification at `76fe3e6`. Screenshot review and complete product/security acceptance are tracked separately.
+
 The cached validation images observed on Oxcart are:
 
 | Image | Local image ID |
