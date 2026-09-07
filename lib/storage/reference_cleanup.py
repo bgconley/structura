@@ -54,4 +54,16 @@ def _is_object_referenced(cur: Any, stored: StoredObject) -> bool:
         ) AS referenced""",
         (stored.uri, stored.sha256),
     )
+    if cur.fetchone()["referenced"]:
+        return True
+    cur.execute("SELECT to_regclass('structura.document_parse_page_render_assets') AS relation")
+    if not cur.fetchone()["relation"]:
+        return False
+    cur.execute(
+        """SELECT EXISTS (
+          SELECT 1 FROM document_parse_page_render_assets
+          WHERE asset_json->>'uri' = %s OR asset_json->'render'->>'image_sha256' = %s
+        ) AS referenced""",
+        (stored.uri, stored.sha256),
+    )
     return bool(cur.fetchone()["referenced"])

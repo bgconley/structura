@@ -28,6 +28,7 @@ tags:
 - name: Relationships
 - name: Automation
 - name: Assets
+- name: Generation Evidence
 - name: Exports
 - name: Jobs
 - name: Admin
@@ -1749,6 +1750,145 @@ paths:
                           format: date-time
         '401':
           description: Not authenticated
+  /api/v1/documents/{documentId}/parse-generations/{parseGenerationId}:
+    get:
+      tags:
+      - Generation Evidence
+      summary: Read an explicit sealed parse generation and paginated source-page inventory
+      description: Current document and token access apply to retained history. This endpoint makes
+        no ordinary current-generation selection claim. Model transcription is derived evidence, not
+        independent source verification.
+      parameters:
+      - in: path
+        name: documentId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: parseGenerationId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: offset
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+      responses:
+        '200':
+          description: Explicit-generation evidence; render registration alone does not certify current
+            byte availability.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationEvidenceManifest'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Permission denied
+        '404':
+          description: Generation, page or bytes unavailable, or access no longer permitted.
+        '422':
+          description: Invalid request value.
+  /api/v1/documents/{documentId}/parse-generations/{parseGenerationId}/pages/{pageNumber}:
+    get:
+      tags:
+      - Generation Evidence
+      summary: Read one exact historical page and its immutable derived content
+      description: Current document and token access apply to retained history. This endpoint makes
+        no ordinary current-generation selection claim. Model transcription is derived evidence, not
+        independent source verification.
+      parameters:
+      - in: path
+        name: documentId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: parseGenerationId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: pageNumber
+        required: true
+        schema:
+          type: integer
+        description: One-based source page; unavailable values return404 without current-generation
+          fallback.
+      responses:
+        '200':
+          description: Explicit-generation evidence; render registration alone does not certify current
+            byte availability.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationEvidencePage'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Permission denied
+        '404':
+          description: Generation, page or bytes unavailable, or access no longer permitted.
+        '422':
+          description: Invalid request value.
+  /api/v1/documents/{documentId}/parse-generations/{parseGenerationId}/pages/{pageNumber}/render:
+    get:
+      tags:
+      - Generation Evidence
+      summary: Read the verified original-page PNG retained for this exact generation
+      description: Current document and token access apply to retained history. This endpoint makes
+        no ordinary current-generation selection claim. Model transcription is derived evidence, not
+        independent source verification.
+      parameters:
+      - in: path
+        name: documentId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: parseGenerationId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: pageNumber
+        required: true
+        schema:
+          type: integer
+        description: One-based source page; unavailable values return404 without current-generation
+          fallback.
+      responses:
+        '200':
+          description: Explicit-generation evidence; render registration alone does not certify current
+            byte availability.
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Not authenticated
+        '403':
+          description: Permission denied
+        '404':
+          description: Generation, page or bytes unavailable, or access no longer permitted.
+        '422':
+          description: Invalid request value.
 components:
   securitySchemes:
     sessionCookie:
@@ -1762,6 +1902,662 @@ components:
       name: X-API-Token
       description: Scoped automation token for CLI, watched-folder, and admin flows.
   schemas:
+    GenerationEvidencePageSummary:
+      additionalProperties: false
+      properties:
+        pageId:
+          format: uuid
+          title: Pageid
+          type: string
+        pageNumber:
+          exclusiveMinimum: 0
+          maximum: 500
+          title: Pagenumber
+          type: integer
+        sourcePage:
+          $ref: '#/components/schemas/GenerationEvidenceSourcePage'
+        parseState:
+          enum:
+          - processed
+          - partial
+          - insufficient_signal
+          title: Parsestate
+          type: string
+        renderRegistration:
+          enum:
+          - registered
+          - not_retained
+          title: Renderregistration
+          type: string
+        render:
+          anyOf:
+          - $ref: '#/components/schemas/GenerationEvidenceRender'
+          - type: 'null'
+          default: null
+      required:
+      - pageId
+      - pageNumber
+      - sourcePage
+      - parseState
+      - renderRegistration
+      title: GenerationEvidencePageSummary
+      type: object
+    GenerationEvidenceRender:
+      additionalProperties: false
+      properties:
+        id:
+          format: uuid
+          title: Id
+          type: string
+        imageUrl:
+          title: Imageurl
+          type: string
+        sha256:
+          pattern: ^[a-f0-9]{64}$
+          title: Sha256
+          type: string
+        byteSize:
+          exclusiveMinimum: 0
+          maximum: 134217728
+          title: Bytesize
+          type: integer
+        pixelWidth:
+          exclusiveMinimum: 0
+          title: Pixelwidth
+          type: integer
+        pixelHeight:
+          exclusiveMinimum: 0
+          title: Pixelheight
+          type: integer
+        coordinateSpace:
+          const: rendered_source_pixels
+          default: rendered_source_pixels
+          title: Coordinatespace
+          type: string
+      required:
+      - id
+      - imageUrl
+      - sha256
+      - byteSize
+      - pixelWidth
+      - pixelHeight
+      title: GenerationEvidenceRender
+      type: object
+    GenerationEvidenceParseConfiguration:
+      additionalProperties: false
+      properties:
+        profile:
+          maxLength: 200
+          minLength: 1
+          title: Profile
+          type: string
+        served_model:
+          maxLength: 200
+          minLength: 1
+          title: Served Model
+          type: string
+        source_engine:
+          maxLength: 100
+          minLength: 1
+          title: Source Engine
+          type: string
+        model_revision:
+          maxLength: 200
+          minLength: 1
+          title: Model Revision
+          type: string
+        prompt_version:
+          maxLength: 100
+          minLength: 1
+          title: Prompt Version
+          type: string
+        output_schema_version:
+          maxLength: 100
+          minLength: 1
+          title: Output Schema Version
+          type: string
+        normalizer_version:
+          maxLength: 100
+          minLength: 1
+          title: Normalizer Version
+          type: string
+        chunker_version:
+          maxLength: 100
+          minLength: 1
+          title: Chunker Version
+          type: string
+        renderer:
+          maxLength: 100
+          minLength: 1
+          title: Renderer
+          type: string
+        renderer_version:
+          maxLength: 100
+          minLength: 1
+          title: Renderer Version
+          type: string
+        render_scale:
+          exclusiveMinimum: 0
+          maximum: 4
+          title: Render Scale
+          type: number
+      required:
+      - profile
+      - served_model
+      - source_engine
+      - model_revision
+      - prompt_version
+      - output_schema_version
+      - normalizer_version
+      - chunker_version
+      - renderer
+      - renderer_version
+      - render_scale
+      title: ParseConfiguration
+      type: object
+    GenerationEvidenceSourcePage:
+      additionalProperties: false
+      properties:
+        page_number:
+          exclusiveMinimum: 0
+          title: Page Number
+          type: integer
+        width:
+          exclusiveMinimum: 0
+          title: Width
+          type: number
+        height:
+          exclusiveMinimum: 0
+          title: Height
+          type: number
+        unit:
+          enum:
+          - pdf_canvas
+          - pixels
+          title: Unit
+          type: string
+        rotation_degrees:
+          default: 0
+          enum:
+          - 0
+          - 90
+          - 180
+          - 270
+          title: Rotation Degrees
+          type: integer
+      required:
+      - page_number
+      - width
+      - height
+      - unit
+      title: SourcePage
+      type: object
+    GenerationEvidenceManifest:
+      additionalProperties: false
+      properties:
+        documentId:
+          format: uuid
+          title: Documentid
+          type: string
+        processingRunId:
+          format: uuid
+          title: Processingrunid
+          type: string
+        parseGenerationId:
+          format: uuid
+          title: Parsegenerationid
+          type: string
+        viewScope:
+          const: retained_parse_generation
+          default: retained_parse_generation
+          title: Viewscope
+          type: string
+        processingRunState:
+          enum:
+          - sealed
+          - superseded
+          - cancelled
+          title: Processingrunstate
+          type: string
+        parserConfiguration:
+          $ref: '#/components/schemas/GenerationEvidenceParseConfiguration'
+        transcriptionAuthority:
+          const: derived_source_transcription
+          default: derived_source_transcription
+          title: Transcriptionauthority
+          type: string
+        originalAssetId:
+          format: uuid
+          title: Originalassetid
+          type: string
+        originalSha256:
+          pattern: ^[a-f0-9]{64}$
+          title: Originalsha256
+          type: string
+        structureSha256:
+          pattern: ^[a-f0-9]{64}$
+          title: Structuresha256
+          type: string
+        inventorySha256:
+          pattern: ^[a-f0-9]{64}$
+          title: Inventorysha256
+          type: string
+        renderSetState:
+          anyOf:
+          - enum:
+            - building
+            - sealed
+            type: string
+          - type: 'null'
+          title: Rendersetstate
+        renderSetSha256:
+          anyOf:
+          - pattern: ^[a-f0-9]{64}$
+            type: string
+          - type: 'null'
+          title: Rendersetsha256
+        total:
+          maximum: 500
+          minimum: 1
+          title: Total
+          type: integer
+        offset:
+          minimum: 0
+          title: Offset
+          type: integer
+        limit:
+          maximum: 100
+          minimum: 1
+          title: Limit
+          type: integer
+        pages:
+          items:
+            $ref: '#/components/schemas/GenerationEvidencePageSummary'
+          title: Pages
+          type: array
+        observedAt:
+          format: date-time
+          title: Observedat
+          type: string
+      required:
+      - documentId
+      - processingRunId
+      - parseGenerationId
+      - processingRunState
+      - parserConfiguration
+      - originalAssetId
+      - originalSha256
+      - structureSha256
+      - inventorySha256
+      - renderSetState
+      - renderSetSha256
+      - total
+      - offset
+      - limit
+      - pages
+      - observedAt
+      title: GenerationEvidenceManifest
+      type: object
+    GenerationEvidenceSourceBox:
+      additionalProperties: false
+      properties:
+        left:
+          minimum: 0
+          title: Left
+          type: number
+        top:
+          minimum: 0
+          title: Top
+          type: number
+        right:
+          exclusiveMinimum: 0
+          title: Right
+          type: number
+        bottom:
+          exclusiveMinimum: 0
+          title: Bottom
+          type: number
+      required:
+      - left
+      - top
+      - right
+      - bottom
+      title: SourceBox
+      type: object
+    GenerationEvidenceSourceRender:
+      additionalProperties: false
+      properties:
+        page_number:
+          exclusiveMinimum: 0
+          title: Page Number
+          type: integer
+        image_sha256:
+          pattern: ^[a-f0-9]{64}$
+          title: Image Sha256
+          type: string
+        pixel_width:
+          exclusiveMinimum: 0
+          title: Pixel Width
+          type: integer
+        pixel_height:
+          exclusiveMinimum: 0
+          title: Pixel Height
+          type: integer
+        renderer:
+          minLength: 1
+          title: Renderer
+          type: string
+        renderer_version:
+          minLength: 1
+          title: Renderer Version
+          type: string
+        coordinate_space:
+          const: rendered_source_pixels
+          default: rendered_source_pixels
+          title: Coordinate Space
+          type: string
+        native_text:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          title: Native Text
+        native_text_origin:
+          anyOf:
+          - const: pdf_native
+            type: string
+          - type: 'null'
+          default: null
+          title: Native Text Origin
+      required:
+      - page_number
+      - image_sha256
+      - pixel_width
+      - pixel_height
+      - renderer
+      - renderer_version
+      title: SourceRender
+      type: object
+    GenerationEvidenceStructureCell:
+      additionalProperties: false
+      properties:
+        id:
+          format: uuid
+          title: Id
+          type: string
+        row:
+          minimum: 0
+          title: Row
+          type: integer
+        column:
+          minimum: 0
+          title: Column
+          type: integer
+        row_span:
+          default: 1
+          exclusiveMinimum: 0
+          title: Row Span
+          type: integer
+        column_span:
+          default: 1
+          exclusiveMinimum: 0
+          title: Column Span
+          type: integer
+        text:
+          title: Text
+          type: string
+        text_origin:
+          enum:
+          - pdf_native
+          - model_transcription
+          - legacy_docling
+          title: Text Origin
+          type: string
+        bbox:
+          $ref: '#/components/schemas/GenerationEvidenceSourceBox'
+        is_header:
+          default: false
+          title: Is Header
+          type: boolean
+      required:
+      - id
+      - row
+      - column
+      - text
+      - text_origin
+      - bbox
+      title: StructureCell
+      type: object
+    GenerationEvidenceStructureChunk:
+      additionalProperties: false
+      properties:
+        id:
+          format: uuid
+          title: Id
+          type: string
+        page_number:
+          exclusiveMinimum: 0
+          title: Page Number
+          type: integer
+        element_ids:
+          items:
+            format: uuid
+            type: string
+          minItems: 1
+          title: Element Ids
+          type: array
+        text:
+          minLength: 1
+          title: Text
+          type: string
+        text_origins:
+          items:
+            enum:
+            - pdf_native
+            - model_transcription
+            - legacy_docling
+            type: string
+          minItems: 1
+          title: Text Origins
+          type: array
+      required:
+      - id
+      - page_number
+      - element_ids
+      - text
+      - text_origins
+      title: StructureChunk
+      type: object
+    GenerationEvidenceStructureElement:
+      additionalProperties: false
+      properties:
+        id:
+          format: uuid
+          title: Id
+          type: string
+        ordinal:
+          exclusiveMinimum: 0
+          title: Ordinal
+          type: integer
+        parent_id:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          default: null
+          title: Parent Id
+        kind:
+          enum:
+          - paragraph
+          - heading
+          - header
+          - footer
+          - list_item
+          - caption
+          - table
+          - figure
+          - form_field
+          - other
+          title: Kind
+          type: string
+        text:
+          title: Text
+          type: string
+        text_origin:
+          enum:
+          - pdf_native
+          - model_transcription
+          - legacy_docling
+          title: Text Origin
+          type: string
+        bbox:
+          $ref: '#/components/schemas/GenerationEvidenceSourceBox'
+      required:
+      - id
+      - ordinal
+      - kind
+      - text
+      - text_origin
+      - bbox
+      title: StructureElement
+      type: object
+    GenerationEvidenceStructurePage:
+      additionalProperties: false
+      properties:
+        id:
+          format: uuid
+          title: Id
+          type: string
+        page_number:
+          exclusiveMinimum: 0
+          title: Page Number
+          type: integer
+        source:
+          anyOf:
+          - $ref: '#/components/schemas/GenerationEvidenceSourceRender'
+          - type: 'null'
+        state:
+          enum:
+          - processed
+          - partial
+          - deferred
+          - insufficient_signal
+          - unsupported
+          - failed
+          title: State
+          type: string
+        diagnostics:
+          default: []
+          items:
+            enum:
+            - content_omitted
+            - unreadable_region
+            - resource_limit
+            - invalid_output
+            - render_failed
+            type: string
+          title: Diagnostics
+          type: array
+        elements:
+          default: []
+          items:
+            $ref: '#/components/schemas/GenerationEvidenceStructureElement'
+          title: Elements
+          type: array
+        tables:
+          default: []
+          items:
+            $ref: '#/components/schemas/GenerationEvidenceStructureTable'
+          title: Tables
+          type: array
+      required:
+      - id
+      - page_number
+      - source
+      - state
+      title: StructurePage
+      type: object
+    GenerationEvidenceStructureTable:
+      additionalProperties: false
+      properties:
+        id:
+          format: uuid
+          title: Id
+          type: string
+        element_id:
+          format: uuid
+          title: Element Id
+          type: string
+        row_count:
+          exclusiveMinimum: 0
+          title: Row Count
+          type: integer
+        column_count:
+          exclusiveMinimum: 0
+          title: Column Count
+          type: integer
+        cells:
+          items:
+            $ref: '#/components/schemas/GenerationEvidenceStructureCell'
+          title: Cells
+          type: array
+        continuation_key:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          title: Continuation Key
+      required:
+      - id
+      - element_id
+      - row_count
+      - column_count
+      - cells
+      title: StructureTable
+      type: object
+    GenerationEvidencePage:
+      additionalProperties: false
+      properties:
+        documentId:
+          format: uuid
+          title: Documentid
+          type: string
+        processingRunId:
+          format: uuid
+          title: Processingrunid
+          type: string
+        parseGenerationId:
+          format: uuid
+          title: Parsegenerationid
+          type: string
+        viewScope:
+          const: retained_parse_generation
+          default: retained_parse_generation
+          title: Viewscope
+          type: string
+        sourcePage:
+          $ref: '#/components/schemas/GenerationEvidenceSourcePage'
+        page:
+          $ref: '#/components/schemas/GenerationEvidenceStructurePage'
+        chunks:
+          items:
+            $ref: '#/components/schemas/GenerationEvidenceStructureChunk'
+          title: Chunks
+          type: array
+        render:
+          anyOf:
+          - $ref: '#/components/schemas/GenerationEvidenceRender'
+          - type: 'null'
+      required:
+      - documentId
+      - processingRunId
+      - parseGenerationId
+      - sourcePage
+      - page
+      - chunks
+      - render
+      title: GenerationEvidencePage
+      type: object
     AcceptedJob:
       type: object
       additionalProperties: false

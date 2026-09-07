@@ -13,6 +13,7 @@ from starlette.responses import StreamingResponse
 
 from apps.api.structura_api.error_handlers import ResponseTransmissionError, install_error_handling
 from lib.auth.authorization_policy import AuthorizationError
+from lib.evidence.errors import EvidenceUnavailable
 from lib.jobs.public_errors import public_job_error, safe_job_failure
 from lib.jobs.public_results import public_job_result
 
@@ -109,6 +110,10 @@ def _app() -> FastAPI:
     def denied() -> None:
         raise AuthorizationError(PRIVATE)
 
+    @app.get("/retained-evidence")
+    def retained_evidence() -> None:
+        raise EvidenceUnavailable(PRIVATE)
+
     @app.get("/broken-stream")
     async def broken_stream() -> StreamingResponse:
         async def body():
@@ -129,7 +134,8 @@ def _app() -> FastAPI:
 
 
 @pytest.mark.parametrize(
-    ("path", "status"), [("/unexpected", 500), ("/known-error", 400), ("/denied", 403)]
+    ("path", "status"),
+    [("/unexpected", 500), ("/known-error", 400), ("/denied", 403), ("/retained-evidence", 404)],
 )
 def test_api_failures_and_correlation_do_not_echo_private_strings(path, status, caplog) -> None:
     caplog.set_level(logging.INFO, logger="structura")
@@ -137,6 +143,8 @@ def test_api_failures_and_correlation_do_not_echo_private_strings(path, status, 
         response = client.get(path, headers={"X-Request-ID": PRIVATE})
     assert response.status_code == status
     assert PRIVATE not in response.text
+    if path == "/retained-evidence":
+        assert response.json() == {"detail": "Retained generation is unavailable."}
     assert UUID(response.headers["X-Request-ID"])
     assert all(PRIVATE not in record.getMessage() for record in caplog.records)
 

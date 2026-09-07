@@ -14,6 +14,7 @@ from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from lib.auth.authorization_policy import AuthorizationError
+from lib.evidence.errors import EvidenceUnavailable
 from lib.observability import log_event
 
 _SAFE_DETAILS = frozenset(
@@ -155,6 +156,12 @@ class RequestBoundaryMiddleware:
 
 
 def install_error_handling(app: FastAPI) -> None:
+    @app.exception_handler(EvidenceUnavailable)
+    async def evidence_unavailable(_request: Request, _exc: EvidenceUnavailable) -> JSONResponse:
+        return JSONResponse(
+            status_code=404, content={"detail": "Retained generation is unavailable."}
+        )
+
     @app.exception_handler(AuthorizationError)
     async def authorization_error(_request: Request, _exc: AuthorizationError) -> JSONResponse:
         return JSONResponse(status_code=403, content={"detail": "Permission denied"})

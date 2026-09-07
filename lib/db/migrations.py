@@ -50,6 +50,7 @@ BASELINE_SQL_FILES = (
     "099_completion_human_fact_authority.sql",
     "100_completion_generation_retention_cascades.sql",
     "101_completion_accepted_field_projection.sql",
+    "102_completion_retained_page_evidence.sql",
 )
 
 
