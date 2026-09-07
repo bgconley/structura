@@ -83,7 +83,9 @@ def cleanup_verified_unreferenced_object(
     It runs after SQL waits immediately before unlink; no hashing or network IO.
     Unlike best-effort legacy cleanup, failures are deliberately not suppressed.
     """
-    with db_connection() as conn, conn.cursor() as cur:
+    with db_connection(connect_timeout=5) as conn, conn.cursor() as cur:
+        cur.execute("SET LOCAL statement_timeout='5s'")
+        cur.execute("SET LOCAL lock_timeout='3s'")
         lock_content_hash(cur, stored.sha256)
         if _is_object_referenced(cur, stored):
             return "referenced"

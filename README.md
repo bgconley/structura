@@ -145,6 +145,82 @@ The target deployment uses `/srv/structura`. For local development on a workstat
 STRUCTURA_RUNTIME_ROOT=.runtime docker compose up postgres api web
 ```
 
+## Upload Cleanup Runtime
+
+`worker-upload-cleanup` owns expiry and byte reclamation for durable upload attempts.
+It is a CPU-only core Compose service using the API image, UID and runtime group,
+with the exact same canonical storage mount. Upload staging lives inside that
+mount so source/publication hardlinks share a filesystem. Provision and verify the
+correct mount before starting it; a database name check cannot establish storage
+provenance. The private staging directory is owner-only. Keep API and cleanup on
+the same image UID, and preserve every `.upload-attempts/*.lock` file: replacing a
+lock inode can let a late writer escape cleanup exclusion.
+
+After migration `104_completion_upload_attempts.sql` is applied, start or update
+only this service with:
+
+```bash
+docker compose up -d --no-deps --build worker-upload-cleanup
+```
+
+This command does not start model services. Compose shares the upload policy
+environment between API and maintenance. The worker requires explicit
+`STRUCTURA_DATABASE_URL`, `STRUCTURA_RUNTIME_ROOT` and
+`STRUCTURA_UPLOAD_CLEANUP_EXPECTED_DATABASE`; it checks the resolved libpq name,
+actual connected database and migration marker before any cleanup mutation.
+Provisioning remains responsible for matching this database to its canonical
+mount. Maintenance never creates/chmods missing directories: it requires the
+canonical root and owner-only `.upload-attempts` directory to exist, rejects
+symlinks, and verifies their device/inode before claims and after lock acquisition.
+An empty installation returns 503 until the API initializes its upload namespace.
+After verifying the API mount and UID, initialization without an upload is explicit:
+
+```bash
+docker compose exec api python -c 'from lib.uploads.service import UploadService; UploadService()'
+```
+
+The next maintenance sweep opens that existing namespace. An already-running
+worker rejects directory replacement and preserves reservations; it never silently
+adopts an empty replacement. This is not a durable DB-to-filesystem UUID binding.
+
+The initial sweep runs immediately. Configurable defaults are a 15-second interval,
+at most 100 inactive operations plus 100 transfer candidates per sweep, and a
+20-second soft work budget checked between transfers. Expired/live IO remains
+reserved until the exact stable source lock is acquired, all transfer-owned links
+are durably removed or retained by a real document reference, and cleanup is
+confirmed in SQL. The worker skips currently owned cleanup claims, prioritizes
+never-attempted rows, then rotates older cleanup attempts ahead of newer ones.
+Source conflicts and storage failures retain reservations and do not stop the
+remaining batch. Database failures stop new claims; failed sweeps back off to
+15/30/60/120 seconds, resetting after a successful sweep. These are validation
+defaults, not throughput or latency guarantees.
+
+The loopback-only health listener uses port 8211 with no published port.
+`/livez` reports process liveness; `/healthz` reports 503 while starting, degraded,
+stopping or without progress for 90 seconds. Its response uses in-memory progress,
+not request-time SQL or filesystem probes. Sweep logs and persisted service-health
+records contain only bounded counts and static error categories, never source
+paths, filenames, credentials or raw exceptions. DB connect/query/lock waits are
+bounded at 5/5/3 seconds. A filesystem call can still stall; health turns stale
+and ownership is retained rather than abandoning IO.
+
+For one bounded operator sweep against the already configured service:
+
+```bash
+docker compose exec worker-upload-cleanup python -m workers.upload_cleanup.worker --once
+```
+
+SIGTERM/INT stops new claims and allows the currently owned transfer to finish.
+Compose provides a 30-second stop grace; a forced kill leaves the byte reservation
+and expiring cleanup claim for restart. `restart: unless-stopped` restarts process
+failures; Docker does not automatically restart an unhealthy but running process.
+Investigate the static health category and mount/DB availability, then restart only
+`worker-upload-cleanup` if necessary. Do not manually delete staging or release
+reservations to clear a stuck upload. Persistent source-identity conflicts require
+operator investigation. Root-owned deployment validation must run the separate
+process/DB recovery tests and confirm the configured service's health. Those tests
+and fsync ordering do not constitute a host power-loss recovery rehearsal.
+
 ## Migration Baseline
 
 The baseline migration runner applies:

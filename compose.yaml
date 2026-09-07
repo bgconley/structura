@@ -9,6 +9,22 @@ x-app-runtime-access: &app-runtime-access
   group_add:
     - "${STRUCTURA_RUNTIME_HOST_GID:-1000}"
 
+x-upload-policy: &upload-policy
+  STRUCTURA_UPLOAD_MAX_FILE_BYTES: ${STRUCTURA_UPLOAD_MAX_FILE_BYTES:-104857600}
+  STRUCTURA_UPLOAD_ACTOR_ACTIVE_LIMIT: ${STRUCTURA_UPLOAD_ACTOR_ACTIVE_LIMIT:-2}
+  STRUCTURA_UPLOAD_GLOBAL_ACTIVE_LIMIT: ${STRUCTURA_UPLOAD_GLOBAL_ACTIVE_LIMIT:-4}
+  STRUCTURA_UPLOAD_ACTOR_RESERVED_BYTES: ${STRUCTURA_UPLOAD_ACTOR_RESERVED_BYTES:-209715200}
+  STRUCTURA_UPLOAD_GLOBAL_RESERVED_BYTES: ${STRUCTURA_UPLOAD_GLOBAL_RESERVED_BYTES:-419430400}
+  STRUCTURA_UPLOAD_QUEUE_REFERENCE_LIMIT: ${STRUCTURA_UPLOAD_QUEUE_REFERENCE_LIMIT:-100}
+  STRUCTURA_UPLOAD_ABSOLUTE_SECONDS: ${STRUCTURA_UPLOAD_ABSOLUTE_SECONDS:-600}
+  STRUCTURA_UPLOAD_IDLE_SECONDS: ${STRUCTURA_UPLOAD_IDLE_SECONDS:-30}
+  STRUCTURA_UPLOAD_LEASE_SECONDS: ${STRUCTURA_UPLOAD_LEASE_SECONDS:-60}
+  STRUCTURA_UPLOAD_HELD_SECONDS: ${STRUCTURA_UPLOAD_HELD_SECONDS:-1800}
+  STRUCTURA_UPLOAD_INACTIVE_SECONDS: ${STRUCTURA_UPLOAD_INACTIVE_SECONDS:-1800}
+  STRUCTURA_UPLOAD_CLEANUP_LEASE_SECONDS: ${STRUCTURA_UPLOAD_CLEANUP_LEASE_SECONDS:-60}
+  STRUCTURA_UPLOAD_LOCK_WAIT_SECONDS: ${STRUCTURA_UPLOAD_LOCK_WAIT_SECONDS:-1}
+  STRUCTURA_UPLOAD_CONTROL_BYTES: ${STRUCTURA_UPLOAD_CONTROL_BYTES:-16384}
+
 services:
   postgres:
     image: ${STRUCTURA_POSTGRES_IMAGE:-paradedb/paradedb:0.21.5-pg17}
@@ -32,6 +48,7 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     environment:
+      <<: *upload-policy
       STRUCTURA_ENV: ${STRUCTURA_ENV:-production}
       STRUCTURA_WEB_ORIGIN: ${STRUCTURA_WEB_ORIGIN:-http://localhost:3000}
       STRUCTURA_SESSION_COOKIE_SECURE: ${STRUCTURA_SESSION_COOKIE_SECURE:-false}
@@ -96,6 +113,41 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+
+  worker-upload-cleanup:
+    <<: *app-runtime-access
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["python", "-m", "workers.upload_cleanup.worker"]
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 30s
+    environment:
+      <<: *upload-policy
+      STRUCTURA_DATABASE_URL: postgresql://${POSTGRES_USER:-structura}:${POSTGRES_PASSWORD:-structura}@postgres:5432/${POSTGRES_DB:-structura}
+      STRUCTURA_RUNTIME_ROOT: /srv/structura
+      STRUCTURA_UPLOAD_CLEANUP_EXPECTED_DATABASE: ${POSTGRES_DB:-structura}
+      STRUCTURA_UPLOAD_CLEANUP_INTERVAL_SECONDS: ${STRUCTURA_UPLOAD_CLEANUP_INTERVAL_SECONDS:-15}
+      STRUCTURA_UPLOAD_CLEANUP_LIMIT: ${STRUCTURA_UPLOAD_CLEANUP_LIMIT:-100}
+      STRUCTURA_UPLOAD_CLEANUP_SWEEP_BUDGET_SECONDS: ${STRUCTURA_UPLOAD_CLEANUP_SWEEP_BUDGET_SECONDS:-20}
+      STRUCTURA_UPLOAD_CLEANUP_STALE_SECONDS: ${STRUCTURA_UPLOAD_CLEANUP_STALE_SECONDS:-90}
+    volumes:
+      - ${STRUCTURA_RUNTIME_ROOT:-/srv/structura}/objects/canonical:/srv/structura/objects/canonical
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8211/healthz', timeout=2)"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
 
   worker-ingest:
     <<: *app-runtime-access

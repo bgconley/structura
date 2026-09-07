@@ -1,14 +1,20 @@
 """One bounded cleanup pass; busy writers stay charged, including expired leases."""
 
+import math
 import stat
+import time
+from collections.abc import Callable
+from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 from uuid import UUID
 
-from lib.storage import StoredObject
+import psycopg
+
+from lib.storage import StorageError, StoredObject
 from lib.storage.reference_cleanup import cleanup_verified_unreferenced_object
 from lib.storage.service import object_uri
-from lib.storage.verified_publication import FileIdentity
+from lib.storage.verified_publication import FileIdentity, PublicationConflict
 from lib.uploads.cleanup_repository import (
     CleanupClaim,
     claim_cleanup,
@@ -40,6 +46,77 @@ def clean_expired_uploads(staging: UploadStaging, policy: UploadPolicy, *, limit
     expire_inactive_attempts(limit=limit)
     return sum(
         clean_transfer(staging, identity, policy) for identity in cleanup_candidates(limit=limit)
+    )
+
+
+@dataclass(frozen=True)
+class CleanupSweep:
+    inactive_expired: int = 0
+    selected: int = 0
+    attempted: int = 0
+    cleaned: int = 0
+    deferred: int = 0
+    failed: int = 0
+    interrupted: bool = False
+    error_codes: tuple[str, ...] = ()
+
+
+def sweep_expired_uploads(
+    staging: UploadStaging,
+    policy: UploadPolicy,
+    *,
+    limit: int = 100,
+    budget_seconds: float = 20,
+    should_stop: Callable[[], bool] = lambda: False,
+    progress: Callable[[], None] = lambda: None,
+    before_claim: Callable[[], None] = lambda: None,
+) -> CleanupSweep:
+    """A supervised sweep isolates item failures without dropping reservations.
+
+    The time budget only stops NEW work. A running filesystem operation retains
+    its source lock until it returns; no thread/IO is abandoned on timeout.
+    """
+    if not 1 <= limit <= 100 or not math.isfinite(budget_seconds) or budget_seconds <= 0:
+        raise ValueError("Upload cleanup sweep limits are invalid.")
+    if should_stop():
+        return CleanupSweep(interrupted=True)
+    deadline = time.monotonic() + budget_seconds
+    progress()
+    expired = expire_inactive_attempts(limit=limit)
+    candidates = cleanup_candidates(limit=limit)
+    attempted = cleaned = deferred = 0
+    errors = []
+    interrupted = False
+    for identity in candidates:
+        progress()
+        if should_stop() or time.monotonic() >= deadline:
+            interrupted = True
+            break
+        attempted += 1
+        try:
+            before_claim()
+            if clean_transfer(staging, identity, policy):
+                cleaned += 1
+            else:
+                deferred += 1
+        except PublicationConflict:
+            errors.append("cleanup_source_conflict")
+        except (OSError, StorageError):
+            errors.append("cleanup_storage_unavailable")
+        except psycopg.Error:
+            errors.append("cleanup_database_unavailable")
+            break  # Do not spend one connection timeout per remaining item.
+        finally:
+            progress()
+    return CleanupSweep(
+        expired,
+        len(candidates),
+        attempted,
+        cleaned,
+        deferred,
+        len(errors),
+        interrupted,
+        tuple(errors),
     )
 
 

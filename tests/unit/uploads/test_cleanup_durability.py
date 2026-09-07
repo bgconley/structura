@@ -24,7 +24,8 @@ def unreferenced_database(monkeypatch):
         yield Mock()
 
     @contextmanager
-    def database():
+    def database(**kwargs):
+        assert kwargs == {"connect_timeout": 5}
         yield connection
 
     connection.cursor = cursor

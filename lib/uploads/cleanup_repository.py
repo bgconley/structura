@@ -90,10 +90,12 @@ def cleanup_candidates(*, limit: int = 100) -> tuple[UUID, ...]:
     with upload_connection() as conn, conn.cursor() as cur:
         cur.execute(
             """SELECT id FROM upload_transfers WHERE cleanup_confirmed_at IS NULL
+            AND (cleanup_token IS NULL OR cleanup_expires_at<=clock_timestamp())
             AND (revoked_at IS NOT NULL OR
               (held_until IS NOT NULL AND held_until<=clock_timestamp()) OR
               (held_until IS NULL AND lease_expires_at<=clock_timestamp()))
-            ORDER BY created_at,id LIMIT %s""",
+            ORDER BY (cleanup_token IS NOT NULL),cleanup_expires_at NULLS FIRST,created_at,id
+            LIMIT %s""",
             (limit,),
         )
         return tuple(row["id"] for row in cur.fetchall())
