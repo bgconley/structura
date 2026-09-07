@@ -77,7 +77,7 @@ export function ReviewDecisionPanel({
     <div className="review-decision-panel">
       {candidateDecisionTask ? (
         <p className="debug-copy">
-          Accept or reject the candidate above; both decisions clear this task.
+          Use the candidate decisions above to record your review.
         </p>
       ) : null}
       {relationshipTask ? (
@@ -127,7 +127,7 @@ export function ReviewDecisionPanel({
         ) : null}
         <label>
           Correction note
-          <input name="comment" aria-label="Correction note" disabled={savingCorrection} />
+          <input name="comment" aria-label="Correction note" disabled={savingCorrection || !correctionReady} />
         </label>
         {correctionError ? <p id="correction-error" role="alert" className="review-decision-notice">{correctionError}</p> : null}
         <button type="submit" disabled={savingCorrection || !correctionReady}>

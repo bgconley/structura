@@ -1,5 +1,6 @@
 import {useEffect, useRef, useState} from "react";
 import {parseAppRoute, routeUrl, type AppRoute} from "./appRoutes";
+import {randomUuid} from "./browserUuid";
 import type {EvidenceTarget} from "./types";
 
 type Entry = {key: string; index: number; scroll: number; focusId?: string; returnIndex?: number};
@@ -7,7 +8,7 @@ function currentEntry(): Entry {
   const entry = window.history.state?.structura;
   if (entry && typeof entry.key === "string" && Number.isFinite(entry.scroll) && Number.isSafeInteger(entry.index)
     && (entry.focusId === undefined || typeof entry.focusId === "string")) return entry;
-  const next = {key: crypto.randomUUID(), index: 0, scroll: 0};
+  const next = {key: randomUuid(), index: 0, scroll: 0};
   window.history.replaceState({structura: next}, "");
   return next;
 }
@@ -31,7 +32,7 @@ export function useAppNavigation() {
     const previous = {...latest.current.entry, scroll: window.scrollY,
       focusId: active instanceof HTMLElement ? active.id : undefined};
     window.history.replaceState({structura: previous}, "");
-    const entry = options.replace ? previous : {key: crypto.randomUUID(), index: previous.index + 1, scroll: 0,
+    const entry = options.replace ? previous : {key: randomUuid(), index: previous.index + 1, scroll: 0,
       returnIndex: route.view === "viewer"
         ? latest.current.route.view === "viewer" ? previous.returnIndex : previous.index : undefined};
     window.history[options.replace ? "replaceState" : "pushState"]({structura: entry}, "", routeUrl(route));
@@ -45,6 +46,10 @@ export function useAppNavigation() {
     restored.current = latest.current;
     if (latest.current.motion === "replace") return;
     const {entry, motion} = latest.current;
+    // Initial data may finish after the user has begun interacting with the shell.
+    const active = document.activeElement;
+    if (motion === "initial" && active instanceof HTMLElement
+      && active !== document.body && active !== document.documentElement) return;
     const target = motion === "pop" && entry.focusId ? document.getElementById(entry.focusId) : null;
     (target ?? document.getElementById("route-content"))?.focus({preventScroll: true});
     window.scrollTo({top: motion === "pop" ? entry.scroll : 0});

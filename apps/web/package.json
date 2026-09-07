@@ -9,6 +9,7 @@
     "lint": "tsc -b --pretty false"
   },
   "dependencies": {
+    "@noble/hashes": "2.4.0",
     "@vitejs/plugin-react": "^5.0.0",
     "vite": "^7.0.0",
     "typescript": "^5.8.0",
