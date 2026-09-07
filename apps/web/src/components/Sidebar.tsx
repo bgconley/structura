@@ -11,7 +11,7 @@ const navItems: {icon: string; label: string; view: WorkspaceView}[] = [
 ];
 
 export function Sidebar({total, active, onNavigate}: {
-  total: number;
+  total: number | null;
   active: string;
   onNavigate: (view: WorkspaceView) => void;
 }) {
@@ -40,7 +40,7 @@ export function Sidebar({total, active, onNavigate}: {
             className={active === view ? "active" : undefined} aria-current={active === view ? "page" : undefined}
             type="button" onClick={() => {setExpanded(false); onNavigate(view);}}>
             <span aria-hidden="true">{icon}</span><em>{label}</em>
-            {view === "inbox" ? <small>{total}</small> : null}
+            {view === "inbox" ? <small title={total === null ? "Document count unavailable" : "Accessible documents"}>{total ?? "—"}</small> : null}
           </button>
         ))}
       </nav>

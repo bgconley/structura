@@ -14,6 +14,7 @@ import {
   Folder,
   previewSvg,
   receiptDocument,
+  uploadedDocument,
   seededCanonicalFields,
   seededContacts,
   seededDocuments,
@@ -29,11 +30,11 @@ import {
   seededTags,
   seededTimeline,
   seededWatchedFolders,
-  summaryFromDetail,
   Tag,
   updateDocumentOrganization,
   webOrigin,
 } from "./structuraFixtures";
+import {documentBrowseResponse} from "./documentBrowseMock";
 
 export {apiOrigin, csrfToken} from "./structuraFixtures";
 
@@ -138,16 +139,10 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
     }
 
     if (url.pathname === "/api/v1/documents" && request.method() === "GET") {
-      const query = url.searchParams.get("q")?.toLowerCase() ?? "";
-      const folderId = url.searchParams.get("folderId");
-      const items = Array.from(documents.values())
-        .filter((document) => !query || document.title.toLowerCase().includes(query))
-        .filter((document) => !folderId || document.folderIds.includes(folderId))
-        .map(summaryFromDetail);
       await route.fulfill({
         status: 200,
         headers: {"Content-Type": "application/json", ...corsHeaders},
-        json: {items, total: items.length},
+        json: documentBrowseResponse(url.searchParams, Array.from(documents.values()), folders),
       });
       return;
     }
@@ -158,7 +153,7 @@ export async function mockStructuraApi(page: Page, options: MockStructuraApiOpti
       await route.fulfill({
         status: 202,
         headers: {"Content-Type": "application/json", ...corsHeaders},
-        json: {jobId: "55555555-5555-4555-8555-555555555555", status: "queued"},
+        json: {jobId: "55555555-5555-4555-8555-555555555555", status: "queued", documentId: uploadedDocument.id},
       });
       return;
     }

@@ -14,9 +14,10 @@ import {defaultSearchFilterState} from "./searchFilters";
 import {useAppNavigation} from "./useAppNavigation";
 import {useCorpusSearch} from "./useCorpusSearch";
 import {useDocumentList} from "./useDocumentList";
+import {useInboxBrowse} from "./useInboxBrowse";
 import {useDocumentWorkspace} from "./useDocumentWorkspace";
 import {useKeyedRequest} from "./useKeyedRequest";
-import type {DocumentOrganizationWrite, EvidenceTarget, SessionInfo, ViewMode} from "./types";
+import type {AcceptedDocumentUpload, DocumentOrganizationWrite, EvidenceTarget, SessionInfo, ViewMode} from "./types";
 
 export function AuthenticatedApp({session, onSignOut, sessionError}: {
   session: SessionInfo;
@@ -28,9 +29,13 @@ export function AuthenticatedApp({session, onSignOut, sessionError}: {
   const previousRoutes = useRef(new Map<string, AppRoute>());
   if (route.view !== "viewer" && route.view !== "unavailable") previousRoutes.current.set(route.view, route);
   const inboxRoute = previousRoutes.current.get("inbox");
-  const inboxQuery = inboxRoute?.view === "inbox" ? inboxRoute.query ?? "" : "";
-  const folderId = inboxRoute?.view === "inbox" ? inboxRoute.folderId : undefined;
-  const list = useDocumentList(inboxQuery, folderId);
+  const inbox = useInboxBrowse(inboxRoute?.view === "inbox" ? inboxRoute : {view: "inbox"}, navigate);
+  const inboxQuery = inbox.route.query ?? "";
+  const folderId = inbox.route.folderId;
+  const list = inbox.list;
+  // Existing relationship selectors keep their own unfiltered seed page. The
+  // paged Inbox is not a complete relationship-picker corpus.
+  const chooser = useDocumentList(["viewer", "relationships", "timelines"].includes(route.view) ? {} : null);
   const organization = useKeyedRequest("organization", async () => {
     const [folders, tags] = await Promise.all([listFolders(), listTags()]);
     return {folders, tags};
@@ -41,14 +46,17 @@ export function AuthenticatedApp({session, onSignOut, sessionError}: {
   const workspace = useDocumentWorkspace(selectedId, entry.key);
   const search = useCorpusSearch(route.view === "search" ? route : null, entry.key);
   const [globalQuery, setGlobalQuery] = useState("");
-  const [activeFilter, setActiveFilter] = useState("All");
   const [isUploading, setIsUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const uploadPending = useRef(false);
+  const [acceptedUpload, setAcceptedUpload] = useState<AcceptedDocumentUpload | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const selectedSummary = list.documents.find((document) => document.id === selectedId);
   const detail = workspace.detail.data;
   const selected = workspace.detail.error ? null : detail ?? selectedSummary ?? null;
   const currentSelection = useRef(selectedId);
   currentSelection.current = selectedId;
+  const currentLocation = useRef({entry: entry.key, path: routeUrl(route)});
+  currentLocation.current = {entry: entry.key, path: routeUrl(route)};
 
   useEffect(() => {
     if (route.view === "inbox" && !route.documentId && !list.loading && list.documents[0]) {
@@ -72,18 +80,25 @@ export function AuthenticatedApp({session, onSignOut, sessionError}: {
   }
 
   async function uploadFile(file: File | undefined) {
-    if (!file) return;
+    if (!file || uploadPending.current) return;
+    uploadPending.current = true;
+    const submittedLocation = currentLocation.current;
     const body = new FormData();
     body.set("file", file);
     body.set("source", "web_upload");
     body.set("suppliedTitle", file.name.replace(/\.[^.]+$/, ""));
     setIsUploading(true);
-    setError(null);
+    setUploadError(null);
+    setAcceptedUpload(null);
     try {
-      await fetchJson("/api/v1/documents", {method: "POST", headers: {"X-CSRF-Token": csrfToken()}, body});
+      const accepted = await fetchJson<AcceptedDocumentUpload>("/api/v1/documents", {method: "POST", headers: {"X-CSRF-Token": csrfToken()}, body});
+      setAcceptedUpload(accepted);
+      if (currentLocation.current.entry === submittedLocation.entry && currentLocation.current.path === submittedLocation.path) {
+        navigate({view: "inbox", documentId: accepted.documentId});
+      }
       await list.reload();
-    } catch (exc) { setError(exc instanceof Error ? exc.message : "Upload failed"); }
-    finally { setIsUploading(false); }
+    } catch (exc) { setUploadError(exc instanceof Error ? exc.message : "The upload could not be completed."); }
+    finally { uploadPending.current = false; setIsUploading(false); }
   }
 
   async function handleCreateFolder(name: string, folderKind: "manual" | "smart") {
@@ -100,10 +115,10 @@ export function AuthenticatedApp({session, onSignOut, sessionError}: {
   async function handleSaveOrganization(documentId: string, payload: DocumentOrganizationWrite) {
     await updateDocumentOrganization(documentId, payload);
     if (currentSelection.current === documentId) await workspace.detail.reload();
-    await list.reload();
+    await Promise.all([list.reload(), chooser.reload()]);
   }
   async function reloadSelectedDocument() {
-    await Promise.all([workspace.detail.reload(), list.reload()]);
+    await Promise.all([workspace.detail.reload(), list.reload(), chooser.reload()]);
   }
   async function submitSearch() {
     const next: AppRoute = route.view === "search"
@@ -116,24 +131,32 @@ export function AuthenticatedApp({session, onSignOut, sessionError}: {
   const commandQuery = route.view === "search" ? search.query : route.view === "inbox" ? inboxQuery : globalQuery;
   function setCommandQuery(value: string) {
     if (route.view === "search") search.setQuery(value);
-    else if (route.view === "inbox") navigate({...route, query: value, documentId: undefined}, {replace: true});
+    else if (route.view === "inbox") inbox.setQuery(value);
     else setGlobalQuery(value);
   }
   const returnRoute = route.view === "viewer" ? parseAppRoute(route.returnTo) : defaultRoute("inbox");
 
   return (
     <div className="app-shell">
-      <Sidebar total={list.total} active={route.view} onNavigate={navigateView} />
+      <Sidebar total={list.corpusTotal} active={route.view} onNavigate={navigateView} />
       <main className="app-main">
         <TopCommand session={session} onSignOut={onSignOut} sessionError={sessionError}
           query={commandQuery} setQuery={setCommandQuery} onSubmitSearch={() => void submitSearch()}
           isUploading={isUploading} uploadFile={uploadFile} />
         <div id="route-content" tabIndex={-1}>
+          {uploadError ? <div className="upload-failed" role="alert"><strong>Upload failed.</strong> {uploadError}
+            <span> Use Upload to select the file and try again.</span>
+            <button type="button" onClick={() => setUploadError(null)}>Dismiss upload error</button>
+          </div> : null}
+          {acceptedUpload ? <div className="upload-accepted" role="status">Upload accepted. Background processing can continue while you browse.
+            <button type="button" onClick={() => navigate({view: "inbox", documentId: acceptedUpload.documentId})}>Open uploaded document</button>
+            <button type="button" onClick={() => setAcceptedUpload(null)}>Dismiss upload confirmation</button>
+          </div> : null}
           {route.view === "unavailable" ? (
             <RouteNotice message={route.message} onBack={() => navigate(defaultRoute("inbox"))} />
           ) : route.view === "automation" ? <AutomationWorkbench />
           : route.view === "relationships" || route.view === "timelines" ? (
-            <RelationshipWorkspace mode={route.view} documents={list.documents} onOpenDocument={openDocument} />
+            <RelationshipWorkspace mode={route.view} documents={chooser.documents} onOpenDocument={openDocument} />
           ) : route.view === "review" ? (
             <ReviewQueue onReady={() => navigation.restore(true)} selectedTaskId={route.taskId} documentId={route.documentId}
               onSelectTask={(taskId) => navigate({...route, taskId}, {replace: true})} onOpenDocument={openDocument} />
@@ -151,19 +174,17 @@ export function AuthenticatedApp({session, onSignOut, sessionError}: {
               onBack={() => navigation.returnTo(returnRoute)} backLabel={`Back to ${routeLabel(returnRoute)}`}
               onOpenReview={() => navigate({view: "review", documentId: detail.id})}
               folders={folders} tags={tags} onSaveOrganization={handleSaveOrganization}
-              documents={list.documents} onOpenDocument={openDocument} onRelationshipsChanged={reloadSelectedDocument}
+              documents={chooser.documents} onOpenDocument={openDocument} onRelationshipsChanged={reloadSelectedDocument}
               parseDebug={workspace.parse.data} parseDebugError={workspace.parse.error?.message ?? null}
               isParseDebugLoading={workspace.parse.loading} onLoadParseDebug={workspace.loadParse}
               semanticAnnotation={workspace.semantic.data} semanticAnnotationError={workspace.semantic.error?.message ?? null}
               isSemanticAnnotationLoading={workspace.semantic.loading} onLoadSemanticAnnotation={workspace.loadSemantic} />
           ) : (
-            <Inbox documents={list.documents} total={list.total} selectedId={selectedId} selected={selected} detail={detail}
-              error={workspace.detail.error ? documentError(workspace.detail.error) : list.error?.message ?? organization.error?.message ?? error}
-              activeFilter={activeFilter} setActiveFilter={setActiveFilter}
-              setSelectedId={(documentId) => navigate({view: "inbox", query: inboxQuery, folderId, documentId}, {replace: true})}
+            <Inbox browse={inbox} selectedId={selectedId} selected={selected} detail={detail}
+              error={workspace.detail.error ? documentError(workspace.detail.error) : organization.error?.message ?? null}
               openViewer={() => { if (selectedId && detail) openDocument(selectedId); }}
               uploadFile={uploadFile} folders={folders} tags={tags} activeFolderId={folderId ?? null}
-              onSelectFolder={(nextFolderId) => navigate({view: "inbox", query: inboxQuery, folderId: nextFolderId ?? undefined})}
+              onSelectFolder={inbox.setFolder}
               onCreateFolder={handleCreateFolder} onCreateTag={handleCreateTag} onSaveOrganization={handleSaveOrganization} />
           )}
         </div>

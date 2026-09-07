@@ -8,34 +8,14 @@ export function DocumentTable({
   documents,
   selectedId,
   setSelectedId,
-  uploadFile,
 }: {
   documents: DocumentSummary[];
   selectedId: string | null;
   setSelectedId: (id: string) => void;
-  uploadFile: (file: File | undefined) => Promise<void>;
 }) {
   return (
-    <section className="document-panel">
-      <div className="panel-title">
-        <h2>Priority Document Activity</h2>
-        <p>{documents.length} documents displayed</p>
-      </div>
+    <>
       {documents.length ? <p className="table-scroll-hint">Scroll across the table for all document details.</p> : null}
-      {documents.length === 0 ? (
-        <div className="empty-state">
-          <h3>No inbox documents yet</h3>
-          <p>Upload a PDF or image to create the first document row and protected original asset.</p>
-          <label className="primary-upload">
-            Upload first document
-            <input
-              type="file"
-              accept="application/pdf,image/png,image/jpeg,image/tiff,image/webp"
-              onChange={(event) => void uploadFile(event.currentTarget.files?.[0])}
-            />
-          </label>
-        </div>
-      ) : (
         <div className="document-table-scroll" role="region" aria-label="Document activity, scroll for more columns" tabIndex={0}>
         <table className="document-table" aria-label="Document activity" role="table">
           <thead role="rowgroup">
@@ -106,7 +86,6 @@ export function DocumentTable({
           </tbody>
         </table>
         </div>
-      )}
-    </section>
+    </>
   );
 }

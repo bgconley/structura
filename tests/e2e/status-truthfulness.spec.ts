@@ -1,6 +1,7 @@
 import {expect, test} from "@playwright/test";
 
 import {csrfToken, mockStructuraApi} from "./support/structuraMock";
+import {documentBrowseResponse} from "./support/documentBrowseMock";
 
 test.skip(process.env.STRUCTURA_E2E_LIVE === "1", "Mocked status regressions are local-only.");
 
@@ -23,7 +24,7 @@ test("missing observations never claim healthy services or fabricated queue coun
   await expect(page.getByText("Ingested", {exact: true})).toHaveCount(0);
 
   await page.route(/\/api\/v1\/documents(?:\?.*)?$/, async (route) => {
-    await route.fulfill({json: {items: [], total: 0}});
+    await route.fulfill({json: documentBrowseResponse(new URLSearchParams(), [])});
   });
   await page.reload();
   const inboxNavigation = page.getByRole("navigation", {name: "Primary"}).getByRole("button", {name: /Inbox/});

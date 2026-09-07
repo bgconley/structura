@@ -214,9 +214,33 @@ export type SemanticAnnotationResponse = {
   current: SemanticAnnotationManifest | null;
 };
 
+export type DocumentBrowseCounts = {
+  all: number;
+  needsReview: number;
+  unfiled: number;
+  awaitingClassification: number;
+  duplicates: number;
+  lowConfidence: number;
+  hasExtraction: number;
+  textSearchable: number;
+  previewReady: number;
+  humanReviewed: number;
+};
+
+export type AcceptedDocumentUpload = {
+  jobId: string;
+  status: "queued" | "running";
+  documentId: string;
+};
+
 export type DocumentListResponse = {
   items: DocumentSummary[];
   total: number;
+  limit: number;
+  offset: number;
+  corpusTotal: number;
+  observedAt: string;
+  counts: DocumentBrowseCounts;
 };
 
 export type EvidenceRef = {

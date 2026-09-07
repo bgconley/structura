@@ -60,7 +60,11 @@ export function TopCommand({
           type="file"
           disabled={isUploading}
           accept="application/pdf,image/png,image/jpeg,image/tiff,image/webp"
-          onChange={(event) => void uploadFile(event.currentTarget.files?.[0])}
+          onChange={(event) => {
+            const file = event.currentTarget.files?.[0];
+            event.currentTarget.value = "";
+            void uploadFile(file);
+          }}
         />
       </label>
       <StatusChip tone="green" label="Local-first" />

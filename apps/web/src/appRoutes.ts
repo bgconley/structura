@@ -1,9 +1,11 @@
 import {defaultSearchFilterState, modeOptions, familyOptions, reviewStatusOptions, sensitivityOptions,
   relationshipTypeOptions, deadlineTypeOptions, type SearchFilterState} from "./searchFilters";
 import type {ViewMode} from "./types";
+import {appendBrowseOptions, parseBrowseOptions, type DocumentBrowseQuery} from "./documentBrowse";
 
+export type InboxRoute = {view: "inbox"; documentId?: string} & DocumentBrowseQuery;
 export type AppRoute =
-  | {view: "inbox"; documentId?: string; folderId?: string; query?: string}
+  | InboxRoute
   | {view: "viewer"; documentId: string; page: number; returnTo: string}
   | {view: "search"; query: string; filters: SearchFilterState; submitted: boolean}
   | {view: "review"; taskId?: string; documentId?: string}
@@ -55,9 +57,10 @@ export function parseAppRoute(path: string, allowReturn = true): AppRoute {
     if (url.origin !== "https://structura.invalid") throw new Error("This application link is not valid.");
     const params = url.searchParams;
     if (url.pathname === "/" || url.pathname === "/inbox") {
-      only(params, ["document", "folder", "q"]);
+      only(params, ["document", "folder", "q", "state", "sort", "offset", "limit"]);
       return {view: "inbox", documentId: identifier(params.get("document")),
-        folderId: identifier(params.get("folder")), query: params.get("q") || undefined};
+        folderId: identifier(params.get("folder")), query: params.get("q") || undefined,
+        ...parseBrowseOptions(params)};
     }
     if (url.pathname === "/search") {
       only(params, ["q", "submitted", ...filterKeys]);
@@ -113,6 +116,7 @@ export function routeUrl(route: AppRoute): string {
     if (route.documentId) params.set("document", route.documentId);
     if (route.folderId) params.set("folder", route.folderId);
     if (route.query) params.set("q", route.query);
+    appendBrowseOptions(params, route);
   } else if (route.view === "viewer") {
     params.set("page", String(route.page));
     if (route.returnTo !== "/inbox") params.set("returnTo", route.returnTo);

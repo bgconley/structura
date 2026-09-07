@@ -1,21 +1,18 @@
 import {useState} from "react";
 import type {DocumentDetail, DocumentOrganizationWrite, DocumentSummary, Folder, Tag} from "../types";
 import {DocumentInspector} from "./DocumentInspector";
-import {DocumentTable} from "./DocumentTable";
+import {DocumentBrowsePanel} from "./DocumentBrowsePanel";
 import {InboxMetrics} from "./InboxMetrics";
 import {OrganizationRail} from "./OrganizationRail";
 import {PipelineSummary} from "./PipelineSummary";
+import type {InboxBrowse} from "../useInboxBrowse";
 
 export function Inbox({
-  documents,
-  total,
+  browse,
   selectedId,
   selected,
   detail,
   error,
-  activeFilter,
-  setActiveFilter,
-  setSelectedId,
   openViewer,
   uploadFile,
   folders,
@@ -26,15 +23,11 @@ export function Inbox({
   onCreateTag,
   onSaveOrganization,
 }: {
-  documents: DocumentSummary[];
-  total: number;
+  browse: InboxBrowse;
   selectedId: string | null;
   selected: DocumentSummary | DocumentDetail | null;
   detail: DocumentDetail | null;
   error: string | null;
-  activeFilter: string;
-  setActiveFilter: (filter: string) => void;
-  setSelectedId: (id: string) => void;
   openViewer: () => void;
   uploadFile: (file: File | undefined) => Promise<void>;
   folders: Folder[];
@@ -78,23 +71,15 @@ export function Inbox({
           onCreateTag={onCreateTag}
         />
         <InboxMetrics
-          documents={documents}
-          total={total}
-          activeFilter={activeFilter}
-          setActiveFilter={setActiveFilter}
+          counts={browse.list.counts}
+          activeFilter={browse.state}
+          setActiveFilter={browse.setState}
         />
         {error ? <div className="inline-error">{error}</div> : null}
-        <DocumentTable
-          documents={documents}
-          selectedId={selectedId}
-          setSelectedId={setSelectedId}
-          uploadFile={uploadFile}
-        />
-        <PipelineSummary
-          documents={documents}
-          total={total}
-          previewed={documents.filter((document) => document.thumbnailUrl).length}
-        />
+        {detail && browse.list.data && !browse.list.documents.some((document) => document.id === detail.id) ?
+          <p className="selected-document-context" role="status">Selected: <strong>{detail.title}</strong>. This document is outside the current page or filters. Its details remain available.</p> : null}
+        <DocumentBrowsePanel browse={browse} selectedId={selectedId} uploadFile={uploadFile} />
+        <PipelineSummary counts={browse.list.counts} />
       </div>
       <DocumentInspector
         selected={selected}

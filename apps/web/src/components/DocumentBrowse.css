@@ -1,0 +1,38 @@
+.document-browse-controls, .document-pagination, .document-page-recovery {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+}
+.document-browse-controls {padding: 8px 12px;}
+.document-browse-controls label, .document-pagination label {
+  display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px;
+}
+.document-browse-controls select, .document-pagination select {
+  min-height: 32px; max-width: 100%; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--panel); color: var(--text); padding: 4px 8px; font-size: 12px;
+}
+.document-browse-controls button, .document-pagination button, .document-page-recovery button,
+.document-panel .empty-state button {
+  border: 1px solid var(--line); border-radius: 6px; background: var(--panel);
+  color: var(--text); padding: 5px 10px; font-size: 12px; min-height: 32px;
+}
+.document-pagination {border-top: 1px solid var(--line); padding: 8px 12px;}
+.document-pagination p {margin: 0 auto 0 0; color: var(--text); font-size: 12px;}
+.browse-freshness, .inbox-filter-context {font-size: 11px; color: var(--muted); line-height: 1.5;}
+.browse-freshness {margin: 8px 12px;}
+.inbox-filter-context {margin: 0 0 8px;}
+.selected-document-context, .upload-accepted, .upload-failed {
+  border: 1px solid var(--line); border-radius: 6px; padding: 10px; margin: 10px 0;
+  background: var(--blue-soft); color: var(--text); font-size: 12px; line-height: 1.5;
+}
+.upload-failed {background: var(--amber-soft); border-color: var(--amber);}
+.upload-accepted button, .upload-failed button {margin-left: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--text); padding: 5px 8px; font-size: 12px; min-height: 32px;}
+.filter-row button .filter-count {font-variant-numeric: tabular-nums; font-size: 10px;}
+@media (max-width: 760px) {
+  .workspace > .inbox-filter-context, .workspace > .selected-document-context {order: 2;}
+}
+@media (max-width: 600px) {
+  .document-browse-controls label {width: 100%; justify-content: space-between;}
+  .document-browse-controls select {min-width: 0; flex: 1;}
+  .document-pagination p {width: 100%;}
+  .document-pagination select, .document-browse-controls select {min-height: 40px;}
+  .document-pagination button {flex: 1;}
+}
