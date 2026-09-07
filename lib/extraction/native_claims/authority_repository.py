@@ -5,7 +5,8 @@ from typing import Any
 from lib.document_processing.authority_repository import fence_processing_attempt
 from lib.document_processing.models import content_digest
 from lib.extraction.native_claims.errors import NativeClaimConflict, NativeClaimError
-from lib.extraction.native_claims.models import NativeClaimBinding, NativeClaimConfiguration
+from lib.extraction.native_claims.models import NativeClaimBinding
+from lib.extraction.native_claims.record_types import decode_configuration
 from lib.extraction.native_claims.source_repository import NativeClaimSource, lock_source
 from lib.jobs.ownership import current_job_attempt
 
@@ -31,9 +32,10 @@ def lock_set(cur: Any, binding: NativeClaimBinding) -> tuple[dict[str, Any], Nat
 
 
 def validate_set_source(row: dict[str, Any], source: NativeClaimSource) -> None:
-    config = NativeClaimConfiguration.model_validate(row["configuration_json"])
+    config = decode_configuration(row["configuration_json"])
     if (
         config.fingerprint != row["configuration_sha256"]
+        or row.get("interpretation_kind", "structure_normalization") != config.derivation
         or source.manifest != row["source_manifest_json"]
         or content_digest(source.manifest) != row["source_manifest_sha256"]
         or len(source.structure.pages) != row["expected_pages"]

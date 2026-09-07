@@ -6,11 +6,13 @@ from typing import LiteralString, cast
 from psycopg.sql import SQL
 
 from lib.db.connection import db_connection
+from tests.integration.native_model_emission.upgrade_support import restore_105
 
 
 def test_105_upgrade_keeps_existing_claim_identity_payload_and_timestamps(processing):
     with db_connection() as conn, conn.cursor() as cur:
         try:
+            restore_105(cur)  # Undo106 only within this rollback-only historical reconstruction.
             # Other isolated test cases may have populated105. Remove its dependent
             # rows only in this transaction; rollback restores all such history.
             cur.execute("DROP TRIGGER extraction_claim_native_guard ON extraction_claims")

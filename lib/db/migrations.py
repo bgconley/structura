@@ -54,6 +54,7 @@ BASELINE_SQL_FILES = (
     "103_completion_line_item_authority.sql",
     "104_completion_upload_attempts.sql",
     "105_completion_native_claim_currency.sql",
+    "106_completion_native_model_emission.sql",
 )
 
 
