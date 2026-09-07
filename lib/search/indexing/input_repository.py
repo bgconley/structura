@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 from uuid import UUID
 
@@ -20,11 +21,14 @@ def prepare_inputs(
     cur: Any,
     binding: IndexBinding,
     assets: tuple[IndexRenderAsset, ...],
+    *,
+    commit_sources: Callable[[], None],
 ) -> IndexManifest:
-    """Caller verifies exact render objects before this bounded DB transaction.
+    """Caller stages verified exact render objects before this bounded transaction.
 
-    At most 4096 inputs/500 assets are registered together; this first slice has
-    no model work in preparation and no partially advertised input manifest.
+    At most4096 inputs/500 assets register together. Under the sorted content locks,
+    the required callback establishes bytes before references/manifest may commit.
+    No rendering, PNG decoding, staging or model work occurs in this transaction.
     """
     run, header = lock_index(
         cur, binding, render_hashes=tuple(a.source.image_sha256 for a in assets)
@@ -42,9 +46,12 @@ def prepare_inputs(
                 "Candidate manifest was already assigned different inputs."
             )
         _verify_rows(cur, binding, manifest, assets)
+        commit_sources()
         fence_index(cur, binding)
         return manifest
     # Every referenced parse checkpoint/original was prelocked by lock_index.
+    # Atomic blob commits/existing-object checks share the registration hash locks.
+    commit_sources()
     for asset in assets:
         asset_json = asset.model_dump(mode="json")
         cur.execute(

@@ -24,6 +24,7 @@ from lib.search.indexing.models import (
     PreparedIndexSnapshot,
     VectorObservation,
 )
+from lib.search.indexing.render_commit import prepare_render_commits
 from lib.search.indexing.render_verification import read_verified_render, validate_render_inventory
 from lib.storage import ObjectStorage
 
@@ -52,14 +53,18 @@ class CandidateIndexService:
     ) -> IndexManifest:
         validate_render_inventory(assets)
         self.assert_authority(binding)
-        # Reads are bounded and occur outside the transaction, one page at a time.
-        for asset in assets:
-            read_verified_render(asset, self.storage)
-        with db_connection(connect_timeout=5) as conn, conn.cursor() as cur:
-            manifest = input_repository.prepare_inputs(cur, binding, assets)
-            conn.commit()
-        # Cleanup that won before the content-lock registration may have removed
-        # a file. Report a blocked/resumable candidate, never successful availability.
+        # Verified staging is bounded and occurs outside SQL, one page at a time.
+        with prepare_render_commits(assets, self.storage) as prepared:
+            with db_connection(connect_timeout=5) as conn, conn.cursor() as cur:
+                manifest = input_repository.prepare_inputs(
+                    cur,
+                    binding,
+                    assets,
+                    commit_sources=prepared.commit_under_content_locks,
+                )
+                conn.commit()
+        # The content lock now establishes bytes before references commit. This
+        # postcheck additionally reports external storage corruption, never success.
         for asset in assets:
             read_verified_render(asset, self.storage)
         return manifest

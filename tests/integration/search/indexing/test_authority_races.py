@@ -12,6 +12,7 @@ from lib.jobs import JobOwnershipLost
 from lib.jobs.operator_repository import cancel_job
 from lib.search.indexing import header_repository, input_repository, vector_repository
 from lib.search.indexing.configuration import index_configuration
+from lib.search.indexing.render_commit import prepare_render_commits
 from lib.storage import lock_content_hash
 from tests.integration.search.indexing.conftest import asset_for, observation
 
@@ -115,10 +116,16 @@ def test_duplicate_document_fk_then_content_lock_does_not_invert_candidate_order
     pids = Queue()
 
     def prepare():
-        with processing.scope(claimed), db_connection() as conn, conn.cursor() as cur:
-            pids.put(conn.info.backend_pid)
-            input_repository.prepare_inputs(cur, binding, (asset,))
-            conn.commit()
+        with prepare_render_commits((asset,), service.storage) as prepared:
+            with processing.scope(claimed), db_connection() as conn, conn.cursor() as cur:
+                pids.put(conn.info.backend_pid)
+                input_repository.prepare_inputs(
+                    cur,
+                    binding,
+                    (asset,),
+                    commit_sources=prepared.commit_under_content_locks,
+                )
+                conn.commit()
 
     with db_connection() as conn, conn.cursor() as cur:
         # Same implicit KEY SHARE as duplicate ingestion, acquired before hash lock.
