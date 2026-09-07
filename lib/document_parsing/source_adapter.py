@@ -26,14 +26,15 @@ class DocumentSourceError(Exception):
     """Original cannot be safely inspected/rendered; never contains source text/paths."""
 
 
-SOURCE_RENDERER_VERSION = "native-source-raster-v1"
+PDF_RENDERER_VERSION = "native-source-raster-v1"
+IMAGE_RENDERER_VERSION = "native-image-raster-white-v2"
 
 
 def renderer_identity(mime_type: SourceMediaType) -> tuple[str, str]:
     if mime_type == "application/pdf":
-        return "pdfium", f"{SOURCE_RENDERER_VERSION}/pypdfium2-{version('pypdfium2')}"
+        return "pdfium", f"{PDF_RENDERER_VERSION}/pypdfium2-{version('pypdfium2')}"
     if mime_type in {"image/png", "image/jpeg", "image/tiff", "image/webp"}:
-        return "pillow-exif-oriented", f"{SOURCE_RENDERER_VERSION}/Pillow-{version('Pillow')}"
+        return "pillow-exif-oriented", f"{IMAGE_RENDERER_VERSION}/Pillow-{version('Pillow')}"
     raise DocumentSourceError("Original media type is not supported.")
 
 
@@ -41,6 +42,22 @@ def renderer_identity(mime_type: SourceMediaType) -> tuple[str, str]:
 class RenderedSourcePage:
     identity: SourceRender
     image_bytes: bytes
+
+
+def _image_raster(image: Image.Image) -> Image.Image:
+    """Orient the original and display transparency on a fixed white background.
+
+    Dropping alpha can turn black text on transparent black into a blank black
+    page. Palette/RGB transparency metadata needs the same compositing policy as
+    an explicit alpha channel. The versioned policy applies before source hashing.
+    """
+    with ImageOps.exif_transpose(image) as oriented:
+        if "A" not in oriented.getbands() and "transparency" not in oriented.info:
+            return oriented.convert("RGB")
+        with oriented.convert("RGBA") as rgba, rgba.getchannel("A") as alpha:
+            raster = Image.new("RGB", rgba.size, "white")
+            raster.paste(rgba, mask=alpha)
+            return raster
 
 
 class DocumentSource:
@@ -155,7 +172,7 @@ class DocumentSource:
                 if self._image is None:
                     raise DocumentSourceError("Original source is closed or unavailable.")
                 self._image.seek(page_number - 1)
-                raster = ImageOps.exif_transpose(self._image).convert("RGB")
+                raster = _image_raster(self._image)
                 renderer, renderer_version = renderer_identity(self.inventory.mime_type)
             try:
                 buffer = io.BytesIO()
