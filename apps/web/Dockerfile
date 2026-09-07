@@ -28,6 +28,7 @@ USER node
 
 COPY --from=build --chown=node:node /app/apps/web/dist ./dist
 COPY --from=build --chown=node:node /app/apps/web/server.mjs ./server.mjs
+COPY --from=build --chown=node:node /app/apps/web/request_body_limits.mjs ./request_body_limits.mjs
 
 EXPOSE 3000
 

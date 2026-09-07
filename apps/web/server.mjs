@@ -5,6 +5,9 @@ import {extname, join, normalize, relative} from "node:path";
 import {Readable} from "node:stream";
 import {pipeline} from "node:stream/promises";
 import {fileURLToPath} from "node:url";
+import {
+  boundedRequestBody, declaredBodyTooLarge, rejectOversize, requestBodyLimit,
+} from "./request_body_limits.mjs";
 
 const distRoot = fileURLToPath(new URL("./dist", import.meta.url));
 const indexPath = join(distRoot, "index.html");
@@ -48,9 +51,9 @@ createServer(async (request, response) => {
 
 async function proxyApi(request, response, url) {
   const upstreamUrl = new URL(url.pathname + url.search, apiUpstream);
-  if (requestExceedsProxyLimit(request)) {
-    response.writeHead(413, {"Content-Type": "text/plain; charset=utf-8"});
-    response.end("Request body exceeds proxy limit");
+  const maximum = requestBodyLimit(request.method, url.pathname, proxyMaxBodyBytes);
+  if (declaredBodyTooLarge(request, maximum)) {
+    rejectOversize(request, response);
     return;
   }
 
@@ -65,7 +68,8 @@ async function proxyApi(request, response, url) {
     headers.set(name, Array.isArray(value) ? value.join(", ") : value);
   }
 
-  const body = ["GET", "HEAD"].includes(request.method ?? "GET") ? undefined : request;
+  const bounded = boundedRequestBody(request, maximum);
+  const body = ["GET", "HEAD"].includes(request.method ?? "GET") ? undefined : bounded.body;
   const requestInit = {
     method: request.method,
     headers,
@@ -75,7 +79,16 @@ async function proxyApi(request, response, url) {
   if (body) {
     requestInit.duplex = "half";
   }
-  const upstreamResponse = await fetch(upstreamUrl, requestInit);
+  let upstreamResponse;
+  try {
+    upstreamResponse = await fetch(upstreamUrl, requestInit);
+  } catch (error) {
+    if (bounded.exceeded) {
+      rejectOversize(request, response);
+      return;
+    }
+    throw error;
+  }
 
   for (const [name, value] of upstreamResponse.headers) {
     if (["connection", "content-encoding", "transfer-encoding"].includes(name.toLowerCase())) {
@@ -100,16 +113,6 @@ async function proxyApi(request, response, url) {
     return;
   }
   await pipeline(Readable.fromWeb(upstreamResponse.body), response);
-}
-
-function requestExceedsProxyLimit(request) {
-  const rawLength = request.headers["content-length"];
-  const contentLength = Array.isArray(rawLength) ? rawLength[0] : rawLength;
-  if (!contentLength) {
-    return false;
-  }
-  const parsedLength = Number.parseInt(contentLength, 10);
-  return Number.isFinite(parsedLength) && parsedLength > proxyMaxBodyBytes;
 }
 
 async function serveStatic(response, pathname) {

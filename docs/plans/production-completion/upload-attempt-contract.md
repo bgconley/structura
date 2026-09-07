@@ -3,7 +3,9 @@
 Implementation supplement to [batch intake](batch-intake.md), UI-04 and SEC-01.
 Root owns migration **104** and this backend lane. Migration 103 remains the
 line-item authority lane. The existing intake decomposition landed in `927b215`;
-the resource below is not implemented or enabled yet.
+the resource below is implemented as a candidate backend pending the isolated
+PostgreSQL/API/proxy gate and root registration. No browser retry or native pipeline
+activation is included in this checkpoint.
 
 ## Transport decision
 
@@ -15,8 +17,8 @@ without a declared form/body field lets authentication and a database admission
 lease run before body consumption. It also removes multipart overhead from this
 new endpoint's file-size limit. Existing `POST /documents` remains compatible.
 
-The web proxy currently checks only declared Content-Length. Add an actual streamed
-byte limit at both proxy and API boundaries; do not rely on browser metadata or
+The web proxy and API enforce actual streamed
+byte limits at both proxy and API boundaries; do not rely on browser metadata or
 one network hop. Legacy multipart gets a separately bounded envelope allowance.
 Small JSON control bodies have their own limit. Oversize and interrupted streams
 must release their file handles and leave no accepted receipt.
@@ -56,7 +58,11 @@ fence to the legacy endpoint; those remain distinct from the stronger resource b
   supported signatures, and availability of this protocol. UI consumes these values.
 
 The resource keeps actor, household and operation identity after cancellation or
-expiry. Neither cleanup nor retry may erase an old key and turn it into permission
+expiry. Eligible inactive awaiting_content registrations/retry slots become expired
+tombstones after their configured deadline; active/held transfers and unconfirmed
+running IO are not released by this rule. Capacity admission also expires old slots
+for the current actor, so losing unstarted browser references cannot permanently
+exhaust the queue. Neither cleanup nor retry may erase an old key and turn it into permission
 to create a second document. A transfer lease has its own UUID/revision and captured
 credential identity; it is distinct from the longer-lived upload operation.
 
@@ -79,8 +85,9 @@ actor's unfinished operation. Already-admitted processing keeps ADR0010's lifeti
 Reserve concurrency and declared bytes transactionally across tabs/processes.
 Initial validation policy: two active transfers per actor and four globally, a
 100-reference browser queue, and the existing 100 MiB maximum file. Staged duplicate
-decisions also consume bounded storage capacity. Exact held-byte/expiry limits must
-be configured and tested before activation; disk capacity is not inferred from a
+decisions also consume bounded storage capacity. Validation defaults now configure 200 MiB actor/400 MiB global reserved bytes,
+30-minute held content and inactive-operation expiry, 10-minute absolute transfer
+and 30-second idle deadlines; these require the isolated gate before activation; disk capacity is not inferred from a
 small active-request count.
 
 An upload operation and its transfer reservations require separate records:
@@ -123,3 +130,22 @@ Resource schemas, safe errors and lease accounting must pass those tests before
 browser automatic retries are enabled. Model/worker availability does not gate
 original acceptance. Native parse/index publication and the separate processing
 status read model are not activated by this resource.
+
+
+## Candidate backend checkpoint
+
+Migration104 and `lib/uploads/` implement the admitted raw-stream resource, immutable
+transfer generation/content equality, exact duplicate decisions, synchronous captured
+credential fences, staged IO reservations and strict crash cleanup. The public PUT
+requires `If-Match` revision; explicit replacement additionally names the current
+`X-Replace-Transfer-ID`. The separate filesystem publication adapter hashes an open
+FD outside SQL and checks exact no-symlink inode/size/time identity under the content
+lock. Same-filesystem publication links avoid an unaccounted second file copy.
+Directory fsync ordering precedes persisted verified content and original acceptance;
+the real process-kill regression is not a measured power-loss recovery rehearsal.
+
+`lib/uploads/README.md` records lock order, limits, failure and retention behavior.
+The bounded `clean_expired_uploads` maintenance entry point is implemented; its
+operational schedule and fresh Linux/DB/API evidence remain required before treating
+background expiry/crash recovery as deployed. Root owns registration/error integration
+and canonical validation; the browser queue remains a separate slice.

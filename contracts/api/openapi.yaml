@@ -36,6 +36,288 @@ security:
 - sessionCookie: []
 - apiToken: []
 paths:
+  /api/v1/upload-policy:
+    get:
+      tags:
+      - Documents
+      summary: Read configured upload bounds and signature policy
+      responses:
+        '200':
+          description: Exact authorized upload observation; acceptance is independent of processing completion.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadPolicyRead'
+        '401':
+          description: Authentication required.
+        '403':
+          description: Current credential or document permission denied.
+        '404':
+          description: Upload or selected original unavailable.
+        '408':
+          description: Bounded transfer timed out; reconcile before retry.
+        '409':
+          description: Revision, generation, decision or content replay conflicts.
+        '413':
+          description: Actual body exceeds its bound.
+        '415':
+          description: Unrecognized signature or signature/metadata mismatch.
+        '422':
+          description: Invalid command or byte count.
+        '429':
+          description: Reserved transfer or staging capacity occupied.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Seconds before retrying admission.
+        '503':
+          description: Upload storage or service unavailable.
+  /api/v1/uploads:
+    post:
+      tags:
+      - Documents
+      summary: Create or recover an actor-scoped immutable upload operation
+      responses:
+        '200':
+          description: Exact authorized upload observation; acceptance is independent of processing completion.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadAttempt'
+        '401':
+          description: Authentication required.
+        '403':
+          description: Current credential or document permission denied.
+        '404':
+          description: Upload or selected original unavailable.
+        '408':
+          description: Bounded transfer timed out; reconcile before retry.
+        '409':
+          description: Revision, generation, decision or content replay conflicts.
+        '413':
+          description: Actual body exceeds its bound.
+        '415':
+          description: Unrecognized signature or signature/metadata mismatch.
+        '422':
+          description: Invalid command or byte count.
+        '429':
+          description: Reserved transfer or staging capacity occupied.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Seconds before retrying admission.
+        '503':
+          description: Upload storage or service unavailable.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadCreate'
+  /api/v1/uploads/{uploadId}:
+    get:
+      tags:
+      - Documents
+      summary: Reconcile an exact upload under current credential and document ACL
+      responses:
+        '200':
+          description: Exact authorized upload observation; acceptance is independent of processing completion.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadAttempt'
+        '401':
+          description: Authentication required.
+        '403':
+          description: Current credential or document permission denied.
+        '404':
+          description: Upload or selected original unavailable.
+        '408':
+          description: Bounded transfer timed out; reconcile before retry.
+        '409':
+          description: Revision, generation, decision or content replay conflicts.
+        '413':
+          description: Actual body exceeds its bound.
+        '415':
+          description: Unrecognized signature or signature/metadata mismatch.
+        '422':
+          description: Invalid command or byte count.
+        '429':
+          description: Reserved transfer or staging capacity occupied.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Seconds before retrying admission.
+        '503':
+          description: Upload storage or service unavailable.
+    delete:
+      tags:
+      - Documents
+      summary: Cancel an unaccepted operation or return its committed receipt
+      responses:
+        '200':
+          description: Exact authorized upload observation; acceptance is independent of processing completion.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadAttempt'
+        '401':
+          description: Authentication required.
+        '403':
+          description: Current credential or document permission denied.
+        '404':
+          description: Upload or selected original unavailable.
+        '408':
+          description: Bounded transfer timed out; reconcile before retry.
+        '409':
+          description: Revision, generation, decision or content replay conflicts.
+        '413':
+          description: Actual body exceeds its bound.
+        '415':
+          description: Unrecognized signature or signature/metadata mismatch.
+        '422':
+          description: Invalid command or byte count.
+        '429':
+          description: Reserved transfer or staging capacity occupied.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Seconds before retrying admission.
+        '503':
+          description: Upload storage or service unavailable.
+    parameters:
+    - in: path
+      name: uploadId
+      required: true
+      schema:
+        type: string
+        format: uuid
+  /api/v1/uploads/{uploadId}/content:
+    put:
+      tags:
+      - Documents
+      summary: Admit and stream exact raw file bytes; verify every accepted-content replay
+      responses:
+        '200':
+          description: Exact authorized upload observation; acceptance is independent of processing completion.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadAttempt'
+        '401':
+          description: Authentication required.
+        '403':
+          description: Current credential or document permission denied.
+        '404':
+          description: Upload or selected original unavailable.
+        '408':
+          description: Bounded transfer timed out; reconcile before retry.
+        '409':
+          description: Revision, generation, decision or content replay conflicts.
+        '413':
+          description: Actual body exceeds its bound.
+        '415':
+          description: Unrecognized signature or signature/metadata mismatch.
+        '422':
+          description: Invalid command or byte count.
+        '429':
+          description: Reserved transfer or staging capacity occupied.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Seconds before retrying admission.
+        '503':
+          description: Upload storage or service unavailable.
+      parameters:
+      - in: header
+        name: If-Match
+        required: true
+        description: Exact current upload revision UUID.
+        schema:
+          type: string
+          format: uuid
+      - in: header
+        name: X-Replace-Transfer-ID
+        required: false
+        description: Explicitly replace this exact unfinished transfer ID using the current credential. Its outstanding storage stays reserved until cleanup.
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+    parameters:
+    - in: path
+      name: uploadId
+      required: true
+      schema:
+        type: string
+        format: uuid
+  /api/v1/uploads/{uploadId}/decision:
+    post:
+      tags:
+      - Documents
+      summary: Resolve the exact held duplicate with a fresh credential
+      responses:
+        '200':
+          description: Exact authorized upload observation; acceptance is independent of processing completion.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadAttempt'
+        '401':
+          description: Authentication required.
+        '403':
+          description: Current credential or document permission denied.
+        '404':
+          description: Upload or selected original unavailable.
+        '408':
+          description: Bounded transfer timed out; reconcile before retry.
+        '409':
+          description: Revision, generation, decision or content replay conflicts.
+        '413':
+          description: Actual body exceeds its bound.
+        '415':
+          description: Unrecognized signature or signature/metadata mismatch.
+        '422':
+          description: Invalid command or byte count.
+        '429':
+          description: Reserved transfer or staging capacity occupied.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Seconds before retrying admission.
+        '503':
+          description: Upload storage or service unavailable.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadDecision'
+    parameters:
+    - in: path
+      name: uploadId
+      required: true
+      schema:
+        type: string
+        format: uuid
   /api/v1/health:
     get:
       tags:
@@ -2008,6 +2290,334 @@ components:
       name: X-API-Token
       description: Scoped automation token for CLI, watched-folder, and admin flows.
   schemas:
+    UploadCreate:
+      additionalProperties: false
+      properties:
+        operationId:
+          format: uuid
+          title: Operationid
+          type: string
+        clientBatchId:
+          format: uuid
+          title: Clientbatchid
+          type: string
+        filename:
+          maxLength: 255
+          minLength: 1
+          title: Filename
+          type: string
+        declaredBytes:
+          exclusiveMinimum: 0
+          maximum: 104857600
+          title: Declaredbytes
+          type: integer
+        declaredMimeType:
+          anyOf:
+          - maxLength: 150
+            type: string
+          - type: 'null'
+          default: null
+          title: Declaredmimetype
+        source:
+          default: web_upload
+          enum:
+          - web_upload
+          - api_upload
+          - mobile_scan
+          - bulk_import
+          title: Source
+          type: string
+        title:
+          anyOf:
+          - maxLength: 500
+            type: string
+          - type: 'null'
+          default: null
+          title: Title
+      required:
+      - operationId
+      - clientBatchId
+      - filename
+      - declaredBytes
+      title: UploadCreate
+      type: object
+    UploadDecision:
+      additionalProperties: false
+      properties:
+        revision:
+          format: uuid
+          title: Revision
+          type: string
+        decision:
+          enum:
+          - keep_separate
+          - use_existing
+          title: Decision
+          type: string
+        documentId:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          default: null
+          title: Documentid
+      required:
+      - revision
+      - decision
+      title: UploadDecision
+      type: object
+    UploadDuplicate:
+      additionalProperties: false
+      properties:
+        documentId:
+          format: uuid
+          title: Documentid
+          type: string
+        title:
+          title: Title
+          type: string
+      required:
+      - documentId
+      - title
+      title: UploadDuplicate
+      type: object
+    UploadFailure:
+      additionalProperties: false
+      properties:
+        code:
+          title: Code
+          type: string
+        message:
+          title: Message
+          type: string
+      required:
+      - code
+      - message
+      title: UploadFailure
+      type: object
+    UploadReceipt:
+      additionalProperties: false
+      properties:
+        outcome:
+          enum:
+          - accepted
+          - reused
+          title: Outcome
+          type: string
+        documentId:
+          format: uuid
+          title: Documentid
+          type: string
+        assetId:
+          format: uuid
+          title: Assetid
+          type: string
+        batchId:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          default: null
+          title: Batchid
+        jobId:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          default: null
+          title: Jobid
+        sha256:
+          pattern: ^[0-9a-f]{64}$
+          title: Sha256
+          type: string
+        byteSize:
+          exclusiveMinimum: 0
+          title: Bytesize
+          type: integer
+        recordedAt:
+          format: date-time
+          title: Recordedat
+          type: string
+      required:
+      - outcome
+      - documentId
+      - assetId
+      - sha256
+      - byteSize
+      - recordedAt
+      title: UploadReceipt
+      type: object
+    UploadAttempt:
+      additionalProperties: false
+      properties:
+        uploadId:
+          format: uuid
+          title: Uploadid
+          type: string
+        operationId:
+          format: uuid
+          title: Operationid
+          type: string
+        clientBatchId:
+          format: uuid
+          title: Clientbatchid
+          type: string
+        revision:
+          format: uuid
+          title: Revision
+          type: string
+        state:
+          enum:
+          - awaiting_content
+          - receiving
+          - awaiting_duplicate_decision
+          - accepted
+          - reused
+          - rejected
+          - cancelled
+          - expired
+          title: State
+          type: string
+        filename:
+          title: Filename
+          type: string
+        declaredBytes:
+          title: Declaredbytes
+          type: integer
+        actualBytes:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          default: null
+          title: Actualbytes
+        sha256:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          title: Sha256
+        detectedMimeType:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          title: Detectedmimetype
+        currentTransferId:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          default: null
+          title: Currenttransferid
+        createdAt:
+          format: date-time
+          title: Createdat
+          type: string
+        updatedAt:
+          format: date-time
+          title: Updatedat
+          type: string
+        receipt:
+          anyOf:
+          - $ref: '#/components/schemas/UploadReceipt'
+          - type: 'null'
+          default: null
+        error:
+          anyOf:
+          - $ref: '#/components/schemas/UploadFailure'
+          - type: 'null'
+          default: null
+        duplicates:
+          default: []
+          items:
+            $ref: '#/components/schemas/UploadDuplicate'
+          title: Duplicates
+          type: array
+      required:
+      - uploadId
+      - operationId
+      - clientBatchId
+      - revision
+      - state
+      - filename
+      - declaredBytes
+      - createdAt
+      - updatedAt
+      title: UploadAttempt
+      type: object
+    UploadPolicyRead:
+      additionalProperties: false
+      properties:
+        protocol:
+          default: structura.upload_attempt.v1
+          title: Protocol
+          type: string
+        available:
+          default: true
+          title: Available
+          type: boolean
+        maxFileBytes:
+          title: Maxfilebytes
+          type: integer
+        actorActiveLimit:
+          title: Actoractivelimit
+          type: integer
+        globalActiveLimit:
+          title: Globalactivelimit
+          type: integer
+        actorReservedBytes:
+          title: Actorreservedbytes
+          type: integer
+        globalReservedBytes:
+          title: Globalreservedbytes
+          type: integer
+        queueReferenceLimit:
+          title: Queuereferencelimit
+          type: integer
+        absoluteSeconds:
+          title: Absoluteseconds
+          type: integer
+        idleSeconds:
+          title: Idleseconds
+          type: integer
+        heldSeconds:
+          title: Heldseconds
+          type: integer
+        inactiveSeconds:
+          title: Inactiveseconds
+          type: integer
+        controlBytes:
+          title: Controlbytes
+          type: integer
+        mimeTypes:
+          default:
+          - application/pdf
+          - image/png
+          - image/jpeg
+          - image/tiff
+          - image/webp
+          items:
+            type: string
+          title: Mimetypes
+          type: array
+        validation:
+          default: recognized_signature_and_metadata_consistency
+          title: Validation
+          type: string
+      required:
+      - maxFileBytes
+      - actorActiveLimit
+      - globalActiveLimit
+      - actorReservedBytes
+      - globalReservedBytes
+      - queueReferenceLimit
+      - absoluteSeconds
+      - idleSeconds
+      - heldSeconds
+      - inactiveSeconds
+      - controlBytes
+      title: UploadPolicyRead
+      type: object
     GenerationEvidencePageSummary:
       additionalProperties: false
       properties:

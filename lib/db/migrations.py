@@ -52,6 +52,7 @@ BASELINE_SQL_FILES = (
     "101_completion_accepted_field_projection.sql",
     "102_completion_retained_page_evidence.sql",
     "103_completion_line_item_authority.sql",
+    "104_completion_upload_attempts.sql",
 )
 
 

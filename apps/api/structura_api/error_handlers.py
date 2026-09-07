@@ -17,6 +17,7 @@ from lib.auth.authorization_policy import AuthorizationError
 from lib.evidence.errors import EvidenceUnavailable
 from lib.observability import log_event
 from lib.review.line_items.errors import LineDecisionConflict, LineEvidenceError
+from lib.uploads.errors import UploadError
 
 _LINE_CONFLICT = (
     "This line item changed or requires an explicit target. Reload it before saving your decision."
@@ -59,6 +60,10 @@ _SAFE_DETAILS = frozenset(
         _LINE_CONFLICT,
         _LINE_EVIDENCE,
         "Invalid line history request.",
+        "Invalid upload command.",
+        "Invalid upload decision.",
+        "An exact upload revision is required.",
+        "Invalid upload byte count.",
     }
 )
 _STATUS_DETAILS = {
@@ -166,6 +171,14 @@ class RequestBoundaryMiddleware:
 
 
 def install_error_handling(app: FastAPI) -> None:
+    @app.exception_handler(UploadError)
+    async def upload_error(_request: Request, exc: UploadError) -> JSONResponse:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": str(exc), "code": exc.code},
+            headers={"Retry-After": "5"} if exc.status_code == 429 else {},
+        )
+
     @app.exception_handler(LineDecisionConflict)
     async def line_conflict(_request: Request, _exc: LineDecisionConflict) -> JSONResponse:
         return JSONResponse(status_code=409, content={"detail": _LINE_CONFLICT})

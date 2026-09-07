@@ -23,6 +23,7 @@ from apps.api.structura_api.routes_placeholders import router as placeholders_ro
 from apps.api.structura_api.routes_relationships import router as relationships_router
 from apps.api.structura_api.routes_review import router as review_router
 from apps.api.structura_api.routes_search import router as search_router
+from apps.api.structura_api.routes_uploads import router as uploads_router
 from lib.config import get_settings
 from lib.contracts import ContractRegistry
 from lib.db.migrations import baseline_migration_plan
@@ -73,6 +74,7 @@ def create_app() -> FastAPI:
 
     app.include_router(auth_router)
     app.include_router(documents_router)
+    app.include_router(uploads_router)
     app.include_router(generation_evidence_router)
     app.include_router(assets_router)
     app.include_router(organization_router)

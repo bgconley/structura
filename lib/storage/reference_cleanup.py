@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from contextlib import suppress
-from typing import Any
+from pathlib import Path
+from typing import Any, Literal
 
 from lib.db.connection import db_connection
+from lib.storage.directory_durability import sync_directory
 from lib.storage.service import StoredObject, remove_empty_hash_dir
+from lib.storage.verified_publication import PublicationConflict
 
 
 def lock_content_hash(cur: Any, sha256: str) -> None:
@@ -67,3 +71,48 @@ def _is_object_referenced(cur: Any, stored: StoredObject) -> bool:
         (stored.uri, stored.sha256),
     )
     return bool(cur.fetchone()["referenced"])
+
+
+def cleanup_verified_unreferenced_object(
+    stored: StoredObject,
+    identity_matches: Callable[[], bool],
+) -> Literal["removed", "already_missing", "referenced"]:
+    """Strict cleanup; caller retains reservation if any confirmation fails.
+
+    The callback only performs bounded non-following filesystem metadata reads.
+    It runs after SQL waits immediately before unlink; no hashing or network IO.
+    Unlike best-effort legacy cleanup, failures are deliberately not suppressed.
+    """
+    with db_connection() as conn, conn.cursor() as cur:
+        lock_content_hash(cur, stored.sha256)
+        if _is_object_referenced(cur, stored):
+            return "referenced"
+        try:
+            stored.path.lstat()
+        except FileNotFoundError:
+            _sync_cleanup_parents(stored.path)
+            return "already_missing"
+        if not identity_matches():
+            raise PublicationConflict("Original cleanup identity changed.")
+        stored.path.unlink()
+        # Retain empty directories: removing them without persisting their own
+        # parent entries can resurrect a link after upload capacity is released.
+        _sync_cleanup_parents(stored.path)
+        conn.commit()
+        return "removed"
+
+
+def _sync_cleanup_parents(path: Path) -> None:
+    """Confirm removal, including retries after an earlier unlink/fsync failure.
+
+    A missing leaf or parent still needs its surviving ancestor entry synced.
+    Do not create directories or follow symlinks. Sync visible ancestors through
+    the filesystem anchor so concurrent/retried directory removal is also bound.
+    """
+    if not path.is_absolute() or len(path.parents) > 256:
+        raise PublicationConflict("Original cleanup path is invalid.")
+    for parent in path.parents:
+        try:
+            sync_directory(parent)
+        except FileNotFoundError:
+            continue
