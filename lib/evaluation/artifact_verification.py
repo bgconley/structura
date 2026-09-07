@@ -7,7 +7,9 @@ from pathlib import Path
 from typing import Literal
 from uuid import UUID
 
+from lib.document_parsing.document_context import freeze_document_context
 from lib.document_parsing.source_adapter import DocumentSource, DocumentSourceError
+from lib.document_processing.configuration_types import ParseConfigurationV2
 from lib.evaluation.capture_models import CaptureIntegrityError, PersistedGenerationCapture
 from lib.evaluation.source_artifact_io import MAX_ORIGINAL_BYTES, original_metadata
 
@@ -67,6 +69,11 @@ def verify_capture_source(
         ) as source:
             if source.inventory != inventory:
                 raise ValueError("Original page inventory differs from stored source.")
+            configuration = captured.capture.configuration
+            if isinstance(configuration, ParseConfigurationV2) and (
+                freeze_document_context(source) != configuration.context
+            ):
+                raise ValueError("Original context differs from its frozen request input.")
             for page in captured.capture.structure.pages:
                 rendered = source.render(
                     page.page_number, scale=captured.capture.configuration.render_scale

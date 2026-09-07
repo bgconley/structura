@@ -10,7 +10,9 @@ from typing import Any, cast
 
 from lib.document_parsing.structure import DocumentStructure
 from lib.document_processing.authority_repository import fence_processing_attempt, lock_current_run
-from lib.document_processing.models import ParseConfiguration, ProcessingBinding, content_digest
+from lib.document_processing.configuration_binding import validate_configuration_inventory
+from lib.document_processing.configuration_types import decode_parse_configuration
+from lib.document_processing.models import ProcessingBinding, content_digest
 from lib.jobs.ownership import current_job_attempt
 from lib.search.indexing.configuration import IndexConfiguration
 from lib.search.indexing.errors import IndexAuthorityLost, IndexCandidateError
@@ -38,7 +40,8 @@ def lock_source(cur: Any, binding: ProcessingBinding) -> dict[str, Any]:
     )
     page_numbers = tuple(row["page_number"] for row in cur.fetchall())
     structure = DocumentStructure.model_validate(run["structure_json"])
-    configuration = ParseConfiguration.model_validate(run["config_json"])
+    configuration = decode_parse_configuration(run["config_json"])
+    validate_configuration_inventory(configuration, structure.source)
     if (
         structure.parse_generation_id != binding.parse_generation_id
         or structure.processing_run_id != binding.processing_run_id
@@ -72,7 +75,7 @@ def lock_checkpoint_index(cur: Any, binding: IndexBinding) -> dict[str, Any]:
     run = lock_current_run(cur, binding.processing, include_artifacts=False)
     if (
         run["parse_state"] != "sealed"
-        or ParseConfiguration.model_validate(run["config_json"]).fingerprint != run["config_sha256"]
+        or decode_parse_configuration(run["config_json"]).fingerprint != run["config_sha256"]
     ):
         raise IndexCandidateError("Candidate source is not a consistent sealed generation.")
     return _lock_header(cur, binding, run, include_artifacts=False)

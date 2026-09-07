@@ -6,8 +6,8 @@ import hashlib
 import math
 from uuid import uuid5
 
-from lib.document_parsing.model_output import PageParseOutput
-from lib.document_parsing.normalization import normalize_page
+from lib.document_parsing.raw_output import normalize_raw_page
+from lib.document_processing.configuration_binding import validate_invocation_binding
 from lib.evaluation.annotations import DocumentAnnotation
 from lib.evaluation.captures import DocumentCapture
 from lib.evaluation.identity import artifact_digest
@@ -110,13 +110,14 @@ def _validate_raw_pages(capture: DocumentCapture, annotation: DocumentAnnotation
             or invocation.source_engine != config.source_engine
             or invocation.prompt_version != config.prompt_version
             or invocation.output_schema_version != config.output_schema_version
-            or config.output_schema_version != "structura.page_parse.v1"
         ):
             raise ValueError("Raw output/invocation/configuration identity mismatch.")
-        rebuilt = normalize_page(
-            PageParseOutput.model_validate_json(output.raw_output),
+        rebuilt = normalize_raw_page(
+            output.raw_output,
             source,
             structure.parse_generation_id,
+            output_schema_version=config.output_schema_version,
         )
+        validate_invocation_binding(config, invocation, source, structure.source)
         if rebuilt != page:
             raise ValueError("Normalized page does not match its captured raw output.")

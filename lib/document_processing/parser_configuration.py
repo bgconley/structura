@@ -16,6 +16,7 @@ from lib.document_parsing.qwen_page_parser import OUTPUT_SCHEMA_VERSION, PROMPT_
 from lib.document_parsing.searchable_text import CHUNKER_VERSION
 from lib.document_parsing.source_adapter import renderer_identity
 from lib.document_parsing.structure import SourceMediaType
+from lib.document_processing.configuration_types import AnyParseConfiguration, ParseConfigurationV2
 from lib.document_processing.errors import ProcessingError
 from lib.document_processing.models import ParseConfiguration
 from lib.model_runtime.profiles import QWEN_INGESTION_PROFILE, get_model_profile
@@ -67,10 +68,23 @@ def parser_configuration(
 
 
 def validate_parser_configuration(
-    frozen: ParseConfiguration,
+    frozen: AnyParseConfiguration,
     deployment: DeclaredParserDeployment,
     mime_type: SourceMediaType,
 ) -> None:
+    if isinstance(frozen, ParseConfigurationV2):
+        from lib.document_processing.understanding_configuration import (
+            installed_understanding_configuration,
+        )
+
+        actual_v2 = installed_understanding_configuration(
+            deployment, frozen.context, frozen.request, frozen.render_scale
+        )
+        if frozen != actual_v2 or frozen.context.mime_type != mime_type:
+            raise ProcessingError(
+                "Frozen parser configuration does not match this executor deployment."
+            )
+        return
     actual = parser_configuration(deployment, mime_type, render_scale=frozen.render_scale)
     if frozen != actual:
         raise ProcessingError(

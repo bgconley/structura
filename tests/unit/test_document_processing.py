@@ -30,7 +30,7 @@ def contract():
         source_engine="qwen3_8_27b",
         model_revision="revision-a",
         prompt_version="page-v1",
-        output_schema_version="page.v1",
+        output_schema_version="structura.page_parse.v1",
         normalizer_version="v1",
         chunker_version="v1",
         renderer="pdfium",

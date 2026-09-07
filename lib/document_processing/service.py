@@ -10,7 +10,8 @@ from lib.document_parsing.qwen_page_parser import ParsedSourcePage
 from lib.document_parsing.structure import DocumentStructure, SourceInventory
 from lib.document_processing import checkpoint_repository, run_repository
 from lib.document_processing.authority_repository import fence_processing_attempt, lock_current_run
-from lib.document_processing.models import ParseConfiguration, ProcessingBinding, ProcessingRun
+from lib.document_processing.configuration_types import AnyParseConfiguration
+from lib.document_processing.models import ProcessingBinding, ProcessingRun
 from lib.documents.access_policy import DocumentAccessContext
 
 
@@ -23,7 +24,7 @@ class DocumentProcessingService:
         original_asset_id: UUID,
         original_sha256: str,
         request_key: UUID,
-        configuration: ParseConfiguration,
+        configuration: AnyParseConfiguration,
         queue_name: str = "document-parsing-candidates",
     ) -> ProcessingRun:
         with db_connection() as conn, conn.cursor() as cur:

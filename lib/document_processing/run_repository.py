@@ -8,8 +8,13 @@ from uuid import UUID, uuid4
 from psycopg.types.json import Jsonb
 
 from lib.auth.models import AuthPrincipal
+from lib.document_processing.configuration_types import (
+    AnyParseConfiguration,
+    ParseConfigurationV2,
+    decode_parse_configuration,
+)
 from lib.document_processing.errors import ProcessingError
-from lib.document_processing.models import ParseConfiguration, ProcessingBinding, ProcessingRun
+from lib.document_processing.models import ProcessingBinding, ProcessingRun
 from lib.document_processing.request_authority_repository import admit_request
 from lib.documents.access_policy import DocumentAccessContext
 from lib.documents.access_repository import document_is_writable
@@ -25,9 +30,15 @@ def start_parse_run(
     original_asset_id: UUID,
     original_sha256: str,
     request_key: UUID,
-    configuration: ParseConfiguration,
+    configuration: AnyParseConfiguration,
     queue_name: str,
 ) -> ProcessingRun:
+    configuration = decode_parse_configuration(configuration)
+    if isinstance(configuration, ParseConfigurationV2) and (
+        configuration.context.original_asset_id != original_asset_id
+        or configuration.context.original_sha256 != original_sha256
+    ):
+        raise ProcessingError("Parser configuration context names a different original source.")
     if current_job_attempt() is not None:
         raise ProcessingError("A worker cannot replace its inherited processing request.")
     origin = admit_request(cur, document_id, principal)

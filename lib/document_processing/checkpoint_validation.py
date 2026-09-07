@@ -6,12 +6,12 @@ import hashlib
 import math
 from uuid import UUID, uuid5
 
-from lib.document_parsing.model_output import PageParseOutput
-from lib.document_parsing.normalization import normalize_page
 from lib.document_parsing.qwen_page_parser import ParsedSourcePage
+from lib.document_parsing.raw_output import normalize_raw_page
 from lib.document_parsing.structure import SourceInventory
+from lib.document_processing.configuration_binding import validate_invocation_binding
+from lib.document_processing.configuration_types import AnyParseConfiguration
 from lib.document_processing.errors import ProcessingError
-from lib.document_processing.models import ParseConfiguration
 
 
 def validate_checkpoint(
@@ -19,7 +19,7 @@ def validate_checkpoint(
     *,
     generation_id: UUID,
     inventory: SourceInventory,
-    configuration: ParseConfiguration,
+    configuration: AnyParseConfiguration,
 ) -> None:
     page, invocation = checkpoint.page, checkpoint.invocation
     source = page.source
@@ -39,6 +39,7 @@ def validate_checkpoint(
         raise ProcessingError("Checkpoint does not match its generation, source or configuration.")
     if hashlib.sha256(checkpoint.raw_output.encode()).hexdigest() != invocation.raw_output_sha256:
         raise ProcessingError("Checkpoint raw output does not match its recorded hash.")
+    validate_invocation_binding(configuration, invocation, source, inventory)
     source_page = inventory.pages[page.page_number - 1]
     scale = configuration.render_scale if source_page.unit == "pdf_canvas" else 1
     if (source.pixel_width, source.pixel_height) != (
@@ -46,8 +47,11 @@ def validate_checkpoint(
         math.ceil(source_page.height * scale),
     ):
         raise ProcessingError("Checkpoint raster does not match the configured source geometry.")
-    normalized = normalize_page(
-        PageParseOutput.model_validate_json(checkpoint.raw_output), source, generation_id
+    normalized = normalize_raw_page(
+        checkpoint.raw_output,
+        source,
+        generation_id,
+        output_schema_version=configuration.output_schema_version,
     )
     if normalized != page:
         raise ProcessingError("Checkpoint structure does not match its raw response.")

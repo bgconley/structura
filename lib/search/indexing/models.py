@@ -9,7 +9,8 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from lib.document_parsing.structure import DocumentStructure, Sha256, SourceRender, TextOrigin
-from lib.document_processing.models import ParseConfiguration, ProcessingBinding, content_digest
+from lib.document_processing.configuration_types import AnyParseConfiguration
+from lib.document_processing.models import ProcessingBinding, content_digest
 from lib.search.indexing.configuration import IndexConfiguration, Modality
 
 
@@ -130,7 +131,7 @@ class VectorObservation(IndexModel):
 @dataclass(frozen=True)
 class IndexPreparationSource:
     configuration: IndexConfiguration
-    parse_configuration: ParseConfiguration
+    parse_configuration: AnyParseConfiguration
     structure: DocumentStructure
     original_uri: str
     prepared: bool

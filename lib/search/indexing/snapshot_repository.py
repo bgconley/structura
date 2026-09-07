@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from lib.document_parsing.structure import DocumentStructure
-from lib.document_processing.models import ParseConfiguration
+from lib.document_processing.configuration_types import decode_parse_configuration
 from lib.search.indexing.authority_repository import fence_index, lock_index
 from lib.search.indexing.configuration import IndexConfiguration
 from lib.search.indexing.errors import IndexCandidateError
@@ -37,7 +37,7 @@ def load_preparation(cur: Any, binding: IndexBinding) -> IndexPreparationSource:
         raise IndexCandidateError("Candidate original metadata differs from its sealed inventory.")
     snapshot = IndexPreparationSource(
         configuration=IndexConfiguration.model_validate(header["config_json"]),
-        parse_configuration=ParseConfiguration.model_validate(run["config_json"]),
+        parse_configuration=decode_parse_configuration(run["config_json"]),
         structure=structure,
         original_uri=asset["uri"],
         prepared=header["manifest_json"] is not None,

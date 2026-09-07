@@ -7,17 +7,22 @@ from uuid import UUID
 
 from pydantic import ValidationError
 
+from lib.document_parsing.invocations import decode_parse_invocation
 from lib.document_parsing.qwen_page_parser import ParsedSourcePage
 from lib.document_parsing.searchable_text import page_chunks
 from lib.document_parsing.structure import (
     DocumentStructure,
-    ParseInvocation,
     SourceInventory,
     StructurePage,
 )
 from lib.document_processing.checkpoint_validation import validate_checkpoint
+from lib.document_processing.configuration_types import (
+    AnyParseConfiguration,
+    ParseConfigurationV2,
+    decode_parse_configuration,
+)
 from lib.document_processing.errors import ProcessingError
-from lib.document_processing.models import ParseConfiguration, content_digest
+from lib.document_processing.models import content_digest
 from lib.documents.access_policy import DocumentAccessContext
 from lib.evaluation.capture_models import (
     CaptureDeclaration,
@@ -65,7 +70,7 @@ def _validated_capture(
     row: dict[str, Any],
     declaration: CaptureDeclaration,
 ) -> PersistedGenerationCapture:
-    configuration = ParseConfiguration.model_validate(row["config_json"])
+    configuration = decode_parse_configuration(row["config_json"])
     inventory = SourceInventory.model_validate(row["inventory_json"])
     structure = DocumentStructure.model_validate(row["structure_json"])
     source = RegisteredCaptureSource(
@@ -136,13 +141,18 @@ def _validated_capture(
         structure_sha256=row["structure_sha256"],
         inventory_sha256=row["inventory_sha256"],
         source=source,
+        generation_settings_provenance=(
+            "frozen_configuration"
+            if isinstance(configuration, ParseConfigurationV2)
+            else "externally_declared"
+        ),
     )
 
 
 def _validated_checkpoints(
     row: dict[str, Any],
     inventory: SourceInventory,
-    configuration: ParseConfiguration,
+    configuration: AnyParseConfiguration,
 ) -> tuple[ParsedSourcePage, ...]:
     result = []
     for checkpoint in row["checkpoints"]:
@@ -155,7 +165,7 @@ def _validated_checkpoints(
             raise ValueError("Checkpoint digest mismatch.")
         parsed = ParsedSourcePage(
             StructurePage.model_validate(payload["page"]),
-            ParseInvocation.model_validate(payload["invocation"]),
+            decode_parse_invocation(payload["invocation"]),
             payload["raw"],
         )
         if (

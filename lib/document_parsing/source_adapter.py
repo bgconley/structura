@@ -197,6 +197,35 @@ class DocumentSource:
         except Exception:
             raise DocumentSourceError("Original page cannot be rendered.") from None
 
+    def native_text(self, page_number: int) -> str | None:
+        """Read original PDF text for a bounded frozen context without rendering.
+
+        This is a separately attributed hint, never a model transcript. The same
+        per-page bound used by the existing raster path applies before extraction.
+        """
+        if not 1 <= page_number <= len(self.inventory.pages):
+            raise DocumentSourceError("Requested page is outside the original inventory.")
+        if self._pdf is None:
+            if self._image is None:
+                raise DocumentSourceError("Original source is closed or unavailable.")
+            return None
+        try:
+            page = self._pdf[page_number - 1]
+            try:
+                text_page = page.get_textpage()
+                try:
+                    if text_page.count_chars() > 1_000_000:
+                        raise DocumentSourceError("Native page text exceeds its supported budget.")
+                    return str(text_page.get_text_range())
+                finally:
+                    text_page.close()
+            finally:
+                page.close()
+        except DocumentSourceError:
+            raise
+        except Exception:
+            raise DocumentSourceError("Original native page text is unavailable.") from None
+
     def close(self) -> None:
         if self._pdf is not None:
             self._pdf.close()

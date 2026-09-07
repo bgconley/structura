@@ -7,13 +7,12 @@ import math
 from collections.abc import Callable, Sequence
 from uuid import UUID, uuid5
 
-from lib.document_parsing.model_output import PageParseOutput
-from lib.document_parsing.normalization import normalize_page
+from lib.document_parsing.page_parser import SourcePageParser, V1SourcePageParser
 from lib.document_parsing.qwen_page_parser import (
     PageGenerationClient,
     ParsedSourcePage,
-    parse_source_page,
 )
+from lib.document_parsing.raw_output import V1_OUTPUT_VERSION, V2_OUTPUT_VERSION, normalize_raw_page
 from lib.document_parsing.searchable_text import page_chunks
 from lib.document_parsing.source_adapter import DocumentSource
 from lib.document_parsing.structure import DocumentStructure, StructurePage
@@ -31,6 +30,7 @@ def parse_document(
     checkpoint: Callable[[ParsedSourcePage], None],
     timeout_seconds: int = 180,
     render_scale: float = 2,
+    page_parser: SourcePageParser | None = None,
 ) -> DocumentStructure:
     """The owning run service supplies authority and immutable checkpoint storage.
 
@@ -43,6 +43,11 @@ def parse_document(
     if not math.isfinite(render_scale) or not 0 < render_scale <= 4:
         raise ValueError("Source rendering scale is invalid.")
     inventory = source.inventory
+    parser = page_parser or V1SourcePageParser(
+        client, generation_id, len(inventory.pages), timeout_seconds
+    )
+    if parser.output_schema_version not in {V1_OUTPUT_VERSION, V2_OUTPUT_VERSION}:
+        raise ValueError("Page parser output version is unsupported.")
     prior = {result.page.page_number: result for result in completed}
     if len(prior) != len(completed) or not set(prior) <= set(range(1, len(inventory.pages) + 1)):
         raise ValueError("Resume checkpoints contain duplicate or foreign pages.")
@@ -61,25 +66,23 @@ def parse_document(
                 previous.page.id != uuid5(generation_id, f"page:{number}")
                 or previous.page.source != rendered.identity
                 or previous.invocation.page_numbers != (number,)
+                or previous.invocation.output_schema_version != parser.output_schema_version
                 or hashlib.sha256(previous.raw_output.encode()).hexdigest()
                 != previous.invocation.raw_output_sha256
-                or normalize_page(
-                    PageParseOutput.model_validate_json(previous.raw_output),
+                or normalize_raw_page(
+                    previous.raw_output,
                     rendered.identity,
                     generation_id,
+                    output_schema_version=parser.output_schema_version,
                 )
                 != previous.page
             ):
                 raise ValueError("Resume checkpoint belongs to another generation or source.")
             result = previous
         elif requested < max_new_pages:
-            result = parse_source_page(
-                client,
-                source.render(number, scale=render_scale),
-                generation_id=generation_id,
-                page_count=len(inventory.pages),
-                timeout_seconds=timeout_seconds,
-            )
+            result = parser.parse_page(source.render(number, scale=render_scale))
+            if result.invocation.output_schema_version != parser.output_schema_version:
+                raise ValueError("Page parser returned another output version.")
             assert_authority()
             checkpoint(result)
             requested += 1

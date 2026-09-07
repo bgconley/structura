@@ -47,7 +47,9 @@ class PersistedGenerationCapture:
     source: RegisteredCaptureSource
     storage_integrity: Literal["verified"] = "verified"
     commit_provenance: Literal["externally_declared"] = "externally_declared"
-    generation_settings_provenance: Literal["externally_declared"] = "externally_declared"
+    generation_settings_provenance: Literal["externally_declared", "frozen_configuration"] = (
+        "externally_declared"
+    )
     invocation_authenticity: Literal["not_evaluated"] = "not_evaluated"
     original_artifact_verification: Literal["not_evaluated"] = "not_evaluated"
     rendered_artifact_verification: Literal["not_evaluated"] = "not_evaluated"

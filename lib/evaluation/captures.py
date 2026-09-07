@@ -8,7 +8,7 @@ from uuid import UUID
 from pydantic import Field, model_validator
 
 from lib.document_parsing.structure import DocumentStructure
-from lib.document_processing.models import ParseConfiguration
+from lib.document_processing.configuration_types import AnyParseConfiguration, ParseConfigurationV2
 from lib.evaluation.identity import Digest, EvaluationModel, Label
 
 
@@ -24,7 +24,7 @@ class DocumentCapture(EvaluationModel):
     fixture_type: Literal["deterministic_fixture", "model_backed"]
     model_mode: Literal["fixture", "live", "required"]
     commit: str = Field(pattern=r"^[a-f0-9]{40}$")
-    configuration: ParseConfiguration
+    configuration: AnyParseConfiguration
     configuration_sha256: Digest
     max_output_tokens: int = Field(ge=1)
     temperature: float = Field(ge=0, le=2)
@@ -35,4 +35,9 @@ class DocumentCapture(EvaluationModel):
     def consistent_mode(self) -> DocumentCapture:
         if (self.fixture_type == "deterministic_fixture") != (self.model_mode == "fixture"):
             raise ValueError("Fixture captures cannot claim live model mode.")
+        if isinstance(self.configuration, ParseConfigurationV2) and (
+            self.max_output_tokens != self.configuration.request.max_output_tokens
+            or self.temperature != self.configuration.request.temperature
+        ):
+            raise ValueError("Capture request settings differ from the frozen v2 configuration.")
         return self

@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from lib.document_parsing.source_adapter import DocumentSource, renderer_identity
 from lib.document_parsing.structure import DocumentStructure
-from lib.document_processing.models import ParseConfiguration, ProcessingBinding, content_digest
+from lib.document_processing.configuration_types import decode_parse_configuration
+from lib.document_processing.models import ProcessingBinding, content_digest
 from lib.evidence.errors import EvidenceConflict
 from lib.evidence.models import (
     MAX_RENDER_BYTES,
@@ -73,7 +74,7 @@ def _retain_missing(
 ) -> None:
     row = service.execution_source(binding)
     structure = DocumentStructure.model_validate(row["structure_json"])
-    config = ParseConfiguration.model_validate(row["config_json"])
+    config = decode_parse_configuration(row["config_json"])
     expected = snapshot.expected
     original = structure.source
     address = parse_object_uri(row["uri"])

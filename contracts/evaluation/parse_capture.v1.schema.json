@@ -40,7 +40,36 @@
         },
         "invocations": {
           "items": {
-            "$ref": "#/$defs/ParseInvocation"
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/ParseInvocationV2"
+                  },
+                  {
+                    "properties": {
+                      "output_schema_version": {
+                        "const": "structura.page_understanding.v2"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/ParseInvocation"
+                  },
+                  {
+                    "properties": {
+                      "output_schema_version": {
+                        "const": "structura.page_parse.v1"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
           },
           "title": "Invocations",
           "type": "array"
@@ -80,6 +109,130 @@
         "invocations"
       ],
       "title": "DocumentStructure",
+      "type": "object"
+    },
+    "FrozenDocumentContext": {
+      "additionalProperties": false,
+      "properties": {
+        "mime_type": {
+          "enum": [
+            "application/pdf",
+            "image/png",
+            "image/jpeg",
+            "image/tiff",
+            "image/webp"
+          ],
+          "title": "Mime Type",
+          "type": "string"
+        },
+        "omitted_page_numbers": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 500,
+          "title": "Omitted Page Numbers",
+          "type": "array"
+        },
+        "original_asset_id": {
+          "format": "uuid",
+          "title": "Original Asset Id",
+          "type": "string"
+        },
+        "original_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Original Sha256",
+          "type": "string"
+        },
+        "page_count": {
+          "maximum": 500,
+          "minimum": 1,
+          "title": "Page Count",
+          "type": "integer"
+        },
+        "recipe_version": {
+          "const": "original-metadata-native-excerpts-v1",
+          "title": "Recipe Version",
+          "type": "string"
+        },
+        "selected_pages": {
+          "items": {
+            "$ref": "#/$defs/NativePageExcerpt"
+          },
+          "maxItems": 8,
+          "title": "Selected Pages",
+          "type": "array"
+        },
+        "source_byte_size": {
+          "exclusiveMinimum": 0,
+          "maximum": 104857600,
+          "title": "Source Byte Size",
+          "type": "integer"
+        },
+        "source_inventory_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Source Inventory Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "recipe_version",
+        "original_asset_id",
+        "original_sha256",
+        "mime_type",
+        "source_byte_size",
+        "source_inventory_sha256",
+        "page_count",
+        "selected_pages",
+        "omitted_page_numbers"
+      ],
+      "title": "FrozenDocumentContext",
+      "type": "object"
+    },
+    "NativePageExcerpt": {
+      "additionalProperties": false,
+      "properties": {
+        "excerpt": {
+          "maxLength": 384,
+          "title": "Excerpt",
+          "type": "string"
+        },
+        "original_page_id": {
+          "format": "uuid",
+          "title": "Original Page Id",
+          "type": "string"
+        },
+        "page_number": {
+          "maximum": 500,
+          "minimum": 1,
+          "title": "Page Number",
+          "type": "integer"
+        },
+        "source_character_count": {
+          "maximum": 1000000,
+          "minimum": 0,
+          "title": "Source Character Count",
+          "type": "integer"
+        },
+        "source_page_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Source Page Sha256",
+          "type": "string"
+        },
+        "text_origin": {
+          "const": "pdf_native",
+          "title": "Text Origin",
+          "type": "string"
+        }
+      },
+      "required": [
+        "page_number",
+        "original_page_id",
+        "source_page_sha256",
+        "text_origin",
+        "source_character_count",
+        "excerpt"
+      ],
+      "title": "NativePageExcerpt",
       "type": "object"
     },
     "ParseConfiguration": {
@@ -168,6 +321,139 @@
       "title": "ParseConfiguration",
       "type": "object"
     },
+    "ParseConfigurationV2": {
+      "additionalProperties": false,
+      "properties": {
+        "chunker_version": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Chunker Version",
+          "type": "string"
+        },
+        "configuration_version": {
+          "const": "structura.parse_configuration.v2",
+          "title": "Configuration Version",
+          "type": "string"
+        },
+        "context": {
+          "$ref": "#/$defs/FrozenDocumentContext"
+        },
+        "context_recipe_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Context Recipe Sha256",
+          "type": "string"
+        },
+        "definitions": {
+          "$ref": "#/$defs/UnderstandingDefinitions"
+        },
+        "model_revision": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Model Revision",
+          "type": "string"
+        },
+        "normalizer_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Normalizer Sha256",
+          "type": "string"
+        },
+        "normalizer_version": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Normalizer Version",
+          "type": "string"
+        },
+        "output_schema_version": {
+          "const": "structura.page_understanding.v2",
+          "title": "Output Schema Version",
+          "type": "string"
+        },
+        "profile": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Profile",
+          "type": "string"
+        },
+        "profile_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Profile Sha256",
+          "type": "string"
+        },
+        "prompt_template_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Prompt Template Sha256",
+          "type": "string"
+        },
+        "prompt_version": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Prompt Version",
+          "type": "string"
+        },
+        "render_scale": {
+          "exclusiveMinimum": 0,
+          "maximum": 4,
+          "title": "Render Scale",
+          "type": "number"
+        },
+        "renderer": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Renderer",
+          "type": "string"
+        },
+        "renderer_version": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Renderer Version",
+          "type": "string"
+        },
+        "request": {
+          "$ref": "#/$defs/ParseRequestSettings"
+        },
+        "request_builder_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Request Builder Sha256",
+          "type": "string"
+        },
+        "served_model": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Served Model",
+          "type": "string"
+        },
+        "source_engine": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Source Engine",
+          "type": "string"
+        }
+      },
+      "required": [
+        "profile",
+        "served_model",
+        "source_engine",
+        "model_revision",
+        "prompt_version",
+        "output_schema_version",
+        "normalizer_version",
+        "chunker_version",
+        "renderer",
+        "renderer_version",
+        "render_scale",
+        "configuration_version",
+        "definitions",
+        "profile_sha256",
+        "prompt_template_sha256",
+        "request_builder_sha256",
+        "context_recipe_sha256",
+        "normalizer_sha256",
+        "context",
+        "request"
+      ],
+      "title": "ParseConfigurationV2",
+      "type": "object"
+    },
     "ParseInvocation": {
       "additionalProperties": false,
       "properties": {
@@ -239,6 +525,180 @@
         "latency_ms"
       ],
       "title": "ParseInvocation",
+      "type": "object"
+    },
+    "ParseInvocationV2": {
+      "additionalProperties": false,
+      "properties": {
+        "configuration_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Configuration Sha256",
+          "type": "string"
+        },
+        "context_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Context Sha256",
+          "type": "string"
+        },
+        "finish_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Finish Reason"
+        },
+        "invocation_version": {
+          "const": "structura.parse_invocation.v2",
+          "title": "Invocation Version",
+          "type": "string"
+        },
+        "latency_ms": {
+          "minimum": 0,
+          "title": "Latency Ms",
+          "type": "integer"
+        },
+        "output_schema_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Output Schema Sha256",
+          "type": "string"
+        },
+        "output_schema_version": {
+          "const": "structura.page_understanding.v2",
+          "title": "Output Schema Version",
+          "type": "string"
+        },
+        "page_numbers": {
+          "items": {
+            "exclusiveMinimum": 0,
+            "type": "integer"
+          },
+          "title": "Page Numbers",
+          "type": "array"
+        },
+        "profile": {
+          "title": "Profile",
+          "type": "string"
+        },
+        "prompt_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Prompt Sha256",
+          "type": "string"
+        },
+        "prompt_version": {
+          "title": "Prompt Version",
+          "type": "string"
+        },
+        "raw_output_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Raw Output Sha256",
+          "type": "string"
+        },
+        "reported_model_version": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Reported Model Version"
+        },
+        "request_id": {
+          "format": "uuid",
+          "title": "Request Id",
+          "type": "string"
+        },
+        "request_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Request Sha256",
+          "type": "string"
+        },
+        "served_model": {
+          "title": "Served Model",
+          "type": "string"
+        },
+        "source_engine": {
+          "title": "Source Engine",
+          "type": "string"
+        },
+        "source_inventory_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Source Inventory Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "request_id",
+        "page_numbers",
+        "profile",
+        "served_model",
+        "source_engine",
+        "prompt_version",
+        "output_schema_version",
+        "raw_output_sha256",
+        "finish_reason",
+        "latency_ms",
+        "invocation_version",
+        "configuration_sha256",
+        "source_inventory_sha256",
+        "context_sha256",
+        "prompt_sha256",
+        "output_schema_sha256",
+        "request_sha256",
+        "reported_model_version"
+      ],
+      "title": "ParseInvocationV2",
+      "type": "object"
+    },
+    "ParseRequestSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "max_output_tokens": {
+          "maximum": 32768,
+          "minimum": 1,
+          "title": "Max Output Tokens",
+          "type": "integer"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Seed"
+        },
+        "temperature": {
+          "maximum": 2,
+          "minimum": 0,
+          "title": "Temperature",
+          "type": "number"
+        },
+        "timeout_seconds": {
+          "maximum": 600,
+          "minimum": 1,
+          "title": "Timeout Seconds",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "max_output_tokens",
+        "temperature",
+        "seed",
+        "timeout_seconds"
+      ],
+      "title": "ParseRequestSettings",
       "type": "object"
     },
     "SourceBox": {
@@ -758,6 +1218,72 @@
       ],
       "title": "StructureTable",
       "type": "object"
+    },
+    "UnderstandingDefinitions": {
+      "additionalProperties": false,
+      "properties": {
+        "output_version": {
+          "const": "structura.page_understanding.v2",
+          "title": "Output Version",
+          "type": "string"
+        },
+        "registry_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Registry Sha256",
+          "type": "string"
+        },
+        "registry_version": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Registry Version",
+          "type": "string"
+        },
+        "schema_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Schema Sha256",
+          "type": "string"
+        },
+        "taxonomy_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Taxonomy Sha256",
+          "type": "string"
+        },
+        "taxonomy_version": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Taxonomy Version",
+          "type": "string"
+        },
+        "typing_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Typing Sha256",
+          "type": "string"
+        },
+        "typing_version": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Typing Version",
+          "type": "string"
+        },
+        "validation_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Validation Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "output_version",
+        "taxonomy_version",
+        "registry_version",
+        "typing_version",
+        "schema_sha256",
+        "taxonomy_sha256",
+        "registry_sha256",
+        "typing_sha256",
+        "validation_sha256"
+      ],
+      "title": "UnderstandingDefinitions",
+      "type": "object"
     }
   },
   "$id": "structura:parse_capture.v1",
@@ -770,7 +1296,37 @@
       "type": "string"
     },
     "configuration": {
-      "$ref": "#/$defs/ParseConfiguration"
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/ParseConfigurationV2"
+            },
+            {
+              "properties": {
+                "output_schema_version": {
+                  "const": "structura.page_understanding.v2"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/ParseConfiguration"
+            },
+            {
+              "properties": {
+                "output_schema_version": {
+                  "const": "structura.page_parse.v1"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "title": "Configuration"
     },
     "configuration_sha256": {
       "pattern": "^[a-f0-9]{64}$",

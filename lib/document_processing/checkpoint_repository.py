@@ -6,22 +6,25 @@ from typing import Any
 
 from psycopg.types.json import Jsonb
 
+from lib.document_parsing.invocations import decode_parse_invocation
 from lib.document_parsing.qwen_page_parser import ParsedSourcePage
 from lib.document_parsing.searchable_text import page_chunks
 from lib.document_parsing.structure import (
     DocumentStructure,
-    ParseInvocation,
     SourceInventory,
     StructurePage,
 )
 from lib.document_processing.authority_repository import lock_current_run
 from lib.document_processing.checkpoint_validation import validate_checkpoint
+from lib.document_processing.configuration_binding import validate_configuration_inventory
+from lib.document_processing.configuration_types import decode_parse_configuration
 from lib.document_processing.errors import CheckpointConflict, ProcessingError
-from lib.document_processing.models import ParseConfiguration, ProcessingBinding, content_digest
+from lib.document_processing.models import ProcessingBinding, content_digest
 
 
 def initialize_inventory(cur: Any, binding: ProcessingBinding, inventory: SourceInventory) -> None:
     run = lock_current_run(cur, binding)
+    validate_configuration_inventory(decode_parse_configuration(run["config_json"]), inventory)
     if (
         inventory.original_asset_id != run["original_asset_id"]
         or inventory.original_sha256 != run["original_sha256"]
@@ -60,7 +63,7 @@ def persist_checkpoint(cur: Any, binding: ProcessingBinding, checkpoint: ParsedS
         checkpoint,
         generation_id=binding.parse_generation_id,
         inventory=SourceInventory.model_validate(run["inventory_json"]),
-        configuration=ParseConfiguration.model_validate(run["config_json"]),
+        configuration=decode_parse_configuration(run["config_json"]),
     )
     page = checkpoint.page.model_dump(mode="json")
     invocation = checkpoint.invocation.model_dump(mode="json")
@@ -108,7 +111,7 @@ def _checkpoint_rows(cur: Any, binding: ProcessingBinding) -> tuple[ParsedSource
     return tuple(
         ParsedSourcePage(
             StructurePage.model_validate(row["page_json"]),
-            ParseInvocation.model_validate(row["invocation_json"]),
+            decode_parse_invocation(row["invocation_json"]),
             row["raw_output"],
         )
         for row in cur.fetchall()

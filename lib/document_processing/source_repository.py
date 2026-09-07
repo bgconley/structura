@@ -4,13 +4,17 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field
 
 from lib.db.connection import db_connection
 from lib.document_parsing.structure import Sha256, SourceMediaType
 from lib.document_processing.authority_repository import fence_processing_attempt, lock_current_run
+from lib.document_processing.configuration_types import (
+    AnyParseConfiguration,
+    decode_parse_configuration,
+)
 from lib.document_processing.errors import ProcessingError
-from lib.document_processing.models import ParseConfiguration, ProcessingBinding
+from lib.document_processing.models import ProcessingBinding
 
 
 class RegisteredParseSource(BaseModel):
@@ -21,7 +25,7 @@ class RegisteredParseSource(BaseModel):
     uri: str = Field(min_length=1)
     mime_type: SourceMediaType
     byte_size: int = Field(gt=0, le=100 * 1024 * 1024)
-    configuration: ParseConfiguration
+    configuration: AnyParseConfiguration
 
 
 def load_processing_source(binding: ProcessingBinding) -> RegisteredParseSource:
@@ -45,7 +49,7 @@ def load_processing_source(binding: ProcessingBinding) -> RegisteredParseSource:
         if asset is None:
             raise ProcessingError("Processing source does not match the registered original.")
         try:
-            configuration = ParseConfiguration.model_validate(run["config_json"])
+            configuration = decode_parse_configuration(run["config_json"])
             result = RegisteredParseSource(
                 original_asset_id=asset["id"],
                 original_sha256=asset["sha256"],
@@ -54,7 +58,7 @@ def load_processing_source(binding: ProcessingBinding) -> RegisteredParseSource:
                 byte_size=asset["byte_size"],
                 configuration=configuration,
             )
-        except ValidationError:
+        except ValueError:
             raise ProcessingError(
                 "Registered processing source or configuration is invalid."
             ) from None

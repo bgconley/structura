@@ -73,6 +73,136 @@
       "title": "ParseInvocation",
       "type": "object"
     },
+    "ParseInvocationV2": {
+      "additionalProperties": false,
+      "properties": {
+        "request_id": {
+          "format": "uuid",
+          "title": "Request Id",
+          "type": "string"
+        },
+        "page_numbers": {
+          "items": {
+            "exclusiveMinimum": 0,
+            "type": "integer"
+          },
+          "title": "Page Numbers",
+          "type": "array"
+        },
+        "profile": {
+          "title": "Profile",
+          "type": "string"
+        },
+        "served_model": {
+          "title": "Served Model",
+          "type": "string"
+        },
+        "source_engine": {
+          "title": "Source Engine",
+          "type": "string"
+        },
+        "prompt_version": {
+          "title": "Prompt Version",
+          "type": "string"
+        },
+        "output_schema_version": {
+          "const": "structura.page_understanding.v2",
+          "title": "Output Schema Version",
+          "type": "string"
+        },
+        "raw_output_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Raw Output Sha256",
+          "type": "string"
+        },
+        "finish_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Finish Reason"
+        },
+        "latency_ms": {
+          "minimum": 0,
+          "title": "Latency Ms",
+          "type": "integer"
+        },
+        "invocation_version": {
+          "const": "structura.parse_invocation.v2",
+          "title": "Invocation Version",
+          "type": "string"
+        },
+        "configuration_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Configuration Sha256",
+          "type": "string"
+        },
+        "source_inventory_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Source Inventory Sha256",
+          "type": "string"
+        },
+        "context_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Context Sha256",
+          "type": "string"
+        },
+        "prompt_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Prompt Sha256",
+          "type": "string"
+        },
+        "output_schema_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Output Schema Sha256",
+          "type": "string"
+        },
+        "request_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Request Sha256",
+          "type": "string"
+        },
+        "reported_model_version": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Reported Model Version"
+        }
+      },
+      "required": [
+        "request_id",
+        "page_numbers",
+        "profile",
+        "served_model",
+        "source_engine",
+        "prompt_version",
+        "output_schema_version",
+        "raw_output_sha256",
+        "finish_reason",
+        "latency_ms",
+        "invocation_version",
+        "configuration_sha256",
+        "source_inventory_sha256",
+        "context_sha256",
+        "prompt_sha256",
+        "output_schema_sha256",
+        "request_sha256",
+        "reported_model_version"
+      ],
+      "title": "ParseInvocationV2",
+      "type": "object"
+    },
     "SourceBox": {
       "additionalProperties": false,
       "properties": {
@@ -622,7 +752,36 @@
     },
     "invocations": {
       "items": {
-        "$ref": "#/$defs/ParseInvocation"
+        "anyOf": [
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/ParseInvocationV2"
+              },
+              {
+                "properties": {
+                  "output_schema_version": {
+                    "const": "structura.page_understanding.v2"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/ParseInvocation"
+              },
+              {
+                "properties": {
+                  "output_schema_version": {
+                    "const": "structura.page_parse.v1"
+                  }
+                }
+              }
+            ]
+          }
+        ]
       },
       "title": "Invocations",
       "type": "array"

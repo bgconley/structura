@@ -7,6 +7,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from lib.document_parsing.invocations import AnyParseInvocation
+from lib.document_parsing.invocations import ParseInvocation as ParseInvocation
+
 Sha256 = Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
 PositiveInt = Annotated[int, Field(gt=0)]
 TextOrigin = Literal["pdf_native", "model_transcription", "legacy_docling"]
@@ -193,19 +196,6 @@ class StructurePage(StructureModel):
         return self
 
 
-class ParseInvocation(StructureModel):
-    request_id: UUID
-    page_numbers: tuple[PositiveInt, ...]
-    profile: str
-    served_model: str
-    source_engine: str
-    prompt_version: str
-    output_schema_version: str
-    raw_output_sha256: Sha256
-    finish_reason: str | None
-    latency_ms: int = Field(ge=0)
-
-
 class StructureChunk(StructureModel):
     id: UUID
     page_number: PositiveInt
@@ -220,7 +210,7 @@ class DocumentStructure(StructureModel):
     processing_run_id: UUID
     source: SourceInventory
     pages: tuple[StructurePage, ...]
-    invocations: tuple[ParseInvocation, ...]
+    invocations: tuple[AnyParseInvocation, ...]
     chunks: tuple[StructureChunk, ...] = ()
 
     @model_validator(mode="after")

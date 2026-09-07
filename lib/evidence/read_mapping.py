@@ -5,8 +5,15 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from lib.document_parsing.invocations import decode_parse_invocation
 from lib.document_parsing.structure import SourcePage, StructureChunk, StructurePage
-from lib.document_processing.models import ParseConfiguration, content_digest
+from lib.document_processing.configuration_binding import validate_recorded_request
+from lib.document_processing.configuration_types import (
+    AnyParseConfiguration,
+    ParseConfigurationV2,
+    decode_parse_configuration,
+)
+from lib.document_processing.models import content_digest
 from lib.evidence.errors import EvidenceUnavailable
 from lib.evidence.models import (
     ExpectedPage,
@@ -18,13 +25,20 @@ from lib.evidence.models import (
 )
 
 
-def validate_header(row: dict[str, Any]) -> ParseConfiguration:
-    config = ParseConfiguration.model_validate(row["config_json"])
+def validate_header(row: dict[str, Any]) -> AnyParseConfiguration:
+    config = decode_parse_configuration(row["config_json"])
     if (
         config.fingerprint != row["config_sha256"]
         or row["structure_version"] != "structura.document_structure.v1"
         or row["run_status"] not in {"sealed", "superseded", "cancelled"}
         or not 1 <= row["page_count"] <= 500
+    ):
+        raise EvidenceUnavailable("Retained generation is unavailable.")
+    if isinstance(config, ParseConfigurationV2) and (
+        config.context.original_asset_id != row["original_asset_id"]
+        or config.context.original_sha256 != row["original_sha256"]
+        or config.context.source_inventory_sha256 != row["inventory_sha256"]
+        or config.context.page_count != row["page_count"]
     ):
         raise EvidenceUnavailable("Retained generation is unavailable.")
     return config
@@ -117,4 +131,7 @@ def page_content(
     asset = retained_asset(row, item)
     if asset and content_digest(page.source.model_dump(mode="json")) != asset.source_render_sha256:
         raise EvidenceUnavailable("Retained generation is unavailable.")
+    validate_recorded_request(
+        validate_header(row), decode_parse_invocation(item["invocation_json"]), page.source
+    )
     return page, chunks

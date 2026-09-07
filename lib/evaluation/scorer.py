@@ -38,7 +38,8 @@ LIMITATIONS = (
     "layout scores independently of full-page text fidelity. IoU does not establish pixel support.",
     "Table cells match fixed grid positions; shifted/segmented rows and uncertain continuation "
     "labels need adjudication. Empty unannotated grid positions are not assumed absent cells.",
-    "Only the single-page structura.page_parse.v1 raw-to-normalized contract is supported.",
+    "Only single-page v1 parsing and v2 page-understanding structural projections are supported; "
+    "classification and typed extraction remain separate unevaluated stages.",
     "No quality thresholds are ratified; computed diagnostics cannot pass a release gate.",
 )
 

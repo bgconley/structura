@@ -11,17 +11,21 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from lib.document_parsing.document_context import freeze_document_context
 from lib.document_parsing.document_parse import parse_document
 from lib.document_parsing.qwen_page_parser import PageGenerationClient, ParsedSourcePage
 from lib.document_parsing.source_adapter import DocumentSource
+from lib.document_processing.checkpoint_validation import validate_checkpoint
+from lib.document_processing.configuration_types import AnyParseConfiguration, ParseConfigurationV2
 from lib.document_processing.errors import ProcessingAuthorityLost, ProcessingError
-from lib.document_processing.models import ParseConfiguration, ProcessingBinding
+from lib.document_processing.models import ProcessingBinding
 from lib.document_processing.parser_configuration import (
     DeclaredParserDeployment,
     validate_parser_configuration,
 )
 from lib.document_processing.service import DocumentProcessingService
 from lib.document_processing.source_repository import load_processing_source
+from lib.document_processing.understanding_adapter import UnderstandingPageParser
 from lib.jobs.ownership import current_job_attempt
 from lib.model_runtime.contracts import VisionGenerateRequest, VisionGenerateResponse
 from lib.storage import ObjectStorage
@@ -46,7 +50,7 @@ def execute_parse_candidate(
     deployment: DeclaredParserDeployment,
     service: DocumentProcessingService,
     batch_pages: int = 50,
-    timeout_seconds: int = 180,
+    timeout_seconds: int | None = None,
 ) -> ParseExecutionResult:
     """Checkpoint all supported source pages in one generation, then seal once.
 
@@ -57,13 +61,21 @@ def execute_parse_candidate(
     """
     if type(batch_pages) is not int or not 1 <= batch_pages <= 500:
         raise ProcessingError("Parser batch size must be between 1 and 500 pages.")
-    if type(timeout_seconds) is not int or not 1 <= timeout_seconds <= 600:
+    if timeout_seconds is not None and (
+        type(timeout_seconds) is not int or not 1 <= timeout_seconds <= 600
+    ):
         raise ProcessingError("Parser request timeout must be between 1 and 600 seconds.")
     if current_job_attempt() is None:
         raise ProcessingAuthorityLost("Candidate parsing requires a claimed processing job.")
     registered = load_processing_source(binding)
     configuration = registered.configuration
     validate_parser_configuration(configuration, deployment, registered.mime_type)
+    if isinstance(configuration, ParseConfigurationV2):
+        if timeout_seconds is not None and timeout_seconds != configuration.request.timeout_seconds:
+            raise ProcessingError("Request timeout cannot override the frozen v2 configuration.")
+        timeout_seconds = configuration.request.timeout_seconds
+    elif timeout_seconds is None:
+        timeout_seconds = 180
     address = parse_object_uri(registered.uri)
     if address.sha256 != registered.original_sha256:
         raise ProcessingError("Registered source URI does not match the requested original hash.")
@@ -78,8 +90,20 @@ def execute_parse_candidate(
     ) as source:
         if source.inventory.byte_size != registered.byte_size:
             raise ProcessingError("Original bytes do not match their registered size.")
+        if isinstance(configuration, ParseConfigurationV2) and (
+            freeze_document_context(source) != configuration.context
+        ):
+            raise ProcessingError("Original source context differs from its frozen configuration.")
         service.initialize_inventory(binding, source.inventory)
         checkpoints = list(service.load_checkpoints(binding))
+        if isinstance(configuration, ParseConfigurationV2):
+            for previous in checkpoints:
+                validate_checkpoint(
+                    previous,
+                    generation_id=binding.parse_generation_id,
+                    inventory=source.inventory,
+                    configuration=configuration,
+                )
         resumed = len(checkpoints)
         batches = 0
 
@@ -91,6 +115,11 @@ def execute_parse_candidate(
             checkpoints.append(page)
 
         frozen_client = _FrozenParserClient(client, configuration, authority)
+        parser = (
+            UnderstandingPageParser(frozen_client, binding.parse_generation_id, configuration)
+            if isinstance(configuration, ParseConfigurationV2)
+            else None
+        )
         while True:
             before = len(checkpoints)
             structure = parse_document(
@@ -104,6 +133,7 @@ def execute_parse_candidate(
                 checkpoint=checkpoint,
                 timeout_seconds=timeout_seconds,
                 render_scale=configuration.render_scale,
+                page_parser=parser,
             )
             if len(checkpoints) > before:
                 batches += 1
@@ -124,7 +154,7 @@ def execute_parse_candidate(
 @dataclass(frozen=True)
 class _FrozenParserClient:
     client: PageGenerationClient
-    configuration: ParseConfiguration
+    configuration: AnyParseConfiguration
     assert_authority: Callable[[], None]
 
     def generate(self, request: VisionGenerateRequest) -> VisionGenerateResponse:

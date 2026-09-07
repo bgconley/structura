@@ -16,7 +16,8 @@ from lib.document_parsing.structure import (
     StructureChunk,
     StructurePage,
 )
-from lib.document_processing.models import ParseConfiguration, ProcessingBinding, content_digest
+from lib.document_processing.configuration_types import AnyParseConfiguration
+from lib.document_processing.models import ProcessingBinding, content_digest
 
 MAX_RENDER_BYTES = 128 * 1024 * 1024
 MAX_RENDER_PIXELS = 40_000_000
@@ -165,7 +166,7 @@ class GenerationEvidenceManifest(GenerationResponse):
     processing_run_state: Literal["sealed", "superseded", "cancelled"] = Field(
         alias="processingRunState"
     )
-    parser_configuration: ParseConfiguration = Field(alias="parserConfiguration")
+    parser_configuration: AnyParseConfiguration = Field(alias="parserConfiguration")
     transcription_authority: Literal["derived_source_transcription"] = Field(
         default="derived_source_transcription", alias="transcriptionAuthority"
     )

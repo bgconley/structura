@@ -5,7 +5,9 @@ from __future__ import annotations
 from typing import Any
 
 from lib.document_parsing.structure import DocumentStructure, SourceInventory
-from lib.document_processing.models import ParseConfiguration, content_digest
+from lib.document_processing.configuration_binding import validate_configuration_inventory
+from lib.document_processing.configuration_types import decode_parse_configuration
+from lib.document_processing.models import content_digest
 from lib.evidence.errors import EvidenceConflict
 from lib.evidence.models import ExpectedPage, ExpectedRenderSet, RasterIdentity, RetainedPageAsset
 
@@ -15,7 +17,8 @@ def expected_render_set(
 ) -> ExpectedRenderSet:
     structure = DocumentStructure.model_validate(run["structure_json"])
     inventory = SourceInventory.model_validate(run["inventory_json"])
-    config = ParseConfiguration.model_validate(run["config_json"])
+    config = decode_parse_configuration(run["config_json"])
+    validate_configuration_inventory(config, inventory)
     if (
         run["parse_state"] != "sealed"
         or structure.source != inventory

@@ -4,10 +4,13 @@ import hashlib
 from dataclasses import dataclass
 from typing import Any
 
+from lib.document_parsing.invocations import decode_parse_invocation
 from lib.document_parsing.qwen_page_parser import ParsedSourcePage
-from lib.document_parsing.structure import DocumentStructure, ParseInvocation, StructurePage
+from lib.document_parsing.structure import DocumentStructure, StructurePage
 from lib.document_processing.authority_repository import lock_current_run
-from lib.document_processing.models import ParseConfiguration, ProcessingBinding, content_digest
+from lib.document_processing.configuration_binding import validate_invocation_binding
+from lib.document_processing.configuration_types import decode_parse_configuration
+from lib.document_processing.models import ProcessingBinding, content_digest
 from lib.extraction.native_claims.errors import NativeClaimError
 
 
@@ -45,7 +48,7 @@ def read_locked_source(
     )
     rows = cur.fetchall()
     structure = DocumentStructure.model_validate(run["structure_json"])
-    config = ParseConfiguration.model_validate(run["config_json"])
+    config = decode_parse_configuration(run["config_json"])
     if (
         structure.parse_generation_id != binding.parse_generation_id
         or structure.processing_run_id != binding.processing_run_id
@@ -63,7 +66,7 @@ def read_locked_source(
     for row, page, invocation in zip(rows, structure.pages, structure.invocations, strict=True):
         checkpoint = ParsedSourcePage(
             StructurePage.model_validate(row["page_json"]),
-            ParseInvocation.model_validate(row["invocation_json"]),
+            decode_parse_invocation(row["invocation_json"]),
             row["raw_output"],
         )
         digest = content_digest(
@@ -90,6 +93,7 @@ def read_locked_source(
             or invocation.output_schema_version != config.output_schema_version
         ):
             raise NativeClaimError("Native claim checkpoint binding is inconsistent.")
+        validate_invocation_binding(config, invocation, page.source, structure.source)
         pages.append(
             {
                 "page_number": page.page_number,
