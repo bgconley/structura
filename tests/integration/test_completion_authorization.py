@@ -350,7 +350,10 @@ def test_primary_folder_revocation_applies_to_assets_search_facets_and_review(ar
     assert client.get(f"/api/v1/assets/{asset}").status_code == 404
     assert client.get(f"/api/v1/documents/{doc}").status_code == 404
     assert client.get(f"/api/v1/documents/{doc}/field-candidates").status_code == 404
-    assert client.get("/api/v1/documents").json() == {"items": [], "total": 0}
+    hidden_documents = client.get("/api/v1/documents").json()
+    assert hidden_documents["items"] == []
+    assert hidden_documents["total"] == hidden_documents["corpusTotal"] == 0
+    assert all(count == 0 for count in hidden_documents["counts"].values())
     hidden_search = client.post("/api/v1/search", json={"query": query, "mode": "lexical"})
     assert hidden_search.status_code == 200
     assert hidden_search.json()["items"] == []

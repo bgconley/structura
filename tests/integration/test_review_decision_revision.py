@@ -31,7 +31,9 @@ def decide(document_id, access, item, action, revision=MISSING):
             "valueType": "string",
         },
         "newValue": "PO-NEW-HUMAN-VALUE" if action == "correct_field" else str(item["id"]),
-        "evidenceContext": [{"pageNumber": 1, "sourceEngine": "human"}],
+        "evidenceContext": [
+            {"pageNumber": 1, "sourceEngine": "human", "sourceText": item["text_value"]}
+        ],
         "comment": "Explicit field decision",
     }
     if revision is not MISSING:

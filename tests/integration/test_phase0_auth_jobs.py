@@ -63,7 +63,10 @@ def test_phase0_auth_session_protection_jobs_and_service_health(
 
     assert client.get("/api/v1/auth/session").status_code == 200
     assert client.get("/api/v1/migrations/baseline").status_code == 200
-    assert client.get("/api/v1/documents").json() == {"items": [], "total": 0}
+    empty_documents = client.get("/api/v1/documents").json()
+    assert empty_documents["items"] == []
+    assert empty_documents["total"] == empty_documents["corpusTotal"] == 0
+    assert all(count == 0 for count in empty_documents["counts"].values())
     assert client.get(f"/api/v1/assets/{uuid.uuid4()}").status_code == 404
 
     magic = client.post(
