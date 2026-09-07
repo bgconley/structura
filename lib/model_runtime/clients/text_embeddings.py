@@ -13,6 +13,7 @@ class TextEmbeddingClient(EmbeddingHttpClient):
         profile: ModelProfile,
         http_client_base_url: str,
         transport: httpx.BaseTransport | None = None,
+        api_key: str | None = None,
     ) -> None:
         if profile.engine != "text_embedding":
             raise ValueError("TextEmbeddingClient requires a text embedding profile.")
@@ -21,4 +22,5 @@ class TextEmbeddingClient(EmbeddingHttpClient):
             http_client_base_url=http_client_base_url,
             requires_image=False,
             transport=transport,
+            api_key=api_key,
         )

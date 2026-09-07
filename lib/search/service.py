@@ -9,7 +9,7 @@ from lib.documents.access_policy import DocumentAccessContext
 from lib.search import repository
 from lib.search.embedding_defaults import (
     TextEmbeddingGatewayProtocol,
-    default_text_embedding_gateway,
+    default_text_query_embedding_gateway,
     default_visual_query_embedding_gateway,
 )
 from lib.search.embedding_gateway import (
@@ -62,7 +62,7 @@ class SearchService:
         self.embedding_profile = embedding_profile or default_text_embedding_profile(
             settings.embedding_text_dimensions
         )
-        self.embedding_gateway = embedding_gateway or default_text_embedding_gateway(
+        self.embedding_gateway = embedding_gateway or default_text_query_embedding_gateway(
             settings=settings,
             profile=embedding_profile,
         )

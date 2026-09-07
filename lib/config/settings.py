@@ -80,6 +80,10 @@ class Settings(BaseSettings):
     model_granite_url: str = "http://127.0.0.1:8101"
     model_text_embed_url: str = "http://127.0.0.1:8102"
     model_visual_embed_url: str = "http://127.0.0.1:8103"
+    model_text_embed_api_key: SecretStr | None = None
+    model_text_embed_api_key_file: Path | None = None
+    model_visual_embed_api_key: SecretStr | None = None
+    model_visual_embed_api_key_file: Path | None = None
     qwen_semantic_profile: str = "qwen3-vl-8b-fp8-semantic:v1"
     qwen_vision_profile: str = Field(
         default="qwen3-vl-8b-fp8-semantic:v1", alias="STRUCTURA_QWEN_VISION_PROFILE"

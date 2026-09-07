@@ -84,25 +84,13 @@ def test_text_embedding_client_fails_loud_on_tei_422_instead_of_guessing_routes(
     assert seen_paths == ["/embed"]
 
 
-def test_text_embedding_client_falls_back_to_openai_embedding_endpoint() -> None:
-    vector = [0.0] * 1536
-    vector[4] = 1.0
+@pytest.mark.parametrize("status", [404, 405])
+def test_text_embedding_client_never_guesses_an_alternate_endpoint(status: int) -> None:
     seen_paths: list[str] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
         seen_paths.append(request.url.path)
-        if request.url.path == "/embed":
-            return httpx.Response(404, json={"error": "not_found"})
-        payload = request.read().decode()
-        assert "/v1/embeddings" == request.url.path
-        assert "Qwen/Qwen3-Embedding-4B" in payload
-        return httpx.Response(
-            200,
-            json={
-                "model": "Qwen/Qwen3-Embedding-4B",
-                "data": [{"embedding": vector}],
-            },
-        )
+        return httpx.Response(status, json={"error": "not_found"})
 
     client = TextEmbeddingClient(
         profile=get_model_profile(TEXT_EMBED_PROFILE),
@@ -110,17 +98,17 @@ def test_text_embedding_client_falls_back_to_openai_embedding_endpoint() -> None
         transport=httpx.MockTransport(handler),
     )
 
-    response = client.embed(
-        EmbeddingRequest(
-            profile_name=TEXT_EMBED_PROFILE,
-            inputs=(EmbeddingInput(text="invoice total balance due"),),
-            output_dimensions=1536,
-            timeout_seconds=30,
+    with pytest.raises(ModelProtocolError, match=f"HTTP {status}"):
+        client.embed(
+            EmbeddingRequest(
+                profile_name=TEXT_EMBED_PROFILE,
+                inputs=(EmbeddingInput(text="invoice total balance due"),),
+                output_dimensions=1536,
+                timeout_seconds=30,
+            )
         )
-    )
 
-    assert seen_paths == ["/embed", "/v1/embeddings"]
-    assert response.vectors == (tuple(vector),)
+    assert seen_paths == ["/embed"]
 
 
 def test_text_embedding_client_rejects_wrong_dimensions() -> None:
@@ -141,7 +129,7 @@ def test_text_embedding_client_rejects_wrong_dimensions() -> None:
         )
 
 
-def test_text_embedding_client_accepts_internal_adapter_dict_response_on_embed() -> None:
+def test_text_embedding_client_rejects_an_undeclared_dict_protocol_on_embed() -> None:
     vector = [0.0] * 1536
     vector[9] = 1.0
     client = TextEmbeddingClient(
@@ -159,17 +147,15 @@ def test_text_embedding_client_accepts_internal_adapter_dict_response_on_embed()
         ),
     )
 
-    response = client.embed(
-        EmbeddingRequest(
-            profile_name=TEXT_EMBED_PROFILE,
-            inputs=(EmbeddingInput(text="invoice total balance due"),),
-            output_dimensions=1536,
-            timeout_seconds=30,
+    with pytest.raises(ModelProtocolError, match="TEI"):
+        client.embed(
+            EmbeddingRequest(
+                profile_name=TEXT_EMBED_PROFILE,
+                inputs=(EmbeddingInput(text="invoice total balance due"),),
+                output_dimensions=1536,
+                timeout_seconds=30,
+            )
         )
-    )
-
-    assert response.vectors == (tuple(vector),)
-    assert response.model_version == "tei"
 
 
 def test_text_embedding_client_rejects_empty_text_input() -> None:

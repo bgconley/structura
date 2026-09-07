@@ -1,14 +1,21 @@
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from uuid import UUID
+
+import pytest
 
 from lib.config import get_settings
 from lib.model_runtime.contracts import EmbeddingRequest, EmbeddingResponse
-from lib.model_runtime.profiles import TEXT_EMBED_PROFILE, VISUAL_EMBED_PROFILE
+from lib.model_runtime.embedding_identity import embedding_input_hashes
+from lib.model_runtime.profiles import TEXT_EMBED_PROFILE, VISUAL_EMBED_PROFILE, get_model_profile
 from lib.search import SearchService
-from lib.search.embedding_gateway import EmbeddingProfile, VisualEmbeddingInput
+from lib.search.embedding_gateway import (
+    EmbeddingGatewayError,
+    EmbeddingProfile,
+    VisualEmbeddingInput,
+)
 from lib.search.embedding_repository import EmbeddingSource
 from lib.search.embedding_service import EmbeddingService, _with_embedding_provenance
 from lib.search.embeddings.text_model import TextModelEmbeddingGateway
@@ -25,7 +32,14 @@ class FakeEmbeddingClient:
 
     def embed(self, request: EmbeddingRequest) -> EmbeddingResponse:
         self.request = request
-        return self.response
+        profile = get_model_profile(request.profile_name)
+        assert profile.embedding_protocol is not None
+        return replace(
+            self.response,
+            input_sha256=embedding_input_hashes(request, profile),
+            identity_source=profile.embedding_protocol.identity_policy,
+            artifact_revision=profile.embedding_protocol.artifact_revision,
+        )
 
 
 def test_text_model_embedding_gateway_returns_live_profile_vectors() -> None:
@@ -106,6 +120,33 @@ def test_visual_query_embedding_gateway_uses_visual_profile_for_text_queries() -
     assert client.request.profile_name == VISUAL_EMBED_PROFILE
     assert client.request.inputs[0].text == "handwritten warranty"
     assert client.request.inputs[0].image_bytes is None
+    assert client.request.purpose == "query"
+
+
+def test_visual_gateway_rejects_source_bytes_that_no_longer_match_the_asset() -> None:
+    client = FakeEmbeddingClient(
+        EmbeddingResponse(
+            profile_name=VISUAL_EMBED_PROFILE,
+            model_name="Qwen/Qwen3-VL-Embedding-2B",
+            model_version="",
+            dimensions=2048,
+            vectors=(),
+            input_sha256=(),
+            latency_ms=0,
+        )
+    )
+    with pytest.raises(EmbeddingGatewayError, match="source hash"):
+        VisualModelEmbeddingGateway(client=client).embed_assets(
+            [
+                VisualEmbeddingInput(
+                    descriptor_text="page",
+                    image_bytes=b"changed image",
+                    mime_type="image/png",
+                    content_sha256=hashlib.sha256(b"original image").hexdigest(),
+                )
+            ]
+        )
+    assert client.request is None
 
 
 def test_embedding_service_selects_live_model_gateways_when_model_mode_is_live(

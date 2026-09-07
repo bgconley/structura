@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 from typing import Protocol
 
 from lib.model_runtime.contracts import EmbeddingInput, EmbeddingRequest, EmbeddingResponse
 from lib.model_runtime.profiles import VISUAL_EMBED_PROFILE, get_model_profile
-from lib.search.embedding_gateway import EmbeddedText, VisualEmbeddingInput
+from lib.search.embedding_gateway import EmbeddedText, EmbeddingGatewayError, VisualEmbeddingInput
 from lib.search.embeddings.validation import (
     search_embedding_profile,
     validated_response_vectors,
@@ -27,25 +28,29 @@ class VisualModelEmbeddingGateway:
         self.profile = search_embedding_profile(self.model_profile)
 
     def embed_assets(self, assets: list[VisualEmbeddingInput]) -> list[EmbeddedText]:
-        response = self.client.embed(
-            EmbeddingRequest(
-                profile_name=self.model_profile.name,
-                inputs=tuple(
-                    EmbeddingInput(
-                        text=asset.descriptor_text,
-                        image_bytes=asset.image_bytes,
-                        mime_type=asset.mime_type,
-                    )
-                    for asset in assets
-                ),
-                output_dimensions=self.profile.dimensions,
-                timeout_seconds=90,
-            )
+        if any(
+            hashlib.sha256(asset.image_bytes).hexdigest() != asset.content_sha256.lower()
+            for asset in assets
+        ):
+            raise EmbeddingGatewayError("Visual embedding source hash does not match image bytes.")
+        request = EmbeddingRequest(
+            profile_name=self.model_profile.name,
+            inputs=tuple(
+                EmbeddingInput(
+                    text=asset.descriptor_text,
+                    image_bytes=asset.image_bytes,
+                    mime_type=asset.mime_type,
+                )
+                for asset in assets
+            ),
+            output_dimensions=self.profile.dimensions,
+            timeout_seconds=90,
         )
+        response = self.client.embed(request)
         vectors = validated_response_vectors(
             response,
-            expected_count=len(assets),
-            expected_dimensions=self.profile.dimensions,
+            request=request,
+            profile=self.model_profile,
         )
         return [
             EmbeddedText(text=asset.descriptor_text, values=list(vector), profile=self.profile)
@@ -65,18 +70,18 @@ class VisualQueryEmbeddingGateway:
         self.profile = search_embedding_profile(self.model_profile)
 
     def embed_texts(self, texts: list[str]) -> list[EmbeddedText]:
-        response = self.client.embed(
-            EmbeddingRequest(
-                profile_name=self.model_profile.name,
-                inputs=tuple(EmbeddingInput(text=text) for text in texts),
-                output_dimensions=self.profile.dimensions,
-                timeout_seconds=60,
-            )
+        request = EmbeddingRequest(
+            profile_name=self.model_profile.name,
+            inputs=tuple(EmbeddingInput(text=text) for text in texts),
+            output_dimensions=self.profile.dimensions,
+            timeout_seconds=60,
+            purpose="query",
         )
+        response = self.client.embed(request)
         vectors = validated_response_vectors(
             response,
-            expected_count=len(texts),
-            expected_dimensions=self.profile.dimensions,
+            request=request,
+            profile=self.model_profile,
         )
         return [
             EmbeddedText(text=text, values=list(vector), profile=self.profile)

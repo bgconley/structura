@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 
 @dataclass(frozen=True)
@@ -93,8 +94,18 @@ class EmbeddingInput:
 
     @property
     def sha256(self) -> str:
-        content = self.image_bytes if self.image_bytes is not None else self.text.encode()
-        return hashlib.sha256(content).hexdigest()
+        content = {
+            "text": self.text,
+            "mime_type": self.mime_type,
+            "image_sha256": (
+                hashlib.sha256(self.image_bytes).hexdigest()
+                if self.image_bytes is not None
+                else None
+            ),
+        }
+        return hashlib.sha256(
+            json.dumps(content, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -103,6 +114,7 @@ class EmbeddingRequest:
     inputs: tuple[EmbeddingInput, ...]
     output_dimensions: int
     timeout_seconds: int
+    purpose: Literal["document", "query"] = "document"
 
 
 @dataclass(frozen=True)
@@ -114,3 +126,5 @@ class EmbeddingResponse:
     vectors: tuple[tuple[float, ...], ...]
     input_sha256: tuple[str, ...]
     latency_ms: int
+    identity_source: Literal["reported_model", "deployment_pinned"] = "reported_model"
+    artifact_revision: str | None = None

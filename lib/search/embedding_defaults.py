@@ -7,6 +7,7 @@ from lib.model_runtime.clients.visual_embeddings import (
     VisualEmbeddingClient,
     VisualQueryEmbeddingClient,
 )
+from lib.model_runtime.credentials import model_api_key
 from lib.model_runtime.profiles import get_model_profile
 from lib.search.embedding_gateway import (
     DeterministicEmbeddingGateway,
@@ -50,9 +51,23 @@ def default_text_embedding_gateway(
         client=TextEmbeddingClient(
             profile=model_profile,
             http_client_base_url=settings.model_text_embed_url,
+            api_key=model_api_key(
+                settings.model_text_embed_api_key, settings.model_text_embed_api_key_file
+            ),
         ),
         profile_name=model_profile.name,
     )
+
+
+def default_text_query_embedding_gateway(
+    *, settings: Any, profile: EmbeddingProfile | None = None
+) -> TextEmbeddingGatewayProtocol:
+    gateway = default_text_embedding_gateway(settings=settings, profile=profile)
+    if isinstance(gateway, TextModelEmbeddingGateway):
+        return TextModelEmbeddingGateway(
+            client=gateway.client, profile_name=gateway.model_profile.name, purpose="query"
+        )
+    return gateway
 
 
 def default_visual_asset_embedding_gateway(
@@ -70,6 +85,9 @@ def default_visual_asset_embedding_gateway(
         client=VisualEmbeddingClient(
             profile=model_profile,
             http_client_base_url=settings.model_visual_embed_url,
+            api_key=model_api_key(
+                settings.model_visual_embed_api_key, settings.model_visual_embed_api_key_file
+            ),
         ),
         profile_name=model_profile.name,
     )
@@ -90,6 +108,9 @@ def default_visual_query_embedding_gateway(
         client=VisualQueryEmbeddingClient(
             profile=model_profile,
             http_client_base_url=settings.model_visual_embed_url,
+            api_key=model_api_key(
+                settings.model_visual_embed_api_key, settings.model_visual_embed_api_key_file
+            ),
         ),
         profile_name=model_profile.name,
     )

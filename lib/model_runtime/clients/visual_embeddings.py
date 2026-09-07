@@ -13,6 +13,7 @@ class VisualEmbeddingClient(EmbeddingHttpClient):
         profile: ModelProfile,
         http_client_base_url: str,
         transport: httpx.BaseTransport | None = None,
+        api_key: str | None = None,
     ) -> None:
         if profile.engine != "visual_embedding":
             raise ValueError("VisualEmbeddingClient requires a visual embedding profile.")
@@ -21,6 +22,7 @@ class VisualEmbeddingClient(EmbeddingHttpClient):
             http_client_base_url=http_client_base_url,
             requires_image=True,
             transport=transport,
+            api_key=api_key,
         )
 
 
@@ -31,6 +33,7 @@ class VisualQueryEmbeddingClient(EmbeddingHttpClient):
         profile: ModelProfile,
         http_client_base_url: str,
         transport: httpx.BaseTransport | None = None,
+        api_key: str | None = None,
     ) -> None:
         if profile.engine != "visual_embedding":
             raise ValueError("VisualQueryEmbeddingClient requires a visual embedding profile.")
@@ -39,4 +42,5 @@ class VisualQueryEmbeddingClient(EmbeddingHttpClient):
             http_client_base_url=http_client_base_url,
             requires_image=False,
             transport=transport,
+            api_key=api_key,
         )

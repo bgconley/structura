@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from lib.model_runtime.embedding_protocol import EmbeddingProtocol
+
 QWEN_VL_PROFILE = "qwen3-vl-8b-instruct-nvfp4-local:v1"
 QWEN_HISTORICAL_SEMANTIC_2B_PROFILE = "qwen3-vl-2b-semantic:v1"
 QWEN_HISTORICAL_SEMANTIC_4B_PROFILE = "qwen3-vl-4b-semantic:v1"
@@ -11,6 +13,8 @@ QWEN_VISION_PROFILE = QWEN_SEMANTIC_PROFILE
 GRANITE_VISION_PROFILE = "granite-4.0-3b-vision-bf16:v1"
 TEXT_EMBED_PROFILE = "qwen3-embedding-4b-1536:v1"
 VISUAL_EMBED_PROFILE = "qwen3-vl-embedding-2b-2048:v1"
+TEXT_EMBED_BLACKBIRD_PROFILE = "qwen3-embedding-4b-1536-blackbird:v2"
+VISUAL_EMBED_BLACKBIRD_PROFILE = "qwen3-vl-embedding-2b-2048-blackbird:v2"
 
 
 @dataclass(frozen=True)
@@ -33,6 +37,7 @@ class ModelProfile:
     served_model_name: str | None = None
     supported_tasks: tuple[str, ...] = ()
     enable_thinking: bool | None = None
+    embedding_protocol: EmbeddingProtocol | None = None
 
     def supports(self, task: str) -> bool:
         return task == self.task or task in self.supported_tasks
@@ -136,6 +141,12 @@ _PROFILES: dict[str, ModelProfile] = {
         output_dimensions=1536,
         default_gpu_role="rtx3090-0",
         pgvector_index="embeddings_text_1536_hnsw_idx",
+        embedding_protocol=EmbeddingProtocol(
+            api_flavor="tei",
+            dimensions_policy="requested",
+            input_format="raw_text",
+            identity_policy="deployment_pinned",
+        ),
     ),
     VISUAL_EMBED_PROFILE: ModelProfile(
         name=VISUAL_EMBED_PROFILE,
@@ -149,6 +160,59 @@ _PROFILES: dict[str, ModelProfile] = {
         max_image_bytes=10 * 1024 * 1024,
         max_images_per_request=1,
         pgvector_index="embeddings_visual_2048_hnsw_idx",
+        embedding_protocol=EmbeddingProtocol(
+            api_flavor="openai",
+            dimensions_policy="native",
+            input_format="raw_text",
+            identity_policy="reported_model",
+        ),
+    ),
+    # Candidates are explicitly selected for validation. Existing indexes and
+    # defaults retain their original v1 identity until a complete reindex gate.
+    TEXT_EMBED_BLACKBIRD_PROFILE: ModelProfile(
+        name=TEXT_EMBED_BLACKBIRD_PROFILE,
+        engine="text_embedding",
+        task="embed_text",
+        base_model="Qwen/Qwen3-Embedding-4B",
+        served_model_name="Qwen/Qwen3-Embedding-4B",
+        backend="vllm-embed",
+        source_engine="system",
+        output_dimensions=1536,
+        default_gpu_role="blackbird-pro4000",
+        max_model_len=8192,
+        pgvector_index="embeddings_text_1536_hnsw_idx",
+        embedding_protocol=EmbeddingProtocol(
+            api_flavor="openai",
+            dimensions_policy="requested",
+            input_format="qwen_text",
+            identity_policy="reported_model",
+            artifact_revision="5cf2132abc99cad020ac570b19d031efec650f2b",
+            query_instruction=(
+                "Given a web search query, retrieve relevant passages that answer the query"
+            ),
+        ),
+    ),
+    VISUAL_EMBED_BLACKBIRD_PROFILE: ModelProfile(
+        name=VISUAL_EMBED_BLACKBIRD_PROFILE,
+        engine="visual_embedding",
+        task="embed_image_or_mixed",
+        base_model="Qwen/Qwen3-VL-Embedding-2B",
+        served_model_name="Qwen/Qwen3-VL-Embedding-2B",
+        backend="vllm-embed",
+        source_engine="system",
+        output_dimensions=2048,
+        default_gpu_role="blackbird-pro4000",
+        max_model_len=8192,
+        max_image_bytes=10 * 1024 * 1024,
+        max_images_per_request=1,
+        pgvector_index="embeddings_visual_2048_hnsw_idx",
+        embedding_protocol=EmbeddingProtocol(
+            api_flavor="openai",
+            dimensions_policy="native",
+            input_format="qwen_vl_messages",
+            identity_policy="reported_model",
+            artifact_revision="9f2f7e710d6d81056aa5c0a4f04764fec6bb7bda",
+        ),
     ),
 }
 

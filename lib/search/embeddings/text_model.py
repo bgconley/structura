@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Literal, Protocol
 
 from lib.model_runtime.contracts import EmbeddingInput, EmbeddingRequest, EmbeddingResponse
 from lib.model_runtime.profiles import TEXT_EMBED_PROFILE, get_model_profile
@@ -21,24 +21,26 @@ class TextModelEmbeddingGateway:
         *,
         client: TextEmbeddingClientProtocol,
         profile_name: str = TEXT_EMBED_PROFILE,
+        purpose: Literal["document", "query"] = "document",
     ) -> None:
         self.client = client
         self.model_profile = get_model_profile(profile_name)
         self.profile = search_embedding_profile(self.model_profile)
+        self.purpose: Literal["document", "query"] = purpose
 
     def embed_texts(self, texts: list[str]) -> list[EmbeddedText]:
-        response = self.client.embed(
-            EmbeddingRequest(
-                profile_name=self.model_profile.name,
-                inputs=tuple(EmbeddingInput(text=text) for text in texts),
-                output_dimensions=self.profile.dimensions,
-                timeout_seconds=30,
-            )
+        request = EmbeddingRequest(
+            profile_name=self.model_profile.name,
+            inputs=tuple(EmbeddingInput(text=text) for text in texts),
+            output_dimensions=self.profile.dimensions,
+            timeout_seconds=30,
+            purpose=self.purpose,
         )
+        response = self.client.embed(request)
         vectors = validated_response_vectors(
             response,
-            expected_count=len(texts),
-            expected_dimensions=self.profile.dimensions,
+            request=request,
+            profile=self.model_profile,
         )
         return [
             EmbeddedText(text=text, values=list(vector), profile=self.profile)

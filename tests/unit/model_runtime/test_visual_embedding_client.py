@@ -26,7 +26,7 @@ def test_visual_embedding_client_requires_image_bytes_and_validates_2048_dimensi
                 json={
                     "model": "Qwen/Qwen3-VL-Embedding-2B",
                     "model_version": "vllm-embed",
-                    "data": [{"embedding": vector}],
+                    "data": [{"index": 0, "embedding": vector}],
                 },
             )
         ),
@@ -68,7 +68,7 @@ def test_visual_embedding_client_uses_openai_multimodal_embedding_endpoint_prima
             200,
             json={
                 "model": "Qwen/Qwen3-VL-Embedding-2B",
-                "data": [{"embedding": vector}],
+                "data": [{"index": 0, "embedding": vector}],
             },
         )
 
@@ -119,7 +119,7 @@ def test_visual_embedding_client_embeds_one_image_per_request_for_batches() -> N
             200,
             json={
                 "model": "Qwen/Qwen3-VL-Embedding-2B",
-                "data": [{"embedding": vectors[len(seen_payloads) - 1]}],
+                "data": [{"index": 0, "embedding": vectors[len(seen_payloads) - 1]}],
             },
         )
 
@@ -210,7 +210,7 @@ def test_visual_query_embedding_client_accepts_text_query_without_image_bytes() 
             200,
             json={
                 "model": "Qwen/Qwen3-VL-Embedding-2B",
-                "data": [{"embedding": vector}],
+                "data": [{"index": 0, "embedding": vector}],
             },
         )
 
