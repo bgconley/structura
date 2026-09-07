@@ -24,7 +24,7 @@ The user authorized execution of the [completion plan](../../../STRUCTURA_PRODUC
 | JOB-01/JOB-02 claim lifecycle and domain publication | Jobs lane | In progress | Stale-owner/renewal/cancel tests, complete publication inventory and independent generation fences |
 | UI-02 correction integrity | Product lane | In progress | Browser/API reject malformed/coerced values; exact valid corrections persist |
 | SEC-03 public error and health truth | Integrator + product lane | In progress | Synthetic sensitive values absent from public errors/logs; unobserved health is explicit |
-| X-01/Qwen-native contract and topology preparation | Integrator | Planned after shared contracts | Authenticated truthful adapter and versioned neutral parse contract; no archive cutover yet |
+| X-01/Qwen-native contract and topology preparation | Integrator | In progress | Authenticated adapter passed; neutral parse/history and source-scored quality remain open |
 
 Migration numbers are coordinated: `090_completion_document_authorization.sql` belongs to SEC-01; `091_completion_job_claim_ownership.sql` belongs to JOB-01. Existing applied migrations remain immutable. New SQL is validated on a disposable database before any archive migration.
 
@@ -39,6 +39,8 @@ At `12128a67bd54dc02194a6369f6e885d0719813bb`, local source, the pushed integrat
 The first preflight exposed missing Pillow in the development lockfile; the existing runtime requirement is now pinned to `12.2.0`, matching the API lockfile, and installed in the test venv. An initial test run from the deployment checkout inherited its existing live-model `.env`; the canonical run instead used the clean worktree and scrubbed inherited `STRUCTURA_*` settings. The deployment configuration was preserved. These are environment corrections, not application test exclusions.
 
 The [publication inventory](job-publication-inventory.md) identifies the first claim-ownership changes and the independent generation/cancellation work that remains. This baseline establishes a reproducible starting point; it does not close G1 or the model and production gates.
+
+[Integrity checkpoint 1](integrity-checkpoint-1.md) records the subsequent `c250427` candidate: 1,263 unit tests, 79 database integration tests and the pinned Linux web build passed. It also records real authenticated 27B text/image adapter proof and the named open gates.
 
 The cached validation images observed on Oxcart are:
 

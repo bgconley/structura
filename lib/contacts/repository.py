@@ -17,7 +17,7 @@ Row: TypeAlias = dict[str, Any]
 def list_contacts(
     cur: Any,
     *,
-    household_id: UUID,
+    access: DocumentAccessContext,
     query: str | None = None,
     contact_type: str | None = None,
 ) -> list[Row]:
@@ -34,10 +34,14 @@ def list_contacts(
             array_agg(ca.alias::text ORDER BY ca.alias) FILTER (WHERE ca.id IS NOT NULL),
             ARRAY[]::text[]
           ) AS aliases,
-          COALESCE(COUNT(DISTINCT dc.document_id), 0)::int AS linked_document_count
+          (
+            SELECT COUNT(DISTINCT dc.document_id)::int
+            FROM document_contacts dc
+            WHERE dc.contact_id = c.id
+              AND document_is_readable(dc.document_id, %s, %s, %s)
+          ) AS linked_document_count
         FROM contacts c
         LEFT JOIN contact_aliases ca ON ca.contact_id = c.id
-        LEFT JOIN document_contacts dc ON dc.contact_id = c.id
         WHERE c.household_id = %s
           AND (%s::text IS NULL OR c.contact_type = %s)
           AND (
@@ -57,7 +61,8 @@ def list_contacts(
         LIMIT 200
         """,
         (
-            household_id,
+            *document_read_access_params(access),
+            access.household_id,
             contact_type,
             contact_type,
             like_query,

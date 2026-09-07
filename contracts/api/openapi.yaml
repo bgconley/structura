@@ -412,6 +412,10 @@ paths:
                   jobId:
                     type: string
                     format: uuid
+        '409':
+          description: Canonical revision changed or a human-reviewed fact requires an explicit revision
+        '422':
+          description: Invalid typed correction value
         '401':
           description: Not authenticated
   /api/v1/documents/{documentId}/field-candidates:
@@ -576,6 +580,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CanonicalField'
+        '409':
+          description: Canonical revision changed or a human-reviewed fact requires an explicit revision
+        '422':
+          description: Invalid typed correction value
         '401':
           description: Not authenticated
   /api/v1/assets/{assetId}:
@@ -2740,6 +2748,10 @@ components:
         acceptedAt:
           type: string
           format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          description: Exact opaque revision for optimistic human correction; retain fractional precision.
     CanonicalFieldWrite:
       type: object
       additionalProperties: false
@@ -2757,6 +2769,8 @@ components:
           type: string
         ordinal:
           type: integer
+          minimum: 1
+          maximum: 2147483647
           default: 1
         valueType:
           type: string
@@ -2778,6 +2792,11 @@ components:
             $ref: '#/components/schemas/EvidenceRef'
         reason:
           type: string
+        expectedUpdatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Exact loaded updatedAt; null requires an absent fact. Omission cannot overwrite a human-reviewed fact.
     Folder:
       type: object
       additionalProperties: false
@@ -3675,6 +3694,11 @@ components:
         finishedAt:
           type: string
           format: date-time
+        lineageRevokedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Work descended from this job was revoked; prior success remains historical.
         errorMessage:
           type: string
         result:

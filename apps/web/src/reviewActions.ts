@@ -52,7 +52,50 @@ export function coerceCorrectionValue(
     }
     return {value: ["true", "yes", "1"].includes(normalized), metadata};
   }
+  if (valueType === "date") {
+    validateDate(trimmed);
+    return {value: trimmed, metadata};
+  }
+  if (valueType === "datetime") {
+    const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,6})?(Z|[+-]\d{2}:\d{2})$/);
+    if (!match || Number(match[2]) > 23 || Number(match[3]) > 59 || Number(match[4]) > 59
+      || match[5] === "-00:00" || (match[5] !== "Z"
+        && (Number(match[5].slice(1, 3)) > 23 || Number(match[5].slice(4)) > 59))) {
+      throw new Error("Enter a valid date and time with seconds and an explicit offset, such as 2026-09-07T14:30:00-04:00; use at most six fractional digits.");
+    }
+    validateDate(match[1]);
+    return {value: trimmed, metadata};
+  }
+  if (valueType === "json") {
+    let value: unknown;
+    try {
+      value = JSON.parse(trimmed);
+    } catch {
+      throw new Error("Enter valid JSON, such as {\"paid\": false}.");
+    }
+    validateJson(value);
+    return {value, metadata};
+  }
   return {value: trimmed, metadata};
+}
+
+function validateDate(value: string): void {
+  const parsed = new Date(`${value}T00:00:00Z`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value.startsWith("0000")
+    || !Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
+    throw new Error("Enter a valid calendar date in YYYY-MM-DD format.");
+  }
+}
+
+function validateJson(value: unknown, depth = 0): void {
+  if (depth > 64) throw new Error("JSON corrections support at most 64 nested levels.");
+  if (typeof value === "number" && (!Number.isFinite(value)
+    || (Number.isInteger(value) && !Number.isSafeInteger(value)))) {
+    throw new Error("JSON numbers must be finite and integers must fit the supported range.");
+  }
+  if (value && typeof value === "object") {
+    for (const item of Object.values(value)) validateJson(item, depth + 1);
+  }
 }
 
 function parseDecimalCorrection(value: string): number {

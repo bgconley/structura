@@ -91,6 +91,10 @@
     },
     "accepted_at": {
       "$ref": "common_defs.schema.json#/$defs/timestamp"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
     }
   }
 }

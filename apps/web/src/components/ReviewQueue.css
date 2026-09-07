@@ -146,7 +146,8 @@
 }
 
 .review-decision-form input,
-.review-decision-form select {
+.review-decision-form select,
+.review-decision-form textarea {
   width: 100%;
   min-height: 32px;
   border: 1px solid var(--line);

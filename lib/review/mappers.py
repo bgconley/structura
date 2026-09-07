@@ -135,6 +135,7 @@ def canonical_field_from_row(row: Mapping[str, Any]) -> CanonicalField:
             "evidence": row.get("evidence_json") or [],
             "validation": row.get("validation_json") or {},
             "acceptedAt": row.get("accepted_at"),
+            "updatedAt": row.get("updated_at"),
         }
     )
 

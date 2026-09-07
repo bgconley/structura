@@ -102,6 +102,7 @@ def _exercise_corrections(client: TestClient, headers: dict[str, str], document_
             assert _snapshot(document_id) == baseline
 
     for amount in (0, -12.3456):
+        revision = client.get(f"{path}/canonical-fields").json()["items"][0]["updatedAt"]
         response = client.post(
             f"{path}/review-actions",
             headers=headers,
@@ -110,6 +111,7 @@ def _exercise_corrections(client: TestClient, headers: dict[str, str], document_
                 "actionType": "correct_field",
                 "fieldPath": base["fieldPath"],
                 "newValue": {"amount": amount, "currency": "USD"},
+                "expectedUpdatedAt": revision,
                 "evidenceContext": evidence,
                 "metadata": {"valueType": "money", "currency": "USD"},
                 "comment": f"Reviewed amount {amount}",

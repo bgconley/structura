@@ -20,9 +20,12 @@ from lib.review.audit_repository import (
     record_review_event,
     update_document_review_status,
 )
-from lib.review.correction_values import CorrectionValueError, validate_correction_value
+from lib.review.correction_revision import CorrectionExpectation, assert_correction_revision
+from lib.review.correction_values import CorrectionValueError, correction_storage_value
 from lib.review.errors import ReviewRepositoryError
 from lib.review.mappers import canonical_field_from_row, canonical_value
+
+LEGACY_CORRECTION_EXPECTATION = CorrectionExpectation()
 
 
 def get_field_candidate(
@@ -57,11 +60,12 @@ def upsert_human_canonical_field(
     selected_candidate_id: UUID | None = None,
     source_kind: str = "human",
     reason: str | None = None,
+    expectation: CorrectionExpectation = LEGACY_CORRECTION_EXPECTATION,
 ) -> tuple[CanonicalField, UUID]:
-    validate_correction_value(value_type, value, currency)
+    storage_value = correction_storage_value(value_type, value, currency)
     if value_type == "money" and isinstance(value, dict):
         currency = str(value["currency"])
-    typed = typed_value_columns(value_type, _typed_value_input(value_type, value, currency))
+    typed = typed_value_columns(value_type, _typed_value_input(value_type, storage_value, currency))
     if currency:
         typed["currency_code"] = currency
     with db_connection() as conn:
@@ -72,6 +76,22 @@ def upsert_human_canonical_field(
                 raise CorrectionValueError(
                     "A correction must keep the existing field's value type."
                 )
+            if selected_candidate_id:
+                selected = get_field_candidate(
+                    cur, document_id=document_id, candidate_id=selected_candidate_id
+                )
+                if not selected or (
+                    selected["field_path"],
+                    selected["ordinal"],
+                    selected["value_type"],
+                ) != (field_path, ordinal, value_type):
+                    raise CorrectionValueError("Selected candidate does not match this field.")
+            assert_correction_revision(
+                exists=previous is not None,
+                updated_at=previous.get("updated_at") if previous else None,
+                human_reviewed=bool(previous and previous.get("accepted_by_user_id")),
+                expectation=expectation,
+            )
             canonical_id = _upsert_canonical_row(
                 cur,
                 document_id=document_id,
@@ -445,7 +465,9 @@ def _upsert_canonical_row(
           validation_json = EXCLUDED.validation_json,
           accepted_by_user_id = EXCLUDED.accepted_by_user_id,
           accepted_at = EXCLUDED.accepted_at,
-          updated_at = now()
+          updated_at = GREATEST(
+            clock_timestamp(), canonical_fields.updated_at + interval '1 microsecond'
+          )
         RETURNING id
         """,
         (

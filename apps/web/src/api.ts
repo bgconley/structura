@@ -34,7 +34,15 @@ export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T>
     },
   });
   if (!response.ok) {
-    throw new Error(`${response.status} ${response.statusText}`);
+    let detail: unknown;
+    try {
+      const body: unknown = await response.json();
+      if (body && typeof body === "object" && "detail" in body) detail = body.detail;
+    } catch {
+      // Proxy/network responses may not contain the API's safe JSON error shape.
+    }
+    throw new Error(typeof detail === "string" && detail
+      ? detail : `${response.status} ${response.statusText}`);
   }
   return (await response.json()) as T;
 }

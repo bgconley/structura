@@ -69,7 +69,9 @@ def update_document_organization_with_cursor(
         )
 
     if "tags" in fields:
-        _update_document_tags(cur, document_id=document_id, tag_names=payload.tags or [])
+        _update_document_tags(
+            cur, document_id=document_id, tag_names=payload.tags or [], household_id=household_id
+        )
 
     if fields and not folder_fields_present and "tags" not in fields:
         repository.touch_document(cur, document_id)
@@ -180,9 +182,11 @@ def _validate_manual_folders(
             )
 
 
-def _update_document_tags(cur: object, *, document_id: UUID, tag_names: list[str]) -> None:
+def _update_document_tags(
+    cur: object, *, document_id: UUID, tag_names: list[str], household_id: UUID
+) -> None:
     target_tag_names = policy.normalize_tag_names(tag_names)
-    tag_rows = repository.resolve_tags_by_name(cur, target_tag_names)
+    tag_rows = repository.resolve_tags_by_name(cur, target_tag_names, household_id=household_id)
     found = {str(row["name"]).casefold() for row in tag_rows}
     missing = [name for name in target_tag_names if name.casefold() not in found]
     if missing:

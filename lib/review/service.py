@@ -13,7 +13,8 @@ from lib.db.connection import db_connection
 from lib.documents.access_policy import DocumentAccessContext
 from lib.relationships.errors import RelationshipServiceError
 from lib.relationships.service import RelationshipService
-from lib.review.correction_values import validate_correction_value
+from lib.review.correction_revision import CorrectionExpectation
+from lib.review.correction_values import CorrectionValueError, validate_correction_value
 from lib.search.projection import refresh_projection_and_enqueue_embedding
 from lib.semantic_annotations.jobs import enqueue_semantic_annotation_job
 
@@ -51,10 +52,19 @@ class ReviewService:
                 actor_user_id=actor_user_id,
                 field_path=field_path,
                 value_type=_value_type_from_action(action),
+                ordinal=_correction_ordinal(action),
+                selected_candidate_id=(
+                    _candidate_id_from_action(action)
+                    if (action.metadata or {}).get("candidateId")
+                    else None
+                ),
                 value=action.new_value,
                 evidence=evidence,
                 currency=_currency_from_action(action),
                 reason=action.comment,
+                expectation=CorrectionExpectation(
+                    "expected_updated_at" in action.model_fields_set, action.expected_updated_at
+                ),
             )
         elif action.action_type == "reject_field":
             field_path = _required(action.field_path, "fieldPath")
@@ -171,6 +181,9 @@ class ReviewService:
             selected_candidate_id=payload.selected_candidate_id,
             source_kind=payload.source_kind,
             reason=payload.reason,
+            expectation=CorrectionExpectation(
+                "expected_updated_at" in payload.model_fields_set, payload.expected_updated_at
+            ),
         )
         refresh_projection_and_enqueue_embedding(
             document_id=document_id,
@@ -231,7 +244,10 @@ def _candidate_id_from_action(action: ReviewActionRequest) -> UUID:
     metadata = action.metadata or {}
     candidate_id = metadata.get("candidateId") or metadata.get("selectedCandidateId")
     if candidate_id:
-        return UUID(str(candidate_id))
+        try:
+            return UUID(str(candidate_id))
+        except ValueError as exc:
+            raise CorrectionValueError("Selected candidate does not match this field.") from exc
     if action.new_value:
         return UUID(str(action.new_value))
     raise ReviewServiceError("confirm_field requires metadata.candidateId.")
@@ -257,6 +273,13 @@ def _evidence_context_json(action: ReviewActionRequest) -> list[dict[str, object
 def _value_type_from_action(action: ReviewActionRequest) -> str:
     metadata = action.metadata or {}
     return str(metadata.get("valueType") or "string")
+
+
+def _correction_ordinal(action: ReviewActionRequest) -> int:
+    ordinal = (action.metadata or {}).get("ordinal", 1)
+    if type(ordinal) is not int or not 1 <= ordinal <= 2147483647:
+        raise CorrectionValueError("A field ordinal must be a positive integer.")
+    return ordinal
 
 
 def _currency_from_action(action: ReviewActionRequest) -> str | None:

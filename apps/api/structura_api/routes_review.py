@@ -10,6 +10,7 @@ from lib.auth import AuthPrincipal
 from lib.contracts import CanonicalFieldWrite, ReviewActionRequest
 from lib.documents.access_policy import DocumentAccessContext
 from lib.review import ReviewService
+from lib.review.correction_revision import CorrectionConflictError
 from lib.review.correction_values import CorrectionValueError
 from lib.review.repository import (
     ReviewRepositoryError,
@@ -129,6 +130,8 @@ def post_canonical_field(
             access=access,
             actor_user_id=principal.user_id,
         )
+    except CorrectionConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except CorrectionValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except (ReviewRepositoryError, ReviewServiceError) as exc:
@@ -153,6 +156,8 @@ def post_review_action(
             access=access,
             actor_user_id=principal.user_id,
         )
+    except CorrectionConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except CorrectionValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except (ReviewRepositoryError, ReviewServiceError) as exc:

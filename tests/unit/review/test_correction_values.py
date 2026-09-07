@@ -39,6 +39,19 @@ from lib.review.correction_values import CorrectionValueError, validate_correcti
         ("boolean", "perhaps", None),
         ("boolean", 0, None),
         ("string", None, None),
+        ("date", "2026-02-30", None),
+        ("date", "2025-02-29", None),
+        ("date", "2026-9-7", None),
+        ("date", "09/07/2026", None),
+        ("date", None, None),
+        ("datetime", "2026-09-07T14:30:00", None),
+        ("datetime", "2026-09-07T14:30:00-00:00", None),
+        ("datetime", "2026-09-07T14:30:00+01:60", None),
+        ("datetime", "2026-09-07T14:30:00.1234567Z", None),
+        ("datetime", "2026-02-30T14:30:00Z", None),
+        ("json", {"invalid": float("nan")}, None),
+        ("json", {"invalid": [float("inf")]}, None),
+        ("json", {1: "not a string key"}, None),
         ("unsupported", 1, None),
     ],
 )
@@ -60,6 +73,11 @@ def test_invalid_corrections_are_rejected(value_type, value, currency) -> None:
         ("boolean", False, None),
         ("boolean", True, None),
         ("string", "Original text", None),
+        ("date", "2024-02-29", None),
+        ("datetime", "2026-09-07T14:30:00.123456-04:00", None),
+        ("json", {"paid": False, "amounts": [0, -12.5], "note": None}, None),
+        ("json", "A JSON string", None),
+        ("json", None, None),
     ],
 )
 def test_valid_corrections_preserve_values(value_type, value, currency) -> None:
@@ -75,6 +93,8 @@ def test_valid_corrections_preserve_values(value_type, value, currency) -> None:
         ("number", 1.23456),
         ("integer", 3.5),
         ("boolean", "false"),
+        ("date", "2026-02-30"),
+        ("datetime", "2026-09-07T14:30:00"),
     ],
 )
 def test_both_api_paths_reject_invalid_values_before_any_side_effect(

@@ -37,6 +37,15 @@ _SAFE_DETAILS = frozenset(
         "Enter a finite numeric amount without currency or separators.",
         "The amount exceeds the supported range.",
         "Use at most four decimal places; values are not rounded.",
+        "Enter a valid calendar date in YYYY-MM-DD format.",
+        "Enter a valid date and time with seconds and an explicit offset, "
+        "such as 2026-09-07T14:30:00-04:00; use at most six fractional digits.",
+        "JSON corrections support at most 64 nested levels.",
+        "Enter valid JSON with finite numbers and string object keys.",
+        "Selected candidate does not match this field.",
+        "A field ordinal must be a positive integer.",
+        "This field has a human decision. Reload it and include its current revision.",
+        "This field changed since it was loaded. Reload it before saving your correction.",
     }
 )
 _STATUS_DETAILS = {

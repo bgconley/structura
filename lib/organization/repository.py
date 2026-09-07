@@ -175,21 +175,24 @@ def insert_folder(
     return cast(dict[str, object] | None, cur.fetchone())
 
 
-def list_tags(cur: Any) -> list[dict[str, object]]:
+def list_tags(cur: Any, *, household_id: UUID) -> list[dict[str, object]]:
     cur.execute(
         """
         SELECT id, name::text AS name, color_hex, description
         FROM tags
+        WHERE household_id = %s OR is_system
         ORDER BY is_system DESC, lower(name::text), id
         """,
+        (household_id,),
     )
     return cast(list[dict[str, object]], cur.fetchall())
 
 
-def tag_name_exists(cur: Any, name: str) -> bool:
+def tag_name_exists(cur: Any, name: str, *, household_id: UUID) -> bool:
     cur.execute(
-        "SELECT id FROM tags WHERE lower(name::text) = lower(%s) LIMIT 1",
-        (name,),
+        """SELECT id FROM tags WHERE lower(name::text) = lower(%s)
+        AND (household_id = %s OR is_system) LIMIT 1""",
+        (name, household_id),
     )
     return cur.fetchone() is not None
 
@@ -200,14 +203,15 @@ def insert_tag(
     name: str,
     color_hex: str | None,
     description: str | None,
+    household_id: UUID,
 ) -> dict[str, object] | None:
     cur.execute(
         """
-        INSERT INTO tags (name, color_hex, description)
-        VALUES (%s, %s, %s)
+        INSERT INTO tags (name, color_hex, description, household_id)
+        VALUES (%s, %s, %s, %s)
         RETURNING id, name::text AS name, color_hex, description
         """,
-        (name, color_hex, description),
+        (name, color_hex, description, household_id),
     )
     return cast(dict[str, object] | None, cur.fetchone())
 
@@ -304,7 +308,9 @@ def replace_document_folders(
     )
 
 
-def resolve_tags_by_name(cur: Any, tag_names: list[str]) -> list[dict[str, object]]:
+def resolve_tags_by_name(
+    cur: Any, tag_names: list[str], *, household_id: UUID
+) -> list[dict[str, object]]:
     resolved: list[dict[str, object]] = []
     for name in tag_names:
         cur.execute(
@@ -312,9 +318,11 @@ def resolve_tags_by_name(cur: Any, tag_names: list[str]) -> list[dict[str, objec
             SELECT id, name::text AS name
             FROM tags
             WHERE lower(name::text) = lower(%s)
+              AND (household_id = %s OR is_system)
+            ORDER BY is_system DESC, id
             LIMIT 1
             """,
-            (name,),
+            (name, household_id),
         )
         row = cur.fetchone()
         if row:

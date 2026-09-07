@@ -180,18 +180,20 @@ class CanonicalField(ContractModel):
     currency: str | None = None
     validation: dict[str, Any] | None = None
     accepted_at: datetime | None = Field(default=None, alias="acceptedAt")
+    updated_at: datetime | None = Field(default=None, alias="updatedAt")
 
 
 class CanonicalFieldWrite(ContractModel):
     selected_candidate_id: UUID | None = Field(default=None, alias="selectedCandidateId")
     field_path: str = Field(alias="fieldPath")
-    ordinal: int = 1
+    ordinal: int = Field(default=1, ge=1, le=2147483647)
     value_type: str = Field(alias="valueType")
     value: Any
     currency: str | None = None
     source_kind: Literal["candidate", "validator", "human", "system"] = Field(alias="sourceKind")
     evidence: list[EvidenceRef] = Field(min_length=1)
     reason: str | None = None
+    expected_updated_at: str | None = Field(default=None, alias="expectedUpdatedAt")
 
 
 class ReviewActionRequest(ContractModel):
@@ -221,6 +223,7 @@ class ReviewActionRequest(ContractModel):
     evidence_context: list[EvidenceRef] | None = Field(default=None, alias="evidenceContext")
     metadata: dict[str, Any] | None = None
     created_at: datetime | None = Field(default=None, alias="createdAt")
+    expected_updated_at: str | None = Field(default=None, alias="expectedUpdatedAt")
 
 
 class FilingRule(ContractModel):
@@ -734,4 +737,5 @@ class JobState(ContractModel):
     started_at: datetime | None = Field(default=None, alias="startedAt")
     finished_at: datetime | None = Field(default=None, alias="finishedAt")
     error_message: str | None = Field(default=None, alias="errorMessage")
+    lineage_revoked_at: datetime | None = Field(default=None, alias="lineageRevokedAt")
     result: dict[str, Any] | None = None

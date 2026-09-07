@@ -40,6 +40,8 @@ BASELINE_SQL_FILES = (
     "089_phase8_5_claim_currency.sql",
     "090_completion_document_authorization.sql",
     "091_completion_job_claim_ownership.sql",
+    "092_completion_job_lineage.sql",
+    "093_completion_household_tags.sql",
 )
 
 

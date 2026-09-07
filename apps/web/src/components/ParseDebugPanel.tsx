@@ -47,6 +47,7 @@ export function ParseDebugPanel({
           {visibleJobs.map((job) => (
             <li key={job.jobId}>
               {job.jobType} <strong>{job.status}</strong>
+              {job.lineageRevokedAt ? <span> · downstream work cancelled</span> : null}
             </li>
           ))}
         </ol>

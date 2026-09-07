@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any, cast
+from typing import Any
 from uuid import UUID, uuid4
 
 from psycopg.types.json import Jsonb
 
 from lib.contracts import AcceptedJob, JobState
 from lib.db.connection import db_connection
-from lib.jobs.errors import JobServiceError
+from lib.jobs import operator_repository as operators
+from lib.jobs.creation_repository import insert_job
+from lib.jobs.errors import JobServiceError as JobServiceError
 from lib.jobs.errors import PayloadSafetyError as PayloadSafetyError
 from lib.jobs.lifecycle_repository import (
     claim_job,
@@ -18,10 +20,13 @@ from lib.jobs.lifecycle_repository import (
 )
 from lib.jobs.models import BulkCancelResult, ClaimedJob
 from lib.jobs.models import QueueTransportProfile as QueueTransportProfile
-from lib.jobs.ownership import JobAttempt, fence_current_job
-from lib.jobs.payload_policy import queue_transport_profile, sanitize_job_payload
+from lib.jobs.ownership import (
+    JobAttempt,
+    fence_current_job,
+)
+from lib.jobs.payload_policy import queue_transport_profile
 from lib.jobs.payload_policy import retry_delay_seconds as retry_delay_seconds
-from lib.jobs.public_errors import safe_job_failure
+from lib.jobs.payload_policy import sanitize_job_payload as sanitize_job_payload
 from lib.jobs.row_mapping import claimed_job_from_row, job_state_from_row
 
 
@@ -38,39 +43,18 @@ def create_job_with_cursor(
     queue_name: str = "default",
     max_attempts: int = 5,
 ) -> JobState:
-    safe_payload = sanitize_job_payload(payload or {})
-    cur.execute(
-        """
-        INSERT INTO pipeline_jobs
-          (
-            id,
-            household_id,
-            job_type,
-            document_id,
-            batch_id,
-            payload_json,
-            priority,
-            queue_name,
-            max_attempts
-          )
-          VALUES (%s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s)
-        RETURNING *
-        """,
-        (
-            job_id,
-            household_id,
-            job_type,
-            document_id,
-            batch_id,
-            Jsonb(safe_payload),
-            priority,
-            queue_name,
-            max_attempts,
-        ),
+    row = insert_job(
+        cur,
+        job_id=job_id,
+        job_type=job_type,
+        household_id=household_id,
+        document_id=document_id,
+        batch_id=batch_id,
+        payload=payload,
+        priority=priority,
+        queue_name=queue_name,
+        max_attempts=max_attempts,
     )
-    row = cur.fetchone()
-    if not row:
-        raise JobServiceError("Job was not created.")
     return job_state_from_row(row)
 
 
@@ -232,22 +216,10 @@ class JobService:
     ) -> JobState:
         with db_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT *
-                    FROM pipeline_jobs
-                    WHERE id = %s
-                      AND (%s::uuid IS NULL OR household_id = %s)
-                    FOR UPDATE
-                    """,
-                    (job_id, household_id, household_id),
-                )
-                current = cur.fetchone()
-                if not current:
-                    raise JobServiceError("Job not found.")
-                row = _cancel_job_row(
+                row = operators.cancel_job(
                     cur,
-                    current=current,
+                    job_id=job_id,
+                    household_id=household_id,
                     reason=reason,
                     include_running=include_running,
                     requested_by=requested_by,
@@ -269,187 +241,30 @@ class JobService:
         max_jobs: int = 250,
         requested_by: str = "operator",
     ) -> BulkCancelResult:
-        if not job_ids and not document_ids and not title_prefix:
-            raise JobServiceError(
-                "Bulk job cancellation requires job_ids, document_ids, or title_prefix."
-            )
-        candidate_statuses = set(statuses or ("queued", "failed"))
-        if include_running:
-            candidate_statuses.update({"running", "leased"})
-        elif candidate_statuses.intersection({"running", "leased"}):
-            raise JobServiceError("Cancelling running jobs requires include_running=true.")
-        unsupported = candidate_statuses - {"queued", "failed", "running", "leased"}
-        if unsupported:
-            unsupported_text = ", ".join(sorted(unsupported))
-            raise JobServiceError(f"Unsupported cancellation statuses: {unsupported_text}.")
-
         with db_connection() as conn:
             with conn.cursor() as cur:
-                candidate_ids = _candidate_cancel_job_ids(
+                result = operators.cancel_jobs(
                     cur,
                     household_id=household_id,
+                    reason=reason,
                     job_ids=job_ids,
                     document_ids=document_ids,
                     queue_names=queue_names,
-                    statuses=tuple(sorted(candidate_statuses)),
+                    statuses=statuses,
                     title_prefix=title_prefix,
+                    include_running=include_running,
                     max_jobs=max_jobs,
+                    requested_by=requested_by,
                 )
-                cancelled: list[UUID] = []
-                skipped: list[UUID] = []
-                for candidate_id in candidate_ids:
-                    cur.execute(
-                        "SELECT * FROM pipeline_jobs WHERE id = %s FOR UPDATE",
-                        (candidate_id,),
-                    )
-                    current = cur.fetchone()
-                    if not current:
-                        skipped.append(candidate_id)
-                        continue
-                    try:
-                        _cancel_job_row(
-                            cur,
-                            current=current,
-                            reason=reason,
-                            include_running=include_running,
-                            requested_by=requested_by,
-                        )
-                    except JobServiceError:
-                        skipped.append(candidate_id)
-                    else:
-                        cancelled.append(candidate_id)
             conn.commit()
-        return BulkCancelResult(
-            cancelled_job_ids=tuple(cancelled),
-            skipped_job_ids=tuple(skipped),
-        )
+        return result
 
     def retry_job(self, *, job_id: UUID, household_id: UUID | None = None) -> AcceptedJob:
         with db_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    UPDATE pipeline_jobs
-                    SET status = 'queued',
-                        attempt_count = 0,
-                        worker_name = NULL,
-                        started_at = NULL,
-                        lease_expires_at = NULL,
-                        claim_token = NULL,
-                        scheduled_at = now(),
-                        finished_at = NULL,
-                        error_json = '{}'::jsonb
-                    WHERE id = %s
-                      AND (
-                        status IN ('failed', 'dead_letter', 'cancelled')
-                        OR (
-                          status = 'running'
-                          AND lease_expires_at IS NOT NULL
-                          AND lease_expires_at <= clock_timestamp()
-                        )
-                      )
-                      AND (%s::uuid IS NULL OR household_id = %s)
-                    RETURNING id, status::text
-                    """,
-                    (job_id, household_id, household_id),
-                )
-                row = cur.fetchone()
+                row = operators.retry_job(cur, job_id=job_id, household_id=household_id)
             conn.commit()
-        if not row:
-            raise JobServiceError("Job is not retryable or does not exist.")
         return AcceptedJob.model_validate({"jobId": row["id"], "status": row["status"]})
-
-
-def _cancel_job_row(
-    cur: Any,
-    *,
-    current: Mapping[str, Any],
-    reason: str,
-    include_running: bool,
-    requested_by: str,
-) -> Mapping[str, Any]:
-    status = str(current["status"])
-    if status == "cancelled":
-        return current
-    if status in {"succeeded", "dead_letter"}:
-        raise JobServiceError(f"Job in status '{status}' cannot be cancelled.")
-    if status in {"running", "leased"} and not include_running:
-        raise JobServiceError("Running job cancellation requires include_running=true.")
-    if status not in {"queued", "failed", "running", "leased"}:
-        raise JobServiceError(f"Job in status '{status}' cannot be cancelled.")
-    # Cancellation metadata is a fresh event. Operator strings can contain source
-    # text and are not safe diagnostics; prior failure codes must not survive.
-    del reason, requested_by
-    safe_error = safe_job_failure("JobCancelled", "")
-    cur.execute(
-        """
-        UPDATE pipeline_jobs
-        SET status = 'cancelled',
-            finished_at = clock_timestamp(),
-            lease_expires_at = NULL,
-            claim_token = NULL,
-            scheduled_at = clock_timestamp(),
-            error_json = %s::jsonb || jsonb_build_object(
-                'retryable', false,
-                'cancelled_at', clock_timestamp()
-            )
-        WHERE id = %s
-        RETURNING *
-        """,
-        (Jsonb(safe_error), current["id"]),
-    )
-    row = cur.fetchone()
-    if not row:
-        raise JobServiceError("Job cancellation failed.")
-    return cast(Mapping[str, Any], row)
-
-
-def _candidate_cancel_job_ids(
-    cur: Any,
-    *,
-    household_id: UUID | None,
-    job_ids: Sequence[UUID],
-    document_ids: Sequence[UUID],
-    queue_names: Sequence[str],
-    statuses: Sequence[str],
-    title_prefix: str | None,
-    max_jobs: int,
-) -> list[UUID]:
-    job_id_filter = list(job_ids) if job_ids else None
-    document_id_filter = list(document_ids) if document_ids else None
-    queue_name_filter = [str(queue_name) for queue_name in queue_names] if queue_names else None
-    title_filter = f"{title_prefix}%" if title_prefix else None
-    params: list[Any] = [
-        list(statuses),
-        household_id,
-        household_id,
-        job_id_filter,
-        job_id_filter,
-        document_id_filter,
-        document_id_filter,
-        queue_name_filter,
-        queue_name_filter,
-        title_filter,
-        title_filter,
-        max_jobs,
-    ]
-    cur.execute(
-        """
-        SELECT j.id
-        FROM pipeline_jobs j
-        LEFT JOIN documents d ON d.id = j.document_id
-        WHERE j.status::text = any(%s::text[])
-          AND (%s::uuid IS NULL OR j.household_id = %s::uuid)
-          AND (%s::uuid[] IS NULL OR j.id = any(%s::uuid[]))
-          AND (%s::uuid[] IS NULL OR j.document_id = any(%s::uuid[]))
-          AND (%s::text[] IS NULL OR j.queue_name = any(%s::text[]))
-          AND (%s::text IS NULL OR d.title ILIKE %s)
-        ORDER BY j.priority DESC, j.created_at ASC
-        LIMIT %s
-        """,
-        params,
-    )
-    return [row["id"] for row in cur.fetchall()]
 
 
 def record_service_health(

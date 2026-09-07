@@ -8,7 +8,8 @@ from threading import Event
 from typing import Any
 from uuid import UUID
 
-from lib.jobs.errors import JobOwnershipLost
+from lib.jobs.errors import JobOwnershipLost, JobServiceError
+from lib.jobs.lineage_repository import lock_job_lineage, require_current_ancestry
 
 
 @dataclass(frozen=True)
@@ -42,6 +43,13 @@ def require_owned_job(cur: Any, attempt: JobAttempt) -> None:
     revocation/reclaim with publication. Use the DB wall clock, not transaction
     start time; model calls may have taken longer than a lease.
     """
+    try:
+        lineage = lock_job_lineage(cur, attempt.job_id)
+    except JobServiceError:
+        raise JobOwnershipLost("Job ancestry is missing or invalid.") from None
+    if lineage is None:
+        raise JobOwnershipLost("Job ancestry is unavailable.")
+    require_current_ancestry(lineage)
     cur.execute(
         """
         SELECT id FROM pipeline_jobs WHERE id = %s
@@ -78,3 +86,13 @@ def fence_current_job(cur: Any) -> None:
     if scope.lost.is_set():
         raise JobOwnershipLost("Job attempt renewal stopped; publication is refused.")
     require_owned_job(cur, scope.attempt)
+
+
+def current_job_attempt() -> JobAttempt | None:
+    """Implicit ancestry applies only inside an explicitly claimed worker scope."""
+    scope = _CURRENT_ATTEMPT.get()
+    if scope is None:
+        return None
+    if scope.lost.is_set():
+        raise JobOwnershipLost("Job attempt renewal stopped; enqueue is refused.")
+    return scope.attempt

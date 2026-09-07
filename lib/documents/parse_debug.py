@@ -172,6 +172,7 @@ def get_parse_debug_view(
                   max_attempts,
                   queue_name,
                   worker_name,
+                  lineage_revoked_at,
                   error_json,
                   result_json
                 FROM pipeline_jobs
@@ -283,6 +284,7 @@ def _job_row(row: dict[str, object]) -> dict[str, object]:
         "jobId": str(row["id"]),
         "jobType": row["job_type"],
         "status": row["status"],
+        "lineageRevokedAt": row.get("lineage_revoked_at"),
         "createdAt": row["created_at"],
         "startedAt": row["started_at"],
         "finishedAt": row["finished_at"],

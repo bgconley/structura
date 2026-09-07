@@ -39,6 +39,18 @@ class RecordingCursor:
     def fetchone(self):
         return {"id": uuid4()}
 
+    def fetchall(self):
+        return [
+            {
+                "id": self.calls[-1][1][0],
+                "parent_job_id": None,
+                "execution_generation": 1,
+                "parent_execution_generation": None,
+                "lineage_revoked_at": None,
+                "status": "running",
+            }
+        ]
+
 
 def test_request_scope_is_intentionally_unfenced_and_worker_scope_is_restored() -> None:
     cursor = RecordingCursor()

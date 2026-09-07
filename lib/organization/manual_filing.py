@@ -87,28 +87,35 @@ def create_folder(payload: FolderWrite, principal: AuthPrincipal) -> Folder:
     return _folder_from_row(row)
 
 
-def list_tags(_principal: AuthPrincipal) -> list[Tag]:
+def list_tags(principal: AuthPrincipal) -> list[Tag]:
+    require_action(principal, "documents:read")
+    household_id = _require_household(principal)
     with db_connection() as conn:
         with conn.cursor() as cur:
-            rows = repository.list_tags(cur)
+            rows = repository.list_tags(cur, household_id=household_id)
     return [_tag_from_row(row) for row in rows]
 
 
-def create_tag(payload: TagWrite, _principal: AuthPrincipal) -> Tag:
-    require_action(_principal, "documents:write")
+def create_tag(payload: TagWrite, principal: AuthPrincipal) -> Tag:
+    require_action(principal, "documents:write")
+    household_id = _require_household(principal)
     name = policy.normalize_tag_name(payload.name)
     color_hex = policy.normalize_color_hex(payload.color_hex)
-    with db_connection() as conn:
-        with conn.cursor() as cur:
-            if repository.tag_name_exists(cur, name):
-                raise policy.organization_error(409, "Tag name already exists")
-            row = repository.insert_tag(
-                cur,
-                name=name,
-                color_hex=color_hex,
-                description=payload.description,
-            )
-        conn.commit()
+    try:
+        with db_connection() as conn:
+            with conn.cursor() as cur:
+                if repository.tag_name_exists(cur, name, household_id=household_id):
+                    raise policy.organization_error(409, "Tag name already exists")
+                row = repository.insert_tag(
+                    cur,
+                    name=name,
+                    color_hex=color_hex,
+                    description=payload.description,
+                    household_id=household_id,
+                )
+            conn.commit()
+    except UniqueViolation as exc:
+        raise policy.organization_error(409, "Tag name already exists") from exc
     if not row:
         raise policy.organization_error(500, "Failed to create tag")
     return _tag_from_row(row)

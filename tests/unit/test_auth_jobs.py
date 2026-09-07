@@ -14,10 +14,10 @@ from lib.jobs import (
     sanitize_job_payload,
 )
 from lib.jobs.failure_taxonomy import failure_taxonomy_code
-from lib.jobs.lifecycle_repository import (
-    recover_expired_running_jobs as _recover_expired_running_jobs,
+from lib.jobs.operator_repository import candidate_cancel_job_ids as _candidate_cancel_job_ids
+from lib.jobs.recovery_repository import (
+    recover_expired_job as _recover_expired_running_jobs,
 )
-from lib.jobs.service import _candidate_cancel_job_ids
 
 
 class RecordingCursor:
@@ -141,7 +141,7 @@ def test_expired_worker_lease_recovery_records_taxonomy_code() -> None:
     recovered = _recover_expired_running_jobs(
         cursor,
         queue_name="visual-embeddings",
-        document_id=None,
+        job_id=None,
     )
 
     assert recovered == 0

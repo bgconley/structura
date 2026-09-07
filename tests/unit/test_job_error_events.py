@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 from uuid import UUID, uuid4
 
-from lib.jobs.lifecycle_repository import recover_expired_running_jobs
+from lib.jobs.operator_repository import cancel_job_row as _cancel_job_row
 from lib.jobs.public_errors import public_job_error, safe_job_failure
-from lib.jobs.service import _cancel_job_row
+from lib.jobs.recovery_repository import recover_expired_job
 
 PRIVATE = "patient source text /private/document.pdf token=secret"
 
@@ -43,7 +43,7 @@ def test_cancel_replaces_timeout_event_and_discards_private_operator_text() -> N
 
 def test_expiry_recovery_has_fresh_safe_event_and_per_row_reference() -> None:
     cur = Cursor()
-    assert recover_expired_running_jobs(cur, queue_name="extraction", document_id=None) == 1
+    assert recover_expired_job(cur, queue_name="extraction", job_id=uuid4()) == 1
     event = cur.params[1].obj
     assert event["public_code"] == "worker_lease_expired"
     assert event["details"] == {}

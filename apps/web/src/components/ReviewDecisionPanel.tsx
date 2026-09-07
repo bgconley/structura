@@ -1,6 +1,7 @@
 import {useRef, useState} from "react";
 
 import type {FieldCandidate, ReviewTask} from "../types";
+import {CorrectionValueInput} from "./CorrectionValueInput";
 
 const DOCUMENT_FAMILIES = [
   "generic",
@@ -36,14 +37,18 @@ export function ReviewDecisionPanel({
   onReclassify,
   onMarkDone,
   onRerunExtraction,
+  disabled = false,
+  correctionRevisionReady = true,
 }: {
   activeTask: ReviewTask;
   referenceCandidate?: FieldCandidate;
   onCorrect: (value: string, comment: string, currency?: string) => Promise<boolean>;
-  onReject: (comment: string) => Promise<void>;
-  onReclassify: (family: string, subtype: string, comment: string) => Promise<void>;
-  onMarkDone: () => Promise<void>;
-  onRerunExtraction: () => Promise<void>;
+  onReject: (comment: string) => Promise<boolean>;
+  onReclassify: (family: string, subtype: string, comment: string) => Promise<boolean>;
+  onMarkDone: () => Promise<boolean>;
+  onRerunExtraction: () => Promise<boolean>;
+  disabled?: boolean;
+  correctionRevisionReady?: boolean;
 }) {
   const fieldPath = activeTask.fieldPath ?? "classification.document_family";
   const valueType = referenceCandidate?.valueType ?? "string";
@@ -55,7 +60,8 @@ export function ReviewDecisionPanel({
       && "currency" in referenceCandidate.value
       ? String(referenceCandidate.value.currency ?? "") : ""
   );
-  const correctionReady = referenceCandidate?.documentId === activeTask.documentId
+  const correctionReady = !disabled && correctionRevisionReady
+    && referenceCandidate?.documentId === activeTask.documentId
     && referenceCandidate?.fieldPath === activeTask.fieldPath;
   // Observation and line-item tasks are decided on their candidate cards
   // (accept/reject); relationship suggestions are decided through the
@@ -105,29 +111,16 @@ export function ReviewDecisionPanel({
           }
         }}
       >
-        <label>
-          Corrected value
-          <input
-            name="correctedValue"
-            aria-label="Corrected value"
-            inputMode={valueType === "money" || valueType === "number" ? "decimal" : "text"}
-            placeholder={formatValue(referenceCandidate?.value, referenceCandidate?.currency)}
-            aria-invalid={correctionError ? true : undefined}
-            aria-describedby={correctionError ? "correction-error" : undefined}
-            disabled={savingCorrection || !correctionReady}
-            required
-          />
-        </label>
+        <CorrectionValueInput candidate={referenceCandidate}
+          disabled={savingCorrection || !correctionReady} error={correctionError} />
         {valueType === "money" ? (
           <label>
             Currency
             <input name="currency" aria-label="Correction currency" defaultValue={candidateCurrency}
-              pattern="[A-Z]{3}" maxLength={3} required disabled={savingCorrection} />
+              pattern="[A-Z]{3}" maxLength={3} required disabled={savingCorrection || !correctionReady} />
           </label>
         ) : null}
-        {valueType === "money" || valueType === "number" ? (
-          <small>Use a decimal amount such as 1234.56, without currency or grouping separators.</small>
-        ) : null}
+        {!correctionRevisionReady ? <small>Reload this field to obtain its current revision before correcting.</small> : null}
         <label>
           Correction note
           <input name="comment" aria-label="Correction note" disabled={savingCorrection} />
@@ -142,11 +135,12 @@ export function ReviewDecisionPanel({
       {showFieldForms ? (
       <form
         className="review-decision-form compact"
-        onSubmit={(event) => {
+        onSubmit={async (event) => {
           event.preventDefault();
-          const data = new FormData(event.currentTarget);
-          void onReject(String(data.get("comment") ?? ""));
-          event.currentTarget.reset();
+          if (disabled) return;
+          const form = event.currentTarget;
+          const data = new FormData(form);
+          if (await onReject(String(data.get("comment") ?? ""))) form.reset();
         }}
       >
         <label>
@@ -156,29 +150,32 @@ export function ReviewDecisionPanel({
             aria-label="Reject note"
             defaultValue={`Rejected ${fieldPath}`}
             required
+            disabled={disabled}
           />
         </label>
-        <button type="submit">Reject field</button>
+        <button type="submit" disabled={disabled}>Reject field</button>
       </form>
       ) : null}
 
       {showFieldForms ? (
       <form
         className="review-decision-form"
-        onSubmit={(event) => {
+        onSubmit={async (event) => {
           event.preventDefault();
-          const data = new FormData(event.currentTarget);
-          void onReclassify(
+          if (disabled) return;
+          const form = event.currentTarget;
+          const data = new FormData(form);
+          const saved = await onReclassify(
             String(data.get("family") ?? "generic"),
             String(data.get("subtype") ?? ""),
             String(data.get("comment") ?? ""),
           );
-          event.currentTarget.reset();
+          if (saved) form.reset();
         }}
       >
         <label>
           Family
-          <select name="family" aria-label="Document family" defaultValue={schemaFromTask(activeTask)}>
+          <select name="family" aria-label="Document family" defaultValue={schemaFromTask(activeTask)} disabled={disabled}>
             {DOCUMENT_FAMILIES.map((family) => (
               <option key={family} value={family}>{family}</option>
             ))}
@@ -186,21 +183,21 @@ export function ReviewDecisionPanel({
         </label>
         <label>
           Subtype
-          <input name="subtype" aria-label="Document subtype" />
+          <input name="subtype" aria-label="Document subtype" disabled={disabled} />
         </label>
         <label>
           Reclassification note
-          <input name="comment" aria-label="Reclassification note" />
+          <input name="comment" aria-label="Reclassification note" disabled={disabled} />
         </label>
-        <button type="submit">Reclassify</button>
+        <button type="submit" disabled={disabled}>Reclassify</button>
       </form>
       ) : null}
 
       <div className="review-actions">
-        <button type="button" className="primary" onClick={() => void onMarkDone()}>
+        <button type="button" className="primary" disabled={disabled} onClick={() => void onMarkDone()}>
           Mark reviewed
         </button>
-        <button type="button" onClick={() => void onRerunExtraction()}>
+        <button type="button" disabled={disabled} onClick={() => void onRerunExtraction()}>
           Re-run extraction
         </button>
       </div>
@@ -219,12 +216,4 @@ function schemaFromTask(task: ReviewTask): string {
     return "receipt";
   }
   return "generic";
-}
-
-function formatValue(value: unknown, currency?: string): string {
-  if (value && typeof value === "object" && "amount" in value) {
-    const money = value as {amount?: number; currency?: string};
-    return `${money.amount ?? ""} ${money.currency ?? currency ?? "USD"}`.trim();
-  }
-  return value === null || value === undefined ? "" : String(value);
 }

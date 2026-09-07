@@ -26,13 +26,14 @@ def list_contacts(
     query: str | None = None,
     contact_type: str | None = None,
 ) -> list[Contact]:
-    household_id = _require_household(principal)
+    require_action(principal, "documents:read")
+    access = _access_context(principal)
     resolved_type = policy.normalize_contact_type(contact_type) if contact_type else None
     with db_connection() as conn:
         with conn.cursor() as cur:
             rows = repository.list_contacts(
                 cur,
-                household_id=household_id,
+                access=access,
                 query=query.strip() if query and query.strip() else None,
                 contact_type=resolved_type,
             )

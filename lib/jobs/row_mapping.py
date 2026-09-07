@@ -23,6 +23,7 @@ def job_state_from_row(row: Mapping[str, Any]) -> JobState:
             "startedAt": row.get("started_at"),
             "finishedAt": row.get("finished_at"),
             "errorMessage": public_job_error(error_json),
+            "lineageRevokedAt": row.get("lineage_revoked_at"),
             "result": public_job_result(result_json),
         }
     )

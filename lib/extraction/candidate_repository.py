@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, cast
 from uuid import UUID
@@ -136,6 +136,12 @@ def typed_value_columns(value_type: str, value: Any) -> dict[str, Any]:
             **_empty_value_columns(),
             "date_value": value if isinstance(value, date) else None,
         }
+    if value_type == "datetime":
+        return {
+            **_empty_value_columns(),
+            "timestamp_value": value if isinstance(value, datetime) else None,
+            "text_value": None if isinstance(value, datetime) else str(value),
+        }
     if value_type == "integer":
         return {**_empty_value_columns(), "integer_value": int(value)}
     if value_type == "number":
@@ -170,6 +176,10 @@ def value_from_candidate_row(row: Mapping[str, Any]) -> Any:
     if value_type == "date":
         value = row.get("date_value")
         return value.isoformat() if isinstance(value, date) else value
+    if value_type == "datetime":
+        value = row.get("timestamp_value")
+        # Preserve historical rows written into text_value by the former mapper.
+        return value.isoformat() if isinstance(value, datetime) else row.get("text_value")
     if value_type == "integer":
         return row.get("integer_value")
     if value_type == "number":

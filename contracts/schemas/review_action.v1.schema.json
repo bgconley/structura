@@ -69,6 +69,14 @@
     },
     "metadata": {
       "$ref": "common_defs.schema.json#/$defs/metadataObject"
+    },
+    "expected_updated_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time",
+      "description": "For correct_field: exact loaded canonical updated_at, or null to require no existing fact. Omission cannot overwrite a human-reviewed fact."
     }
   }
 }

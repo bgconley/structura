@@ -492,6 +492,7 @@ export type CanonicalField = {
   evidence: EvidenceRef[];
   validation?: Record<string, unknown>;
   acceptedAt?: string;
+  updatedAt?: string;
 };
 
 export type ReviewTask = {
@@ -558,6 +559,7 @@ export type ReviewActionType =
   | "reject_line_item";
 
 export type ReviewActionPayload = {
+  expectedUpdatedAt?: string | null;
   schemaName: "review_action";
   schemaVersion: "v1";
   documentId: string;
@@ -633,6 +635,7 @@ export type ParseDebugJob = {
   jobId: string;
   jobType: string;
   status: string;
+  lineageRevokedAt?: string | null;
   attemptCount?: number;
   maxAttempts?: number;
 };
