@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, Request, status
 
+from apps.api.structura_api.browser_security import validate_browser_session
 from lib.auth import AuthPrincipal, AuthService
 from lib.auth.authorization_policy import Action, permits_action
 from lib.config import get_settings
@@ -43,10 +44,15 @@ def require_csrf(
 ) -> AuthPrincipal:
     if principal.api_token_id:
         return principal
-    settings = get_settings()
-    csrf_cookie = request.cookies.get(settings.csrf_cookie_name)
-    if not csrf_cookie or not x_csrf_token or csrf_cookie != x_csrf_token:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="CSRF token required")
+    validate_browser_session(request, principal, x_csrf_token)
+    return principal
+
+
+def require_browser_session_csrf(
+    principal: Annotated[AuthPrincipal, Depends(require_csrf)],
+) -> AuthPrincipal:
+    if principal.api_token_id is not None or principal.session_id is None:
+        raise HTTPException(status_code=403, detail="Browser session required")
     return principal
 
 

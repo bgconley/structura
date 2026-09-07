@@ -135,7 +135,19 @@ paths:
       tags:
       - Auth
       summary: Create a login session
+      description: >-
+        Browser requests require the configured Origin. Replacing an active
+        cookie session also requires its bound X-CSRF-Token. Missing Origin is
+        allowed only for non-browser clients without Fetch Metadata headers.
+        Successful replacement revokes the previous session atomically.
       security: []
+      parameters:
+      - in: header
+        name: X-CSRF-Token
+        required: false
+        description: Required when replacing an active browser session.
+        schema:
+          type: string
       requestBody:
         required: true
         content:
@@ -156,12 +168,23 @@ paths:
                 $ref: '#/components/schemas/SessionInfo'
         '401':
           description: Authentication failed
+        '403':
+          description: Browser origin or session-bound CSRF validation failed
     delete:
       tags:
       - Auth
       summary: End current session
+      description: >-
+        Requires the authenticated browser session and its bound CSRF secret.
+        An API token cannot authorize cookie logout.
       security:
       - sessionCookie: []
+      parameters:
+      - in: header
+        name: X-CSRF-Token
+        required: true
+        schema:
+          type: string
       responses:
         '204':
           description: Session ended
@@ -172,11 +195,17 @@ paths:
                 type: string
         '401':
           description: Not authenticated
+        '403':
+          description: Browser session, origin or session-bound CSRF required
   /api/v1/auth/magic-links:
     post:
       tags:
       - Auth
       summary: Request a magic link for bootstrap, invite, or recovery
+      description: >-
+        Acknowledges the request uniformly without revealing account existence.
+        The current baseline has no email delivery adapter; acceptance does not
+        promise delivery. Browser requests require the configured Origin.
       security: []
       requestBody:
         required: true
@@ -186,7 +215,19 @@ paths:
               $ref: '#/components/schemas/CreateMagicLinkRequest'
       responses:
         '202':
-          description: Magic link requested
+          description: Request accepted; does not imply account existence or delivery
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - accepted
+                properties:
+                  accepted:
+                    type: boolean
+        '403':
+          description: Browser origin validation failed
   /api/v1/documents:
     get:
       tags:
@@ -1474,6 +1515,34 @@ paths:
                       $ref: '#/components/schemas/ReviewTask'
         '401':
           description: Not authenticated
+  /api/v1/review-tasks/{reviewTaskId}:
+    get:
+      tags:
+      - Review
+      summary: Read an authorized review task by its stable identifier
+      description: Returns open or completed tasks independently of the limited backlog list. Missing and inaccessible tasks have the same response.
+      parameters:
+      - in: path
+        name: reviewTaskId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Authorized review task
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewTask'
+        '401':
+          description: Not authenticated
+        '403':
+          description: Document read scope or household context required
+        '404':
+          description: Task missing or not accessible
+        '422':
+          description: Invalid task identifier
   /api/v1/analysis-notes:
     post:
       tags:

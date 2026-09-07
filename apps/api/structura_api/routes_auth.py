@@ -5,8 +5,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
-from apps.api.structura_api.dependencies import require_csrf, session_cookie_value
-from lib.auth import AuthError, AuthService
+from apps.api.structura_api.browser_security import (
+    validate_browser_origin,
+    validate_browser_session,
+)
+from apps.api.structura_api.dependencies import require_browser_session_csrf, session_cookie_value
+from lib.auth import AuthError, AuthPrincipal, AuthService
 from lib.config import get_settings
 from lib.contracts import (
     CreateMagicLinkRequest,
@@ -54,8 +58,20 @@ def set_session_cookies(response: Response, *, token: str, csrf_token: str) -> N
 
 def clear_session_cookies(response: Response) -> None:
     settings = get_settings()
-    response.delete_cookie(settings.session_cookie_name, path="/")
-    response.delete_cookie(settings.csrf_cookie_name, path="/")
+    response.delete_cookie(
+        settings.session_cookie_name,
+        path="/",
+        secure=settings.session_cookie_secure,
+        httponly=True,
+        samesite="lax",
+    )
+    response.delete_cookie(
+        settings.csrf_cookie_name,
+        path="/",
+        secure=settings.session_cookie_secure,
+        httponly=False,
+        samesite="lax",
+    )
 
 
 @router.get("/session", response_model=SessionInfo)
@@ -75,7 +91,12 @@ def create_session(
     request: Request,
     response: Response,
 ) -> SessionInfo:
+    validate_browser_origin(request)
     service = AuthService()
+    previous_token = session_cookie_value(request)
+    previous = service.resolve_session_token(previous_token) if previous_token else None
+    if previous is not None:
+        validate_browser_session(request, previous, request.headers.get("X-CSRF-Token"))
     try:
         if isinstance(body, PasswordSessionRequest):
             created = service.create_password_session(
@@ -84,6 +105,7 @@ def create_session(
                 household_id=body.household_id,
                 user_agent=request.headers.get("user-agent"),
                 ip_hint=request_ip_hint(request),
+                replaces_session=previous,
             )
         elif isinstance(body, MagicLinkSessionRequest):
             created = service.create_magic_link_session(
@@ -91,6 +113,7 @@ def create_session(
                 household_id=body.household_id,
                 user_agent=request.headers.get("user-agent"),
                 ip_hint=request_ip_hint(request),
+                replaces_session=previous,
             )
         else:  # pragma: no cover - Pydantic discriminator keeps this unreachable.
             raise AuthError("Unsupported session method.")
@@ -104,11 +127,9 @@ def create_session(
 def delete_session(
     request: Request,
     response: Response,
-    _principal: Annotated[object, Depends(require_csrf)],
+    principal: Annotated[AuthPrincipal, Depends(require_browser_session_csrf)],
 ) -> Response:
-    structura_session = session_cookie_value(request)
-    if structura_session:
-        AuthService().revoke_session(structura_session)
+    AuthService().revoke_authenticated_session(principal)
     clear_session_cookies(response)
     response.status_code = status.HTTP_204_NO_CONTENT
     return response
@@ -117,7 +138,9 @@ def delete_session(
 @router.post("/magic-links", status_code=status.HTTP_202_ACCEPTED)
 def create_magic_link(
     payload: CreateMagicLinkRequest,
+    request: Request,
 ) -> dict[str, object]:
+    validate_browser_origin(request)
     return AuthService().request_magic_link(
         email=str(payload.email),
         purpose=payload.purpose,

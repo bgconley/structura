@@ -1,0 +1,16 @@
+.app-main > .top-command { overflow: visible; }
+.top-command .global-search { flex: 0 1 386px; }
+.session-menu { position: relative; margin-left: auto; flex: 0 0 auto; }
+.session-menu summary { cursor: pointer; list-style: none; }
+.session-menu summary::-webkit-details-marker { display: none; }
+.session-menu summary:focus-visible,
+.session-menu button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.session-menu-panel {
+  position: absolute; z-index: 30; right: 0; top: calc(100% + 10px);
+  width: min(260px, calc(100vw - 24px)); padding: 14px;
+  display: grid; gap: 10px; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 8px;
+  box-shadow: 0 8px 20px #18223514; overflow-wrap: anywhere;
+}
+.session-menu-panel span, .session-menu-panel p { color: var(--muted); font-size: 12px; margin: 0; }
+.top-command > .command-button:disabled { color: var(--muted); cursor: not-allowed; }

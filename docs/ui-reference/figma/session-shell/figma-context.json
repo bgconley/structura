@@ -1,0 +1,19 @@
+{
+  "fileKey": "5GAPHbduQLu9INBOXUPxJN",
+  "frameId": "17:2",
+  "frameName": "01 Home - Document Operations v3",
+  "captureDate": "2026-09-07",
+  "contextMethod": "Figma get_design_context with figma-design-to-code skill; measurements reconciled with the existing CSS and handoff references",
+  "implementationRoute": "/",
+  "viewport": {"width": 1440, "height": 960},
+  "measurements": {"leftNavigationWidth": 176, "topCommandHeight": 56, "searchWidth": 386, "controlHeight": 32},
+  "supportingFrames": ["35:2", "35:7", "35:12", "35:17"],
+  "scope": "Existing session identity, sign-out, expired-session and network-error behavior; preserve current workbench geometry and tokens.",
+  "notes": [
+    "The circular top-right identity control now reflects the actual authenticated user.",
+    "Account details reuse the panel border, background, 8px radius, compact type and secondary button tokens.",
+    "The disclosure is non-modal, follows ordinary tab order, closes on Escape or outside pointer interaction, and restores focus to its invoker on Escape.",
+    "Figma sample health values remain observations only in fixtures; absent runtime observations are still shown as unknown.",
+    "Full responsive navigation, complete route state and operator read models are separate UI-03 slices."
+  ]
+}

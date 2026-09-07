@@ -53,9 +53,9 @@ def test_baseline_schema_accepts_core_phase_0_inserts() -> None:
             )
             cur.execute(
                 "INSERT INTO sessions "
-                "(user_id, household_id, auth_method, token_hash, expires_at) "
-                "VALUES (%s, %s, %s, %s, now() + interval '1 hour') RETURNING id",
-                (user_id, household_id, "password", "phase0-token-hash"),
+                "(user_id, household_id, auth_method, token_hash, csrf_token_hash, expires_at) "
+                "VALUES (%s, %s, %s, %s, %s, now() + interval '1 hour') RETURNING id",
+                (user_id, household_id, "password", "phase0-token-hash", "b" * 64),
             )
             session_id = cur.fetchone()[0]
 

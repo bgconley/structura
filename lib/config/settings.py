@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -25,8 +27,8 @@ class Settings(BaseSettings):
     session_cookie_name: str = "structura_session"
     csrf_cookie_name: str = "structura_csrf"
     session_cookie_secure: bool = False
-    session_ttl_minutes: int = 60 * 24
-    magic_link_ttl_minutes: int = 15
+    session_ttl_minutes: int = Field(default=60 * 24, ge=1, le=60 * 24 * 30)
+    magic_link_ttl_minutes: int = Field(default=15, ge=1, le=60)
     return_magic_link_tokens_for_tests: bool = False
     contracts_dir: Path = Path("contracts")
     database_dir: Path = Path("database")
@@ -93,6 +95,38 @@ class Settings(BaseSettings):
     model_input_scratch_root: Path = Path("/srv/structura/tmp/model-inputs")
     model_http_timeout_seconds: int = 60
     model_max_image_bytes: int = 10 * 1024 * 1024
+
+    @model_validator(mode="after")
+    def validate_browser_auth_settings(self) -> Settings:
+        origin = urlsplit(self.web_origin)
+        if (
+            origin.scheme not in {"http", "https"}
+            or not origin.hostname
+            or origin.username is not None
+            or origin.password is not None
+            or origin.path not in {"", "/"}
+            or origin.query
+            or origin.fragment
+            or self.web_origin != self.web_origin.strip()
+        ):
+            raise ValueError(
+                "Browser origin must be an HTTP(S) origin without a path or credentials."
+            )
+        if origin.port is not None and origin.port < 1:
+            raise ValueError("Browser origin port must be between 1 and 65535.")
+        self.web_origin = self.web_origin.removesuffix("/")
+        if origin.scheme == "https" and not self.session_cookie_secure:
+            raise ValueError("An HTTPS browser origin requires Secure session cookies.")
+        if not self.session_cookie_name or not self.csrf_cookie_name:
+            raise ValueError("Session and CSRF cookie names must be nonempty.")
+        if self.session_cookie_name == self.csrf_cookie_name:
+            raise ValueError("Session and CSRF cookie names must differ.")
+        for name in (self.session_cookie_name, self.csrf_cookie_name):
+            if not re.fullmatch(r"[!#$%&'*+.^_`|~0-9A-Za-z-]+", name):
+                raise ValueError("Cookie names must contain only HTTP token characters.")
+            if name.startswith(("__Host-", "__Secure-")) and not self.session_cookie_secure:
+                raise ValueError("Prefixed cookie names require Secure session cookies.")
+        return self
 
     @model_validator(mode="after")
     def reject_historical_live_semantic_profiles(self) -> Settings:

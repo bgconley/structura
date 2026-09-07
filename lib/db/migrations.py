@@ -43,6 +43,7 @@ BASELINE_SQL_FILES = (
     "092_completion_job_lineage.sql",
     "093_completion_household_tags.sql",
     "094_completion_neutral_parse_provenance.sql",
+    "095_completion_session_binding.sql",
 )
 
 

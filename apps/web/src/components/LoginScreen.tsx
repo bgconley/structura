@@ -1,11 +1,15 @@
-import type {FormEvent} from "react";
+import type {PasswordCredentials} from "../useSession";
 
 export function LoginScreen({
   error,
+  message,
+  submitting,
   onSubmit,
 }: {
   error: string | null;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  message: string | null;
+  submitting: boolean;
+  onSubmit: (credentials: PasswordCredentials) => Promise<void>;
 }) {
   return (
     <main className="login-screen">
@@ -13,10 +17,15 @@ export function LoginScreen({
         <span className="logo-mark" />
         <h1>Structura</h1>
         <p>Sign in to open the local-first evidence workbench.</p>
-        <form onSubmit={onSubmit}>
+        {message ? <p role="status">{message}</p> : null}
+        <form aria-busy={submitting} onSubmit={(event) => {
+          event.preventDefault();
+          const data = new FormData(event.currentTarget);
+          void onSubmit({email: String(data.get("email") ?? ""), password: String(data.get("password") ?? "")});
+        }}>
           <label>
             Email
-            <input name="email" type="email" required autoComplete="email" />
+            <input name="email" type="email" required autoComplete="username" autoFocus disabled={submitting} />
           </label>
           <label>
             Password
@@ -26,10 +35,11 @@ export function LoginScreen({
               required
               minLength={8}
               autoComplete="current-password"
+              disabled={submitting}
             />
           </label>
-          {error ? <p className="form-error">{error}</p> : null}
-          <button type="submit">Sign in</button>
+          {error ? <p className="form-error" role="alert">{error}</p> : null}
+          <button type="submit" disabled={submitting}>{submitting ? "Signing in..." : "Sign in"}</button>
         </form>
       </section>
     </main>

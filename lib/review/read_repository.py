@@ -52,6 +52,34 @@ def list_review_tasks(
     return [review_task_from_row(row) for row in rows]
 
 
+def get_review_task(
+    *,
+    review_task_id: UUID,
+    access: DocumentAccessContext,
+) -> ReviewTask | None:
+    """Resolve one task without revealing existence outside the document's ACL."""
+    with db_connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT
+              rt.id,
+              rt.document_id,
+              rt.task_type,
+              rt.status::text AS status,
+              rt.priority,
+              rt.reason,
+              rt.metadata_json
+            FROM review_tasks rt
+            JOIN documents d ON d.id = rt.document_id
+            WHERE rt.id = %s
+              AND document_is_readable(d.id, %s, %s, %s)
+            """,
+            (review_task_id, *document_read_access_params(access)),
+        )
+        row = cur.fetchone()
+    return review_task_from_row(row) if row else None
+
+
 def list_field_candidates(
     *,
     document_id: UUID,

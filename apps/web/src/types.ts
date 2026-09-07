@@ -1,6 +1,10 @@
 export type ViewMode = "inbox" | "review" | "search" | "viewer" | "automation" | "relationships" | "timelines";
 
 export type SessionInfo = {
+  sessionId?: string;
+  userId?: string;
+  householdId?: string | null;
+  expiresAt?: string | null;
   displayName?: string;
   email?: string;
   isAuthenticated: boolean;

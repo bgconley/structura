@@ -14,6 +14,7 @@ from lib.review.candidate_decision_repository import (
 )
 from lib.review.errors import ReviewRepositoryError
 from lib.review.read_repository import (
+    get_review_task,
     list_canonical_fields,
     list_field_candidates,
     list_line_item_candidates,
@@ -26,6 +27,7 @@ __all__ = [
     "confirm_candidate",
     "decide_line_item",
     "decide_observation",
+    "get_review_task",
     "list_canonical_fields",
     "list_field_candidates",
     "list_line_item_candidates",

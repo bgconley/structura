@@ -1,0 +1,11 @@
+# Session shell reference and acceptance
+
+The 2026-09-07 session slice refreshes the Figma context for `17:2` and screenshots for `17:2`, `35:2`, `35:7`, `35:12` and `35:17`. It preserves the current workbench geometry: 176 px desktop navigation, 56 px desktop command bar, existing panel and type tokens. Browser assertions measure these dimensions and confirm the account disclosure stays within 390 px bounds.
+
+The sample `BD` avatar is replaced with the authenticated user's initials and an accessible account disclosure containing their name, email and sign-out action. Existing GET/POST/DELETE session endpoints govern behavior; sign-out uses the session-reported CSRF cookie. The disclosure follows normal keyboard tab order; Escape closes it and restores focus. Bulk Import is explicitly disabled pending its implementation.
+
+`tests/e2e/session-boundary.spec.ts` verifies pending/failed sign-in, 204 logout, failed revocation with private content hidden, protected 401 versus authorization 403, known expiry, foreground revocation checks, unavailable session service, cross-tab logout, account switching, and late requests from a previous session. The browser suite records desktop and mobile screenshots under its test output directory. `playwright-screenshot.png` is the inspected desktop account-open state; `playwright-mobile-screenshot.png` captures the same control at 390 px.
+
+These screenshots demonstrate the bounded session changes, not whole-screen Figma parity. Existing document-table density/overlap, mobile navigation, inspector behavior and later workflow gaps are not closed by this slice. Stable URLs and complete search/review/evidence return-state handling remain separate work. Account/passkey/token-management features remain Phase 10.
+
+Authentication and all private component state have separate owners. Session replacement/expiry/logout aborts requests and unmounts private views; a late prior-session response cannot publish data or expire a newer login. Session credentials are never stored in browser storage. Cross-tab notification contains only session identity metadata. A network failure does not establish that a server session has been revoked; the UI says so and offers a retry.

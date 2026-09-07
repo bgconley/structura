@@ -1,12 +1,20 @@
 import {StatusChip} from "./Status";
+import {SessionMenu} from "./SessionMenu";
+import type {SessionInfo} from "../types";
 
 export function TopCommand({
+  session,
+  onSignOut,
+  sessionError,
   query,
   setQuery,
   onSubmitSearch,
   isUploading,
   uploadFile,
 }: {
+  session: SessionInfo;
+  onSignOut: () => Promise<void>;
+  sessionError: string | null;
   query: string;
   setQuery: (value: string) => void;
   onSubmitSearch: () => void;
@@ -38,12 +46,12 @@ export function TopCommand({
           onChange={(event) => void uploadFile(event.currentTarget.files?.[0])}
         />
       </label>
-      <button className="command-button" type="button">Bulk Import</button>
+      <button className="command-button" type="button" disabled title="Bulk import is not available yet">Bulk Import</button>
       <StatusChip tone="green" label="Local-first" />
       <StatusChip tone="green" label="No cloud inference" />
       <StatusChip tone="neutral" label="Search health unreported" />
       <StatusChip tone="neutral" label="Worker status unknown" />
-      <span className="avatar">BD</span>
+      <SessionMenu session={session} onSignOut={onSignOut} error={sessionError} />
     </header>
   );
 }

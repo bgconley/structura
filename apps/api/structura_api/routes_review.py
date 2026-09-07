@@ -7,13 +7,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from apps.api.structura_api.dependencies import require_document_read, require_document_review
 from lib.auth import AuthPrincipal
-from lib.contracts import CanonicalFieldWrite, ReviewActionRequest
+from lib.contracts import CanonicalFieldWrite, ReviewActionRequest, ReviewTask
 from lib.documents.access_policy import DocumentAccessContext
 from lib.review import ReviewService
 from lib.review.correction_revision import CorrectionConflictError
 from lib.review.correction_values import CorrectionValueError
 from lib.review.repository import (
     ReviewRepositoryError,
+    get_review_task,
     list_canonical_fields,
     list_field_candidates,
     list_line_item_candidates,
@@ -34,6 +35,17 @@ def get_review_tasks(
     access = _access_context(principal)
     items = list_review_tasks(access=access, status=status_filter, limit=limit)
     return {"items": [item.model_dump(by_alias=True) for item in items]}
+
+
+@router.get("/review-tasks/{reviewTaskId}", response_model=ReviewTask)
+def get_review_task_detail(
+    reviewTaskId: UUID,
+    principal: Annotated[AuthPrincipal, Depends(require_document_read)],
+) -> ReviewTask:
+    task = get_review_task(review_task_id=reviewTaskId, access=_access_context(principal))
+    if task is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    return task
 
 
 @router.get("/documents/{documentId}/field-candidates")
