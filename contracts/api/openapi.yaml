@@ -263,27 +263,35 @@ paths:
         schema:
           type: integer
           minimum: 0
+          maximum: 9007199254740991
           default: 0
+      - in: query
+        name: inboxState
+        description: State membership composes with all other list filters. Counts are computed before this state is applied.
+        schema:
+          type: string
+          enum: [all, needs_review, unfiled, awaiting_classification, duplicates, low_confidence, has_extraction, text_searchable]
+          default: all
+      - in: query
+        name: sort
+        description: Deterministic order with a unique document ID tie-breaker. Unknown document dates sort last; title sorting uses normalized C collation. Offset pages do not freeze the corpus across requests.
+        schema:
+          type: string
+          enum: [uploaded_desc, uploaded_asc, document_date_desc, document_date_asc, title_asc, title_desc]
+          default: uploaded_desc
       responses:
         '200':
-          description: Document list
+          description: Authorized document page and counts from one read-only repeatable-read database snapshot. Concurrent corpus changes may move records between subsequent offset-page requests.
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: false
-                required:
-                - items
-                - total
-                properties:
-                  items:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/DocumentSummary'
-                  total:
-                    type: integer
+                $ref: '#/components/schemas/DocumentListResponse'
         '401':
           description: Not authenticated
+        '403':
+          description: Document read permission or household required
+        '422':
+          description: Invalid document browse option or pagination value
     post:
       tags:
       - Documents
@@ -2063,15 +2071,18 @@ components:
           type: string
         reviewStatus:
           type: string
-        documentDate:
+        createdAt:
           type: string
+          format: date-time
+        documentDate:
+          type: [string, 'null']
           format: date
         amountTotal:
-          type: number
+          type: [number, 'null']
         counterpartyDisplay:
-          type: string
+          type: [string, 'null']
         thumbnailUrl:
-          type: string
+          type: [string, 'null']
         folderPaths:
           type: array
           items:
@@ -2085,9 +2096,85 @@ components:
           minimum: 0
           default: 0
         qualitySummary:
-          type: object
+          type: [object, 'null']
           additionalProperties: true
           description: Phase 8 difficult-document quality rollup; does not expose raw text or image data.
+    DocumentBrowseCounts:
+      type: object
+      additionalProperties: false
+      description: Overlapping authorized counts after query, family, review-status, folder and saved-query constraints, before the selected inboxState. These counts must not be summed.
+      required: [all, needsReview, unfiled, awaitingClassification, duplicates, lowConfidence, hasExtraction, textSearchable, previewReady, humanReviewed]
+      properties:
+        all:
+          type: integer
+          minimum: 0
+        needsReview:
+          type: integer
+          minimum: 0
+          description: Document needs_review state or an open/in_progress review task.
+        unfiled:
+          type: integer
+          minimum: 0
+          description: No manual-folder membership.
+        awaitingClassification:
+          type: integer
+          minimum: 0
+          description: Generic family with no recorded current model classification or explicit human reclassification decision. A classified generic document is excluded.
+        duplicates:
+          type: integer
+          minimum: 0
+          description: At least one independently readable exact-duplicate counterpart or suggested/confirmed duplicate_of relationship in either direction.
+        lowConfidence:
+          type: integer
+          minimum: 0
+          description: Recorded model classification with known family confidence below 0.7 and no explicit human reclassification decision. NULL confidence is not classified as low.
+        hasExtraction:
+          type: integer
+          minimum: 0
+          description: Nonempty current completed/accepted non-classification extraction output. This does not establish accepted canonical facts and excludes native candidate staging.
+        textSearchable:
+          type: integer
+          minimum: 0
+          description: Nonempty published lexical chunk projection. This does not establish semantic/visual index readiness or complete source coverage.
+        previewReady:
+          type: integer
+          minimum: 0
+          description: A current thumbnail artifact is registered.
+        humanReviewed:
+          type: integer
+          minimum: 0
+          description: Document review status is user_confirmed or user_corrected; this does not establish a human classification decision.
+    DocumentListResponse:
+      type: object
+      additionalProperties: false
+      required: [items, total, limit, offset, corpusTotal, observedAt, counts]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentSummary'
+        total:
+          type: integer
+          minimum: 0
+          description: Full authorized match count including the selected inboxState.
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 200
+        offset:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        corpusTotal:
+          type: integer
+          minimum: 0
+          description: Full authorized undeleted corpus, before query/folder/state constraints.
+        observedAt:
+          type: string
+          format: date-time
+          description: Database transaction start time for this response; not a durable multi-page snapshot token.
+        counts:
+          $ref: '#/components/schemas/DocumentBrowseCounts'
     DocumentDetail:
       allOf:
       - $ref: '#/components/schemas/DocumentSummary'

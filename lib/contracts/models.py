@@ -546,6 +546,31 @@ class DocumentSummary(ContractModel):
     quality_summary: dict[str, Any] | None = Field(default=None, alias="qualitySummary")
 
 
+class DocumentBrowseCounts(ContractModel):
+    """Overlapping counts before the selected Inbox state, after other filters."""
+
+    all: int = Field(default=0, ge=0)
+    needs_review: int = Field(default=0, alias="needsReview", ge=0)
+    unfiled: int = Field(default=0, ge=0)
+    awaiting_classification: int = Field(default=0, alias="awaitingClassification", ge=0)
+    duplicates: int = Field(default=0, ge=0)
+    low_confidence: int = Field(default=0, alias="lowConfidence", ge=0)
+    has_extraction: int = Field(default=0, alias="hasExtraction", ge=0)
+    text_searchable: int = Field(default=0, alias="textSearchable", ge=0)
+    preview_ready: int = Field(default=0, alias="previewReady", ge=0)
+    human_reviewed: int = Field(default=0, alias="humanReviewed", ge=0)
+
+
+class DocumentListResponse(ContractModel):
+    items: list[DocumentSummary]
+    total: int = Field(ge=0)
+    limit: int = Field(ge=1, le=200)
+    offset: int = Field(ge=0, le=2**53 - 1)
+    corpus_total: int = Field(alias="corpusTotal", ge=0)
+    observed_at: datetime = Field(alias="observedAt")
+    counts: DocumentBrowseCounts
+
+
 class DocumentAsset(ContractModel):
     id: UUID
     asset_role: str = Field(alias="assetRole")

@@ -8,9 +8,16 @@ from uuid import UUID
 
 from psycopg import sql
 
-from lib.contracts import DocumentSummary
+from lib.contracts import DocumentBrowseCounts, DocumentListResponse
 from lib.db.connection import db_connection
-from lib.documents.access_policy import DocumentAccessContext
+from lib.documents.access_policy import DocumentAccessContext, document_read_access_params
+from lib.documents.browse_projection import (
+    browse_count_columns_sql,
+    browse_membership_sql,
+    browse_order_sql,
+    browse_state_sql,
+)
+from lib.documents.browse_query import DocumentSort, InboxState, validate_browse_window
 from lib.documents.relationship_counts import (
     READABLE_RELATED_COUNT_SQL,
     readable_related_count_params,
@@ -71,11 +78,6 @@ FROM documents d
 LEFT JOIN document_primary_amounts_v a ON a.document_id = d.id
 """
 
-DOCUMENT_LIST_ORDER_SQL = """
-ORDER BY d.created_at DESC, d.id DESC
-LIMIT %s OFFSET %s
-"""
-
 
 @dataclass(frozen=True)
 class DocumentListFilters:
@@ -86,6 +88,13 @@ class DocumentListFilters:
     folder_id: UUID | None = None
     limit: int = 50
     offset: int = 0
+    inbox_state: InboxState = InboxState.ALL
+    sort: DocumentSort = DocumentSort.UPLOADED_DESC
+
+    def __post_init__(self) -> None:
+        validate_browse_window(self.limit, self.offset)
+        InboxState(self.inbox_state)
+        DocumentSort(self.sort)
 
 
 @dataclass(frozen=True)
@@ -94,25 +103,48 @@ class _ResolvedFolderFilter:
     filters: SearchFilters | None = None
 
 
-def list_document_summaries(filters: DocumentListFilters) -> tuple[list[DocumentSummary], int]:
+def list_document_summaries(filters: DocumentListFilters) -> DocumentListResponse:
+    """A consistent response snapshot, not a snapshot spanning offset-page requests."""
     with db_connection() as conn:
         with conn.cursor() as cur:
+            # db_connection has only SET search_path so far: establish isolation
+            # before the first SELECT, including folder and live ACL resolution.
+            cur.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+            cur.execute(
+                """
+                    SELECT count(*) AS total, transaction_timestamp() AS observed_at
+                    FROM documents d
+                    WHERE d.deleted_at IS NULL AND document_is_readable(d.id, %s, %s, %s)
+                """,
+                document_read_access_params(filters.access),
+            )
+            corpus = cur.fetchone()
+            if corpus is None:
+                raise RuntimeError("Document browse count was not returned.")
             resolved_folder = _resolve_folder_filter(cur, filters)
-            if not resolved_folder.available:
-                return [], 0
             search_filters = _combined_document_list_filters(filters, resolved_folder.filters)
-            if search_filters is None:
-                return [], 0
+            if not resolved_folder.available or search_filters is None:
+                return DocumentListResponse(
+                    items=[],
+                    total=0,
+                    limit=filters.limit,
+                    offset=filters.offset,
+                    corpusTotal=corpus["total"],
+                    observedAt=corpus["observed_at"],
+                    counts=DocumentBrowseCounts(),
+                )
             where_sql, filter_params = _document_list_where_sql(filters, search_filters)
+            state_params = document_read_access_params(filters.access)
             cur.execute(
                 _document_list_count_sql(where_sql),
-                filter_params,
+                [*state_params, *filter_params],
             )
-            total_row = cur.fetchone()
+            counts = DocumentBrowseCounts.model_validate(cur.fetchone())
             cur.execute(
-                _document_list_select_sql(where_sql),
+                _document_list_select_sql(where_sql, filters),
                 [
                     *readable_related_count_params(filters.access),
+                    *state_params,
                     *filter_params,
                     filters.limit,
                     filters.offset,
@@ -120,37 +152,51 @@ def list_document_summaries(filters: DocumentListFilters) -> tuple[list[Document
             )
             rows = cur.fetchall()
 
-    total = int(total_row["total"] if total_row else 0)
-    return [document_summary_from_row(row) for row in rows], total
+    return DocumentListResponse(
+        items=[document_summary_from_row(row) for row in rows],
+        total=getattr(counts, InboxState(filters.inbox_state).value),
+        limit=filters.limit,
+        offset=filters.offset,
+        corpusTotal=corpus["total"],
+        observedAt=corpus["observed_at"],
+        counts=counts,
+    )
 
 
 def _document_list_count_sql(where_sql: str) -> sql.Composed:
     return sql.SQL(
         """
-        SELECT count(*) AS total
+        SELECT {counts_sql}
         {from_sql}
+        {state_sql}
         WHERE {where_sql}
         """
     ).format(
         from_sql=sql.SQL(DOCUMENT_LIST_FROM_SQL),
+        counts_sql=browse_count_columns_sql(),
+        state_sql=browse_state_sql(),
         where_sql=sql.SQL(cast(LiteralString, where_sql)),
     )
 
 
-def _document_list_select_sql(where_sql: str) -> sql.Composed:
+def _document_list_select_sql(where_sql: str, filters: DocumentListFilters) -> sql.Composed:
     return sql.SQL(
         """
         SELECT
         {columns_sql}
         {from_sql}
-        WHERE {where_sql}
-        {order_sql}
+        {state_sql}
+        WHERE {where_sql} AND {membership_sql}
+        ORDER BY {order_sql}
+        LIMIT %s OFFSET %s
         """
     ).format(
         columns_sql=_document_list_columns_sql(),
         from_sql=sql.SQL(DOCUMENT_LIST_FROM_SQL),
+        state_sql=browse_state_sql(),
+        membership_sql=browse_membership_sql(filters.inbox_state),
         where_sql=sql.SQL(cast(LiteralString, where_sql)),
-        order_sql=sql.SQL(DOCUMENT_LIST_ORDER_SQL),
+        order_sql=browse_order_sql(filters.sort),
     )
 
 

@@ -7,8 +7,9 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 
 from apps.api.structura_api.dependencies import require_document_read, require_document_write
 from lib.auth import AuthPrincipal
-from lib.contracts import AcceptedJob
+from lib.contracts import AcceptedJob, DocumentListResponse
 from lib.documents.access_policy import DocumentAccessContext
+from lib.documents.browse_query import MAX_BROWSE_OFFSET, DocumentSort, InboxState
 from lib.documents.ingestion import (
     DocumentIngestionError,
     DocumentIngestionRequest,
@@ -24,7 +25,7 @@ from lib.semantic_annotations.repository import load_current_manifest_by_mode
 router = APIRouter(prefix="/api/v1", tags=["Documents"])
 
 
-@router.get("/documents")
+@router.get("/documents", response_model=DocumentListResponse)
 def list_documents(
     principal: Annotated[AuthPrincipal, Depends(require_document_read)],
     q: str | None = None,
@@ -32,12 +33,14 @@ def list_documents(
     reviewStatus: str | None = None,
     folderId: UUID | None = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
-    offset: Annotated[int, Query(ge=0)] = 0,
-) -> dict[str, object]:
+    offset: Annotated[int, Query(ge=0, le=MAX_BROWSE_OFFSET)] = 0,
+    inboxState: InboxState = InboxState.ALL,
+    sort: DocumentSort = DocumentSort.UPLOADED_DESC,
+) -> DocumentListResponse:
     if not principal.household_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Household required")
 
-    summaries, total = list_document_summaries(
+    return list_document_summaries(
         DocumentListFilters(
             access=_document_access_context(principal),
             query_text=q.strip() if q and q.strip() else None,
@@ -46,12 +49,10 @@ def list_documents(
             folder_id=folderId,
             limit=limit,
             offset=offset,
+            inbox_state=inboxState,
+            sort=sort,
         )
     )
-    return {
-        "items": [summary.model_dump(by_alias=True) for summary in summaries],
-        "total": total,
-    }
 
 
 @router.post(
