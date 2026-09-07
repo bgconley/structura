@@ -27,6 +27,10 @@ def candidate_source(processing, tmp_path, request):  # noqa: F811
     )
     stream = io.BytesIO()
     with Image.new("RGB", (200, 100), "white") as image:
+        # Each isolated document owns distinct controlled bytes. Cleanup must
+        # still retain identical hashes referenced by another document.
+        for offset, value in enumerate(processing.document_id.bytes):
+            image.putpixel((offset, 0), (value, 255 - value, value ^ 0x5A))
         image.save(stream, format="PNG")
     data = stream.getvalue()
     stored = storage.store_bytes(data, kind="derived", role="source-page")
