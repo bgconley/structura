@@ -34,7 +34,7 @@ lint:
 
 sast:
 	$(PYTHON) -m bandit -r apps lib workers scripts
-	$(SEMGREP) scan --config auto --exclude archive
+	$(SEMGREP) scan --config auto --error --exclude archive
 	$(PYTHON) -m pyright --pythonpath $(PYRIGHT_PYTHON) apps lib workers scripts
 	$(PYTHON) -m mypy apps/api lib workers scripts
 

@@ -140,7 +140,8 @@ def _lock_domain_references(
     ):
         if identifier is None:
             continue
-        # Table names come exclusively from the literal tuple above.
+        # Table names are fixed above and quoted by psycopg.Identifier; values are parameters.
+        # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query  # noqa: E501
         cur.execute(
             sql.SQL("SELECT id FROM {} WHERE id = %s FOR KEY SHARE").format(sql.Identifier(table)),
             (identifier,),
