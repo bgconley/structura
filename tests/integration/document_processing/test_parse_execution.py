@@ -82,7 +82,7 @@ def source_execution(processing, tmp_path):
     return processing, storage, deployment
 
 
-def execute(run, storage, deployment, client):
+def execute_candidate_parse(run, storage, deployment, client):
     return execute_parse_candidate(
         run.binding,
         storage=storage,
@@ -101,10 +101,10 @@ def test_exact_registered_source_executes_and_resumes_without_current_pointer(so
         original = load_processing_source(run.binding)
         assert original.original_asset_id == processing.asset_id
         with pytest.raises(RuntimeError, match="outage"):
-            execute(run, storage, deployment, FixtureClient(fail_page=2))
+            execute_candidate_parse(run, storage, deployment, FixtureClient(fail_page=2))
         resumed = FixtureClient()
-        result = execute(run, storage, deployment, resumed)
-        replay = execute(run, storage, deployment, FixtureClient(fail_page=1))
+        result = execute_candidate_parse(run, storage, deployment, resumed)
+        replay = execute_candidate_parse(run, storage, deployment, FixtureClient(fail_page=1))
     assert resumed.calls == [2]
     assert (result.resumed_pages, result.new_pages) == (1, 1)
     assert replay.structure_sha256 == result.structure_sha256
@@ -118,11 +118,15 @@ def test_exact_registered_source_executes_and_resumes_without_current_pointer(so
             "SELECT canonical_asset_id FROM documents WHERE id=%s", (processing.document_id,)
         )
         assert cur.fetchone()["canonical_asset_id"] is None
-        for table in ["document_pages", "canonical_fields", "document_extractions"]:
-            cur.execute(
-                f"SELECT count(*) AS n FROM {table} WHERE document_id=%s", (processing.document_id,)
-            )
-            assert cur.fetchone()["n"] == 0
+        cur.execute(
+            """SELECT
+                (SELECT count(*) FROM document_pages WHERE document_id=%s) AS pages,
+                (SELECT count(*) FROM canonical_fields WHERE document_id=%s) AS facts,
+                (SELECT count(*) FROM document_extractions WHERE document_id=%s) AS extractions
+            """,
+            (processing.document_id, processing.document_id, processing.document_id),
+        )
+        assert cur.fetchone() == {"pages": 0, "facts": 0, "extractions": 0}
 
 
 def test_run_supersession_during_model_call_rejects_checkpoint_and_next_page(source_execution):
@@ -136,7 +140,7 @@ def test_run_supersession_during_model_call_rejects_checkpoint_and_next_page(sou
             after_generate=lambda: pool.submit(processing.start).result(timeout=5)
         )
         with processing.scope(claimed), pytest.raises(ProcessingAuthorityLost):
-            execute(old, storage, deployment, client)
+            execute_candidate_parse(old, storage, deployment, client)
     assert client.calls == [1]
     with db_connection() as conn, conn.cursor() as cur:
         cur.execute(

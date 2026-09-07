@@ -7,7 +7,7 @@ from lib.db.connection import db_connection
 from lib.document_processing.errors import ProcessingAuthorityLost
 
 from .authority_cases import revoke, token_request
-from .test_parse_execution import FixtureClient, execute
+from .test_parse_execution import FixtureClient, execute_candidate_parse
 from .test_parse_execution import source_execution as source_execution
 
 
@@ -25,7 +25,7 @@ def test_revoked_request_does_not_read_source_or_invoke_first_model(
         type(storage), "path_for_uri", lambda *_: pytest.fail("Revoked source bytes were accessed")
     )
     with request.scope(claimed), pytest.raises(ProcessingAuthorityLost):
-        execute(run, storage, deployment, client)
+        execute_candidate_parse(run, storage, deployment, client)
     assert client.calls == []
 
 
@@ -47,7 +47,7 @@ def test_independent_revocation_during_model_call_denies_checkpoint_and_next_cal
             after_generate=lambda: pool.submit(revoke_during_model).result(timeout=5)
         )
         with request.scope(claimed), pytest.raises(ProcessingAuthorityLost):
-            execute(run, storage, deployment, client)
+            execute_candidate_parse(run, storage, deployment, client)
     assert client.calls == [1]
     with db_connection() as conn, conn.cursor() as cur:
         cur.execute(
@@ -65,5 +65,5 @@ def test_browser_logout_during_model_does_not_cancel_durable_ingestion(source_ex
         after_generate=lambda: AuthService().revoke_authenticated_session(processing.principal)
     )
     with processing.scope(claimed):
-        result = execute(run, storage, deployment, client)
+        result = execute_candidate_parse(run, storage, deployment, client)
     assert client.calls == [1, 2] and result.page_count == 2

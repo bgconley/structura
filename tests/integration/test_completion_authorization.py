@@ -13,8 +13,12 @@ from fastapi.testclient import TestClient
 from apps.api.structura_api.main import create_app
 from lib.auth import AuthService, hash_secret
 from lib.config import get_settings
+from lib.contacts import repository as contact_repository
 from lib.db.connection import db_connection
+from lib.documents import access_repository
 from lib.jobs import JobService
+from lib.relationships import relationship_repository
+from lib.relationships import service as relationship_service
 from lib.storage import ObjectStorage
 
 pytestmark = pytest.mark.skipif(
@@ -399,12 +403,8 @@ def suggested_relationship(archive, other):
     )[0]["id"]
 
 
-def observe_lock_backend(monkeypatch, target):
+def observe_lock_backend(monkeypatch, module, attribute):
     """Observe the real request connection without replacing its lock/SQL behavior."""
-    import importlib
-
-    module_name, attribute = target.rsplit(".", 1)
-    module = importlib.import_module(module_name)
     original = getattr(module, attribute)
     backends = Queue()
 
@@ -431,8 +431,8 @@ def test_relationship_rechecks_access_after_blocked_refile(archive, monkeypatch,
     sql("UPDATE folder_acl SET permission='write' WHERE folder_id=%s", (archive.folder,))
     other = related_document(archive)
     relationship = suggested_relationship(archive, other) if action != "create" else None
-    target = "lib.relationships." + ("service" if action == "create" else "relationship_repository")
-    backends = observe_lock_backend(monkeypatch, target + ".lock_writable_documents")
+    module = relationship_service if action == "create" else relationship_repository
+    backends = observe_lock_backend(monkeypatch, module, "lock_writable_documents")
     path = (
         "/api/v1/relationships"
         if action == "create"
@@ -485,9 +485,7 @@ def test_filing_suggestion_rechecks_access_after_blocked_refile(archive, monkeyp
         VALUES (%s,%s,'suggest','pending') RETURNING id""",
         (rule, archive.document),
     )[0]["id"]
-    backends = observe_lock_backend(
-        monkeypatch, "lib.documents.access_repository.lock_writable_documents"
-    )
+    backends = observe_lock_backend(monkeypatch, access_repository, "lock_writable_documents")
     with db_connection() as blocker, ThreadPoolExecutor(max_workers=1) as pool:
         with blocker.cursor() as cur:
             cur.execute("UPDATE documents SET acl_mode='private' WHERE id=%s", (archive.document,))
@@ -519,7 +517,7 @@ def test_contact_merge_waits_for_concurrent_link_and_keeps_private_link(archive,
     ]
     source, target = contacts
     sql("UPDATE documents SET acl_mode='private' WHERE id=%s", (archive.document,))
-    backends = observe_lock_backend(monkeypatch, "lib.contacts.repository.lock_contacts")
+    backends = observe_lock_backend(monkeypatch, contact_repository, "lock_contacts")
     with db_connection() as blocker, ThreadPoolExecutor(max_workers=1) as pool:
         with blocker.cursor() as cur:
             # Same contacts-before-documents protocol as the document-link service.
