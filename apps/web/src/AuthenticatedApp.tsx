@@ -143,7 +143,7 @@ export function AuthenticatedApp({session, onSignOut, sessionError}: {
               isLoading={search.loading} error={search.error?.message ?? null} status={search.status}
               folders={folders} tags={tags} onSubmit={submitSearch} onSaveSearch={search.save} onOpenDocument={openDocument} />
           ) : route.view === "viewer" ? (
-            workspace.detail.loading ? <RouteNotice message="Loading document…" loading />
+            workspace.detail.loading && !detail ? <RouteNotice message="Loading document…" loading />
             : !detail ? <RouteNotice message={documentError(workspace.detail.error)}
               onRetry={() => void workspace.detail.reload()} onBack={() => navigation.returnTo(returnRoute)} backLabel={`Back to ${routeLabel(returnRoute)}`} />
             : <Viewer document={detail} evidenceTarget={navigation.evidenceTarget} pageNumber={route.page}

@@ -237,3 +237,29 @@ test("keyboard-selected Inbox document and focus survive Viewer back", async ({p
   await expect(row).toHaveAttribute("aria-selected", "true");
   await page.screenshot({path: info.outputPath("route-inbox-return.png"), fullPage: true});
 });
+
+test("background document refresh preserves Viewer form state and relationship confirmation", async ({page}) => {
+  let delayRefresh = false;
+  let refreshStarted = false;
+  let release!: () => void;
+  const wait = new Promise<void>((resolve) => {release = resolve;});
+  await page.route(`**/api/v1/documents/${existingDocument.id}`, async (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    if (delayRefresh) {
+      refreshStarted = true;
+      await wait;
+    }
+    await route.fallback();
+  });
+  await page.goto(`/documents/${existingDocument.id}`);
+  await page.getByLabel("Relationship note").fill("Keep this unsaved note during refresh");
+  delayRefresh = true;
+  await page.locator(".relationship-row").filter({hasText: receiptDocument.title})
+    .getByRole("button", {name: "Accept", exact: true}).click();
+  await expect.poll(() => refreshStarted).toBe(true);
+  await expect(page.getByRole("heading", {name: "Document Viewer"})).toBeVisible();
+  await expect(page.getByLabel("Relationship note")).toHaveValue("Keep this unsaved note during refresh");
+  release();
+  await expect(page.getByText("Relationship accepted.", {exact: true})).toBeVisible();
+  await expect(page.getByLabel("Relationship note")).toHaveValue("Keep this unsaved note during refresh");
+});
