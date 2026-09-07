@@ -58,6 +58,12 @@ spikes and remaining activation, quality and capacity gates explicitly.
 
 [The Inbox and review checkpoint](browse-review-checkpoint.md) records 1,517 unit and 220 fresh-database passes at `04938db`, including all browse predicates, exact upload IDs and competing human-decision revisions. It distinguishes the integrated backend from the ongoing Inbox controls and durable human-authority/index work.
 
+[The native index and workbench checkpoint](native-index-workbench-checkpoint.md)
+records 1,598 unit and 268 fresh-database passes at `714b5fc`, migrations 098–100,
+bounded resumable candidate embedding execution and the complete 92-test Linux
+Inbox/browser gate at `bed4c5b`. It separates schema/executor verification from
+pending human-authority writer and native publication/quality acceptance.
+
 The cached validation images observed on Oxcart are:
 
 | Image | Local image ID |
