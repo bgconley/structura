@@ -1,0 +1,196 @@
+{
+  "passed": true,
+  "fixture_type": "synthetic_model_backed_smoke",
+  "image_sha256": "4f6a6ceaaadd74b98faf87df51e42ba2e61475ea77676e3af3be12bba0c0c6a2",
+  "rounds": [
+    {
+      "round": 0,
+      "concurrent": false,
+      "elapsed_ms": 286,
+      "requests": {
+        "document_ingestion": {
+          "profile": "qwen3-embedding-4b-1536-blackbird:v2",
+          "reported_model": "Qwen/Qwen3-Embedding-4B",
+          "declared_artifact_revision": "5cf2132abc99cad020ac570b19d031efec650f2b",
+          "dimensions": 1536,
+          "vectors": 2,
+          "latency_ms": 42,
+          "input_sha256": [
+            "249e9774050e31bf5ff6ad7aed42c47edadbe0ed41fafeb8e6d72ee25596409c",
+            "94b58ecc5f52e8328faab236a815f4d61ab2d1cb758eef7fe78e470630bbffe0"
+          ]
+        },
+        "text_query": {
+          "profile": "qwen3-embedding-4b-1536-blackbird:v2",
+          "reported_model": "Qwen/Qwen3-Embedding-4B",
+          "declared_artifact_revision": "5cf2132abc99cad020ac570b19d031efec650f2b",
+          "dimensions": 1536,
+          "vectors": 1,
+          "latency_ms": 24,
+          "input_sha256": [
+            "c07a2ba73f9155cf35801354649f95d10db248406c0188bf1adb4f52d632d29e"
+          ]
+        },
+        "image_and_mixed_ingestion": {
+          "profile": "qwen3-vl-embedding-2b-2048-blackbird:v2",
+          "reported_model": "Qwen/Qwen3-VL-Embedding-2B",
+          "declared_artifact_revision": "9f2f7e710d6d81056aa5c0a4f04764fec6bb7bda",
+          "dimensions": 2048,
+          "vectors": 2,
+          "latency_ms": 161,
+          "input_sha256": [
+            "2e9a6416ecbb608a9527bc653560067324b4c4a8d23e783d6aa35f235289edd0",
+            "b58db4d6a56d6f39c775a942a284affc6ff11506cb1e1aecab20f9800d18c398"
+          ]
+        },
+        "visual_query": {
+          "profile": "qwen3-vl-embedding-2b-2048-blackbird:v2",
+          "reported_model": "Qwen/Qwen3-VL-Embedding-2B",
+          "declared_artifact_revision": "9f2f7e710d6d81056aa5c0a4f04764fec6bb7bda",
+          "dimensions": 2048,
+          "vectors": 2,
+          "latency_ms": 51,
+          "input_sha256": [
+            "e25c603077264eb347d7429e228083c961cf84891dfc53ae7ee262ffc74a4e68",
+            "f8549d3b1a6a0a488a2e4a80e4850595858191d400e2c2d66d24def61e6752d6"
+          ]
+        }
+      },
+      "text_similarities": [
+        0.7422199442603269,
+        0.2412145620733596
+      ],
+      "image_similarities": [
+        0.42115053712942035,
+        0.1380606324238359
+      ]
+    },
+    {
+      "round": 1,
+      "concurrent": true,
+      "elapsed_ms": 29395,
+      "requests": {
+        "document_ingestion": {
+          "profile": "qwen3-embedding-4b-1536-blackbird:v2",
+          "reported_model": "Qwen/Qwen3-Embedding-4B",
+          "declared_artifact_revision": "5cf2132abc99cad020ac570b19d031efec650f2b",
+          "dimensions": 1536,
+          "vectors": 2,
+          "latency_ms": 29387,
+          "input_sha256": [
+            "249e9774050e31bf5ff6ad7aed42c47edadbe0ed41fafeb8e6d72ee25596409c",
+            "94b58ecc5f52e8328faab236a815f4d61ab2d1cb758eef7fe78e470630bbffe0"
+          ]
+        },
+        "text_query": {
+          "profile": "qwen3-embedding-4b-1536-blackbird:v2",
+          "reported_model": "Qwen/Qwen3-Embedding-4B",
+          "declared_artifact_revision": "5cf2132abc99cad020ac570b19d031efec650f2b",
+          "dimensions": 1536,
+          "vectors": 1,
+          "latency_ms": 29380,
+          "input_sha256": [
+            "c07a2ba73f9155cf35801354649f95d10db248406c0188bf1adb4f52d632d29e"
+          ]
+        },
+        "image_and_mixed_ingestion": {
+          "profile": "qwen3-vl-embedding-2b-2048-blackbird:v2",
+          "reported_model": "Qwen/Qwen3-VL-Embedding-2B",
+          "declared_artifact_revision": "9f2f7e710d6d81056aa5c0a4f04764fec6bb7bda",
+          "dimensions": 2048,
+          "vectors": 2,
+          "latency_ms": 128,
+          "input_sha256": [
+            "2e9a6416ecbb608a9527bc653560067324b4c4a8d23e783d6aa35f235289edd0",
+            "b58db4d6a56d6f39c775a942a284affc6ff11506cb1e1aecab20f9800d18c398"
+          ]
+        },
+        "visual_query": {
+          "profile": "qwen3-vl-embedding-2b-2048-blackbird:v2",
+          "reported_model": "Qwen/Qwen3-VL-Embedding-2B",
+          "declared_artifact_revision": "9f2f7e710d6d81056aa5c0a4f04764fec6bb7bda",
+          "dimensions": 2048,
+          "vectors": 2,
+          "latency_ms": 104,
+          "input_sha256": [
+            "e25c603077264eb347d7429e228083c961cf84891dfc53ae7ee262ffc74a4e68",
+            "f8549d3b1a6a0a488a2e4a80e4850595858191d400e2c2d66d24def61e6752d6"
+          ]
+        }
+      },
+      "text_similarities": [
+        0.743476438417565,
+        0.24033551612951135
+      ],
+      "image_similarities": [
+        0.42115053712942035,
+        0.1380606324238359
+      ]
+    },
+    {
+      "round": 2,
+      "concurrent": true,
+      "elapsed_ms": 136,
+      "requests": {
+        "document_ingestion": {
+          "profile": "qwen3-embedding-4b-1536-blackbird:v2",
+          "reported_model": "Qwen/Qwen3-Embedding-4B",
+          "declared_artifact_revision": "5cf2132abc99cad020ac570b19d031efec650f2b",
+          "dimensions": 1536,
+          "vectors": 2,
+          "latency_ms": 50,
+          "input_sha256": [
+            "249e9774050e31bf5ff6ad7aed42c47edadbe0ed41fafeb8e6d72ee25596409c",
+            "94b58ecc5f52e8328faab236a815f4d61ab2d1cb758eef7fe78e470630bbffe0"
+          ]
+        },
+        "text_query": {
+          "profile": "qwen3-embedding-4b-1536-blackbird:v2",
+          "reported_model": "Qwen/Qwen3-Embedding-4B",
+          "declared_artifact_revision": "5cf2132abc99cad020ac570b19d031efec650f2b",
+          "dimensions": 1536,
+          "vectors": 1,
+          "latency_ms": 28,
+          "input_sha256": [
+            "c07a2ba73f9155cf35801354649f95d10db248406c0188bf1adb4f52d632d29e"
+          ]
+        },
+        "image_and_mixed_ingestion": {
+          "profile": "qwen3-vl-embedding-2b-2048-blackbird:v2",
+          "reported_model": "Qwen/Qwen3-VL-Embedding-2B",
+          "declared_artifact_revision": "9f2f7e710d6d81056aa5c0a4f04764fec6bb7bda",
+          "dimensions": 2048,
+          "vectors": 2,
+          "latency_ms": 127,
+          "input_sha256": [
+            "2e9a6416ecbb608a9527bc653560067324b4c4a8d23e783d6aa35f235289edd0",
+            "b58db4d6a56d6f39c775a942a284affc6ff11506cb1e1aecab20f9800d18c398"
+          ]
+        },
+        "visual_query": {
+          "profile": "qwen3-vl-embedding-2b-2048-blackbird:v2",
+          "reported_model": "Qwen/Qwen3-VL-Embedding-2B",
+          "declared_artifact_revision": "9f2f7e710d6d81056aa5c0a4f04764fec6bb7bda",
+          "dimensions": 2048,
+          "vectors": 2,
+          "latency_ms": 104,
+          "input_sha256": [
+            "e25c603077264eb347d7429e228083c961cf84891dfc53ae7ee262ffc74a4e68",
+            "f8549d3b1a6a0a488a2e4a80e4850595858191d400e2c2d66d24def61e6752d6"
+          ]
+        }
+      },
+      "text_similarities": [
+        0.7424788682061481,
+        0.24152465496725212
+      ],
+      "image_similarities": [
+        0.42115053712942035,
+        0.1380606324238359
+      ]
+    }
+  ],
+  "production_activated": false,
+  "corpus_quality_gate": "not_evaluated",
+  "sustained_capacity_gate": "not_evaluated"
+}

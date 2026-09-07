@@ -44,6 +44,12 @@ The [publication inventory](job-publication-inventory.md) identifies the first c
 
 [The native parser checkpoint](native-parser-checkpoint.md) records `77d9f1d`: 1,308 unit tests, 99 database integration tests, 37 migrations and a two-page authenticated Qwen-native parsing smoke passed. This candidate has not activated the new parser or passed representative source-quality and capacity gates.
 
+[The embedding and processing checkpoint](embedding-checkpoint.md) records 1,371
+unit tests at `25ca83f`, 126 fresh database tests at `7445bf1`, immutable processing
+runs/checkpoints through migration 096, and real concurrent ingestion/query adapter
+proof for both embedding services on Blackbird's PRO 4000. It records cold latency
+spikes and remaining activation, quality and capacity gates explicitly.
+
 The cached validation images observed on Oxcart are:
 
 | Image | Local image ID |

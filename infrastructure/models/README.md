@@ -1,5 +1,17 @@
 # Structura Model Runtime Profiles
 
+The accepted September architecture is defined by ADRs
+[0008](../../docs/adr/0008-qwen38-27b-ingestion.md) and
+[0009](../../docs/adr/0009-qwen-native-document-parsing.md): Oxcart's existing
+Qwen3.8-27B handles native parsing and generative extraction; Blackbird's PRO 4000
+handles both ingestion/reindex and query embeddings. The
+[measured validation profile](blackbird-embedding-validation-20260907.md) records
+the first authenticated text/visual co-residency and adapter checks. Those services
+are validation candidates; index/profile activation requires the completion gates.
+
+The Compose descriptions below document the retained historical Phase 8.5 path.
+They are not instructions to reinstate the superseded ensemble for September work.
+
 Phase 8.5 separates deterministic fixture behavior from live local model services.
 The API and workers stay lightweight; Qwen, Granite, and embedding backends run as
 separate internal services behind Compose profiles.
