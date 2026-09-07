@@ -16,6 +16,33 @@ from scripts.gpu.probe_database import verify_isolated_database
 from tests.integration.uploads.test_lifecycle import rows
 
 
+class PipeBarrier:
+    """Single-writer test signal without a process-shared Condition lock.
+
+    SIGKILL can strand multiprocessing.Event's synchronization lock. These
+    bounded tests send at most a few one-byte signals, safely below pipe capacity.
+    """
+
+    def __init__(self, context):
+        self.reader, self.writer = context.Pipe(duplex=False)
+        self.observed = False
+
+    def set(self):
+        self.writer.send_bytes(b"1")
+
+    def wait(self, timeout=None):
+        if self.observed:
+            return True
+        if not self.reader.poll(timeout):
+            return False
+        self.observed = self.reader.recv_bytes() == b"1"
+        return self.observed
+
+    def close(self):
+        self.reader.close()
+        self.writer.close()
+
+
 def runtime_environment(upload, tmp_path):
     """Use the real default runtime layout, preserving the fixture's cleanup owner."""
     url = os.environ["STRUCTURA_TEST_DATABASE_URL"]

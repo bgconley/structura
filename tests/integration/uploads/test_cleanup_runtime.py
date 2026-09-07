@@ -16,6 +16,7 @@ from lib.uploads.cleanup_repository import cleanup_candidates
 from lib.uploads.staging import UploadStaging
 from lib.uploads.transfer_repository import reserve_transfer
 from tests.integration.uploads.cleanup_process import (
+    PipeBarrier,
     barrier_worker,
     run_once,
     runtime_environment,
@@ -46,7 +47,7 @@ def test_sigkill_worker_restart_preserves_reservation_until_durable_confirmation
     expire(lease.transfer_id)
     before = transfer_record(lease.transfer_id)
     context = multiprocessing.get_context("spawn")
-    ready, release = context.Event(), context.Event()
+    ready, release = PipeBarrier(context), PipeBarrier(context)
     process = context.Process(
         target=barrier_worker,
         args=(environment, stage, lease.transfer_id, ready, release),
@@ -84,6 +85,8 @@ def test_sigkill_worker_restart_preserves_reservation_until_durable_confirmation
         if process.is_alive():
             process.kill()
             process.join(10)
+        ready.close()
+        release.close()
 
 
 def test_stalled_writer_is_skipped_then_process_death_allows_restart_cleanup(upload, tmp_path):
@@ -93,7 +96,7 @@ def test_stalled_writer_is_skipped_then_process_death_allows_restart_cleanup(upl
         attempt.upload_id, attempt.revision, upload.credential, upload.service.policy
     )
     context = multiprocessing.get_context("spawn")
-    ready, release = context.Event(), context.Event()
+    ready, release = PipeBarrier(context), PipeBarrier(context)
     process = context.Process(
         target=stalled_writer,
         args=(str(upload.service.storage.root_for("canonical")), lease.transfer_id, ready, release),
@@ -121,6 +124,8 @@ def test_stalled_writer_is_skipped_then_process_death_allows_restart_cleanup(upl
         if process.is_alive():
             process.kill()
             process.join(10)
+        ready.close()
+        release.close()
 
 
 def test_sigterm_finishes_owned_item_without_claiming_the_next(upload, tmp_path):
@@ -132,7 +137,7 @@ def test_sigterm_finishes_owned_item_without_claiming_the_next(upload, tmp_path)
     second, _ = staged(upload)
     expire(second.transfer_id)
     context = multiprocessing.get_context("spawn")
-    ready, release = context.Event(), context.Event()
+    ready, release = PipeBarrier(context), PipeBarrier(context)
     process = context.Process(
         target=barrier_worker,
         args=(environment, "after_unlink", first.transfer_id, ready, release),
@@ -156,6 +161,8 @@ def test_sigterm_finishes_owned_item_without_claiming_the_next(upload, tmp_path)
         if process.is_alive():
             process.kill()
             process.join(10)
+        ready.close()
+        release.close()
 
 
 def test_supervised_loop_sweeps_immediately_and_exits_during_interval_wait(upload, tmp_path):
@@ -279,7 +286,7 @@ def test_running_worker_rejects_replacement_namespace_after_claim_wait(upload, t
     )
     retained = tmp_path / "retained-namespace"
     context = multiprocessing.get_context("spawn")
-    ready, release = context.Event(), context.Event()
+    ready, release = PipeBarrier(context), PipeBarrier(context)
     process = context.Process(
         target=barrier_worker,
         args=(environment, "after_claim", lease.transfer_id, ready, release),
@@ -302,6 +309,8 @@ def test_running_worker_rejects_replacement_namespace_after_claim_wait(upload, t
         if process.is_alive():
             process.kill()
             process.join(10)
+        ready.close()
+        release.close()
         if retained.exists():
             if target.exists():
                 target.rename(tmp_path / "unused-replacement")
