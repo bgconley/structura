@@ -20,6 +20,7 @@ import {FilingPanel} from "./FilingPanel";
 import {ParseDebugPanel} from "./ParseDebugPanel";
 import {RelationshipPanel} from "./RelationshipPanel";
 import {FactRow, ReviewChip, StatusChip, TrustLine} from "./Status";
+import {ViewerRecordedFacts} from "./ViewerRecordedFacts";
 
 export function Viewer({
   document,
@@ -114,7 +115,7 @@ export function Viewer({
       <section className="viewer-card">
         <div className="viewer-card-title">
           <h2>{active.title}</h2>
-          <StatusChip tone="green" label="Immutable original" />
+          <StatusChip tone={original ? "green" : "amber"} label={original ? "Original asset recorded" : "Original asset unavailable"} />
           {extractionState ? (
             <StatusChip tone={extractionState.tone} label={extractionState.label} />
           ) : null}
@@ -148,7 +149,7 @@ export function Viewer({
           ) : (
             <div className="preview-fallback">
               <span className="thumb-skeleton large" />
-              <p>Preview generation is pending. The protected original is available.</p>
+              <p>{original ? "No page preview is available. You can open the protected original." : "No page preview or original asset is available."}</p>
             </div>
           )}
         </div>
@@ -168,37 +169,29 @@ export function Viewer({
         <ReviewChip status={active.reviewStatus} />
         <p>
           {document?.description
-            ?? `${familyLabel(active.family)} document preserved as an immutable original.`}
+            ?? `${familyLabel(active.family)} document.`}
         </p>
         <h3>Trust state</h3>
-        <TrustLine ok label="Original stored immutably" />
-        <TrustLine ok label="SHA-256 fingerprint stored" />
-        <TrustLine ok={Boolean(preview)} label={preview ? "Preview asset available" : "Preview pending"} />
-        <TrustLine ok={active.reviewStatus !== "needs_review"} label="Fields pending review" />
+        <TrustLine ok={Boolean(original)} label={original ? "Original asset recorded" : "Original asset unavailable"} />
+        <TrustLine ok={Boolean(original?.sha256 && /^[a-f\d]{64}$/i.test(original.sha256))}
+          label={original?.sha256 && /^[a-f\d]{64}$/i.test(original.sha256) ? "SHA-256 recorded" : "SHA-256 not recorded"} />
+        <TrustLine ok={Boolean(preview)} label={preview ? "Preview asset recorded" : "Preview asset not recorded"} />
+        <TrustLine ok={["auto_accepted", "user_confirmed", "user_corrected"].includes(active.reviewStatus)}
+          label={`Document review: ${active.reviewStatus.replaceAll("_", " ")}`} />
         {quality ? (
           <>
             <TrustLine ok={!quality.reviewRequired} label={quality.reviewRequired ? "Difficult-document review required" : "No difficult-document review needed"} />
             <TrustLine ok={!quality.visualEmbeddingEligible} label={quality.visualEmbeddingEligible ? "Visual retrieval eligible" : "Text retrieval sufficient"} />
           </>
         ) : null}
-        <h3>Key fields</h3>
+        <h3>Document details</h3>
         <FactRow label="Family" value={familyLabel(active.family)} />
         <FactRow label="Counterparty" value={active.counterpartyDisplay ?? "Pending extraction"} />
         <FactRow label="Date" value={formatDate(active.documentDate)} />
         <FactRow label="Folder" value={active.folderPaths?.[0] ?? "Unfiled"} />
-        {document?.fields.slice(0, 5).map((field) => (
-          <FactRow
-            key={field.id}
-            label={field.fieldPath}
-            value={formatFactValue(field.value, field.currency ?? undefined)}
-            onJump={field.evidence?.length ? () => (
-              onOpenDocument(
-                document.id,
-                evidenceTargetFromRef(document.id, selectEvidenceRef(field.evidence), field.fieldPath),
-              )
-            ) : undefined}
-          />
-        ))}
+        {document ? <ViewerRecordedFacts key={document.id} documentId={document.id} family={document.family}
+          lineItems={document.lineItems} evidenceTarget={evidenceTarget}
+          onJump={(target) => onOpenDocument(document.id, target)} /> : null}
         {document ? <QualityDecisionPanel extractions={document.extractions} /> : null}
         {document ? (
           <RegionExtractionPanel regions={document.semanticRegionExtractions ?? []} />

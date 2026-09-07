@@ -18,7 +18,7 @@ test("Phase 4 review queue accepts a candidate", async ({page}) => {
 
   await expect(page.getByRole("heading", {name: "Review Queue"})).toBeVisible();
   await expect(page.getByRole("button", {name: /invoice.total_amount/})).toBeVisible();
-  await expect(page.locator(".candidate-panel")).toContainText("USD 1042.15");
+  await expect(page.locator(".candidate-panel")).toContainText("USD 1,042.15");
   await expect(page.locator(".candidate-panel")).toContainText("evidence page 1");
 
   await expect(page).toHaveScreenshot("phase4-review-queue.png", {
@@ -68,6 +68,6 @@ test("Phase 4 review queue jumps to evidence in the viewer", async ({page}) => {
   await page.getByRole("button", {name: "Jump to evidence"}).click();
 
   await expect(page.getByRole("heading", {name: "Document Viewer"})).toBeVisible();
-  await expect(page.getByRole("status")).toContainText("invoice.total_amount");
+  await expect(page.locator(".evidence-focus")).toContainText("invoice.total_amount");
   await expect(page.getByLabel("Evidence highlight")).toBeVisible();
 });

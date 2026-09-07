@@ -2249,7 +2249,7 @@ components:
           lineItems:
             type: array
             items:
-              $ref: '#/components/schemas/LineItem'
+              $ref: '#/components/schemas/CanonicalLineItemRead'
           relationships:
             type: array
             items:
@@ -2258,6 +2258,155 @@ components:
             type: array
             items:
               type: string
+    CanonicalLineItemRead:
+      additionalProperties: false
+      properties:
+        id:
+          format: uuid
+          title: Id
+          type: string
+        documentId:
+          format: uuid
+          title: Documentid
+          type: string
+        lineItemType:
+          title: Lineitemtype
+          type: string
+        ordinal:
+          minimum: 1
+          title: Ordinal
+          type: integer
+        selectedCandidateId:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Selectedcandidateid
+        code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Code
+        codeSystem:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Codesystem
+        serviceDate:
+          anyOf:
+          - format: date
+            type: string
+          - type: 'null'
+          title: Servicedate
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        quantity:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Quantity
+        unit:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Unit
+        unitPrice:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Unitprice
+        grossAmount:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Grossamount
+        discountAmount:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Discountamount
+        taxAmount:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Taxamount
+        netAmount:
+          anyOf:
+          - pattern: ^(?!^[-+.]*$)[+-]?0*(?:\d{0,14}|(?=[\d.]{1,19}0*$)\d{0,14}\.\d{0,4}0*$)
+            type: string
+          - type: 'null'
+          title: Netamount
+        currency:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Currency
+        categoryHint:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Categoryhint
+        sourceKind:
+          title: Sourcekind
+          type: string
+        reviewStatus:
+          title: Reviewstatus
+          type: string
+        evidence:
+          items:
+            additionalProperties: true
+            type: object
+          title: Evidence
+          type: array
+        validation:
+          additionalProperties: true
+          title: Validation
+          type: object
+        acceptedAt:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Acceptedat
+        updatedAt:
+          format: date-time
+          title: Updatedat
+          type: string
+      required:
+      - id
+      - documentId
+      - lineItemType
+      - ordinal
+      - selectedCandidateId
+      - code
+      - codeSystem
+      - serviceDate
+      - description
+      - quantity
+      - unit
+      - unitPrice
+      - grossAmount
+      - discountAmount
+      - taxAmount
+      - netAmount
+      - currency
+      - categoryHint
+      - sourceKind
+      - reviewStatus
+      - evidence
+      - validation
+      - acceptedAt
+      - updatedAt
+      title: CanonicalLineItemRead
+      type: object
     DocumentAsset:
       type: object
       additionalProperties: false

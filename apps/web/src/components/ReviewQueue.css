@@ -156,6 +156,13 @@
   align-items: end;
 }
 
+.review-decision-notice {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .review-decision-form label {
   min-width: 0;
   display: grid;

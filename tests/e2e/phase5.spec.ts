@@ -54,7 +54,7 @@ test("Phase 5 search runs hybrid retrieval with filters, snippets, explanations,
     .getByRole("button", {name: "Jump to evidence"})
     .click();
   await expect(page.getByRole("heading", {name: "Document Viewer"})).toBeVisible();
-  await expect(page.getByRole("status")).toContainText("Claim ABC123");
+  await expect(page.locator(".evidence-focus")).toContainText("Claim ABC123");
   await expect(page.getByLabel("Evidence highlight")).toBeVisible();
 });
 

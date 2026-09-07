@@ -1,0 +1,31 @@
+.viewer-recorded-facts { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 14px; min-width: 0; }
+.recorded-tabs { display: flex; gap: 6px; }
+.recorded-tabs button { flex: 1; min-width: 0; }
+.recorded-tabs [aria-selected="true"] { color: var(--blue); background: var(--blue-soft); border-color: #bfdbfe; }
+.recorded-refresh { margin-top: 12px; }
+.recorded-rows { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; max-height: 540px; overflow: auto; overscroll-behavior: contain; }
+.recorded-card { border: 1px solid var(--line); border-radius: 6px; padding: 10px; min-width: 0; }
+.recorded-card h4 { font-size: 12px; line-height: 18px; margin: 0 0 8px; overflow-wrap: anywhere; }
+.recorded-card h4 span { color: var(--muted); font-weight: normal; }
+.facts-panel .recorded-note, .facts-panel .recorded-count { font-size: 12px; color: var(--muted); margin: 10px 0; }
+.facts-panel .recorded-description { margin: 8px 0; }
+.facts-panel .recorded-state { color: var(--amber); font-size: 12px; margin: 8px 0; font-weight: 600; }
+.facts-panel [data-status="accepted"] .recorded-state { color: var(--green); }
+.facts-panel .recorded-warning { padding: 8px; border-left: 3px solid var(--amber); font-size: 12px; }
+.recorded-card pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 18px; margin: 8px 0; }
+.recorded-card .recorded-value { font-family: inherit; font-weight: 600; font-variant-numeric: tabular-nums; }
+.recorded-card dl { margin: 10px 0; }
+.recorded-card dl > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.recorded-card dt, .recorded-card dd { font-size: 12px; line-height: 17px; margin: 0; overflow-wrap: anywhere; }
+.recorded-card dt { color: var(--muted); }
+.recorded-card dd { text-align: right; font-variant-numeric: tabular-nums; }
+.recorded-card dl > [data-value-type="money"] { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+.recorded-card [data-value-type="money"] dd { text-align: left; }
+.recorded-card details { margin-top: 8px; font-size: 12px; }
+.recorded-evidence { display: grid; gap: 6px; }
+.recorded-evidence > span { font-size: 11px; color: var(--muted); }
+.recorded-evidence blockquote { margin: 0; border-left: 2px solid var(--line); padding-left: 8px; font-size: 12px; }
+.recorded-evidence ul { margin: 8px 0; padding-left: 16px; }
+.recorded-paging { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 12px 0; font-size: 12px; }
+.recorded-paging label { display: flex; align-items: center; gap: 5px; }
+.recorded-paging select { min-height: 32px; max-width: 72px; }

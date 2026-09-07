@@ -10,6 +10,7 @@ from lib.documents.access_policy import (
     DocumentAccessContext,
     document_read_access_params,
 )
+from lib.documents.line_item_read_model import canonical_line_item_payload
 from lib.documents.relationship_counts import (
     READABLE_RELATED_COUNT_SQL,
     readable_related_count_params,
@@ -224,7 +225,7 @@ def get_document_detail(document_id: UUID, access: DocumentAccessContext) -> Doc
                 relationship.model_dump(by_alias=True) for relationship in relationships
             ],
             "fields": [_canonical_field_payload(row) for row in field_rows],
-            "lineItems": [_canonical_line_item_payload(row) for row in line_item_rows],
+            "lineItems": [canonical_line_item_payload(row) for row in line_item_rows],
             "tags": string_list(row.get("tags")),
             "folderIds": uuid_list(row.get("folder_ids")),
             "primaryFolderId": row.get("primary_folder_id"),
@@ -423,18 +424,4 @@ def _canonical_field_payload(row: dict[str, object]) -> dict[str, object]:
         "evidence": row.get("evidence_json") or [],
         "validation": row.get("validation_json") or {},
         "acceptedAt": row.get("accepted_at"),
-    }
-
-
-def _canonical_line_item_payload(row: dict[str, object]) -> dict[str, object]:
-    return {
-        "id": row["id"],
-        "lineItemType": row["line_item_type"],
-        "ordinal": row["ordinal"],
-        "description": row.get("description"),
-        "netAmount": row.get("net_amount"),
-        "currency": row.get("currency_code"),
-        "sourceKind": row.get("source_kind"),
-        "reviewStatus": row.get("review_status"),
-        "evidence": row.get("evidence_json") or [],
     }

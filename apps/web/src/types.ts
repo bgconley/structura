@@ -142,7 +142,7 @@ export type CanonicalLineItemSummary = {
   lineItemType: string;
   ordinal?: number;
   description?: string | null;
-  netAmount?: number | null;
+  netAmount?: string | number | null;
   currency?: string | null;
   sourceKind?: string;
   reviewStatus?: string;

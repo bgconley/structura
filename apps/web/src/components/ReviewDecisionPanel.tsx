@@ -50,7 +50,7 @@ export function ReviewDecisionPanel({
   disabled?: boolean;
   correctionRevisionReady?: boolean;
 }) {
-  const fieldPath = activeTask.fieldPath ?? "classification.document_family";
+  const fieldPath = activeTask.fieldPath;
   const valueType = referenceCandidate?.valueType ?? "string";
   const [correctionError, setCorrectionError] = useState<string | null>(null);
   const [savingCorrection, setSavingCorrection] = useState(false);
@@ -70,7 +70,8 @@ export function ReviewDecisionPanel({
   const candidateDecisionTask =
     activeTask.taskType === "observation_review" || activeTask.taskType === "line_item_review";
   const relationshipTask = activeTask.taskType === "relationship_suggestion";
-  const showFieldForms = !candidateDecisionTask && !relationshipTask;
+  const showClassificationForm = !candidateDecisionTask && !relationshipTask;
+  const showFieldForms = showClassificationForm && Boolean(fieldPath?.trim());
 
   return (
     <div className="review-decision-panel">
@@ -84,9 +85,13 @@ export function ReviewDecisionPanel({
           Decide this suggestion from the Relationships workspace or the document&apos;s related panel.
         </p>
       ) : null}
+      {showFieldForms && !correctionRevisionReady ? <p role="status" className="review-decision-notice">
+        Reload this field to obtain its current revision before correcting.
+      </p> : null}
       {showFieldForms ? (
       <form
         className="review-decision-form"
+        aria-label="Correct canonical field"
         onSubmit={async (event) => {
           event.preventDefault();
           if (correctionPending.current || !correctionReady) return;
@@ -120,12 +125,11 @@ export function ReviewDecisionPanel({
               pattern="[A-Z]{3}" maxLength={3} required disabled={savingCorrection || !correctionReady} />
           </label>
         ) : null}
-        {!correctionRevisionReady ? <small>Reload this field to obtain its current revision before correcting.</small> : null}
         <label>
           Correction note
           <input name="comment" aria-label="Correction note" disabled={savingCorrection} />
         </label>
-        {correctionError ? <p id="correction-error" role="alert">{correctionError}</p> : null}
+        {correctionError ? <p id="correction-error" role="alert" className="review-decision-notice">{correctionError}</p> : null}
         <button type="submit" disabled={savingCorrection || !correctionReady}>
           {savingCorrection ? "Saving correction…" : "Correct field"}
         </button>
@@ -135,6 +139,7 @@ export function ReviewDecisionPanel({
       {showFieldForms ? (
       <form
         className="review-decision-form compact"
+        aria-label="Reject canonical field"
         onSubmit={async (event) => {
           event.preventDefault();
           if (!correctionReady) return;
@@ -157,9 +162,10 @@ export function ReviewDecisionPanel({
       </form>
       ) : null}
 
-      {showFieldForms ? (
+      {showClassificationForm ? (
       <form
         className="review-decision-form"
+        aria-label="Classify document"
         onSubmit={async (event) => {
           event.preventDefault();
           if (disabled) return;
