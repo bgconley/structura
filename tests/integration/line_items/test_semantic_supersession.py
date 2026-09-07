@@ -45,7 +45,7 @@ def aggregate_source(doc):
     with db_connection() as conn, conn.cursor() as cur:
         cur.execute(
             "UPDATE document_extractions SET "
-            "extraction_scope='aggregate',semantic_annotation_id=%s"
+            "extraction_scope='aggregate',semantic_annotation_id=%s "
             "WHERE id=(SELECT extraction_id FROM line_item_candidates WHERE id=%s)",
             (annotation, item),
         )
