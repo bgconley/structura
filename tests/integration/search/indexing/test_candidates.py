@@ -53,6 +53,8 @@ def test_exact_manifest_resume_float32_seal_and_no_legacy_publication(candidate_
             # Fixed local table names only; prove the hidden lane publishes none.
             from psycopg import sql
 
+            # Only the four local table names above are quoted as SQL identifiers.
+            # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query  # noqa: E501
             cur.execute(
                 sql.SQL("SELECT count(*) AS n FROM {} WHERE document_id=%s").format(
                     sql.Identifier(table)

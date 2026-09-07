@@ -163,10 +163,10 @@ test("upload selects the returned document identity even when the title already 
   });
   await page.goto(`/inbox?document=${state.documents[0].id}&offset=200&state=unfiled`);
   await page.locator(".top-command input[type=file]").setInputFiles({name: "same-title.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.7")});
-  await expect(page).toHaveURL(new RegExp(`/inbox\\?document=${uploaded.id}$`));
+  await expect(page).toHaveURL((url) => url.pathname === "/inbox" && url.search === `?document=${uploaded.id}`);
   await expect(page.locator(`#document-row-${uploaded.id}`)).toHaveAttribute("aria-selected", "true");
   await page.locator(".page-heading").getByRole("button", {name: "Open Viewer", exact: true}).click();
-  await expect(page).toHaveURL(new RegExp(`/documents/${uploaded.id}`));
+  await expect(page).toHaveURL((url) => url.pathname === `/documents/${uploaded.id}`);
 });
 
 test("a late accepted upload offers its exact document without replacing a newer browse query", async ({page}) => {
@@ -188,7 +188,7 @@ test("a late accepted upload offers its exact document without replacing a newer
   await expect(page).toHaveURL(/q=Record\+010/);
   await expect(rows(page)).toHaveCount(1);
   await page.getByRole("button", {name: "Open uploaded document", exact: true}).click();
-  await expect(page).toHaveURL(new RegExp(`/inbox\\?document=${uploaded.id}$`));
+  await expect(page).toHaveURL((url) => url.pathname === "/inbox" && url.search === `?document=${uploaded.id}`);
   await expect(page.locator(".inspector")).toContainText(uploaded.title);
 });
 
@@ -224,7 +224,7 @@ test("a failed late upload is visible outside Inbox and the same file can be ret
   await upload.setInputFiles(file);
   await expect.poll(() => attempts).toBe(2);
   await expect(page.getByRole("alert")).toHaveCount(0);
-  await expect(page).toHaveURL(new RegExp(`/inbox\\?document=${state.documents[0].id}$`));
+  await expect(page).toHaveURL((url) => url.pathname === "/inbox" && url.search === `?document=${state.documents[0].id}`);
 });
 
 for (const width of [1440, 1280, 390]) test(`browse controls and keyboard pagination fit ${width}px`, async ({page}, testInfo) => {

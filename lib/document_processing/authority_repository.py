@@ -28,6 +28,8 @@ def lock_current_run(
         raise ProcessingAuthorityLost("Processing run is unavailable.")
     # Fresh statement after waiting for document/run locks.
     artifacts = ", g.inventory_json, g.structure_json" if include_artifacts else ""
+    # Both fragments are fixed literals; every identity remains a bound parameter.
+    # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query  # noqa: E501
     cur.execute(
         sql.SQL("""SELECT r.*, g.state AS parse_state, g.inventory_sha256,
             g.structure_sha256 {artifacts}

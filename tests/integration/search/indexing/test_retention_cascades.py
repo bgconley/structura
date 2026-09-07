@@ -56,6 +56,8 @@ def test_independent_parent_deletion_fails_at_commit_and_preserves_all_history(
         else ("pipeline_jobs", claimed.state.job_id)
     )
     with db_connection() as conn, conn.cursor() as cur:
+        # A fixed two-table choice is identifier-quoted; the row ID is bound.
+        # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query  # noqa: E501
         cur.execute(
             sql.SQL("DELETE FROM {} WHERE id=%s").format(sql.Identifier(table)), (identity,)
         )
@@ -64,6 +66,8 @@ def test_independent_parent_deletion_fails_at_commit_and_preserves_all_history(
             conn.commit()
         conn.rollback()
     with db_connection() as conn, conn.cursor() as cur:
+        # Same fixed identifier and bound row ID as the attempted deletion.
+        # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query  # noqa: E501
         cur.execute(
             sql.SQL("SELECT id FROM {} WHERE id=%s").format(sql.Identifier(table)), (identity,)
         )
@@ -106,6 +110,8 @@ def test_individual_history_rows_remain_protected_by_retention_triggers(
         "id" if table in {"document_processing_runs", "document_parse_generations"} else identifier
     )
     with pytest.raises(RaiseException), db_connection() as conn, conn.cursor() as cur:
+        # Parametrized test literals are identifier-quoted; the row ID is bound.
+        # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query  # noqa: E501
         cur.execute(
             sql.SQL("DELETE FROM {} WHERE {}=%s").format(
                 sql.Identifier(table), sql.Identifier(column)

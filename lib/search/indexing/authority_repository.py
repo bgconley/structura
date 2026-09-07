@@ -89,6 +89,8 @@ def _lock_header(
         else "id,config_json,config_sha256,structure_sha256,inventory_sha256,"
         "parse_config_sha256,state,manifest_sha256"
     )
+    # The two projection alternatives are fixed literals, with bound row identities.
+    # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query  # noqa: E501
     cur.execute(
         sql.SQL(
             "SELECT {columns} FROM document_index_generations WHERE id=%s AND document_id=%s "
