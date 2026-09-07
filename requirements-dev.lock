@@ -156,6 +156,8 @@ pathspec==1.1.1
     # via mypy
 peewee==3.19.0
     # via semgrep
+pillow==12.2.0
+    # via structura (pyproject.toml)
 pluggy==1.6.0
     # via pytest
 protobuf==6.33.6
