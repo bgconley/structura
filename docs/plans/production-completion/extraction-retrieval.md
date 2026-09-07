@@ -70,6 +70,11 @@ Exit: zero stale-owner writes; exactly one published extraction generation; no d
 
 ### X-03 — Build complete Qwen-native parsing and document coverage
 
+The [combined page-understanding delivery plan](native-page-understanding.md) defines
+the next implementation slices: one 27B response for structure, classification and
+typed extraction, explicit historical version dispatch and raw-member-bound claims.
+Its contracts and call-count checks supplement every requirement below.
+
 The current Docling-based planner discards grounded Qwen obligations absent from its registry and truncates inventory after eight targets before skip accounting. These are regression cases the replacement must solve; reproducing the old planner is not a completion requirement.
 
 Implementation:
