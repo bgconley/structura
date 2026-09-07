@@ -20,7 +20,7 @@ test.describe("104 disposable real-stack uploads", () => {
   test.afterEach(async ({page}, info) => { await attachLiveUploadEvidence(page, info); });
 
   test("same-name batch preserves selection and opens each exact accepted original", async ({page}, info) => {
-    const run = runName("same-name"), observed = observeLiveUploads(page);
+    const run = runName("same-name"), observed = await observeLiveUploads(page);
     const selected = await livePdf(info, `${run}-selected.pdf`, [run, "Selected source remains selected."]);
     await selectLiveFiles(page, [selected.path]);
     const initial = await observed.waitFor((attempt) => attempt.state === "accepted" && attempt.sha256 === selected.sha256);
@@ -41,7 +41,7 @@ test.describe("104 disposable real-stack uploads", () => {
   });
 
   test("readable duplicate reuse and keep-separate produce the actual distinct receipts", async ({page}, info) => {
-    const run = runName("duplicate"), observed = observeLiveUploads(page);
+    const run = runName("duplicate"), observed = await observeLiveUploads(page);
     const source = await livePdf(info, `${run}.pdf`, [run, "Exact duplicate acceptance source."]);
     await selectLiveFiles(page, [source.path]);
     const first = await observed.waitFor((attempt) => attempt.state === "accepted");
@@ -74,7 +74,7 @@ test.describe("104 disposable real-stack uploads", () => {
 
   test("mobile keyboard PNG acceptance and refresh recover by GET without another PUT", async ({page}, info) => {
     await page.setViewportSize({width: 390, height: 844});
-    const run = runName("png"), observed = observeLiveUploads(page), source = await livePng(info, `${run}.png`, run);
+    const run = runName("png"), observed = await observeLiveUploads(page), source = await livePng(info, `${run}.png`, run);
     const input = page.locator(".top-command input[type=file]"); await expect(input).toBeEnabled();
     const chooser = page.waitForEvent("filechooser"); await input.focus(); await page.keyboard.press("Enter");
     await (await chooser).setFiles(source.path);
@@ -100,7 +100,7 @@ test.describe("104 disposable real-stack uploads", () => {
   });
 
   test("unsupported signature is rejected and a later valid source remains usable", async ({page}, info) => {
-    const run = runName("rejected"), observed = observeLiveUploads(page), path = info.outputPath(`${run}.pdf`);
+    const run = runName("rejected"), observed = await observeLiveUploads(page), path = info.outputPath(`${run}.pdf`);
     await writeFile(path, `This is synthetic plain text, not a PDF. ${run}`);
     await selectLiveFiles(page, [path]);
     await expect.poll(() => observed.responses.some((response) => response.path.endsWith("/content") && response.status === 415)).toBe(true);

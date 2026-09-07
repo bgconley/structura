@@ -8,7 +8,7 @@ test.describe("Phase 1 disposable live Compose stack", () => {
   test("logs in, uploads a document, and opens the viewer through the real API", async ({page}, info) => {
     test.setTimeout(90000);
     await signIntoUploadStack(page, info);
-    const title = runName("phase1"), observed = observeLiveUploads(page);
+    const title = runName("phase1"), observed = await observeLiveUploads(page);
     const source = await livePdf(info, `${title}.pdf`, [title, "Phase 1 real original acceptance and Viewer proof."]);
     await selectLiveFiles(page, [source.path]);
     const accepted = await observed.waitFor((attempt) => attempt.state === "accepted");

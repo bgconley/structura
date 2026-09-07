@@ -65,9 +65,61 @@ export async function selectLiveFiles(page: Page, paths: string[]) {
 }
 const evidenceWriters = new WeakMap<Page, (info: TestInfo) => Promise<void>>();
 export async function attachLiveUploadEvidence(page: Page, info: TestInfo) { await evidenceWriters.get(page)?.(info); }
-export function observeLiveUploads(page: Page) {
+type UploadObservation = {status: number; path: string; method: string; resourceType: string;
+  bodySource: "network_inspector" | "native_xhr"; attempt?: UploadAttempt; bodyReadError?: string; bodyKeys?: string[]};
+type NativeUploadObservation = {status: number; path: string; method: string; body: string | undefined; bodyReadError?: string};
+
+// Chromium can evict disk-backed upload bodies from its inspector cache while
+// the app still receives the complete JSON. Read that native response without
+// replacing it, issuing a request, or changing native open/send behavior.
+function installNativeUploadObserver() {
+  const owner = window as typeof window & {__structuraUploadObserverInstalled?: boolean;
+    __structuraRecordNativeUpload: (value: NativeUploadObservation) => Promise<void>};
+  if (owner.__structuraUploadObserverInstalled) return;
+  owner.__structuraUploadObserverInstalled = true;
+  const nativeOpen = XMLHttpRequest.prototype.open;
+  const requests = new WeakMap<XMLHttpRequest, {method: string; path: string}>();
+  const watched = new WeakSet<XMLHttpRequest>();
+  XMLHttpRequest.prototype.open = function (this: XMLHttpRequest,
+    ...args: [method: string, url: string | URL, async?: boolean, username?: string | null, password?: string | null]) {
+    const result = Reflect.apply(nativeOpen, this, args);
+    const url = new URL(String(args[1]), location.href), method = args[0].toUpperCase();
+    if (method !== "PUT" || url.origin !== location.origin || !/^\/api\/v1\/uploads\/[a-f\d-]{36}\/content$/i.test(url.pathname)) {
+      requests.delete(this); return result;
+    }
+    requests.set(this, {method, path: url.pathname});
+    if (watched.has(this)) return result;
+    watched.add(this);
+    this.addEventListener("load", () => {
+      const request = requests.get(this);
+      if (!request) return;
+      const observation: NativeUploadObservation = {...request, status: this.status, body: undefined};
+      try {
+        if (this.responseType !== "json") throw new Error(`Unexpected native upload responseType: ${this.responseType}`);
+        observation.body = JSON.stringify(this.response);
+      } catch (error) { observation.bodyReadError = error instanceof Error ? error.message : String(error); }
+      // The binding copies this snapshot; xhr.response remains untouched for the app.
+      void owner.__structuraRecordNativeUpload(observation);
+    });
+    return result;
+  };
+}
+
+export async function observeLiveUploads(page: Page) {
   const requests: {method: string; path: string; registration?: UploadCreate}[] = [];
-  const responses: {status: number; path: string; attempt?: UploadAttempt}[] = [];
+  const responses: UploadObservation[] = [], nativeResponses: UploadObservation[] = [];
+  const attempts: UploadAttempt[] = [];
+  function recordBody(entry: UploadObservation, body: unknown) {
+    if (!body || typeof body !== "object" || Array.isArray(body)) return;
+    entry.bodyKeys = Object.keys(body).slice(0, 30);
+    if (!("uploadId" in body) || !("operationId" in body) || !("clientBatchId" in body)) return;
+    const registration = requests.find((request) => request.registration?.operationId === body.operationId)?.registration;
+    if (!registration || registration.clientBatchId !== body.clientBatchId)
+      throw new Error("Upload response does not match an observed registration.");
+    if (entry.path !== "/api/v1/uploads" && entry.path.split("/")[4] !== body.uploadId)
+      throw new Error("Upload response identity does not match its exact request path.");
+    entry.attempt = body as UploadAttempt; attempts.push(entry.attempt);
+  }
   const reads = new Set<Promise<void>>();
   page.on("request", (request) => {
     const path = new URL(request.url()).pathname;
@@ -78,22 +130,37 @@ export function observeLiveUploads(page: Page) {
   page.on("response", (response) => {
     const path = new URL(response.url()).pathname;
     if (!/^\/api\/v1\/uploads(?:\/|$)/.test(path)) return;
+    const entry: typeof responses[number] = {status: response.status(), path,
+      method: response.request().method(), resourceType: response.request().resourceType(), bodySource: "network_inspector"};
     const read = (async () => {
-      const entry: typeof responses[number] = {status: response.status(), path};
-      if (response.ok()) { const body: unknown = await response.json(); if (body && typeof body === "object" && "uploadId" in body) entry.attempt = body as UploadAttempt; }
-      responses.push(entry);
-    })().catch(() => { responses.push({status: response.status(), path}); });
+      if (response.ok()) recordBody(entry, await response.json());
+    })().catch((error: unknown) => {
+      entry.bodyReadError = (error instanceof Error ? error.message : String(error)).slice(0, 1000);
+    }).finally(() => { responses.push(entry); });
     reads.add(read); void read.finally(() => reads.delete(read));
   });
   const attach = async (info: TestInfo) => {
     await Promise.all([...reads]); await info.attach("synthetic-upload-http-evidence", {
-      body: JSON.stringify({requests, responses}, null, 2), contentType: "application/json"});
+      body: JSON.stringify({requests, responses, nativeResponses}, null, 2), contentType: "application/json"});
   };
   evidenceWriters.set(page, attach);
-  return {requests, responses,
+  await page.exposeBinding("__structuraRecordNativeUpload", ({frame}, observation: NativeUploadObservation) => {
+    if (frame !== page.mainFrame() || observation.method !== "PUT"
+      || !/^\/api\/v1\/uploads\/[a-f\d-]{36}\/content$/i.test(observation.path)) return;
+    const entry: UploadObservation = {status: observation.status, path: observation.path, method: observation.method,
+      resourceType: "xhr", bodySource: "native_xhr", bodyReadError: observation.bodyReadError};
+    try {
+      if (entry.status >= 200 && entry.status < 300 && !entry.bodyReadError)
+        recordBody(entry, JSON.parse(observation.body ?? "null"));
+    } catch (error) { entry.bodyReadError = (error instanceof Error ? error.message : String(error)).slice(0, 1000); }
+    nativeResponses.push(entry);
+  });
+  await page.addInitScript(installNativeUploadObserver);
+  await page.evaluate(installNativeUploadObserver);
+  return {requests, responses, nativeResponses,
     async waitFor(predicate: (attempt: UploadAttempt) => boolean) {
-      await expect.poll(() => responses.some((entry) => entry.attempt && predicate(entry.attempt)), {timeout: 15000}).toBe(true);
-      return responses.findLast((entry) => entry.attempt && predicate(entry.attempt))!.attempt!;
+      await expect.poll(() => attempts.some(predicate), {timeout: 15000}).toBe(true);
+      return attempts.findLast(predicate)!;
     },
     contentCount: () => requests.filter((entry) => entry.method === "PUT" && entry.path.endsWith("/content")).length,
   };
